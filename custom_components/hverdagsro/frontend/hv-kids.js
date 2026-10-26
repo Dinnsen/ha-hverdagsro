@@ -328,8 +328,10 @@ function wishCard(ctx, l, w, i) {
   const q = w.price != null ? `${ctx.fmt.num(w.price, w.price % 1 ? 2 : 0)} ${w.currency === "DKK" || !w.currency ? "kr" : esc(w.currency)}` : "";
   const em = w.em || (kid && w.emo) || wishEm(w.title);
   const inShop = (ctx.data?.rewards || []).some((r) => r.title === w.title);
+  // "Gør til mål" only on a child's wish list, as in the prototype.
+  const toKid = ctx.member(ctx.data?.settings?.osky_to?.[l.id])?.role === "child";
   return `<div class="wish${w.fresh ? " fresh" : ""}" style="animation-delay:${i * 60}ms"><span class="thumb">${w.photo ? `<img src="${esc(w.photo)}" alt="" loading="lazy">` : esc(em)}</span><div style="min-width:0"><div class="t-ttl">${esc(w.title)}</div><div class="t-sub">${esc(w.shop || "")}<span class="num">${q ? (w.shop ? " · " : "") + esc(q) : ""}</span></div>${!kid && w.reserved ? `<span class="res">${svg("lock")}${esc(ctx.t("Reserveret"))}</span>` : ""}</div>
-    <div class="wish-b">${kid || !ctx.isParent ? "" : `<button class="btn soft sm" data-act="kids-wish2shop" data-list="${esc(l.id)}" data-i="${i}" ${inShop ? "disabled" : ""}>${inShop ? esc(ctx.t("Er et mål i shoppen")) : `${STAR}${esc(ctx.t("Gør til mål"))}`}</button>`}${w.url && !kid ? `<a class="iconbtn" href="${esc(w.url)}" target="_blank" rel="noopener" aria-label="${esc(ctx.t("Åbn {what}", { what: w.title }))}">${svg("link")}</a>` : ""}</div></div>`;
+    <div class="wish-b">${kid || !ctx.isParent || !toKid ? "" : `<button class="btn soft sm" data-act="kids-wish2shop" data-list="${esc(l.id)}" data-i="${i}" ${inShop ? "disabled" : ""}>${inShop ? esc(ctx.t("Er et mål i shoppen")) : `${STAR}${esc(ctx.t("Gør til mål"))}`}</button>`}${w.url && !kid ? `<a class="iconbtn" href="${esc(w.url)}" target="_blank" rel="noopener" aria-label="${esc(ctx.t("Åbn {what}", { what: w.title }))}">${svg("link")}</a>` : ""}</div></div>`;
 }
 /* One Ønskeskyen list as the prototype's card. Exported for the Lists page. */
 export function onskeCard(ctx, l) {

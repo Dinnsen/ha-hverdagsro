@@ -58,6 +58,7 @@ for (const code of opt.evals) {
     errors.push(`eval failed: ${e.message}`);
   }
 }
+if (opt.full) await page.evaluate(() => Object.assign(window.__panel.style, { height: "auto", overflow: "visible" }));
 if (opt.out) await page.screenshot({ path: opt.out, fullPage: !!opt.full });
 const view = await page.evaluate(() => window.__panel?.ctx?.view);
 console.log(`view=${view}`);

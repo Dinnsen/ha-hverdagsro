@@ -125,6 +125,7 @@ export function evCars(ctx) {
       const ent = byName(v.name);
       return {
         key: v.id,
+        statusEntity: ent?.statusEntity,
         vehicleId: v.id,
         name: v.name,
         color: CAR_COLORS[i % CAR_COLORS.length],
@@ -154,6 +155,7 @@ export function evCars(ctx) {
     const ready = val(sib(c.device, "_ready_by"));
     return {
       key: c.id,
+      statusEntity: c.statusEntity,
       vehicleId: null,
       name: c.name,
       color: CAR_COLORS[i % CAR_COLORS.length],
@@ -336,7 +338,7 @@ async function setCar(ctx, c, settings) {
 }
 
 function carSheet(ctx, key) {
-  const c = evCars(ctx).find((x) => x.key === key);
+  const c = evCars(ctx).find((x) => x.key === key || x.statusEntity === key);
   if (!c) return;
   const pl = planOf(ctx, c);
   const S = {

@@ -5,7 +5,7 @@ import css from "./hv-style.js";
 import css2 from "./hv-style2.js";
 import { addDays, createCtx, esc, pad2, startOfDay } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
-import { addTexts } from "./hv-text.js";
+import { addTexts, setModule } from "./hv-text.js";
 import { createSky, weatherKind } from "./hv-sky.js";
 import { activeDecor, ageOn, occasions, wedName } from "./hv-decor.js";
 import home from "./hv-home.js";
@@ -68,9 +68,14 @@ class HverdagsroPanel extends HTMLElement {
     this._wxOpen = false;
     this._forecast = { daily: [], hourly: [] };
     this._unsubs = [];
+    this._viewModule = {};
+    this._actModule = {};
     this.ctx.modules = MODULES;
     for (const m of MODULES) {
-      addTexts(m.en);
+      addTexts(m.en, m.id);
+      for (const v of Object.keys(m.views || {})) this._viewModule[v] = m.id;
+      for (const a of Object.keys(m.acts || {})) this._actModule[a] = m.id;
+      for (const i of Object.keys(m.inputs || {})) this._actModule["in:" + i] = m.id;
       Object.assign(this.ctx.views, m.views || {});
       Object.assign(this.ctx.acts, m.acts || {});
       Object.assign(this.ctx.inputs, m.inputs || {});
@@ -79,6 +84,7 @@ class HverdagsroPanel extends HTMLElement {
     this.ctx.applyTheme = () => this._theme();
     // Shared with the modules: the coming waste pickups and the weather forecast.
     this.ctx.waste = () => this._wasteList();
+    this.ctx.wasteSheet = () => this._wasteSheet();
     Object.defineProperty(this.ctx, "forecast", { get: () => this._forecast });
   }
 
@@ -268,6 +274,7 @@ class HverdagsroPanel extends HTMLElement {
     const view = ctx.views[ctx.view] || { render: () => `<section class="card hv-empty">${svg("more", "ic big")}<h2>${esc(ctx.t("Siden findes ikke"))}</h2></section>` };
     let html;
     try {
+      setModule(this._viewModule[ctx.view] || null);
       html = view.render(ctx);
     } catch (err) {
       console.error("Hverdagsro:", err);
@@ -1086,6 +1093,7 @@ class HverdagsroPanel extends HTMLElement {
       const a = e.target.closest("[data-act]");
       if (!a) return;
       const fn = ctx.acts[a.dataset.act];
+      setModule(this._actModule[a.dataset.act] || this._viewModule[ctx.view] || null);
       if (fn) {
         e.preventDefault();
         Promise.resolve(fn(a, e, ctx)).catch((err) => ctx.toast(String(err?.message || err)));
@@ -1095,6 +1103,7 @@ class HverdagsroPanel extends HTMLElement {
       const el = e.target.closest?.("[data-in]");
       if (!el) return;
       const fn = ctx.inputs[el.dataset.in];
+      setModule(this._actModule["in:" + el.dataset.in] || this._viewModule[ctx.view] || null);
       if (fn) fn(el, e, ctx);
     };
     root.addEventListener("input", onInput);

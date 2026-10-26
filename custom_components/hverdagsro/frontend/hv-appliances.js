@@ -43,7 +43,7 @@ function guessKind(entity, name = "") {
   return "other";
 }
 
-function status(ctx, a) {
+export function status(ctx, a) {
   const s = ctx.st(a.entity);
   if (!s || s.state === "unavailable" || s.state === "unknown") return { txt: ctx.t("Ikke forbundet"), cls: "bad", key: "offline" };
   const d = a.entity.split(".")[0];
@@ -91,7 +91,7 @@ function fmtState(ctx, s) {
   return ctx.hass.formatEntityState ? ctx.hass.formatEntityState(s) : `${s.state}${u ? " " + u : ""}`;
 }
 
-function details(ctx, a) {
+export function details(ctx, a) {
   const out = { facts: [], buttons: [], left: null, finish: null, temp: null, door: null, battery: null, progress: null, filter: false, stop: null, start: null };
   const main = ctx.st(a.entity);
   if (main) {

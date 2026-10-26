@@ -628,7 +628,7 @@ const acts = {
     const ev = weekEvents(ctx)?.[+el.dataset.i];
     if (ev) openEvent(ctx, ev);
   },
-  "lists-waste": (el, e, ctx) => ctx.panel?._wasteSheet?.(),
+  "lists-waste": (el, e, ctx) => ctx.wasteSheet?.(),
   "lists-meal": (el, e, ctx) => mealSheet(ctx, +el.dataset.i),
   "lists-openlist": (el, e, ctx) => {
     listId = el.dataset.id;

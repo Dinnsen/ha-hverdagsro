@@ -213,6 +213,15 @@ SETTINGS = vol.Schema(
         },
         vol.Optional("osky_to", default={}): {vol.Coerce(str): text(40)},
         vol.Optional("pickup_reminder", default=True): cv.boolean,
+        # How each to-do list looks under Lister: a shopping list or a fixed list, its colour, icon and note.
+        vol.Optional("lists", default={}): {
+            cv.entity_id: {
+                vol.Optional("kind", default="list"): vol.In(("list", "fixed")),
+                vol.Optional("color", default="#6E4AFF"): hex_color,
+                vol.Optional("icon", default="lists"): text(20),
+                vol.Optional("note", default=""): text(120),
+            }
+        },
     }
 )
 
@@ -238,6 +247,7 @@ APPLIANCE = vol.Schema(
             )
         ),
         vol.Optional("controls", default=[]): entity_list,
+        vol.Optional("hidden", default=False): cv.boolean,
     }
 )
 
