@@ -127,6 +127,12 @@ async def test_saving_the_family_reloads(
     assert family.data["points"] == {"ida": 100}
     assert hass.states.get("sensor.ida_points") is not None
 
+    # Only a new colour: no restart.
+    family = init_integration.runtime_data
+    msg = await _ws(client, 3, type="hverdagsro/save", section="family", value=[PARENT, {**CHILD, "color": "#112233"}])
+    await hass.async_block_till_done()
+    assert init_integration.runtime_data is family
+
     duplicate = await _ws(client, 2, type="hverdagsro/save", section="family", value=[PARENT, PARENT])
     assert duplicate["error"]["code"] == "invalid_format"
 

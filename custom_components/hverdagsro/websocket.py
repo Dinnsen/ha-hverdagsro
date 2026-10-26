@@ -90,9 +90,10 @@ async def ws_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
 ) -> None:
     _require_manager(connection, family)
+    children = [(m["id"], m["name"]) for m in family.children]
     value = await family.async_save_section(msg["section"], msg["value"])
-    if msg["section"] == "family":
-        # New or removed children get or lose their entities.
+    if msg["section"] == "family" and children != [(m["id"], m["name"]) for m in family.children]:
+        # New, renamed or removed children get or lose their entities.
         hass.config_entries.async_schedule_reload(family.entry.entry_id)
     connection.send_result(msg["id"], {"value": value})
 
