@@ -5,8 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
+
+from custom_components.hverdagsro.const import DOMAIN
 
 from .conftest import CHILD, PARENT, TODAY
 
@@ -259,12 +262,11 @@ async def test_theme_and_setup_done(
     assert family.data["setup_done"] is True
 
 
-async def test_not_loaded(hass: HomeAssistant, hass_ws_client: WebSocketGenerator, now: Any) -> None:
-    from homeassistant.setup import async_setup_component
-
-    from custom_components.hverdagsro.const import DOMAIN
-
+async def test_not_loaded(
+    hass: HomeAssistant, now: Any, hass_ws_client: WebSocketGenerator, hass_access_token: str
+) -> None:
+    # The clock is set (by `now`) before the access token is made, or the token would be from the future.
     assert await async_setup_component(hass, DOMAIN, {})
-    client = await hass_ws_client(hass)
+    client = await hass_ws_client(hass, hass_access_token)
     msg = await _ws(client, 1, type="hverdagsro/state")
     assert msg["error"]["code"] == "not_loaded"
