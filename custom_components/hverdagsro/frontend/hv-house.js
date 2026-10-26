@@ -1155,6 +1155,7 @@ function hbProps() {
         entFld("presence", o.presence, "device_tracker,person,binary_sensor", t("Hjemme (device tracker)")) +
         entFld("battery", o.battery, "sensor", t("Batteri i %")) +
         entFld("plug", o.plug, "sensor,binary_sensor,switch", t("Ladestatus")) +
+        entFld("lock", o.lock, "lock", t("Bilens lås")) +
         fld(t("Ladestik på bilen"), sel("port", Object.entries(PORTS).map(([a, v]) => [a, t(v[0])]), o.port || "bl")) +
         fld(t("Lader"), sel("chg", [["", t("Ingen")], ...HZ.d.items.filter((i) => i.type === "charger").map((c) => [c.id, c.name])], o.chg || ""), `<span class="t-sub" style="font-size:11.5px">${esc(t("Ledningen tegnes fra stikket på bilen til laderen, når bilen er sat til. Bilen vises kun, når den er hjemme."))}</span>`);
       bot += `<div class="hz-f"><span>${esc(t("Farve"))}</span><div class="hz-cols">${CARCOLS.map((c) => `<button data-hz="carcol" data-id="${c}" style="--c:${c}" aria-pressed="${o.col === c}" aria-label="${esc(t("Farve"))}"></button>`).join("")}</div></div>`;
@@ -2278,7 +2279,7 @@ const en = {
   "Slags": "Kind", "Ydervæg": "Outer wall", "Indervæg": "Inner wall", "Åben side": "Open side", "Træk i enderne for at flytte dem. De klikker fast på andre vægges ender.": "Drag the ends to move them. They snap to the ends of other walls.",
   "Udeareal": "Outdoor area", "Tekst": "Text", "Træk i hjørnerne for at give arealet form. Et nyt knæk kommer midt på den længste side, eller efter det hjørne, du har valgt.": "Drag the corners to shape the area. A new bend goes in the middle of the longest side, or after the corner you've chosen.",
   "Farver (RGBWW)": "Colours (RGBWW)", "Lyskilden kan skifte farve og køre farveskift.": "The light can change colour and run colour effects.",
-  "Hjemme (device tracker)": "Home (device tracker)", "Batteri i %": "Battery in %", "Ladestatus": "Charging status", "Ladestik på bilen": "Charge port on the car", "Ingen": "None",
+  "Hjemme (device tracker)": "Home (device tracker)", "Batteri i %": "Battery in %", "Ladestatus": "Charging status", "Bilens lås": "The car's lock", "Ladestik på bilen": "Charge port on the car", "Ingen": "None",
   "Ledningen tegnes fra stikket på bilen til laderen, når bilen er sat til. Bilen vises kun, når den er hjemme.": "The cable is drawn from the car's charge port to the charger when the car is plugged in. The car only shows when it's home.",
   "Bredde": "Width", "Dybde": "Depth", "Drejning": "Rotation", "Dublér": "Duplicate", "Apparat i Hverdagsro": "Appliance in Hverdagsro", "Klipper i": "Mows in", "Støvsuger i": "Vacuums in",
   "Der, hvor den står": "Where it stands", "Ladestationen er der, hvor markøren står.": "The dock is where the marker stands.", "Dørblad": "Door leaf", "Hængsel venstre": "Hinge left", "Hængsel højre": "Hinge right",

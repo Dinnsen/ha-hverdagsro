@@ -133,7 +133,7 @@ async def test_saving_the_family_reloads(
     await hass.async_block_till_done()
     assert init_integration.runtime_data is family
 
-    duplicate = await _ws(client, 2, type="hverdagsro/save", section="family", value=[PARENT, PARENT])
+    duplicate = await _ws(client, 4, type="hverdagsro/save", section="family", value=[PARENT, PARENT])
     assert duplicate["error"]["code"] == "invalid_format"
 
 

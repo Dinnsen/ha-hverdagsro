@@ -144,8 +144,8 @@ function daysText(ctx, days) {
   if (d === "0,1,2,3,4,5,6") return ctx.t("Hver dag");
   if (d === "0,1,2,3,4") return ctx.t("Hverdage");
   if (d === "5,6") return ctx.t("Weekender");
-  const names = (days || []).map((i) => ctx.fmt.short(addDays(today0(), (i - weekday(today0()) + 7) % 7)));
-  return names.length === 1 ? cap(names[0]) : names.map(cap).join(", ");
+  const ds = (days || []).map((i) => addDays(today0(), (i - weekday(today0()) + 7) % 7));
+  return ds.length === 1 ? cap(ctx.fmt.day(ds[0])) : ds.map((d) => cap(shortDay(ctx, d))).join(", ");
 }
 function tasksFor(ctx, m, date = today0()) {
   const iso = isoOf(date);
@@ -301,7 +301,7 @@ function taskRow(ctx, t) {
   const pts = t.pts && p?.role === "child" && ctx.feature(p, "points");
   return `<div class="task${t.done ? " done" : ""}" data-task="${esc(t.id)}">
     <button class="check" data-act="home-task" data-id="${esc(t.id)}" data-member="${esc(t.who)}" aria-label="${esc(ctx.t("Marker {what} som klaret", { what: t.t }))}" aria-pressed="${!!t.done}" style="${t.done ? `background:${esc(p?.color)}` : ""}">${CHECK}</button>
-    <div style="min-width:0"><div class="t-ttl">${t.em ? `${esc(t.em)} ` : ""}${esc(t.t)}</div><div class="t-sub">${av(ctx, t.who, "sm")}<span>${esc(p?.name || "")}</span>${t.rep ? `<span>↻ ${esc(t.rep)}</span>` : ""}${t.due ? `<span>${esc(t.due)}</span>` : ""}</div></div>
+    <div style="min-width:0"><div class="t-ttl">${esc(t.t)}</div><div class="t-sub">${av(ctx, t.who, "sm")}<span>${esc(p?.name || "")}</span>${t.rep ? `<span>↻ ${esc(t.rep)}</span>` : ""}${t.due ? `<span>${esc(t.due)}</span>` : ""}</div></div>
     ${pts ? `<span class="t-pts">+${t.pts}${STAR}</span>` : "<span></span>"}
   </div>`;
 }
@@ -642,16 +642,49 @@ function pTasks(ctx) {
 }
 
 // ---------------------------------------------------------------- the school schedule (from the skema calendar)
+function subjColor(name, fallback) {
+  const key = Object.keys(SUBJ).find((k) => String(name).toLowerCase().startsWith(k.toLowerCase()));
+  return key ? SUBJ[key] : fallback;
+}
+/* The prototype's skemaGrid: this week's lessons from the schedule calendar, Monday to Friday. */
 function skemaCard(ctx, m) {
   if (typeof Kids.skemaGrid === "function") return Kids.skemaGrid(ctx, m);
-  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(today0(), i)).filter((d) => weekday(d) < 5).slice(0, 5);
-  const rows = days
-    .map((d) => {
-      const L = skemaOn(ctx, m, d);
-      return L.length ? `<div class="day-split">${esc(cap(ctx.fmt.rel(d)))}</div>${L.map((e) => ag(ctx, ctx.fmt.time(e.start), e.title, `${ctx.fmt.time(e.start)}–${ctx.fmt.time(e.end)}${e.location ? ` · ${e.location}` : ""}`, [], SUBJ[e.title.split(/[ ,·]/)[0]] || m.color)).join("")}` : "";
-    })
-    .join("");
-  return `<div class="agenda">${rows || `<div class="t-sub">${esc(ctx.t("Intet i skemaet de næste dage"))}</div>`}</div>`;
+  const mon = addDays(today0(), -weekday(today0()) + (weekday(today0()) > 4 ? 7 : 0));
+  const evs = ctx.events([m.skema], mon, addDays(mon, 5)).filter((e) => !e.allDay);
+  let T0 = 8, T1 = 14;
+  evs.forEach((e) => {
+    T0 = Math.min(T0, e.start.getHours());
+    T1 = Math.max(T1, Math.ceil(hoursOf(e.end)));
+  });
+  T1 = Math.min(T1, 18);
+  const PXH = 60, Hh = (T1 - T0) * PXH;
+  const tY = (d) => (hoursOf(d) - T0) * PXH;
+  const t0 = today0();
+  let h = `<div class="skema-wrap"><div class="skema"><span></span>`;
+  for (let i = 0; i < 5; i++) {
+    const d = addDays(mon, i), rel = Math.round((d - t0) / 864e5);
+    h += `<div class="sk-h${rel === 0 ? " today" : ""}">${esc(cap(shortDay(ctx, d)))}<small>${esc(`${d.getDate()}. ${ctx.fmt.date(d, { month: "short" }).replace(/\.$/, "")}.`)}${rel === 0 ? ` · ${esc(ctx.t("i dag"))}` : rel === 1 ? ` · ${esc(ctx.t("i morgen"))}` : ""}</small></div>`;
+  }
+  const hours = [];
+  for (let x = T0; x <= T1; x++) hours.push(x);
+  h += `<div class="sk-times" style="height:${Hh}px">${hours.map((x) => `<span style="top:${(x - T0) * PXH}px">${pad(x)}.00</span>`).join("")}</div>`;
+  for (let i = 0; i < 5; i++) {
+    const d = addDays(mon, i);
+    const day = evs.filter((e) => startOfDay(e.start).getTime() === d.getTime()).sort((a, b) => a.start - b.start);
+    h += `<div class="sk-col" style="height:${Hh}px">`;
+    day.forEach((e, k) => {
+      const n = day[k + 1];
+      if (n && n.start - e.end >= 10 * 60000) h += `<div class="sk-break" style="top:${tY(e.end)}px;height:${tY(n.start) - tY(e.end)}px" title="${esc(ctx.t("Frikvarter"))}"></div>`;
+    });
+    day.forEach((e, li) => {
+      const who = [e.location, (e.description || "").split("\n")[0]].filter(Boolean).join(" · ").slice(0, 40);
+      const st = ctx.fmt.time(e.start), en = ctx.fmt.time(e.end);
+      h += `<div class="sk-l" style="top:${tY(e.start) + 2}px;height:${Math.max(18, tY(e.end) - tY(e.start) - 4)}px;background:${subjColor(e.title, m.color)};animation-delay:${i * 60 + li * 40}ms" title="${esc(`${e.title} ${st}–${en}${who ? ` · ${who}` : ""}`)}"><b>${esc(e.title)}</b><small>${esc(st)}${who ? ` · ${esc(who)}` : ""}</small></div>`;
+    });
+    h += `</div>`;
+  }
+  h += `</div></div><div class="sk-legend"><span class="chip"><i style="background:${SUBJ.Dansk}"></i>${esc(ctx.t("Fra {cal}", { cal: ctx.name(m.skema) }))}</span>${evs.length ? "" : `<span class="chip">${esc(ctx.t("Ingen timer i denne uge"))}</span>`}</div>`;
+  return h;
 }
 
 // ---------------------------------------------------------------- person pages
@@ -1367,6 +1400,7 @@ const css = `
 .home-fam .band-pick { margin-top: 12px; }
 .task .check[disabled] { opacity: .5; }
 .hh-room > .rm-mini { width: 100%; }
+.hh-room .rm-pic { max-height: 280px; overflow: hidden; }
 `;
 
 const en = {
@@ -1491,7 +1525,10 @@ const en = {
   "Ingen opgaver i dag. Lav faste opgaver under Faste rutiner.": "No tasks today. Make regular tasks under Routines.",
   "Missioner og point er to funktioner: børnene kan have missioner uden point. Med point får de dem, så snart de krydser af; et køb i shoppen venter på en forælder. Når alle dagens missioner er klaret, tæller dagen som perfekt.":
     "Missions and points are two features: children can have missions without points. With points they get them as soon as they tick off; a purchase in the shop waits for a parent. When all of today's missions are done, the day counts as perfect.",
-  "Intet i skemaet de næste dage": "Nothing in the schedule the next days",
+  "i dag": "today",
+  Frikvarter: "Break",
+  "Fra {cal}": "From {cal}",
+  "Ingen timer i denne uge": "No lessons this week",
   Fødselsdag: "Birthday",
   "Ikke sat": "Not set",
   "{n} år": "{n} years",
