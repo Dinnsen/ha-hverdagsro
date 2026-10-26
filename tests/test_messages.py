@@ -70,7 +70,11 @@ async def test_pickups_in_the_morning_and_waste_in_the_evening(
     settings = {**family.data["settings"], "waste": [{"entity": "sensor.restaffald", "name": "Restaffald"}]}
     await family.async_save_section("settings", settings)
 
-    freezer.tick(timedelta(hours=14, minutes=1))  # Tuesday 07:01
+    freezer.tick(timedelta(hours=2, minutes=1))  # Monday 19:01: nothing is collected on Tuesday
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert calls == []
+    freezer.tick(timedelta(hours=12))  # Tuesday 07:01
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert [(c.service, c.data["message"]) for c in calls] == [("anna_phone", "Du bringer Ida kl. 07:45")]

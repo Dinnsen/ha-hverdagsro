@@ -17,7 +17,12 @@
     if (q.get("as")) localStorage.setItem("hverdagsro-as", q.get("as"));
   } catch (e) {}
   await import("../../custom_components/hverdagsro/frontend/hverdagsro-panel.js");
-  const hass = createMockHass({ user: q.get("user") || "anna", setup: q.get("setup") !== "0", lang: q.get("lang") || "da", dark: q.get("dark") === "1" });
+  let seed = null;
+  if (q.get("mock") === "proto") {
+    const { protoSeed } = await import("./private/mock-proto.js");
+    seed = protoSeed(await (await fetch("./private/proto-raw.json")).json());
+  }
+  const hass = createMockHass({ user: q.get("user") || (seed ? "christian" : "anna"), setup: q.get("setup") !== "0", lang: q.get("lang") || "da", dark: q.get("dark") === "1", seed });
   window.__hass = hass;
   const el = document.createElement("hverdagsro-panel");
   window.__panel = el;

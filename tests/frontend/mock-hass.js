@@ -231,14 +231,17 @@ const USERS = {
   admin: { id: "u-admin", name: "Administrator", is_admin: true },
 };
 
-export function createMockHass({ user = "anna", setup = true, lang = "da", dark = false } = {}) {
-  let states = demoStates();
-  const reg = demoRegistry(states);
-  const store = demoData(setup);
+export function createMockHass({ user = "anna", setup = true, lang = "da", dark = false, seed = null } = {}) {
+  let states = seed?.states || demoStates();
+  const reg = seed?.registry || demoRegistry(states);
+  const store = seed?.store || demoData(setup);
+  if (seed && !setup) Object.assign(store, { setup_done: false, family: [], missions: [], rewards: [] });
+  for (const [k, v] of Object.entries({ quick: [], routines: { helpers: [], pickups: {}, boards: {}, cards: [] }, pins: {}, board_done: {}, osky: { accounts: {}, lists: [] } })) if (!(k in store)) store[k] = v;
   const calls = [];
   const listeners = new Set();
-  const u = USERS[user] || USERS.anna;
-  const todoItems = {
+  const users = seed?.users || USERS;
+  const u = users[user] || Object.values(users)[0];
+  const todoItems = seed?.todoItems || {
     "todo.indkob": [
       { uid: "1", summary: "Mælk", status: "needs_action" },
       { uid: "2", summary: "Rugbrød", status: "needs_action" },
@@ -326,6 +329,47 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
       setTimeout(push, 10);
       return null;
     }
+    if (t === "hverdagsro/prefs") {
+      check(msg.member);
+      if ("msg_off" in msg.prefs && !canManage()) throw { code: "not_allowed", message: "Ikke tilladt" };
+      const m = store.family.find((x) => x.id === msg.member);
+      for (const k of ["quick_order", "quick_hide", "msg_off", "photo", "skin", "mode"]) if (k in msg.prefs) m[k] = msg.prefs[k];
+      setTimeout(push, 10);
+      return null;
+    }
+    if (t === "hverdagsro/pin") return { ok: !store.family.find((x) => x.id === msg.member)?.has_pin || msg.pin === "1234" };
+    if (t === "hverdagsro/board") {
+      check(msg.member);
+      const mine = (store.board_done[msg.member] ||= []);
+      const key = `${msg.slot}:${msg.index}`;
+      if (msg.done && !mine.includes(key)) mine.push(key);
+      if (!msg.done && mine.includes(key)) mine.splice(mine.indexOf(key), 1);
+      const cards = store.routines.boards?.[msg.member]?.[msg.slot] || [];
+      if (cards.length && !mine.includes(`${msg.slot}:bonus`) && cards.every((c, i) => mine.includes(`${msg.slot}:${i}`))) {
+        mine.push(`${msg.slot}:bonus`);
+        store.points[msg.member] = (store.points[msg.member] || 0) + 5;
+      }
+      setTimeout(push, 10);
+      return { done: mine };
+    }
+    if (t === "hverdagsro/osky/login") {
+      store.osky.accounts[msg.member] = { name: msg.email.split("@")[0], at: new Date().toISOString() };
+      setTimeout(push, 10);
+      return null;
+    }
+    if (t === "hverdagsro/osky/logout") {
+      delete store.osky.accounts[msg.member];
+      setTimeout(push, 10);
+      return null;
+    }
+    if (t === "hverdagsro/osky/refresh") return null;
+    if (t === "hverdagsro/osky/wish") {
+      const l = store.osky.lists.find((x) => x.id === msg.list);
+      l?.wishes.unshift({ id: Math.random().toString(36).slice(2, 8), title: msg.title, price: msg.price ?? null, currency: "DKK", photo: null, url: msg.url || null, shop: "", reserved: 0 });
+      if (l) l.count++;
+      setTimeout(push, 10);
+      return null;
+    }
     if (t === "todo/item/list") return { items: todoItems[msg.entity_id] || [] };
     if (t === "config/area_registry/list") return Object.values(reg.areas);
     if (t === "media_player/browse_media") return { title: "Bibliotek", children: [{ title: "Favoritter", media_content_id: "fav", media_content_type: "favorites", can_expand: true, thumbnail: null }] };
@@ -382,6 +426,12 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
     },
     callApi: async (method, path) => {
       calls.push({ type: "api", method, path });
+      if (path.startsWith("calendars/") && seed?.calendars) {
+        const cal = path.split("?")[0].split("/")[1];
+        const qs = new URLSearchParams(path.split("?")[1] || "");
+        const from = new Date(qs.get("start") || 0), to = new Date(qs.get("end") || "2100-01-01");
+        return (seed.calendars[cal] || []).filter((e) => new Date(e.start.dateTime || e.start.date + "T00:00:00") < to && new Date(e.end.dateTime || e.end.date + "T00:00:00") > from);
+      }
       if (path.startsWith("calendars/")) {
         const cal = path.split("?")[0].split("/")[1];
         const qs = new URLSearchParams(path.split("?")[1] || "");
