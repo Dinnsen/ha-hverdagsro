@@ -79,6 +79,7 @@ function countdown(ctx, d) {
 
 // ---------------------------------------------------------------- members, presence and pictures
 function av(ctx, id, cls = "") {
+  if (id === "fam") return `<span class="av ${cls}" style="background:#11A39A" title="${esc(ctx.t("Familien"))}">F</span>`;
   const m = ctx.member(id);
   if (m?.photo) return `<span class="av photo ${cls}" style="background:${esc(m.color)} url('${esc(m.photo)}') center / cover no-repeat" title="${esc(m.name)}"></span>`;
   return ctx.avatar(id, cls);
@@ -217,7 +218,7 @@ function eventWho(ctx, e) {
   const owner = ctx.members().find((m) => m.calendar === e.calendar);
   if (owner) return [owner.id];
   const named = ctx.members().filter((m) => nameRe(m).test(e.title)).map((m) => m.id);
-  return named.length ? named : [];
+  return named.length ? named : sharedCalendars(ctx).includes(e.calendar) ? ["fam"] : [];
 }
 function eventsOf(ctx, m, days = 7) {
   return events(ctx, days).filter((e) => e.calendar === m.calendar || (sharedCalendars(ctx).includes(e.calendar) && nameRe(m).test(e.title)));
@@ -238,9 +239,10 @@ function dinnerOn(ctx, date) {
 function pickupsOn(ctx, date) {
   const wd = String(weekday(date) + 1);
   const out = [];
-  for (const [kidId, plan] of Object.entries(ctx.data.routines?.pickups || {})) {
+  const kids = typeof Kids.pickupFor === "function" ? ctx.children().map((k) => [k.id, null]) : Object.entries(ctx.data.routines?.pickups || {});
+  for (const [kidId, plan] of kids) {
     const kid = ctx.member(kidId);
-    const day = plan?.[wd];
+    const day = typeof Kids.pickupFor === "function" ? Kids.pickupFor(ctx, kidId, date) : plan?.[wd];
     if (!kid || !day) continue;
     for (const part of ["bring", "hent"]) {
       const step = day[part];
@@ -301,7 +303,7 @@ function taskRow(ctx, t) {
   const pts = t.pts && p?.role === "child" && ctx.feature(p, "points");
   return `<div class="task${t.done ? " done" : ""}" data-task="${esc(t.id)}">
     <button class="check" data-act="home-task" data-id="${esc(t.id)}" data-member="${esc(t.who)}" aria-label="${esc(ctx.t("Marker {what} som klaret", { what: t.t }))}" aria-pressed="${!!t.done}" style="${t.done ? `background:${esc(p?.color)}` : ""}">${CHECK}</button>
-    <div style="min-width:0"><div class="t-ttl">${esc(t.t)}</div><div class="t-sub">${av(ctx, t.who, "sm")}<span>${esc(p?.name || "")}</span>${t.rep ? `<span>↻ ${esc(t.rep)}</span>` : ""}${t.due ? `<span>${esc(t.due)}</span>` : ""}</div></div>
+    <div style="min-width:0"><div class="t-ttl">${esc(t.t)}</div><div class="t-sub">${av(ctx, t.who, "sm")}<span>${esc(p?.name || "")}</span>${t.due ? `<span>${esc(t.due)}</span>` : t.rep ? `<span>${svg("repeat")}${esc(t.rep)}</span>` : ""}</div></div>
     ${pts ? `<span class="t-pts">+${t.pts}${STAR}</span>` : "<span></span>"}
   </div>`;
 }
@@ -551,7 +553,7 @@ function pHome(ctx) {
         return { s: e.allDay ? "" : hhmm(e.start), html: ag(ctx, e.allDay ? ctx.t("Hele dagen") : ctx.fmt.time(e.start), e.title, [e.location, cal].filter(Boolean).join(" · "), who, owner?.color || "#11A39A") };
       });
     const dn = dinnerOn(ctx, d);
-    if (dn) rows.push({ s: hhmm(dn.at), html: ag(ctx, ctx.fmt.time(dn.at), d.getTime() === t0.getTime() ? ctx.t("Aftensmad") : dn.title, d.getTime() === t0.getTime() ? dn.title : ctx.hass.states[dn.calendar]?.attributes?.friendly_name || ctx.t("Madplan"), [], "#6E4AFF") });
+    if (dn) rows.push({ s: hhmm(dn.at), html: ag(ctx, ctx.fmt.time(dn.at), d.getTime() === t0.getTime() ? ctx.t("Aftensmad") : dn.title, d.getTime() === t0.getTime() ? dn.title : ctx.hass.states[dn.calendar]?.attributes?.friendly_name || ctx.t("Madplan"), ["fam"], "#6E4AFF") });
     return rows.sort((a, b) => a.s.localeCompare(b.s)).map((r) => r.html).join("");
   };
   const cards = [];
@@ -689,13 +691,14 @@ function skemaCard(ctx, m) {
 
 // ---------------------------------------------------------------- person pages
 function bdayField(ctx, m) {
-  if (!m.birthday) return `<div class="bd-f"><span class="bd-ic">🎂</span><div><b>${esc(ctx.t("Fødselsdag"))}</b><small>${esc(ctx.t("Ikke sat"))}</small></div></div>`;
+  const input = ctx.isParent ? `<input type="date" data-in="home-bday" data-id="${esc(m.id)}" value="${esc(m.birthday || "")}" aria-label="${esc(ctx.t("Fødselsdag for {name}", { name: m.name }))}">` : "";
+  if (!m.birthday) return `<div class="bd-f"><span class="bd-ic">🎂</span><div><b>${esc(ctx.t("Fødselsdag"))}</b><small>${esc(ctx.t("Ikke sat"))}</small></div>${input}</div>`;
   const [y] = m.birthday.split("-").map(Number);
   const d = new Date(`${m.birthday}T12:00:00`);
   const now = new Date();
   let age = now.getFullYear() - y;
   if (now < new Date(now.getFullYear(), d.getMonth(), d.getDate())) age--;
-  return `<div class="bd-f"><span class="bd-ic">🎂</span><div><b>${esc(ctx.t("Fødselsdag"))}</b><small>${esc(ctx.fmt.date(d, { day: "numeric", month: "long", year: "numeric" }))} · ${esc(ctx.t("{n} år", { n: age }))}</small></div></div>`;
+  return `<div class="bd-f"><span class="bd-ic">🎂</span><div><b>${esc(ctx.t("Fødselsdag"))}</b><small>${esc(ctx.fmt.date(d, { day: "numeric", month: "long", year: "numeric" }))} · ${esc(ctx.t("{n} år", { n: age }))}</small></div>${input}</div>`;
 }
 /* The child's room as the prototype's roomCard (lights, scenes, the drawing); the rooms module owns it. */
 function roomBlock(ctx, room) {
@@ -736,12 +739,12 @@ function personPage(ctx) {
 }
 function parentPage(ctx, p) {
   const mine = tasksFor(ctx, p);
-  const evs = events(ctx, 7).filter((e) => eventWho(ctx, e).includes(p.id) || eventWho(ctx, e).length === 0);
-  const picks = [0, 1, 2, 3, 4, 5, 6].flatMap((i) => pickupsOn(ctx, addDays(today0(), i))).filter((x) => x.who === p.id);
+  const evs = events(ctx, 7).filter((e) => e.start > Date.now() - 3600e3 && (eventWho(ctx, e).includes(p.id) || eventWho(ctx, e).includes("fam")));
+  const picks = [0, 1, 2, 3, 4, 5, 6].flatMap((i) => pickupsOn(ctx, addDays(today0(), i))).filter((x) => x.who === p.id && x.part === "hent" && x.at > Date.now());
   const pr = pres(ctx, p);
   const rows = [
-    ...evs.map((e) => ({ at: e.start, html: ag(ctx, e.allDay ? ctx.t("Hele dagen") : ctx.fmt.time(e.start), e.title, `${cap(ctx.fmt.day(e.start))} · ${ctx.hass.states[e.calendar]?.attributes?.friendly_name || ""}`, eventWho(ctx, e), ctx.member(eventWho(ctx, e)[0])?.color || "#11A39A") })),
-    ...picks.map((x) => ({ at: x.at, html: ag(ctx, ctx.fmt.time(x.at), `${x.part === "bring" ? ctx.t("Bringer") : ctx.t("Henter")} ${x.kid.name}`, `${cap(ctx.fmt.day(x.at))} · ${ctx.t("du henter")}`, [x.kid.id], x.kid.color) })),
+    ...evs.map((e) => ({ at: e.start, html: ag(ctx, e.allDay ? ctx.t("Hele dagen") : ctx.fmt.time(e.start), e.title, `${ctx.fmt.day(e.start)} · ${ctx.hass.states[e.calendar]?.attributes?.friendly_name || ""}`, eventWho(ctx, e), ctx.member(eventWho(ctx, e)[0])?.color || "#11A39A") })),
+    ...picks.map((x) => ({ at: x.at, html: ag(ctx, ctx.fmt.time(x.at), `${p.name} ${ctx.t("henter")} ${x.kid.name}`, `${ctx.fmt.day(x.at)} · ${ctx.t("Hvem henter")} · ${ctx.t("du henter")}`, [x.kid.id], x.kid.color) })),
   ].sort((a, b) => a.at - b.at);
   const lists = (ctx.data.osky?.lists || []).filter((l) => ["begge", p.id].includes(ctx.data.settings.osky_to?.[l.id]));
   return `
@@ -791,7 +794,7 @@ function kDay(ctx) {
   const canTick = kidDay === 0;
   return `<div style="--kc:${esc(p.color)}">
   ${pin ? `<div class="pin-msg card" style="margin-bottom:14px">${from ? av(ctx, from.id, "sm") : ""}<span class="txt">${esc(pin.text)}</span>${ctx.feature(p, "read") ? `<button class="iconbtn" data-act="home-read" data-txt="${esc(pin.text)}" aria-label="${esc(ctx.t("Læs beskeden op"))}">${svg("speaker")}</button>` : ""}</div>` : ctx.feature(p, "read") ? `<div class="pin-msg card" style="margin-bottom:14px">${svg("speaker")}<span class="txt">${esc(ctx.t("Hør din dag"))}</span><button class="iconbtn" data-act="home-read" aria-label="${esc(ctx.t("Læs dagen op"))}">${svg("speaker")}</button></div>` : ""}
-  <div class="days">${[0, 1, 2, 3, 4, 5].map((i) => { const d = addDays(today0(), i); return `<button class="dbtn" data-act="home-kday" data-i="${i}" aria-pressed="${i === kidDay}"><small>${esc(i === 0 ? ctx.t("I dag") : cap(ctx.fmt.short(d)))}</small><b>${d.getDate()}</b></button>`; }).join("")}</div>
+  <div class="days">${[0, 1, 2, 3, 4, 5].map((i) => { const d = addDays(today0(), i); return `<button class="dbtn" data-act="home-kday" data-i="${i}" aria-pressed="${i === kidDay}"><small>${esc(i === 0 ? ctx.t("I dag") : cap(shortDay(ctx, d)))}</small><b>${d.getDate()}</b></button>`; }).join("")}</div>
   <div class="grid" style="margin-top:14px">
     <section class="card ${ctx.feature(p, "missions") || hasPet(ctx, p) ? "s7" : "s12"}">
       <div class="nownext" style="margin-bottom:14px"><div class="nn now"><small>${esc(kidDay === 0 ? ctx.t("Nu") : ctx.t("Først"))}</small><b>${esc(kidDay === 0 ? (cur ? cur.t : ctx.t("Fri")) : items[0]?.t || ctx.t("Fri"))}</b></div><div class="nn"><small>${esc(ctx.t("Næste"))}</small><b>${esc(next ? `${next.t} ${ctx.t("kl.")} ${ctx.fmt.time(at(today0(), next.s))}` : ctx.t("Godnat"))}</b></div></div>
@@ -800,7 +803,7 @@ function kDay(ctx) {
     </section>
     ${ctx.feature(p, "missions") || hasPet(ctx, p) ? `<section class="card s5">` : ""}${ctx.feature(p, "missions") ? `
       <div class="card-head"><h2>${esc(kidDay === 0 ? ctx.t("Missioner i dag") : ctx.t("Missioner"))}</h2><span class="meta num">${esc(ctx.t("{d}/{t} klaret", { d: done, t: mine.length }))}</span></div>
-      <div class="tasks">${mine.map((t) => `<div class="task mission${t.done ? " done" : ""}" data-task="${esc(t.id)}"><button class="check" data-act="home-task" data-id="${esc(t.id)}" data-member="${esc(p.id)}" aria-label="${esc(t.t)}" aria-pressed="${!!t.done}" ${canTick ? "" : "disabled"} style="${t.done ? `background:${esc(p.color)}` : ""}">${CHECK}</button><div style="min-width:0"><div class="t-ttl">${t.em ? `${esc(t.em)} ` : ""}${esc(t.t)}</div><div class="t-sub">${esc(ctx.t("Dagens mission"))}${t.due ? ` · ${esc(t.due)}` : ""}</div></div>${ctx.feature(p, "points") && t.pts ? `<span class="t-pts" style="font-size:16px">+${t.pts}${STAR}</span>` : "<span></span>"}</div>`).join("") || `<div class="t-sub">${esc(ctx.t("Ingen missioner"))}</div>`}</div>` : ""}
+      <div class="tasks">${mine.map((t) => `<div class="task mission${t.done ? " done" : ""}" data-task="${esc(t.id)}"><button class="check" data-act="home-task" data-id="${esc(t.id)}" data-member="${esc(p.id)}" aria-label="${esc(t.t)}" aria-pressed="${!!t.done}" ${canTick ? "" : "disabled"} style="${t.done ? `background:${esc(p.color)}` : ""}">${CHECK}</button><div style="min-width:0"><div class="t-ttl">${esc(t.t)}</div><div class="t-sub">${esc(ctx.t("Dagens mission"))}${t.due ? ` · ${esc(t.due)}` : ""}</div></div>${ctx.feature(p, "points") && t.pts ? `<span class="t-pts" style="font-size:16px">+${t.pts}${STAR}</span>` : "<span></span>"}</div>`).join("") || `<div class="t-sub">${esc(ctx.t("Ingen missioner"))}</div>`}</div>` : ""}
       ${hasPet(ctx, p) ? `<div style="margin-top:16px">${petBlock(ctx, p)}</div>` : ""}
     ${ctx.feature(p, "missions") || hasPet(ctx, p) ? `</section>` : ""}
   </div></div>`;
@@ -809,7 +812,8 @@ function kShop(ctx) {
   const p = ctx.isKid ? ctx.me : ctx.member(ctx.arg) || kidsOf(ctx).find((k) => ctx.feature(k, "shop"));
   if (!p) return `<section class="card"><h2>${esc(ctx.t("Ingen børn med shop"))}</h2></section>`;
   if (!ctx.feature(p, "shop")) return `<section class="card"><h2>${esc(ctx.t("Shoppen er slået fra"))}</h2><p class="t-sub">${esc(ctx.t("Far eller mor kan slå den til."))}</p></section>`;
-  const r = goalOf(ctx, p), shop = rewardsOf(ctx, p.id), pend = pending(ctx, p.id), pts = ctx.points(p.id);
+  const r = goalOf(ctx, p), pend = pending(ctx, p.id), pts = ctx.points(p.id);
+  const shop = rewardsOf(ctx, p.id).sort((a, b) => (b.id === r.id) - (a.id === r.id));
   const picker = ctx.isParent ? `<div class="filters" style="margin-bottom:14px">${kidsOf(ctx).filter((k) => ctx.feature(k, "shop")).map((k) => `<button class="fchip" data-go="shop:${esc(k.id)}" aria-pressed="${k.id === p.id}" style="--fc:${esc(k.color)}">${av(ctx, k.id)}${esc(k.name)}</button>`).join("")}</div>` : "";
   return `${picker}<div class="goal-card"><span class="em">${esc(r.em)}</span><div style="flex:1;min-width:180px"><div class="eyebrow" style="color:rgba(255,255,255,.8)">${esc(ctx.isKid ? ctx.t("Mit mål") : ctx.t("{name}s mål", { name: p.name }))}</div><h3>${esc(r.t)}</h3><div class="bar"><i style="width:${Math.min(100, (pts / r.cost) * 100)}%"></i></div><div style="margin-top:6px;font-weight:700" class="num">${esc(ctx.t("{p} af {c} point", { p: pts, c: r.cost }))}</div></div></div>
   ${pend.length ? `<div class="approve" style="margin-top:14px">${svg("lock")}<span class="t-ttl">${esc(ctx.t("{what} venter på, at far eller mor godkender", { what: pend.map((x) => rewardById(ctx, x.reward)?.title || "").join(", ") }))}</span>${ctx.isParent ? pend.map((x) => `<button class="btn sm" data-act="home-approve" data-id="${esc(x.id)}">${esc(ctx.t("Godkend"))}</button>`).join("") : ""}</div>` : ""}
@@ -1530,6 +1534,9 @@ const en = {
   "Fra {cal}": "From {cal}",
   "Ingen timer i denne uge": "No lessons this week",
   Fødselsdag: "Birthday",
+  "Fødselsdag for {name}": "Birthday for {name}",
+  "Fødselsdagen er gemt": "The birthday is saved",
+  "Hvem henter": "Who picks up",
   "Ikke sat": "Not set",
   "{n} år": "{n} years",
   "person i Home Assistant": "person in Home Assistant",
@@ -1714,4 +1721,19 @@ const en = {
   "Far eller mor skal lige gøre guiden færdig. Så er alt klar.": "Mum or Dad just has to finish the guide. Then everything is ready.",
 };
 
-export default { id: "home", views, acts, inputs: {}, css, en };
+const inputs = {
+  async "home-bday"(el, ev, ctx) {
+    if (ev.type !== "change" || !ctx.isParent) return;
+    const v = el.value;
+    if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    const fam = ctx.members().map(({ has_pin: _h, ...m }) => JSON.parse(JSON.stringify(m)));
+    const m = fam.find((x) => x.id === el.dataset.id);
+    if (!m) return;
+    if (v) m.birthday = v;
+    else delete m.birthday;
+    if (await ctx.save("family", fam)) ctx.toast(ctx.t("Fødselsdagen er gemt"));
+    ctx.render();
+  },
+};
+
+export default { id: "home", views, acts, inputs, css, en };

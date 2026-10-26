@@ -61,7 +61,8 @@ function spkIcon(kind) {
 }
 
 function kindOf(ctx, id) {
-  const n = ctx.name(id).toLowerCase(), p = ctx.platform(id) || "";
+  const dev = ctx.hass.devices?.[ctx.hass.entities?.[id]?.device_id];
+  const n = `${ctx.name(id)} ${dev?.model || ""}`.toLowerCase(), p = ctx.platform(id) || "";
   if (isTv(ctx, id)) return "tv";
   if (p === "spotify" || /spotify/.test(n)) return "cloud";
   if (/arc|beam|ray|bar|playbar|playbase/.test(n)) return "bar";
@@ -118,6 +119,12 @@ function position(s) {
   let p = Number(a.media_position);
   if (s.state === "playing" && a.media_position_updated_at) p += (Date.now() - new Date(a.media_position_updated_at)) / 1000;
   return Math.max(0, Math.min(Number(a.media_duration) || p, p));
+}
+
+// The generated cover's seed, like the prototype: the station for live radio, else the album.
+function seedOf(ctx, s, id) {
+  const a = s?.attributes || {};
+  return (!Number(a.media_duration) ? a.media_channel || a.media_album_name : a.media_album_name || a.media_artist) || a.media_title || ctx.name(id);
 }
 
 function art(ctx, s, seed, label = "") {
@@ -202,7 +209,10 @@ const thumbUrl = (ctx, t) => (t.startsWith("/") && ctx.hass.hassUrl ? ctx.hass.h
 function sources(ctx, lead) {
   const root = browseLoad(ctx, lead, null);
   if (!root) return null;
-  const kids = (root.children || []).filter((c) => c.can_expand);
+  // Favourites are the idle hero's quick picks; the tabs are the sources (accounts, radio, library).
+  const all = (root.children || []).filter((c) => c.can_expand);
+  const plain = all.filter((c) => !/favorit|favorite/i.test(`${c.title} ${c.media_content_type} ${c.media_content_id}`));
+  const kids = plain.length ? plain : all;
   return kids.length ? kids : [{ title: root.title || ctx.t("Bibliotek"), media_content_id: root.media_content_id, media_content_type: root.media_content_type, root: true }];
 }
 
@@ -235,7 +245,7 @@ function render(ctx) {
   const a = S?.attributes || {};
   const playing = S?.state === "playing" || S?.state === "buffering";
   const active = ACTIVE.has(S?.state) || (!!a.media_title && S?.state !== "off" && S?.state !== "idle");
-  const seed = a.media_title || a.media_album_name || a.media_artist || ctx.name(lead);
+  const seed = seedOf(ctx, S, lead);
   const [c1, c2] = coverCols(seed);
   const zs = zones(ctx, list);
   const live = !Number(a.media_duration);
@@ -244,7 +254,7 @@ function render(ctx) {
     .map((z) => {
       const zs_ = ctx.hass.states[z.id], on = z.members.includes(cur), pl = zs_?.state === "playing", act = ACTIVE.has(zs_?.state);
       return act
-        ? `<button class="mu-z${on ? " on" : ""}${pl ? " playing" : ""}" role="tab" aria-selected="${on}" data-act="mu-zone" data-id="${esc(z.id)}">${art(ctx, zs_, zs_.attributes.media_title || ctx.name(z.id))}<span><b>${esc(zoneName(ctx, z.members))}</b><small>${esc(stateText(ctx, zs_))}</small></span>${
+        ? `<button class="mu-z${on ? " on" : ""}${pl ? " playing" : ""}" role="tab" aria-selected="${on}" data-act="mu-zone" data-id="${esc(z.id)}">${art(ctx, zs_, seedOf(ctx, zs_, z.id))}<span><b>${esc(zoneName(ctx, z.members))}</b><small>${esc(stateText(ctx, zs_))}</small></span>${
             pl ? `<span class="mu-eq on sm"><i></i><i></i><i></i></span>` : `<span class="mu-zp">${svg("pause")}</span>`
           }</button>`
         : `<button class="mu-z idle${on ? " on" : ""}" role="tab" aria-selected="${on}" data-act="mu-zone" data-id="${esc(z.id)}"><span class="mu-zi">${spkIcon(kindOf(ctx, z.id))}</span><span><b>${esc(zoneName(ctx, z.members))}</b><small>${esc(stateText(ctx, zs_))}</small></span></button>`;
@@ -414,8 +424,8 @@ function browsePane(ctx, lead, group) {
     browse = [];
   }
   const src = srcs.find((s) => s.media_content_id === mAcc);
-  const members = ctx.data?.family?.members || [];
-  const who = (title) => members.find((m) => new RegExp(`(^|[^\\p{L}])${m.name}([^\\p{L}]|$)`, "iu").test(title || ""));
+  const members = ctx.members();
+  const who = (title) => members.find((m) => new RegExp(`(^|[^\\p{L}])${m.name}s?([^\\p{L}]|$)`, "iu").test(title || ""));
   const seg = srcs.length > 1
     ? `<div class="seg mu-acc">${srcs
         .map((s, i) => {
@@ -805,7 +815,7 @@ const css = `
 .mu-spk.mu-off { opacity: .55; }
 .mu-hero.idle .mu-tool.on { background: #fff; color: #1B1530; }
 .mu-pickl button[aria-pressed="true"] { border-color: var(--violet); }
-.mu-acc .av { margin-right: 6px; }
+.mu-acc .av.sm { width: 20px; height: 20px; font-size: 10px; flex: none; }
 `;
 const en = {
   Musik: "Music",

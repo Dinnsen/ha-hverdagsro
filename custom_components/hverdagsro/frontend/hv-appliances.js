@@ -5,12 +5,17 @@
    (button.press, switch on/off, select a program). Parents add, edit, delete and reorder; the order is saved for the family. */
 import { esc, slug } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
+import { dayAhead } from "./hv-energy.js";
 
 export const KINDS = ["washer", "dryer", "dish", "oven", "hob", "coffee", "fridge", "freezer", "vacuum", "mower", "vent", "other"];
 const KIND_NAME = { washer: "Vaskemaskine", dryer: "Tørretumbler", dish: "Opvasker", oven: "Ovn", hob: "Kogeplade", coffee: "Kaffemaskine", fridge: "Køleskab", freezer: "Fryser", vacuum: "Robotstøvsuger", mower: "Plæneklipper", vent: "Ventilation", other: "Andet apparat" };
 const MAIN_DOMAINS = /^(sensor|binary_sensor|switch|vacuum|lawn_mower|fan|climate|water_heater|select|humidifier|input_boolean|button)\./;
 
 let editing = false;
+const sched = {}; // appliance id → the start time we asked for (Home Connect: start in …)
+
+// The prototype's "kommende" list: appliance kinds Hverdagsro will learn later. Shown in Tilpas as "Kommer senere".
+const APPL_FUT = [["emhaette", "Emhætte", "Bosch/Siemens via Home Connect", "hood"], ["varmepumpe", "Varmepumpe", "Fx Daikin, Nibe eller Panasonic", "heat"], ["sol", "Solceller og batteri", "Energi-dashboardet", "sun"], ["fjernvarme", "Fjernvarme", "Kamstrup Multical", "heat"], ["vand", "Vandmåler og hovedhane", "Kamstrup og lækagesensorer", "drop"], ["vindue", "Vinduespudserrobot", "Til de store glaspartier", "vacuum"], ["mop", "Robotmoppe", "Køkken og bad", "vacuum"], ["affugter", "Affugter", "Bryggers og bad", "drop"], ["luftrenser", "Luftrenser", "Pollen om foråret", "fan"], ["airfryer", "Airfryer", "Besked, når maden er klar", "food"]];
 
 // ------------------------------------------------------------------ status
 const RUN = /^(run|running|on_running|cleaning|mowing|washing|drying|rinsing|spinning|heating|cooking|baking|brewing|preheating|in_progress|inprogress|active|program_running|working|operating)$/;
@@ -51,7 +56,7 @@ function status(ctx, a) {
   }
   if (RUN.test(v)) return { txt: ctx.t("Kører"), cls: "run", key: "run" };
   if (DONE.test(v)) return { txt: ctx.t("Færdig"), cls: "ok", key: "done" };
-  if (SCHED.test(v)) return { txt: ctx.t("Starter senere"), cls: "warn", key: "scheduled" };
+  if (SCHED.test(v)) return { txt: sched[a.id] ? ctx.t("Starter kl. {time}", { time: ctx.fmt.time(sched[a.id]) }) : ctx.t("Starter senere"), cls: "warn", key: "scheduled" };
   if (PAUSE.test(v)) return { txt: ctx.t("På pause"), cls: "warn", key: "paused" };
   if (DOCK.test(v)) return { txt: ctx.t("I ladestation"), cls: "ok", key: "docked" };
   if (BACK.test(v)) return { txt: ctx.t("Kører hjem"), cls: "run", key: "run" };
@@ -59,8 +64,10 @@ function status(ctx, a) {
   if (READY.test(v)) return { txt: ctx.t("Klar"), cls: "ok", key: "ready" };
   if (v === "on" || v === "true" || v === "heat" || v === "cool" || v === "auto") {
     const always = ["fridge", "freezer", "vent"].includes(a.kind);
-    return { txt: always ? ctx.t("Kører") : ctx.t("Tændt"), cls: always ? "ok" : "run", key: always ? "on" : "run" };
+    return { txt: ctx.t("Kører"), cls: always || a.kind === "coffee" ? "ok" : "run", key: always ? "on" : "run" };
   }
+  // A Home Connect power switch that is off means the machine is in standby.
+  if (d === "switch" && v === "off" && ctx.platform(a.entity) === "home_connect") return { txt: ctx.t("Standby"), cls: "", key: "standby" };
   if (v === "off" || v === "false" || v === "power_off") return { txt: ctx.t("Slukket"), cls: "", key: "off" };
   const shown = ctx.hass.formatEntityState ? ctx.hass.formatEntityState(s) : s.state;
   return { txt: String(shown).charAt(0).toUpperCase() + String(shown).slice(1), cls: "", key: "other" };
@@ -76,7 +83,7 @@ const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const fmtState = (ctx, s) => (ctx.hass.formatEntityState ? ctx.hass.formatEntityState(s) : `${s.state}${s.attributes.unit_of_measurement ? " " + s.attributes.unit_of_measurement : ""}`);
 
 function details(ctx, a) {
-  const out = { facts: [], buttons: [], left: null, finish: null, temp: null, door: null, battery: null, progress: null };
+  const out = { facts: [], buttons: [], left: null, finish: null, temp: null, door: null, battery: null, progress: null, filter: false, stop: null, start: null };
   const main = ctx.st(a.entity);
   if (main) {
     const at = main.attributes;
@@ -89,6 +96,14 @@ function details(ctx, a) {
     if (!s) continue;
     const d = id.split(".")[0], dc = s.attributes.device_class, nm = shortName(ctx, id, a), n = `${id} ${nm}`.toLowerCase();
     const bad = s.state === "unavailable" || s.state === "unknown";
+    if (/filter/.test(n) && (d === "binary_sensor" || d === "sensor")) {
+      // A filter that needs changing: a problem sensor that is on, or days/percent left at zero.
+      const v = parseFloat(s.state);
+      if (!bad) out.filter = d === "binary_sensor" ? s.state === "on" : !Number.isNaN(v) && v <= 0;
+      continue;
+    }
+    if (d === "button" && /stop/.test(n)) out.stop = id;
+    else if (d === "button" && /start/.test(n)) out.start = id;
     if (d === "button") out.buttons.push({ id, kind: "press", name: nm });
     else if (d === "switch" || d === "input_boolean") out.buttons.push({ id, kind: "switch", name: nm, on: s.state === "on" });
     else if (d === "select" || d === "input_select") out.buttons.push({ id, kind: "select", name: nm, value: s.state, options: s.attributes.options || [] });
@@ -214,19 +229,75 @@ function controlButtons(ctx, x, max = 99) {
     .join("");
 }
 
+// ------------------------------------------------------------------ the prototype's apCtl: the coffee machine's power, the dishwasher's start
+const devOf = (ctx, a) => ctx.hass.entities?.[a.entity]?.device_id || null;
+const isHc = (ctx, a) => ctx.platform(a.entity) === "home_connect" && !!devOf(ctx, a);
+
+// The cheapest time to start a ~4 hour Eco programme in the hours we have prices for (EV Planner or the price sensor).
+function cheapest(ctx, hours = 4) {
+  let d = [];
+  try {
+    d = dayAhead(ctx) || [];
+  } catch (err) {
+    d = [];
+  }
+  if (d.length < 2) return null;
+  const n = Math.min(hours, d.length);
+  let best = null;
+  for (let i = 0; i + n <= d.length; i++) {
+    const avg = d.slice(i, i + n).reduce((t, x) => t + x.p, 0) / n;
+    if (!best || avg < best.avg - 1e-9) best = { at: d[i].at, avg };
+  }
+  return best && best.at > Date.now() - 3600e3 ? best.at : null;
+}
+
+function apCtl(ctx, a, st, x) {
+  if (st.key === "offline") return "";
+  if (a.kind === "coffee" && /^(switch|input_boolean)\./.test(a.entity)) {
+    const on = ctx.hass.states[a.entity]?.state === "on";
+    return `<button class="ap-pw${on ? " on" : ""}" data-act="ap-power" data-id="${esc(a.id)}" aria-pressed="${on}">${svg("power")}${esc(on ? ctx.t("Tændt") : ctx.t("Tænd"))}</button>`;
+  }
+  if (a.kind === "dish") {
+    if (st.key === "run")
+      return `${x.left != null ? `<span class="ap-left num">${esc(leftText(ctx, x.left))}</span>` : ""}${x.stop ? `<button class="ap-mini-b" data-act="ap-dishstop" data-id="${esc(a.id)}">${esc(ctx.t("Stop"))}</button>` : ""}`;
+    if (st.key === "scheduled")
+      return x.stop ? `<button class="ap-mini-b" data-act="ap-dishstop" data-id="${esc(a.id)}">${esc(sched[a.id] ? ctx.t("Fortryd kl. {time}", { time: ctx.fmt.time(sched[a.id]) }) : ctx.t("Fortryd"))}</button>` : "";
+    if (!isHc(ctx, a) && !x.start) return "";
+    const c = isHc(ctx, a) ? cheapest(ctx) : null;
+    return `<button class="ap-mini-b pri" data-act="ap-dishnow" data-id="${esc(a.id)}">${svg("play")}${esc(ctx.t("Eco nu"))}</button>${
+      c && c - Date.now() > 15 * 60000 ? `<button class="ap-mini-b" data-act="ap-dishcheap" data-id="${esc(a.id)}">${svg("bolt")}${esc(ctx.t("Billigst {time}", { time: ctx.fmt.time(c) }))}</button>` : ""
+    }`;
+  }
+  return "";
+}
+
 // ------------------------------------------------------------------ page
+const ord = (ctx, id, i, n) =>
+  `<div class="ap-ord"><button class="ap-hdl" data-apdrag="${esc(id)}" aria-label="${esc(ctx.t("Træk for at flytte"))}">${svg("drag")}</button><span class="num">${i + 1}</span><button class="ap-mv" data-act="ap-move" data-id="${esc(id)}" data-d="-1" aria-label="${esc(ctx.t("Flyt frem"))}" ${i ? "" : "disabled"}>${svg("back")}</button><button class="ap-mv" data-act="ap-move" data-id="${esc(id)}" data-d="1" aria-label="${esc(ctx.t("Flyt tilbage"))}" ${i < n - 1 ? "" : "disabled"}>${svg("go")}</button></div>`;
+
+function firstFact(ctx, a, st, x) {
+  if (st.key === "run" && x.left != null && a.kind !== "dish") return leftText(ctx, x.left);
+  if (st.key === "done") return ctx.t("Tøm den gerne");
+  if (a.kind === "dish" && st.key !== "run" && st.key !== "offline" && isHc(ctx, a)) {
+    const c = cheapest(ctx);
+    if (c) return ctx.t("kl. {time}", { time: ctx.fmt.time(c) });
+  }
+  return x.facts[0] ? x.facts[0][1] : "";
+}
+
 function tile(ctx, a, i, n) {
   const st = status(ctx, a), x = details(ctx, a), run = st.key === "run";
-  const sub = run && x.left != null ? leftText(ctx, x.left) : st.key === "done" ? ctx.t("Tøm den gerne") : x.facts[0] ? `${x.facts[0][0]}: ${x.facts[0][1]}` : "";
-  const ctl = editing ? [] : [...mainControls(ctx, a, st)];
-  const extra = editing ? "" : controlButtons(ctx, x, ctl.length ? 1 : 2);
-  const ord = editing
-    ? `<div class="ap-ord"><button class="ap-hdl" data-apdrag="${esc(a.id)}" aria-label="${esc(ctx.t("Træk for at flytte"))}">${svg("drag")}</button><span class="num">${i + 1}</span><button class="ap-mv" data-act="ap-move" data-id="${esc(a.id)}" data-d="-1" aria-label="${esc(ctx.t("Flyt frem"))}" ${i ? "" : "disabled"}>${svg("back")}</button><button class="ap-mv" data-act="ap-move" data-id="${esc(a.id)}" data-d="1" aria-label="${esc(ctx.t("Flyt tilbage"))}" ${i < n - 1 ? "" : "disabled"}>${svg("go")}</button></div>`
-    : "";
-  return `<div class="ap-t k-${esc(a.kind)}${st.key === "offline" ? " off" : ""}${run ? " run" : ""}${editing ? " edit" : ""}" data-apid="${esc(a.id)}" style="--i:${i}">${ord}<button class="ap-tb" data-act="${editing ? "ap-edit" : "ap-open"}" data-id="${esc(a.id)}"><span class="ap-art">${apArt(a.kind, { run, temp: x.temp, door: x.door, battery: x.battery, key: st.key })}</span><span class="ap-tt"><b>${esc(a.name || ctx.name(a.entity))}</b><small class="ap-st ${st.cls}"><i></i>${esc(st.txt)}</small>${
+  const sub = st.key === "offline" ? "" : firstFact(ctx, a, st, x);
+  const ctl = editing ? "" : apCtl(ctx, a, st, x);
+  return `<div class="ap-t k-${esc(a.kind)}${st.key === "offline" ? " off" : ""}${run ? " run" : ""}${editing ? " edit" : ""}" data-apid="${esc(a.id)}" style="--i:${i}">${editing ? ord(ctx, a.id, i, n) : ""}<button class="ap-tb" data-act="${editing ? "ap-edit" : "ap-open"}" data-id="${esc(a.id)}"><span class="ap-art">${apArt(a.kind, { run, temp: x.temp, door: x.door, battery: x.battery, key: st.key, warn: x.filter })}</span><span class="ap-tt"><b>${esc(a.name || ctx.name(a.entity))}</b><small class="ap-st ${st.cls}"><i></i>${esc(st.txt)}</small>${
     sub ? `<small class="ap-f">${esc(sub)}</small>` : ""
-  }</span></button>${run && x.progress != null ? `<div class="ap-bar"><i style="width:${Math.max(2, Math.min(100, x.progress))}%"></i></div>` : ""}${ctl.length || extra ? `<div class="ap-c">${ctl.join("")}${extra}</div>` : ""}</div>`;
+  }</span></button>${run && x.progress != null ? `<div class="ap-bar"><i style="width:${Math.max(2, Math.min(100, x.progress))}%"></i></div>` : ""}${ctl ? `<div class="ap-c">${ctl}</div>` : ""}</div>`;
 }
+
+const modelOf = (ctx, entity) => {
+  const d = ctx.hass.devices?.[ctx.hass.entities?.[entity]?.device_id];
+  return d ? [d.manufacturer, d.model].filter(Boolean).join(" ") : "";
+};
 
 /* Appliances Home Assistant already knows: robots, Home Connect-style programme sensors, appliance switches
    and fridge/freezer doors. One per device, not already on the page. */
@@ -276,27 +347,53 @@ function fromSuggestion(ctx, x, list) {
   return { id: nid, entity: x.entity, name: x.name, kind: x.kind, controls };
 }
 
+const DAYPART = (h) => (h < 5 ? "nat" : h < 10 ? "morgen" : h < 12 ? "formiddag" : h < 18 ? "eftermiddag" : h < 23 ? "aften" : "nat");
+
+function picker(ctx, list) {
+  const sugg = suggest(ctx);
+  const btn = (act, id, on, art, name, small, extra = "") =>
+    `<button data-act="${act}" data-id="${esc(id)}" aria-pressed="${on}"${extra}><span class="ap-mini">${art}</span>${esc(name)}<small>${esc(small)}</small></button>`;
+  return `<section class="card ap-pick" style="margin-top:14px"><div class="card-head"><h2>${esc(ctx.t("Vis på siden"))}</h2><span class="meta">${esc(ctx.t("{n} valgt", { n: list.length }))} · <button class="lnk" data-act="ap-add">${esc(ctx.t("Tilføj selv"))}</button></span></div><div class="ap-picks">${[
+    ...list.map((a) => btn("ap-show", a.id, true, apArt(a.kind), a.name || ctx.name(a.entity), modelOf(ctx, a.entity) || ctx.t(KIND_NAME[a.kind] || KIND_NAME.other))),
+    ...sugg.map((x) => btn("ap-sugg", x.entity, false, apArt(x.kind), x.name, modelOf(ctx, x.entity) || ctx.t(KIND_NAME[x.kind]))),
+    ...APPL_FUT.map((f) => `<button class="fut" aria-pressed="false" disabled><span class="ap-mini fi">${svg(f[3])}</span>${esc(ctx.t(f[1]))}<small>${esc(ctx.t("Kommer senere · {hint}", { hint: ctx.t(f[2]) }))}</small></button>`),
+  ].join("")}</div></section>`;
+}
+
 function render(ctx) {
   const list = (ctx.data.appliances || []).filter((a) => a && a.entity);
   if (!ctx.isParent) editing = false;
-  if (!list.length)
+  if (!list.length && !editing)
     return `<section class="card hv-empty apx-empty"><div class="apx-trio">${apArt("washer", { run: true })}${apArt("coffee", { run: true })}${apArt("vacuum", { run: true })}</div><h2>${esc(ctx.t("Ingen apparater endnu"))}</h2><p class="t-sub">${esc(
       ctx.t("Vis vaskemaskinen, opvaskeren, robotstøvsugeren og de andre her, så alle kan se, hvad der kører, og hvornår det er færdigt.")
     )}</p>${ctx.isParent ? `<button class="btn" data-act="ap-add">${svg("plus")}${esc(ctx.t("Tilføj apparat"))}</button>` : ""}</section>${suggestBox(ctx)}`;
-  const sts = list.map((a) => [a, status(ctx, a)]);
-  const running = sts.filter(([, s]) => s.key === "run"), done = sts.filter(([, s]) => s.key === "done"), issues = sts.filter(([, s]) => s.key === "offline" || s.key === "error");
-  const head = running.length ? ctx.t("{n} kører lige nu", { n: running.length }) : done.length ? ctx.t("{name} er færdig", { name: done[0][0].name || ctx.name(done[0][0].entity) }) : ctx.t("Alt er stille");
-  const notes = [
-    ...done.slice(running.length ? 0 : 1).map(([a]) => ctx.t("{name} er færdig", { name: a.name || ctx.name(a.entity) })),
-    ...issues.map(([a, s]) => (s.key === "offline" ? ctx.t("{name} er ikke forbundet", { name: a.name || ctx.name(a.entity) }) : ctx.t("{name} kræver opmærksomhed", { name: a.name || ctx.name(a.entity) }))),
-  ];
-  return `<section class="ap-top"><div><span class="eyebrow">${esc(ctx.t("Apparater"))}</span><h2 class="h2">${esc(head)}</h2>${notes.length ? `<p class="t-sub">${esc(notes.join(" · "))}</p>` : ""}</div>
-    ${ctx.isParent ? `<div class="apx-acts">${editing ? `<button class="btn soft" data-act="ap-add">${svg("plus")}${esc(ctx.t("Tilføj"))}</button>` : ""}<button class="btn ${editing ? "" : "soft"}" data-act="ap-editmode">${svg(editing ? "check" : "edit")}${esc(editing ? ctx.t("Færdig") : ctx.t("Tilpas"))}</button></div>` : ""}</section>
-  ${editing ? suggestBox(ctx) : ""}
-  ${editing ? `<div class="ap-edhint">${svg("drag")}<span>${esc(ctx.t("Træk i håndtaget eller brug pilene for at ændre rækkefølgen. Tryk på et apparat for at rette det."))}</span></div>` : ""}
-  <div class="ap-tiles${editing ? " editing" : ""}" id="ap-tiles">${list.map((a, i) => tile(ctx, a, i, list.length)).join("")}${
-    ctx.isParent ? `<button class="ap-t apx-add" data-act="ap-add"><span class="apx-plus">${svg("plus")}</span><b>${esc(ctx.t("Tilføj apparat"))}</b></button>` : ""
-  }</div>`;
+  const rows = list.map((a) => [a, status(ctx, a), details(ctx, a)]);
+  const running = rows.filter(([, s]) => s.key === "run").length;
+  const issues = rows
+    .filter(([, s, x]) => s.key === "offline" || s.key === "error" || x.filter)
+    .map(([a, s, x]) => {
+      const name = a.name || ctx.name(a.entity);
+      return x.filter && s.key !== "offline" ? ctx.t("{name}: skift filter", { name }) : s.key === "offline" ? ctx.t("{name} er ikke forbundet", { name }) : ctx.t("{name} kræver opmærksomhed", { name });
+    });
+  const now = new Date();
+  const when = `${ctx.fmt.day(now).toLowerCase()} ${ctx.t(DAYPART(now.getHours()))}`;
+  const hasCoffee = list.some((a) => a.kind === "coffee"), hasDish = list.some((a) => a.kind === "dish" && isHc(ctx, a));
+  const foot = [
+    ctx.t("Status fra Home Assistant {when}.", { when }),
+    hasCoffee && hasDish
+      ? ctx.t("Programmer vælges på maskinerne; Hverdagsro tænder og slukker kun kaffemaskinen og starter opvaskeren.")
+      : hasCoffee
+      ? ctx.t("Programmer vælges på maskinerne; Hverdagsro tænder og slukker kun kaffemaskinen.")
+      : hasDish
+      ? ctx.t("Programmer vælges på maskinerne; Hverdagsro starter kun opvaskeren.")
+      : ctx.t("Programmer vælges på maskinerne."),
+  ].join(" ");
+  return `<section class="ap-top"><div><span class="eyebrow">${esc(ctx.t("Apparater"))}</span><h2 class="h2">${esc(running ? ctx.t("{n} kører lige nu", { n: running }) : ctx.t("Alt er stille"))}</h2>${issues.length ? `<p class="t-sub">${esc(issues.join(" · "))}</p>` : ""}</div>
+    ${ctx.isParent ? `<button class="btn ${editing ? "" : "soft"}" data-act="ap-editmode">${svg(editing ? "check" : "edit")}${esc(editing ? ctx.t("Færdig") : ctx.t("Tilpas"))}</button>` : ""}</section>
+  ${editing ? `<div class="ap-edhint">${svg("drag")}<span>${esc(ctx.t("Træk i håndtaget eller brug pilene for at ændre rækkefølgen. Vælg nederst, hvilke apparater der skal vises."))}</span></div>` : ""}
+  <div class="ap-tiles${editing ? " editing" : ""}" id="ap-tiles">${list.map((a, i) => tile(ctx, a, i, list.length)).join("")}</div>
+  ${editing ? picker(ctx, list) : ""}
+  <p class="foot">${esc(foot)}</p>`;
 }
 
 // ------------------------------------------------------------------ sheets
@@ -304,15 +401,22 @@ function openSheet(ctx, id) {
   const a = (ctx.data.appliances || []).find((x) => x.id === id);
   if (!a) return;
   const st = status(ctx, a), x = details(ctx, a), run = st.key === "run";
-  const facts = [...(run && x.left != null ? [[ctx.t("Tid"), leftText(ctx, x.left)]] : []), ...(x.finish ? [[ctx.t("Færdig"), ctx.fmt.time(x.finish)]] : []), ...x.facts];
-  const ctl = mainControls(ctx, a, st).join("") + controlButtons(ctx, x);
+  const c = a.kind === "dish" && isHc(ctx, a) && !run ? cheapest(ctx) : null;
+  const facts = [...(c ? [[ctx.t("Billigst start"), ctx.t("kl. {time}", { time: ctx.fmt.time(c) })]] : []), ...(run && x.left != null ? [[ctx.t("Tid"), leftText(ctx, x.left)]] : []), ...(x.finish ? [[ctx.t("Færdig"), ctx.fmt.time(x.finish)]] : []), ...x.facts];
+  const ctl = apCtl(ctx, a, st, x) + mainControls(ctx, a, st).filter((h) => !/ap-pw/.test(h) || a.kind !== "coffee").join("") + controlButtons({ buttons: x.buttons.filter((b) => b.id !== x.stop && b.id !== x.start) });
   const area = ctx.area(a.entity);
-  ctx.sheet(`<div class="eyebrow">${esc([area && ctx.hass.areas?.[area]?.name, a.entity].filter(Boolean).join(" · "))}</div><h2>${esc(a.name || ctx.name(a.entity))}</h2>
-    <div class="ap-sh"><span class="ap-art lg">${apArt(a.kind, { run, temp: x.temp, door: x.door, battery: x.battery, key: st.key })}</span><div><span class="ap-st ${st.cls}"><i></i>${esc(st.txt)}</span>
+  const model = modelOf(ctx, a.entity);
+  const s = ctx.sheet(`<div class="eyebrow">${esc([area && ctx.hass.areas?.[area]?.name, a.entity].filter(Boolean).join(" · "))}</div><h2>${esc(a.name || ctx.name(a.entity))}</h2>${model ? `<p class="t-sub" style="margin-top:-4px">${esc(model)}</p>` : ""}
+    <div class="ap-sh"><span class="ap-art lg">${apArt(a.kind, { run, temp: x.temp, door: x.door, battery: x.battery, key: st.key, warn: x.filter })}</span><div><span class="ap-st ${st.cls}"><i></i>${esc(st.txt)}</span>
       ${run && x.progress != null ? `<div class="ap-bar" style="margin-top:10px"><i style="width:${Math.max(2, Math.min(100, x.progress))}%"></i></div>` : ""}
-      <div class="ap-facts">${facts.map(([k, v]) => `<span><small>${esc(k)}</small><b>${esc(v)}</b></span>`).join("") || `<span class="t-sub">${esc(st.key === "offline" ? ctx.t("Svarer ikke i Home Assistant lige nu.") : ctx.t("Ingen flere oplysninger."))}</span>`}</div>
+      <div class="ap-facts">${facts.map(([k, v]) => `<span><small>${esc(k)}</small><b>${esc(v)}</b></span>`).join("") || `<span class="t-sub">${esc(st.key === "offline" ? ctx.t("Svarer ikke i HA lige nu.") : ctx.t("Ingen flere oplysninger."))}</span>`}</div>
       ${ctl ? `<div class="ap-c" style="margin-top:10px">${ctl}</div>` : ""}</div></div>
     <div class="sheet-actions">${ctx.isParent ? `<button class="btn soft" data-act="ap-edit" data-id="${esc(a.id)}" data-close>${svg("edit")}${esc(ctx.t("Ret"))}</button>` : ""}<button class="btn soft" data-close>${esc(ctx.t("Luk"))}</button></div>`);
+  // Like the prototype: a control in the sheet closes it.
+  s.el.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act^='ap-dish'],[data-act='ap-power']");
+    if (b) setTimeout(() => s.close(), 0);
+  });
 }
 
 const candidates = (ctx) =>

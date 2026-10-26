@@ -8,6 +8,7 @@
    1 metre is 60 units on the drawing. Live states come from each item's entities; nothing here is made up. */
 import { esc, hashStr, prng } from "./hv-core.js";
 import { activeDecor } from "./hv-decor.js";
+import * as Appl from "./hv-appliances.js";
 import { P, svg } from "./hv-icons.js";
 
 let C = null;
@@ -296,6 +297,20 @@ function liveOf(it) {
     else if (dom === "lawn_mower") L.run = v === "mowing" || v === "returning";
     else L.run = !!v && !IDLE.test(v) && (RUN.test(v) || (num(v) != null && num(v) > 5)) && (!/^on$/i.test(v) || it.type === "coffee");
     L.temp = applTemp(appl, ent);
+    // The Apparater page's own reading of the appliance (its status and facts), when it shares it.
+    if (appl && typeof Appl.status === "function") {
+      try {
+        const st = Appl.status(C, appl);
+        L.text = st.txt;
+        L.run = st.key === "run";
+        if (typeof Appl.details === "function") {
+          const x = Appl.details(C, appl);
+          L.facts = [...(L.run && x.left != null ? [[t("Tid"), `${Math.round(x.left)} min`]] : []), ...(x.facts || [])];
+        }
+      } catch (err) {
+        /* the plan still shows the raw state */
+      }
+    }
   }
   return L;
 }
@@ -866,6 +881,51 @@ export function openPop(id) {
 }
 export const itemForEntity = (ctx, ent) => houseModel(ctx).items.find((i) => i.ent === ent || i.lock === ent);
 
+/* ---- for the room pages (the prototype's pRoomPage): the room on the drawing, and what stands in it */
+const roomOfId = (H, id) => (H.rooms || []).find((r) => r.id === id);
+/* The light sources placed in the room in Husbyggeren, in drawing order. */
+export function roomLightItems(ctx, roomId) {
+  const H = houseModel(ctx), r = roomOfId(H, roomId);
+  if (!r || !r.pts) return [];
+  return H.items.filter((i) => (i.type === "light" || i.type === "lamp") && roomAt(H, i.x, i.y) === r);
+}
+/* The little drawing of the room ("På tegningen") and how many pieces of furniture are in it. */
+export function roomPlan(ctx, roomId) {
+  C = ctx;
+  const H = houseModel(ctx), r = roomOfId(H, roomId);
+  if (!r || !r.pts) return null;
+  LV = {};
+  H.items.forEach((it) => (LV[it.id] = liveOf(it)));
+  const xs = r.pts.map((p) => p[0]), ys = r.pts.map((p) => p[1]), pad = 50;
+  const vb = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + pad * 2, Math.max(...ys) - Math.min(...ys) + pad * 2];
+  const furn = H.items.filter((i) => i.type === "furn" && roomAt(H, i.x, i.y) === r).length;
+  const inner = houseSvg(H, { mode: "mini", layers: new Set(["sikkerhed", "lys", "medier", "netvaerk", "klima", "apparater", "indretning", "energi"]) })
+    .replace(/\sdata-(h[eir]|act|go|id|k)="[^"]*"/g, "")
+    .replace(/\s(role|tabindex)="[^"]*"/g, "");
+  return { furn, svg: `<svg viewBox="${vb.map(f1).join(" ")}" class="rp-plan" aria-hidden="true">${inner}<polygon points="${r.pts.map((p) => p.join(",")).join(" ")}" class="rp-focus"/></svg>` };
+}
+/* What stands in the room ("I rummet"): one row per device, like the prototype's rows, with its control. */
+export function roomThings(ctx, roomId) {
+  C = ctx;
+  const H = houseModel(ctx), r = roomOfId(H, roomId);
+  if (!r || !r.pts) return [];
+  LV = {};
+  H.items.forEach((it) => (LV[it.id] = liveOf(it)));
+  const its = H.items.filter((i) => i.type !== "light" && i.type !== "lamp" && roomAt(H, i.x, i.y) === r && !["furn", "tree", "bush"].includes(i.type));
+  return its.map((it) => {
+    const [, ic, col] = HT[it.type] || ["", "plug", "#64748B"];
+    const [txt, cls] = hState(it);
+    const L = lv(it), id_ = esc(it.id);
+    let ctl = "";
+    if (it.type === "speaker" && L.ent && L.s && L.s.state !== "off" && L.s.state !== "unavailable") ctl = `<button class="rp-b" data-act="house-media" data-id="${id_}" aria-label="${esc(L.play ? t("Pause") : t("Afspil"))}">${svg(L.play ? "pause" : "play")}</button>`;
+    else if (it.type === "tv" && L.ent) ctl = `<button class="rp-tg${L.on ? " on" : ""}" data-act="house-power" data-id="${id_}" aria-pressed="${!!L.on}" aria-label="${esc(t("Tænd eller sluk {name}", { name: it.name }))}"><i></i></button>`;
+    else if (it.type === "port" && L.ent && L.ent.startsWith("cover.")) ctl = `<button class="rp-b" data-act="house-cover" data-id="${id_}">${esc(L.open ? t("Luk") : t("Åbn"))}</button>`;
+    else if (it.type === "camera" && L.ent) ctl = `<button class="rp-b" data-act="${C.acts["sec-cam"] ? "sec-cam" : "house-cam"}" data-id="${esc(C.acts["sec-cam"] ? L.ent : it.id)}" aria-label="${esc(t("Åbn kamera ›"))}">${svg("camera")}</button>`;
+    const icon = APK.has(it.type) ? `<span class="hz-apic">${planArt(it.type, L)}</span>` : svg(ic);
+    return `<div class="rp-row st-${cls || "none"}" style="--hc:${col}"><span class="rp-ic">${icon}</span><div><b>${esc(it.name)}</b><small>${esc(txt)}</small></div>${ctl}</div>`;
+  });
+}
+
 export function housePlan(ctx, opts = {}) {
   C = ctx;
   const H = houseModel(ctx);
@@ -924,8 +984,8 @@ function hPop(H, id, vb) {
     } else body = `<p class="t-sub" style="margin:0">${esc(t("Ikke koblet til en entitet endnu. Det gøres i Husbyggeren."))}</p>`;
   } else if (T === "lamp" || T === "light") {
     if (L.ent) {
-      body = big(L.on, "bulb", L.on ? t("Tændt") : t("Slukket"), L.on ? t("Tryk for at slukke") : t("Tryk for at tænde"), "house-light");
-      if (L.dim && L.ent.startsWith("light.")) body += `<label class="hp-vol">${svg("sun")}<input type="range" min="1" max="100" value="${L.on ? L.bri : 80}" data-in="house-bri" data-id="${id_}" aria-label="${esc(t("Lysstyrke"))}"><b class="num">${L.on ? L.bri : 0}</b></label>`;
+      body = big(L.on, "bulb", L.on ? t("Tændt") : t("Slukket"), t(LIGHTK[it.lk] ? LIGHTK[it.lk][0] : "Lyskilde"), "house-light");
+      if (L.dim && L.ent.startsWith("light.")) body += `<label class="hp-vol">${svg("sun")}<input type="range" min="1" max="100" value="${L.on ? L.bri : 80}" data-in="house-bri" data-id="${id_}" aria-label="${esc(t("Lysstyrke"))}"><b class="num">${L.on ? L.bri : 80}</b></label>`;
       const fxList = (L.s?.attributes?.effect_list || []).filter((x) => !/^(none|off|solid)$/i.test(x));
       if (L.rgb) body += `<div class="hp-cols">${LCOLS.map((c) => `<button data-act="house-lcol" data-id="${id_}" data-c="${c}" style="--c:${c}" aria-pressed="${L.color?.toUpperCase() === c}" aria-label="${esc(t("Farve"))}"></button>`).join("")}${fxList.length ? `<button class="hp-fx${L.fx ? " on" : ""}" data-act="house-lfx" data-id="${id_}">${esc(t("Farveskift"))}</button>` : ""}</div>`;
     } else body = `<p class="t-sub" style="margin:0">${esc(t("Ikke koblet til en entitet endnu. Det gøres i Husbyggeren."))}</p>`;
@@ -948,12 +1008,13 @@ function hPop(H, id, vb) {
   } else if (T === "solar" || T === "battery") body = L.s ? row(t("Sidst ændret"), lastText(L.s)) : "";
   else if (APK.has(T)) {
     if (ROBOT.has(T) && L.ent && /^(vacuum|lawn_mower)\./.test(L.ent)) body = big(L.run, HT[T][1], L.run ? t("Kører") : t("I ladestation"), L.run ? t("Tryk for at sende den hjem") : t("Tryk for at starte"), "house-robot");
-    if (L.s) body += row(t("I Home Assistant nu"), L.text || L.s.state);
+    if (L.facts?.length) body += L.facts.slice(0, 4).map(([k, v]) => row(k, v)).join("");
+    else if (L.s) body += row(t("I Home Assistant nu"), L.text || L.s.state);
     const bat = ROBOT.has(T) && (L.s?.attributes?.battery_level != null ? { state: L.s.attributes.battery_level } : sibling(L.ent, "battery"));
     if (bat) body += row(t("Batteri"), `${Math.round(num(bat.state))} %`);
     if (C.on("appliances") && C.views.apparater) body += `<button class="lnk" data-go="apparater">${esc(t("Åbn i Apparater ›"))}</button>`;
   }
-  return `<div class="hm-pop${below ? " below" : ""}${edge}" style="${pos};--hc:${col}" role="dialog" aria-label="${esc(it.name)}"><div class="hp-h"><span class="hp-ic">${svg(ic)}</span><div><b>${esc(it.name)}</b><small>${esc(t(it.type === "furn" && FURN[it.fk] ? FURN[it.fk][0] : it.type === "light" && LIGHTK[it.lk] ? LIGHTK[it.lk][0] : n))}${rm ? ` · ${esc(rm.name)}` : ""}</small></div><button class="hp-x" data-act="house-pop-close" aria-label="${esc(t("Luk"))}">${svg("x")}</button></div>
+  return `<div class="hm-pop${below ? " below" : ""}${edge}" style="${pos};--hc:${col}" role="dialog" aria-label="${esc(it.name)}"><div class="hp-h"><span class="hp-ic">${svg(ic)}</span><div><b>${esc(it.name)}</b><small>${esc(t(it.type === "furn" && FURN[it.fk] ? FURN[it.fk][0] : n))}${rm ? ` · ${esc(rm.name)}` : ""}</small></div><button class="hp-x" data-act="house-pop-close" aria-label="${esc(t("Luk"))}">${svg("x")}</button></div>
     ${txt ? `<div class="hp-st st-${cls || "none"}"><i></i>${esc(txt)}</div>` : ""}${body}<div class="hp-ent">${esc(L.ent || t("Ingen entitet"))}${C.isParent && C.on("house") ? ` · <button class="lnk" data-act="house-edit" data-id="${id_}">${esc(t("Redigér"))}</button>` : ""}</div></div>`;
 }
 
@@ -2103,6 +2164,16 @@ const acts = {
     popId = null;
     ctx.render(true);
   },
+  "house-redit"(el, e, ctx) {
+    C = ctx;
+    popId = null;
+    hbInit(ctx);
+    if (HZ.d.rooms.some((r) => r.id === el.dataset.id)) {
+      HZ.sel = "room:" + el.dataset.id;
+      HZ.tool = "vaelg";
+    }
+    ctx.go("husbygger");
+  },
   "house-edit"(el, e, ctx) {
     C = ctx;
     popId = null;
@@ -2218,6 +2289,8 @@ const css = `
 `;
 
 const en = {
+  Tid: "Time", Åbnet: "Opened", "Ingen lås på døren": "No lock on the door", "Ingen lås på vinduet": "No lock on the window", Farveskift: "Colour effect",
+  "Åbn i EV Planner ›": "Open in EV Planner ›", "I ladestation": "Docked", "I Home Assistant nu": "In Home Assistant now",
   "Dør": "Door", "Vindue": "Window", "Garageport": "Garage door", "Kamera": "Camera", "Bevægelse": "Motion", "Røgalarm": "Smoke alarm", "Vandføler": "Leak sensor",
   "Højttaler": "Speaker", "TV": "TV", "Lampe": "Lamp", "Termometer": "Thermometer", "Accesspoint": "Access point", "Vaskemaskine": "Washing machine", "Tørretumbler": "Tumble dryer",
   "Opvasker": "Dishwasher", "Ovn": "Oven", "Induktion": "Hob", "Kaffemaskine": "Coffee machine", "Køleskab": "Fridge", "Fryser": "Freezer", "Ventilation": "Ventilation",

@@ -84,6 +84,8 @@ const hhOf = (iso) => {
   return (d - startOfDay(new Date())) / 3600e3;
 };
 const hm = (ctx, d) => ctx.fmt.time(d);
+/* "00" for a whole hour, "00.30" otherwise, as the prototype writes "sæt stikket i inden kl. 00". */
+const hShort = (d) => pad(d.getHours()) + (d.getMinutes() ? `.${pad(d.getMinutes())}` : "");
 
 /* ------------------------------------------------------------------ cars */
 async function subscribeEvp(ctx) {
@@ -207,7 +209,7 @@ function carLines(ctx, c) {
 function longStatus(ctx, c) {
   const pl = planOf(ctx, c);
   const base = statusText(ctx, c);
-  if (c.status === "unplugged" && pl) return ctx.t("Ikke sat til · sæt stikket i inden kl. {time}", { time: hm(ctx, pl.s) });
+  if (c.status === "unplugged" && pl) return ctx.t("Ikke sat til · sæt stikket i inden kl. {time}", { time: hShort(new Date(pl.s)) });
   if (c.deadline) {
     const d = new Date(c.deadline);
     return `${base} · ${ctx.t("klar {day} kl. {time}", { day: dayWord(ctx, d), time: hm(ctx, d) })}`;

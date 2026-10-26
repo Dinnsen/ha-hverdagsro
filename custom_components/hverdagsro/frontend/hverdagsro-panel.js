@@ -843,7 +843,7 @@ class HverdagsroPanel extends HTMLElement {
     bg.className = "pm-bg";
     bg.innerHTML = `<div class="pm" role="menu" aria-label="${esc(ctx.t("Profil"))}">
       <div class="pm-head">${me ? ctx.avatar(me.id) : `<span class="av" style="background:#6E4AFF">${esc((ctx.hass.user?.name || "?").charAt(0))}</span>`}<div><b>${esc(me?.name || ctx.hass.user?.name || "")}</b><small>${esc(sub)}</small></div></div>
-      ${me ? `<button class="pm-i" data-pm="mig">${svg("gear")}<span><b>${esc(ctx.t("Mine indstillinger"))}</b><small>${esc(me.role === "child" ? ctx.t("Min +-menu, beskeder og PIN") : ctx.t("Min +-menu og beskeder"))}</small></span></button>` : ""}
+      ${me ? `<button class="pm-i" data-pm="mig">${svg("gear")}<span><b>${esc(ctx.t("Mine indstillinger"))}</b><small>${esc(me.role === "child" ? ctx.t("Min +-menu, beskeder og PIN") : ctx.t("Min +-menu, beskeder"))}</small></span></button>` : ""}
       ${ctx.isParent ? `${me ? `<button class="pm-i" data-pm="person:${esc(me.id)}">${svg("user")}<span><b>${esc(ctx.t("Min side"))}</b><small>${esc(ctx.t("Opgaver og ugen"))}</small></span></button>` : ""}
       ${ctx.views.rutiner ? `<button class="pm-i" data-pm="rutiner">${svg("repeat")}<span><b>${esc(ctx.t("Faste rutiner"))}</b><small>${esc(ctx.t("Opgaver, hent og bring, rutinetavler"))}</small></span></button>` : ""}
       ${ctx.on("house") && ctx.views.husbygger ? `<button class="pm-i" data-pm="husbygger">${svg("house")}<span><b>${esc(ctx.t("Husbygger"))}</b><small>${esc(ctx.t("Vægge, rum, døre, vinduer og enheder"))}</small></span></button>` : ""}
@@ -905,33 +905,41 @@ class HverdagsroPanel extends HTMLElement {
       <div class="pin-dots" id="pd">${"<i></i>".repeat(4)}</div><div class="pinpad" id="pp">${[1, 2, 3, 4, 5, 6, 7, 8, 9, "", 0, "⌫"].map((n) => (n === "" ? "<span></span>" : `<button data-n="${n}" aria-label="${n === "⌫" ? esc(ctx.t("Slet")) : n}">${n}</button>`)).join("")}</div>
       <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button></div>`);
     const dots = s.el.querySelector("#pd");
-    s.el.querySelector("#pp").addEventListener("click", async (e) => {
-      const b = e.target.closest("[data-n]");
-      if (!b) return;
-      const n = b.dataset.n;
-      code = n === "⌫" ? code.slice(0, -1) : (code + n).slice(0, 6);
+    let wrongTimer = 0, busy = false;
+    const paint = () => {
+      // Four dots like the prototype; a 5- or 6-digit PIN grows the row as it is typed.
+      while (dots.children.length < Math.max(4, code.length)) dots.appendChild(document.createElement("i"));
+      while (dots.children.length > Math.max(4, code.length)) dots.lastChild.remove();
       dots.querySelectorAll("i").forEach((d, i) => d.classList.toggle("on", i < code.length));
-      if (code.length < 4) return;
-      let ok = false;
-      try {
-        ok = (await ctx.ws("pin", { member: id, pin: code }))?.ok;
-      } catch (err) {
-        ctx.toast(String(err?.message || err));
-      }
-      if (ok) {
-        s.close();
-        this._switchTo(id);
-        return;
-      }
-      if (code.length < 6 && code.length === 4) {
-        // A PIN can be 4 to 6 digits: wait for more before saying no, unless it was clearly wrong.
-      }
+    };
+    const wrong = () => {
       dots.classList.remove("shake");
       void dots.offsetWidth;
       dots.classList.add("shake");
       code = "";
-      setTimeout(() => dots.querySelectorAll("i").forEach((d) => d.classList.remove("on")), 300);
-      ctx.toast(ctx.t("Forkert PIN"));
+      setTimeout(paint, 300);
+    };
+    s.el.querySelector("#pp").addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-n]");
+      if (!b || busy) return;
+      clearTimeout(wrongTimer);
+      const n = b.dataset.n;
+      code = n === "⌫" ? code.slice(0, -1) : (code + n).slice(0, 6);
+      paint();
+      if (code.length < 4 || n === "⌫") return;
+      busy = true;
+      let ok = false;
+      try {
+        ok = !!(await ctx.ws("pin", { member: id, pin: code }))?.ok;
+      } catch (err) {
+        ok = false;
+      }
+      busy = false;
+      if (ok) {
+        s.close();
+        this._switchTo(id);
+      } else if (code.length >= 6) wrong();
+      else wrongTimer = setTimeout(wrong, 1200);
     });
   }
 

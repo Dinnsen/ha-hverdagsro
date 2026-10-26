@@ -150,7 +150,7 @@ function alarmSheet(ctx, modeFirst) {
   const L = alarmLook(ctx);
   const s = L.s;
   const R = rights(ctx);
-  const kid = ctx.isKid || (!ctx.isParent && !!ctx.me);
+  const kid = !!ctx.isKid;
   const canArm = !kid || R.kids_arm, canDisarm = !kid || R.kids_disarm;
   const by = s.attributes.changed_by;
   const at = s.last_changed ? ctx.fmt.time(new Date(s.last_changed)) : "";
@@ -162,11 +162,12 @@ function alarmSheet(ctx, modeFirst) {
   const step = sheet.el.querySelector(".al-step");
   let mode = modeFirst || null, code = "", timer = null;
   const fmt = s.attributes.code_format;
-  const needCode = (m) => (m === "disarm" ? !!fmt : R.code_arm || !!s.attributes.code_arm_required);
+  // Like the prototype's ALARM_SET: the code is always asked for to disarm, and to arm only when the parents chose so.
+  const needCode = (m) => (m === "disarm" ? true : !!R.code_arm);
   const paintModes = () => {
     if (L.armed)
       step.innerHTML = canDisarm
-        ? `<button class="al-mode big" data-m="disarm" style="--mc:var(--good)">${svg("shield")}<b>${esc(t("Frakobl"))}</b>${fmt ? `<small>${esc(t("Kræver kode"))}</small>` : ""}</button>`
+        ? `<button class="al-mode big" data-m="disarm" style="--mc:var(--good)">${svg("shield")}<b>${esc(t("Frakobl"))}</b><small>${esc(t("Kræver kode"))}</small></button>`
         : `<p class="t-sub">${esc(t("Kun far eller mor kan frakoble alarmen."))}</p>`;
     else {
       const modes = alarmModes(ctx, s);
