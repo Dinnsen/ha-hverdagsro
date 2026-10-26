@@ -290,8 +290,10 @@ async def test_prefs_pin_and_board(
     ida = next(m for m in state["family"] if m["id"] == "ida")
     assert "pin" not in ida
     assert ida["has_pin"] is True
-    await family.async_save_section("family", [{k: v for k, v in m.items() if k != "pin"} for m in family.members])
+    sent = [{**{k: v for k, v in m.items() if k != "pin"}, "has_pin": True} for m in family.members]
+    await family.async_save_section("family", sent)
     assert family.member("ida")["pin"] == "1234"
+    assert "has_pin" not in family.member("ida")
 
     assert (await _ws(parent, 2, type="hverdagsro/pin", member="ida", pin="0000"))["result"] == {"ok": False}
     assert (await _ws(parent, 3, type="hverdagsro/pin", member="ida", pin="1234"))["result"] == {"ok": True}

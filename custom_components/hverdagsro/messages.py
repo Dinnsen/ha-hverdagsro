@@ -35,6 +35,7 @@ class Notifier:
         self.family.listeners.append(self._on_event)
         self._unsubs.append(async_track_time_change(self.hass, self._async_morning, hour=7, minute=0, second=0))
         self._unsubs.append(async_track_time_change(self.hass, self._async_evening, hour=19, minute=0, second=0))
+        self._unsubs.append(async_track_time_change(self.hass, self._async_soon, second=0))
 
     @callback
     def async_stop(self) -> None:
@@ -118,6 +119,28 @@ class Notifier:
             member = self.family.member(member_id)
             if member is not None and self._wants(member, "pickup"):
                 self._send(member, "Hent og bring i dag", "\n".join(text))
+
+    async def _async_soon(self, now: datetime) -> None:
+        """Half an hour before: a reminder to whoever brings or picks up."""
+        if not self.family.data["settings"].get("pickup_reminder", True):
+            return
+        local = dt_util.as_local(now)
+        soon = (local + timedelta(minutes=30)).strftime("%H:%M")
+        weekday = str(local.isoweekday())
+        for kid_id, plan in self.family.data["routines"].get("pickups", {}).items():
+            kid = self.family.member(kid_id)
+            day = plan.get(weekday) if isinstance(plan, dict) else None
+            if kid is None or not isinstance(day, dict):
+                continue
+            for part, verb in (("bring", "bringer"), ("hent", "henter")):
+                step = day.get(part) or {}
+                who = self.family.member(str(step.get("who", "")))
+                if (
+                    who is not None
+                    and str(step.get("at", "")).replace(".", ":").zfill(5) == soon
+                    and self._wants(who, "pickup")
+                ):
+                    self._send(who, "Om 30 minutter", f"Du {verb} {kid['name']} kl. {step['at']}")
 
     async def _async_evening(self, now: datetime) -> None:
         """The waste is collected tomorrow: put the bin out."""

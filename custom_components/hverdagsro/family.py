@@ -209,6 +209,10 @@ class Family:
                 {**item, "pin": old.get(item.get("id"))} if isinstance(item, dict) and "pin" not in item else item
                 for item in value
             ]
+            # has_pin is what the panel gets instead of the PIN; it is not stored.
+            value = [
+                {k: v for k, v in item.items() if k != "has_pin"} if isinstance(item, dict) else item for item in value
+            ]
         clean = validate_section(section, value)
         if section == "modules":
             clean = {**self.data["modules"], **clean}

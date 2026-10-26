@@ -80,7 +80,14 @@ async def test_pickups_in_the_morning_and_waste_in_the_evening(
     assert [(c.service, c.data["message"]) for c in calls] == [("anna_phone", "Du bringer Ida kl. 07:45")]
 
     calls.clear()
-    freezer.tick(timedelta(hours=12))  # Tuesday 19:01
+    freezer.tick(timedelta(minutes=14))  # Tuesday 07:15: half an hour before
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert [c.data["message"] for c in calls] == ["Du bringer Ida kl. 07:45"]
+    assert calls[0].data["title"] == "Om 30 minutter"
+
+    calls.clear()
+    freezer.tick(timedelta(hours=11, minutes=46))  # Tuesday 19:01
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert [c.data["message"] for c in calls] == ["Restaffald bliver tømt i morgen. Husk at stille den ud."]
