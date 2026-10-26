@@ -4,6 +4,7 @@
 import * as House from "./hv-house.js";
 import { WX, weatherKind } from "./hv-sky.js";
 import { hashStr, mixHex, prng, hexRgb, slug } from "./hv-core.js";
+import { ART, ART_IDS, drawArt } from "./hv-roomart.js";
 
 /* ------------------------------------------------------------------ room types (fallback if hv-house.js lacks them) */
 const RTYPES_L = [["kid", "Børneværelse"], ["bed", "Soveværelse"], ["guest", "Gæsteværelse"], ["office", "Kontor"], ["living", "Stue"], ["kitchen", "Køkken"], ["bath", "Badeværelse"], ["smallbath", "Lille bad"], ["toilet", "Toilet"], ["utility", "Bryggers"], ["hall", "Entré og gang"], ["walkin", "Walk-in"], ["garage", "Garage"], ["other", "Andet rum"]];
@@ -393,10 +394,21 @@ function roomLights(ctx, r) {
     } else lights.push(noEntity(it));
   }
   r._placed = lights.length > 0;
-  // A child's room shows all the lights of its area, like the prototype's own drawn children's rooms.
-  if (r.rtype === "kid" && r.area)
-    for (const id of ctx.entities("light"))
-      if (ctx.area(id) === r.area && !seen.has(id)) {
+  // A child's room (and a hand-drawn one) shows all the lights of its area, but not a group of them as well.
+  const isGroup = (id) => Array.isArray(ctx.hass.states[id]?.attributes?.entity_id);
+  if ((r.rtype === "kid" || hasArt(r)) && r.area) {
+    const inArea = ctx.entities("light").filter((id) => ctx.area(id) === r.area);
+    const single = inArea.filter((id) => !isGroup(id));
+    for (const id of single.length ? single : inArea)
+      if (!seen.has(id)) {
+        seen.add(id);
+        lights.push(lightModel(ctx, id));
+      }
+  }
+  // Lights picked for the lamps of a hand-drawn room, even from another area.
+  if (hasArt(r) && r.lamps && typeof r.lamps === "object")
+    for (const id of Object.values(r.lamps))
+      if (typeof id === "string" && ctx.hass.states[id] && !seen.has(id)) {
         seen.add(id);
         lights.push(lightModel(ctx, id));
       }
@@ -505,11 +517,14 @@ function lookCss(k, lights, W, E, sceneStars) {
   }
   return rules.join("\n");
 }
+const hasArt = (r) => !r.img && ART_IDS.includes(r.art);
+const ARTH = () => ({ P3, sc3, pt3, poly3, ln3, qLeft, qRight, box3, shell3, window3, beam3, panthella3, ceilingDisc3, lampAttrs, halo3 });
 const keyOf = (prefix, id) => `rm${prefix}-${slug(id).replace(/_/g, "-")}`;
 function scene(ctx, room, lights, prefix = "") {
   const k = keyOf(prefix, room.id);
   const W = {};
-  const draw = genDraw(k, room, W);
+  const art = hasArt(room) ? drawArt(ARTH(), room.art, k, W, lights, room.lamps || {}) : null;
+  const draw = art ? art.draw : genDraw(k, room, W);
   const slots = slotsFor(lights);
   const sc = PRESETS(room, lights, slots).find((p) => p[0] === scenes[room.id]);
   const E = env(ctx);
@@ -519,7 +534,7 @@ function scene(ctx, room, lights, prefix = "") {
     <g clip-path="url(#${k}-clip)">${draw}
     <rect id="${k}-dark" class="rm-dark" width="480" height="270" fill="#0B0E22"/>
     <rect id="${k}-tint" class="rm-dark" width="480" height="270" style="mix-blend-mode:soft-light"/>
-    <g class="rm-glows">${genGlows(k, lights, slots, W)}</g>${stars3(k)}${dust3(k)}${genLamps(k, lights, slots)}</g></svg>`;
+    <g class="rm-glows">${art ? art.glows : genGlows(k, lights, slots, W)}</g>${stars3(k)}${dust3(k)}${art ? art.lamps : genLamps(k, lights, slots)}</g></svg>`;
   return { k, svg, W, E, slots };
 }
 /* Re-paint a picture after a tap, before Home Assistant has answered. */
@@ -530,7 +545,8 @@ function repaint(ctx, room) {
     if (!el) continue;
     const lights = roomLights(ctx, room);
     const W = {};
-    genDraw(k, room, W);
+    if (hasArt(room)) drawArt(ARTH(), room.art, k, W, lights, room.lamps || {});
+    else genDraw(k, room, W);
     const sc = PRESETS(room, lights, slotsFor(lights)).find((p) => p[0] === scenes[room.id]);
     el.textContent = lookCss(k, lights, W, env(ctx), sc?.[3]);
   }
@@ -710,7 +726,7 @@ function roomPage(ctx, id) {
   <div class="grid rp-grid">${lightsCard(ctx, room, lights, "s8")}
     <aside class="rp-side s4">${plan ? `<section class="card rp-mini"><div class="card-head"><h2>${esc(t("På tegningen"))}</h2><span class="meta">${esc(t("{n} møbler", { n: plan.furn }))}</span></div>${plan.svg}</section>` : ""}
       <section class="card"><div class="card-head"><h2>${esc(t("I rummet"))}</h2><span class="meta">${esc(t("{n} ting", { n: things.length }))}</span></div>${things.length ? `<div class="rp-list">${things.join("")}</div>` : `<p class="t-sub">${esc(t("Der er ikke sat enheder i rummet endnu. Det gøres i Husbyggeren."))}</p>`}</section></aside></div>
-  <p class="foot">${esc(room.img ? t("Billedet er jeres eget.") : room.rtype === "kid" ? t("Billedet er tegnet ud fra rumtypen, alder og stil.") : t("Billedet er tegnet ud fra rumtypen."))} ${esc(t("Lamperne i billedet er lyskilderne, I har sat i rummet i Husbyggeren."))}</p>`;
+  <p class="foot">${esc(room.img ? t("Billedet er jeres eget.") : hasArt(room) ? t("Værelset er håndtegnet.") : room.rtype === "kid" ? t("Billedet er tegnet ud fra rumtypen, alder og stil.") : t("Billedet er tegnet ud fra rumtypen."))} ${esc(t("Lamperne i billedet er lyskilderne, I har sat i rummet i Husbyggeren."))}</p>`;
 }
 
 const findRoom = (ctx, id) => (houseOf(ctx).rooms || []).find((x) => x.id === id);
@@ -862,6 +878,7 @@ const css = `
 `;
 
 const en = {
+  "Værelset er håndtegnet.": "The room is hand-drawn.",
   Loftlampe: "Ceiling light", "Scenerne er Hverdagsros egne, og lyskilderne er dem, der står i rummet i Husbyggeren.": "The scenes are Hverdagsro's own, and the light sources are the ones placed in the room in the House builder.",
   "Scenerne er Hverdagsros egne, og lyset er rummets lys i Home Assistant.": "The scenes are Hverdagsro's own, and the lights are the room's lights in Home Assistant.", "Scenerne i Home Assistant ligger til sidst.": "The scenes from Home Assistant come last.",
   "{names} er utilgængelig i HA i dag.": "{names} is unavailable in HA today.", " og ": " and ", "Ingen entitet": "No entity",

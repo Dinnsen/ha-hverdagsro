@@ -1,11 +1,12 @@
 /* Hverdagsro – the house: one model for the live plan (Huset/Sikkerhed, rooms) and the Husbygger.
 
    The model is stored in ctx.data.house:
-     { name, rooms: [{ id, name, rtype, area, light, pts, kid, age, style, img }],
+     { name, rooms: [{ id, name, rtype, area, light, pts, kid, age, style, img, art, lamps: { place: light } }],
        walls: [{ id, a: [x, y], b: [x, y], k: "ext" | "int" | "open" }],
        areas: [{ id, kind, name, pts } | { id, kind: "label", name, x, y, rot }],
        items: [{ type, id, name, x, y, ent, ... }] }
    1 metre is 60 units on the drawing. Live states come from each item's entities; nothing here is made up. */
+import { ART, ART_IDS } from "./hv-roomart.js";
 import { esc, hashStr, prng } from "./hv-core.js";
 import { activeDecor } from "./hv-decor.js";
 import * as Appl from "./hv-appliances.js";
@@ -1178,6 +1179,15 @@ function hbProps() {
     let meta = fld(t("Rumtype"), sel("rtype", RTYPES.map(([a, b]) => [a, t(b)]), o.rtype || guessType(o.name)), `<span class="t-sub" style="font-size:11.5px">${esc(t("Bestemmer, hvordan rummet tegnes, når det åbnes."))}</span>`);
     if ((o.rtype || guessType(o.name)) === "kid")
       meta += `<div class="hz-lock">${fld(t("Barn"), sel("kid", [["", t("Intet barn valgt")], ...kids.map((m) => [m.id, m.name])], o.kid || ""))}${fld(t("Alder"), sel("age", AGES.map(([a, n, y]) => [a, `${t(n)} · ${t(y)}`]), o.age || "child"))}<div class="hz-f" style="margin:0"><span>${esc(t("Stil"))}</span><div class="seg">${GSTYLES.map(([a, n]) => `<button data-hz="rstyle" data-id="${a}" aria-pressed="${(o.style || "neutral") === a}">${esc(t(n))}</button>`).join("")}</div></div></div>`;
+    if ((o.rtype || guessType(o.name)) === "kid" || ART_IDS.includes(o.art)) {
+      meta += fld(t("Tegning"), sel("art", [["", t("Tegnes ud fra alder og stil")], ...ART_IDS.map((a) => [a, t(ART[a].name)])], o.art || ""), `<span class="t-sub" style="font-size:11.5px">${esc(t("Vælg en af de håndtegnede værelser."))}</span>`);
+      if (ART_IDS.includes(o.art)) {
+        const lights = C.entities("light");
+        const near = o.area ? lights.filter((id) => C.area(id) === o.area) : [];
+        const opts = [["", t("Automatisk")], ...near.map((id) => [id, C.name(id)]), ...lights.filter((id) => !near.includes(id)).map((id) => [id, `${C.name(id)} · ${id}`])];
+        meta += `<div class="hz-lock">${ART[o.art].slots.map(([id, , , lbl]) => fld(t(lbl), sel("lamp:" + id, opts, o.lamps?.[id] || ""))).join("")}</div>`;
+      }
+    }
     meta += fld(t("Område i Home Assistant"), sel("area", [["", t("Intet område")], ...C.areas().map((a) => [a.area_id, a.name])], o.area || ""), `<span class="t-sub" style="font-size:11.5px">${esc(t("Lys og enheder i området vises, når rummet åbnes."))}</span>`);
     meta += `<div class="hz-f"><span>${esc(t("Billede af rummet"))}</span><div class="hz-row2" style="margin:0"><label class="btn soft sm hz-up">${svg("camera")}${esc(o.img ? t("Skift billede") : t("Brug eget billede"))}<input type="file" accept="image/*" data-hzimg="${esc(o.id)}" hidden></label>${o.img ? `<button class="btn soft sm" data-hz="noimg">${esc(t("Brug tegningen"))}</button>` : ""}</div><span class="t-sub" style="font-size:11.5px">${esc(o.img ? t("Eget billede.") : t("Tegnes ud fra rumtypen, til I lægger et eget billede ind."))}</span></div>`;
     const saved = (C.data.house?.rooms || []).some((x) => x.id === o.id);
@@ -1834,6 +1844,19 @@ function hzInput(e) {
     o.rgb = el.checked ? 1 : 0;
     return hbRefresh();
   }
+  if (f === "art") {
+    if (el.value) o.art = el.value;
+    else delete o.art;
+    return hbRefresh();
+  }
+  if (f.startsWith("lamp:")) {
+    const slot = f.slice(5);
+    o.lamps = { ...(o.lamps || {}) };
+    if (el.value) o.lamps[slot] = el.value;
+    else delete o.lamps[slot];
+    if (!Object.keys(o.lamps).length) delete o.lamps;
+    return hbRefresh();
+  }
   if (["rtype", "kid", "age", "area", "zone"].includes(f)) {
     o[f] = el.value;
     if (f === "rtype" && o.rtype === "kid" && !o.age) o.age = "child";
@@ -2289,6 +2312,9 @@ const css = `
 `;
 
 const en = {
+  Tegning: "Drawing", "Tegnes ud fra alder og stil": "Drawn from age and style", "Vælg en af de håndtegnede værelser.": "Pick one of the hand-drawn rooms.", Automatisk: "Automatic",
+  "Stort barn med sovesofa og skrivebord": "Big child with sofa bed and desk", "Barn med bilbane og juniorseng": "Child with car track and junior bed", "Lille barn med tremmeseng og luftballon": "Little child with cot and balloon",
+  "Lampe i vinduet": "Lamp in the window", "Lysbånd over skrivebordet": "Light strip over the desk", "Lille lampe på reolen": "Small lamp on the shelf", Fjerlampe: "Feather lamp", "Luftballon-lampe": "Balloon lamp",
   "Tænd eller sluk {name}": "Turn {name} on or off",
   Tid: "Time", Åbnet: "Opened", "Ingen lås på døren": "No lock on the door", "Ingen lås på vinduet": "No lock on the window", Farveskift: "Colour effect",
   "Åbn i EV Planner ›": "Open in EV Planner ›", "I ladestation": "Docked", "I Home Assistant nu": "In Home Assistant now",
@@ -2381,6 +2407,7 @@ export default {
       parentOnly: true,
       module: "house",
       title: () => t("Husbygger"),
+      replace: true, // drawn and bound by hand: replaced, never patched
       render(ctx) {
         C = ctx;
         hbInit(ctx);

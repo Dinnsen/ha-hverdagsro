@@ -6,6 +6,7 @@
 import { esc, startOfDay } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 
+const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
 const pad = (n) => String(n).padStart(2, "0");
 const kr = (v) => Number(v).toFixed(2).replace(".", ",");
 export const priceColor = (p) => (p < 0.4 ? "#3CCB83" : p < 0.8 ? "#F0C04A" : p < 1.1 ? "#F08A3A" : "#F0564A");
@@ -198,7 +199,8 @@ function statusText(ctx, c) {
 function carLines(ctx, c) {
   const pl = planOf(ctx, c);
   let l1;
-  if (c.status === "unplugged" || (!c.connected && c.status !== "charging")) l1 = `${c.home === false ? ctx.t("Ude") : ctx.t("Hjemme")} · ${ctx.t("ikke sat til")}`;
+  // Home or away is shown as an icon on the ring, so the lines are free for what matters now.
+  if (c.status === "unplugged" || (!c.connected && c.status !== "charging")) l1 = cap(ctx.t("ikke sat til"));
   else l1 = statusText(ctx, c);
   let l2 = "";
   if (pl) l2 = ctx.t("Plan {when} {win} · {cost}", { when: pl.when, win: pl.win, cost: pl.cost });
@@ -257,7 +259,8 @@ export function statusHtml(ctx) {
   }
   cars.forEach((c, i) => {
     const [l1, l2] = carLines(ctx, c);
-    h += `<button class="st car car${i + 1}" data-act="en-car" data-id="${esc(c.key)}" aria-label="${esc(ctx.t("Åbn {name} i EV Planner", { name: c.name }))}">${ring(c.soc, c.color)}<div class="st-text"><div class="st-main">${esc(c.name)}</div><div class="st-sub">${esc(l1)}</div>${l2 ? `<div class="st-sub l2">${esc(l2)}</div>` : ""}</div>${svg("go", "ic go")}</button>`;
+    const away = c.home === false;
+    h += `<button class="st car car${i + 1}${l2 ? " has-l2" : ""}" data-act="en-car" data-id="${esc(c.key)}" aria-label="${esc(ctx.t("Åbn {name} i EV Planner", { name: c.name }))}"><span class="en-ringw">${ring(c.soc, c.color)}${c.home == null ? "" : `<span class="en-where ${away ? "away" : "home"}" title="${esc(away ? ctx.t("Ude") : ctx.t("Hjemme"))}">${svg(away ? "walk" : "home")}</span>`}</span><div class="st-text"><div class="st-main">${esc(c.name)}</div><div class="st-sub">${esc(l1)}</div>${l2 ? `<div class="st-sub l2">${esc(l2)}</div>` : ""}</div>${svg("go", "ic go")}</button>`;
   });
   return h;
 }
@@ -545,6 +548,17 @@ const acts = {
 };
 
 const css = `
+.en-ringw { position: relative; flex: none; display: inline-grid; }
+.en-where { position: absolute; right: -3px; bottom: -3px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; color: #fff; border: 2px solid var(--surface); }
+.en-where.home { background: var(--good); }
+.en-where.away { background: var(--warn); }
+.en-where .ic { width: 10px; height: 10px; stroke-width: 2.6; }
+@media (max-width: 640px) {
+  .status .st.car.has-l2 .st-sub:not(.l2) { display: none; }
+  .status .st.car .st-sub.l2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; font-size: 11.5px; line-height: 1.25; color: var(--ink); font-weight: 600; }
+  .status .st.car .st-sub { font-size: 11.5px; }
+}
+
 .st.car .ring { width: 46px; height: 46px; flex: none; }
 .st.car .ring text { font: 800 11px var(--font-display); fill: var(--ink); }
 `;

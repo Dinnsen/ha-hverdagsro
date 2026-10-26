@@ -1244,6 +1244,7 @@ main { padding-block: 22px 40px; }
 .rm-glow, .rm-dark { transition: opacity .7s ease, fill .7s ease; }
 .rm-glows { mix-blend-mode: screen; }
 .rm-lamp { cursor: pointer; }
+.rm-static .rm-shade { fill: #E2DDD6; stroke: #E2DDD6; }
 .rm-lamp .rm-shade { transition: fill .6s ease, stroke .6s ease; }
 .rm-lamp:hover .rm-shade { filter: brightness(1.06); }
 .rm-lamp.on .rm-shade { filter: drop-shadow(0 0 4px rgba(255,240,210,.9)); }

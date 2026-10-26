@@ -2,6 +2,24 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.3.1] - 2026-10-26
+
+### Added
+- **Hand-drawn children's rooms:** a room can use one of three hand-drawn rooms instead of the one drawn from its type (Husbyggeren › Rum › Tegning). The room's lights take their places in the drawing by name, or as picked per lamp.
+- **Locks and garage doors as living tiles** under the house plan: the padlock opens, the garage door rolls up, and every tap asks first, also to lock and close.
+- **Wish lists on the child's own person page**, and the phone's battery on the person cards when the person has no phone of their own in Home Assistant.
+
+### Changed
+- **Updates patch the page in place** instead of replacing it: nothing jumps, blinks or replays its animation, and an open picker stays open.
+- **The timeline only moves the time when you drag sideways,** so scrolling past it doesn't jump to the top.
+- **Lists are picked from a dropdown.**
+- **Cars on a phone** show the charging plan or what matters now, with a small home/away badge on the ring.
+- **The + menu** no longer shows quick actions with conditions or Tilpas.
+
+### Fixed
+- Fridges and freezers showed as off. They're on unless their power switch is off, they're offline or the door is open.
+- Group lights no longer show as a lamp of their own in a child's room.
+
 ## [0.3.0] - 2026-10-26
 
 The panel is now 1:1 with the prototype, page by page, with real Home Assistant data.

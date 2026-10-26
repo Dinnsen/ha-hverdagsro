@@ -3,7 +3,7 @@
    from one shared context; see hv-core.js for the contract. */
 import css from "./hv-style.js";
 import css2 from "./hv-style2.js";
-import { addDays, createCtx, esc, pad2, startOfDay } from "./hv-core.js";
+import { addDays, createCtx, esc, morph, pad2, startOfDay } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 import { addTexts, setModule } from "./hv-text.js";
 import { createSky, weatherKind } from "./hv-sky.js";
@@ -281,15 +281,25 @@ class HverdagsroPanel extends HTMLElement {
       html = `<section class="card hv-empty">${svg("bell", "ic big")}<h2>${esc(ctx.t("Siden kunne ikke vises"))}</h2><p class="t-sub">${esc(err?.message || err)}</p></section>`;
     }
     const main = ctx.$("main");
-    const scrollTop = this.scrollTop;
     const fresh = this._shown !== `${ctx.view}:${ctx.arg}`;
     this._shown = `${ctx.view}:${ctx.arg}`;
-    main.innerHTML = `<div class="view v-${esc(ctx.view)}${fresh ? " view-in" : ""}">${html}</div>`;
-    this.scrollTop = scrollTop;
+    const page = `<div class="view v-${esc(ctx.view)}${fresh ? " view-in" : ""}">${html}</div>`;
+    // Nothing changed on the page: leave it alone (no flicker, no jump while scrolling).
+    const replaced = fresh || page !== this._page;
+    if (replaced) {
+      this._page = page;
+      if (fresh || view.replace || !main.firstElementChild) main.innerHTML = page;
+      else {
+        // The same page with new numbers: patch it, so nothing jumps, blinks or closes.
+        const scrollTop = this.scrollTop;
+        morph(main, page);
+        if (this.scrollTop !== scrollTop) this.scrollTop = scrollTop;
+      }
+    }
     this._buildTabs();
     this._header();
     try {
-      view.after?.(ctx);
+      if (replaced) view.after?.(ctx);
     } catch (err) {
       console.error("Hverdagsro:", err);
     }
@@ -395,18 +405,38 @@ class HverdagsroPanel extends HTMLElement {
       this._sky.setHour(TL0 + Math.max(0, Math.min(0.999, (e.clientX - r.left) / r.width)) * (TL1 - TL0));
       this._now();
     };
-    let scrub = false;
+    // A mouse scrubs at once; a finger only when it moves sideways, so scrolling the page past the
+    // timeline never moves the time.
+    let scrub = false, start = null;
+    tl.style.touchAction = "pan-y";
     tl.addEventListener("pointerdown", (e) => {
-      scrub = true;
-      try {
-        tl.setPointerCapture(e.pointerId);
-      } catch (err) {
-        /* ignore */
+      start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      if (e.pointerType === "mouse") {
+        scrub = true;
+        set(e);
       }
-      set(e);
     });
-    tl.addEventListener("pointermove", (e) => scrub && set(e));
-    tl.addEventListener("pointerup", () => (scrub = false));
+    tl.addEventListener("pointermove", (e) => {
+      if (!scrub && start && e.pointerId === start.id) {
+        const dx = Math.abs(e.clientX - start.x), dy = Math.abs(e.clientY - start.y);
+        if (dy > 8 && dy > dx) start = null;
+        else if (dx > 10 && dx > dy * 1.5) {
+          scrub = true;
+          try {
+            tl.setPointerCapture(e.pointerId);
+          } catch (err) {
+            /* ignore */
+          }
+        }
+      }
+      if (scrub) set(e);
+    });
+    const stop = () => {
+      scrub = false;
+      start = null;
+    };
+    tl.addEventListener("pointerup", stop);
+    tl.addEventListener("pointercancel", stop);
     tl.addEventListener("keydown", (e) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
       this._sky.setHour(Math.max(TL0, Math.min(TL1 - 0.01, this._sky.hour + (e.key === "ArrowRight" ? 0.25 : -0.25))));
@@ -461,7 +491,12 @@ class HverdagsroPanel extends HTMLElement {
     sec.hidden = !showStatus;
     if (showStatus) {
       const html = statusHtml(ctx);
-      if (html !== this._statusHtml) ctx.$("status").innerHTML = this._statusHtml = html;
+      if (html !== this._statusHtml) {
+        const box = ctx.$("status");
+        if (this._statusHtml && box.firstElementChild) morph(box, html);
+        else box.innerHTML = html;
+        this._statusHtml = html;
+      }
     }
     // Sun and weather
     const sun = ctx.hass.states["sun.sun"];
