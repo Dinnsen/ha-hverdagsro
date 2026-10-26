@@ -2,6 +2,26 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.3.0] - 2026-10-26
+
+The panel is now 1:1 with the prototype, page by page, with real Home Assistant data.
+
+### Added
+- **The car popup** with the price clock and the charging controls, written straight to EV Planner.
+- **Quick actions with conditions:** always, a time window or when an entity is on; who sees each one; your own order and hidden ones; a countdown with cancel; an optional question; the alarm afterwards.
+- **Family settings like the prototype:** Funktioner, Børn (institution, birthday, modules per child, pet, school timetable, read-aloud speaker), Ønskeskyen, Musik, Pynt, Quick actions, Alarm and Rettigheder.
+- **Ønskeskyen:** each parent logs in with their own account; Hverdagsro keeps only the key, never the password. Wish lists go to a child, the parents, both or friends and family, and wishes can be added.
+- **The children's pages:** the routine board, the school timetable, wishes, pets and read-aloud.
+- **Faste rutiner:** fixed chores, Hent og bring per child and weekday with helpers, and the routine board builder.
+- **Messages to the phones:** purchases in the shop, missions, goals, who brings and picks up (in the morning and 30 minutes before), the waste the evening before, points and messages from a parent. Each person turns the kinds off one by one.
+- **PINs** for the children on a shared tablet, checked in Home Assistant.
+- **The family band** in all its styles, person pages, the child's day with a pinned message, and the chosen goal per child.
+- **Lister, musik, apparater, kalender and madplan** as in the prototype, incl. the queue, sleep timer, moving the music, the cheapest dishwasher start and appliances found in Home Assistant.
+- **Sikkerhed** as in the prototype, with the alarm's rights, cameras with Frigate, today's events and the house plan; rooms with their lamps and things.
+
+### Changed
+- Saving the family only restarts Hverdagsro when a child is added, renamed or removed.
+
 ## [0.2.0] - 2026-10-26
 
 ### Added
