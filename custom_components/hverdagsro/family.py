@@ -259,7 +259,7 @@ class Family:
         member = self.require_member(member_id)
         if "msg_off" in prefs and user is not None and not self.can_manage(user):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
-        allowed = {"quick_order", "quick_hide", "msg_off", "photo", "skin", "mode"}
+        allowed = {"quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal"}
         family = copy.deepcopy(self.members)
         for item in family:
             if item["id"] == member["id"]:
@@ -444,7 +444,13 @@ class Family:
         self._changed()
 
     def goal(self, member_id: str) -> dict[str, Any] | None:
-        """The cheapest reward the child cannot afford yet."""
+        """The child's chosen goal (Gør til mål), else the cheapest reward the child cannot afford yet."""
+        member = self.member(member_id)
+        chosen = member.get("goal") if member else None
+        for reward in self.data["rewards"]:
+            if chosen and reward["id"] == chosen and reward["member"] in (EVERYONE, member_id):
+                result: dict[str, Any] = reward
+                return result
         points = self.points(member_id)
         options = [r for r in self.data["rewards"] if r["member"] in (EVERYONE, member_id) and r["cost"] > points]
         return min(options, key=lambda r: r["cost"], default=None)

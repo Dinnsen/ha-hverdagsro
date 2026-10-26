@@ -4,6 +4,7 @@
 import { addDays, esc, startOfDay } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 import { weatherKind } from "./hv-sky.js";
+import * as KIDS from "./hv-kids.js";
 
 const CAL_CREATE = 1;
 const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>`;
@@ -453,7 +454,22 @@ function wishForm(ctx, l) {
     <div class="wa-f"><span></span><button class="btn" type="submit">${svg("plus")}${esc(kid ? ctx.t("Sæt på min ønskeseddel") : ctx.t("Tilføj ønske"))}</button></div>
     <small class="t-sub">${esc(kid ? ctx.t("Far eller mor kan se det med det samme.") : ctx.t("Ønsket lægges også i Ønskeskyen."))}</small></form>`;
 }
+/* The Ønskeskyen card is the kids module's (the same card as the children's Ønsker page). On Lister it also gets
+   the prototype's "Fjern forbindelsen" (trash + confirm). Falls back to the local port if hv-kids lacks it. */
 function onskeCard(ctx, L) {
+  if (typeof KIDS.onskeCard === "function") {
+    let html = KIDS.onskeCard(ctx, L.osky);
+    if (ctx.isParent)
+      html = html.replace(
+        /(data-act="kids-oshare"[^>]*>[\s\S]*?<\/button>)/,
+        `$1<button class="iconbtn" data-act="lists-dellist" aria-label="${esc(ctx.t("Fjern forbindelsen til {name}", { name: L.name }))}">${svg("trash")}</button>`
+      );
+    const confirm = listConfirm === L.id ? `<div class="confirm"><span>${esc(ctx.t("Fjern forbindelsen til »{name}«? Listen i Ønskeskyen bliver ikke slettet.", { name: L.name }))}</span><button class="btn danger sm" data-act="lists-dellist-yes">${esc(ctx.t("Fjern forbindelsen"))}</button><button class="btn soft sm" data-act="lists-dellist-no">${esc(ctx.t("Behold"))}</button></div>` : "";
+    return confirm + html;
+  }
+  return onskeCardLocal(ctx, L);
+}
+function onskeCardLocal(ctx, L) {
   const l = L.osky;
   const kid = !ctx.isParent;
   const res = l.wishes.filter((w) => w.reserved).length;

@@ -80,7 +80,16 @@ function shortName(ctx, id, a) {
   return n;
 }
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-const fmtState = (ctx, s) => (ctx.hass.formatEntityState ? ctx.hass.formatEntityState(s) : `${s.state}${s.attributes.unit_of_measurement ? " " + s.attributes.unit_of_measurement : ""}`);
+// Numbers like the prototype writes them: 21°, −18°, 14,2°, 100 %, 2.868.
+function fmtState(ctx, s) {
+  const u = s.attributes.unit_of_measurement || "", v = Number(s.state);
+  if (s.state !== "" && !Number.isNaN(v) && /^-?[\d.]+$/.test(s.state)) {
+    const n = ctx.fmt.num(Math.abs(v), v % 1 ? 1 : 0), sign = v < 0 ? "−" : "";
+    if (/^°[CF]?$/.test(u)) return `${sign}${n}°`;
+    return `${sign}${n}${u ? (u === "%" ? " %" : ` ${u}`) : ""}`;
+  }
+  return ctx.hass.formatEntityState ? ctx.hass.formatEntityState(s) : `${s.state}${u ? " " + u : ""}`;
+}
 
 function details(ctx, a) {
   const out = { facts: [], buttons: [], left: null, finish: null, temp: null, door: null, battery: null, progress: null, filter: false, stop: null, start: null };
@@ -403,7 +412,7 @@ function openSheet(ctx, id) {
   const st = status(ctx, a), x = details(ctx, a), run = st.key === "run";
   const c = a.kind === "dish" && isHc(ctx, a) && !run ? cheapest(ctx) : null;
   const facts = [...(c ? [[ctx.t("Billigst start"), ctx.t("kl. {time}", { time: ctx.fmt.time(c) })]] : []), ...(run && x.left != null ? [[ctx.t("Tid"), leftText(ctx, x.left)]] : []), ...(x.finish ? [[ctx.t("Færdig"), ctx.fmt.time(x.finish)]] : []), ...x.facts];
-  const ctl = apCtl(ctx, a, st, x) + mainControls(ctx, a, st).filter((h) => !/ap-pw/.test(h) || a.kind !== "coffee").join("") + controlButtons({ buttons: x.buttons.filter((b) => b.id !== x.stop && b.id !== x.start) });
+  const ctl = apCtl(ctx, a, st, x) + mainControls(ctx, a, st).filter((h) => !/ap-pw/.test(h) || a.kind !== "coffee").join("") + controlButtons(ctx, { buttons: x.buttons.filter((b) => b.id !== x.stop && b.id !== x.start) });
   const area = ctx.area(a.entity);
   const model = modelOf(ctx, a.entity);
   const s = ctx.sheet(`<div class="eyebrow">${esc([area && ctx.hass.areas?.[area]?.name, a.entity].filter(Boolean).join(" · "))}</div><h2>${esc(a.name || ctx.name(a.entity))}</h2>${model ? `<p class="t-sub" style="margin-top:-4px">${esc(model)}</p>` : ""}
@@ -495,7 +504,7 @@ const acts = {
   },
   "ap-add": (el, e, ctx) => editSheet(ctx, null),
   "ap-sugg": async (el, e, ctx) => {
-    const x = suggest(ctx).find((y) => y.entity === el.dataset.entity);
+    const x = suggest(ctx).find((y) => y.entity === (el.dataset.entity || el.dataset.id));
     if (!x) return;
     const list = [...(ctx.data.appliances || [])];
     list.push(fromSuggestion(ctx, x, list));
@@ -562,6 +571,53 @@ const acts = {
       ctx.toast(
         { start: ctx.t("{name} går i gang", { name: a.name }), start_mowing: ctx.t("{name} går i gang", { name: a.name }), pause: ctx.t("{name} holder pause", { name: a.name }), return_to_base: ctx.t("{name} kører hjem", { name: a.name }), dock: ctx.t("{name} kører hjem", { name: a.name }) }[s] || a.name
       );
+  },
+  // Tilpas → Vis på siden: take an appliance off the page (it can be found again under the same list).
+  "ap-show": (el, e, ctx) => {
+    const a = find(ctx, el.dataset.id);
+    if (!a) return;
+    const name = a.name || ctx.name(a.entity);
+    const go = () => saveList(ctx, (ctx.data.appliances || []).filter((x) => x.id !== a.id), ctx.t("{name} vises ikke længere", { name }));
+    if (JSON.stringify(ctx.data.house || {}).includes(`"appl":"${a.id}"`))
+      return ctx.confirm(ctx.t("Fjern {name} fra siden?", { name }), ctx.t("{name} står også på jeres tegning af huset og forsvinder derfra."), ctx.t("Fjern"), go);
+    return go();
+  },
+  // The dishwasher: Eco now, or Eco when the power is cheapest (Home Connect's delayed start), or stop.
+  "ap-dishnow": async (el, e, ctx) => {
+    const a = find(ctx, el.dataset.id);
+    if (!a) return;
+    const x = details(ctx, a);
+    const ok = isHc(ctx, a)
+      ? await ctx.call("home_connect", "set_program_and_options", { device_id: devOf(ctx, a), affects_to: "active_program", program: "dishcare_dishwasher_program_eco_50" })
+      : x.start && (await ctx.call("button", "press", { entity_id: x.start }));
+    if (ok) {
+      delete sched[a.id];
+      ctx.toast(ctx.t("{name} kører Eco 50°", { name: a.name || ctx.name(a.entity) }));
+    }
+  },
+  "ap-dishcheap": async (el, e, ctx) => {
+    const a = find(ctx, el.dataset.id), c = a && cheapest(ctx);
+    if (!a || !c) return;
+    const secs = Math.max(60, Math.round((c - Date.now()) / 60000) * 60);
+    const ok = await ctx.call("home_connect", "set_program_and_options", {
+      device_id: devOf(ctx, a),
+      affects_to: "active_program",
+      program: "dishcare_dishwasher_program_eco_50",
+      b_s_h_common_option_start_in_relative: secs,
+    });
+    if (ok) {
+      sched[a.id] = c;
+      ctx.render();
+      ctx.toast(ctx.t("{name} starter Eco kl. {time}, når strømmen er billigst", { name: a.name || ctx.name(a.entity), time: ctx.fmt.time(c) }));
+    }
+  },
+  "ap-dishstop": async (el, e, ctx) => {
+    const a = find(ctx, el.dataset.id), x = a && details(ctx, a);
+    if (!x?.stop) return;
+    if (await ctx.call("button", "press", { entity_id: x.stop })) {
+      delete sched[a.id];
+      ctx.toast(ctx.t("{name} er stoppet", { name: a.name || ctx.name(a.entity) }));
+    }
   },
   "ap-power": async (el, e, ctx) => {
     const a = find(ctx, el.dataset.id);
@@ -666,7 +722,6 @@ const css = `
 .apx-plus { width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); }
 .apx-plus .ic { width: 18px; height: 18px; }
 .ap-tiles.editing .apx-add { display: none; }
-.ap-t .ap-f { color: var(--ink) !important; font-weight: 600; }
 .ap-t .ap-bar { margin: 0; height: 6px; }
 .apx-sel { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; }
 .apx-sel select { border: 1.5px solid var(--line); border-radius: 999px; padding: 4px 8px; background: var(--surface); color: var(--ink); font: inherit; max-width: 160px; }
@@ -699,6 +754,59 @@ const css = `
 `;
 
 const en = {
+  Standby: "Standby",
+  "Starter kl. {time}": "Starts at {time}",
+  Stop: "Stop",
+  "Fortryd kl. {time}": "Cancel {time}",
+  Fortryd: "Cancel",
+  "Eco nu": "Eco now",
+  "Billigst {time}": "Cheapest {time}",
+  "kl. {time}": "at {time}",
+  "Vis på siden": "Show on the page",
+  "{n} valgt": "{n} chosen",
+  "Tilføj selv": "Add manually",
+  "Kommer senere · {hint}": "Coming later · {hint}",
+  Emhætte: "Cooker hood",
+  "Bosch/Siemens via Home Connect": "Bosch/Siemens via Home Connect",
+  Varmepumpe: "Heat pump",
+  "Fx Daikin, Nibe eller Panasonic": "E.g. Daikin, Nibe or Panasonic",
+  "Solceller og batteri": "Solar panels and battery",
+  "Energi-dashboardet": "The energy dashboard",
+  Fjernvarme: "District heating",
+  "Kamstrup Multical": "Kamstrup Multical",
+  "Vandmåler og hovedhane": "Water meter and main valve",
+  "Kamstrup og lækagesensorer": "Kamstrup and leak sensors",
+  Vinduespudserrobot: "Window cleaning robot",
+  "Til de store glaspartier": "For the large windows",
+  Robotmoppe: "Robot mop",
+  "Køkken og bad": "Kitchen and bathroom",
+  Affugter: "Dehumidifier",
+  "Bryggers og bad": "Utility room and bathroom",
+  Luftrenser: "Air purifier",
+  "Pollen om foråret": "Pollen in spring",
+  Airfryer: "Air fryer",
+  "Besked, når maden er klar": "A message when the food is ready",
+  "{name}: skift filter": "{name}: change the filter",
+  nat: "night",
+  morgen: "morning",
+  formiddag: "morning",
+  eftermiddag: "afternoon",
+  aften: "evening",
+  "Status fra Home Assistant {when}.": "Status from Home Assistant {when}.",
+  "Programmer vælges på maskinerne; Hverdagsro tænder og slukker kun kaffemaskinen og starter opvaskeren.": "Programmes are chosen on the machines; Hverdagsro only turns the coffee machine on and off and starts the dishwasher.",
+  "Programmer vælges på maskinerne; Hverdagsro tænder og slukker kun kaffemaskinen.": "Programmes are chosen on the machines; Hverdagsro only turns the coffee machine on and off.",
+  "Programmer vælges på maskinerne; Hverdagsro starter kun opvaskeren.": "Programmes are chosen on the machines; Hverdagsro only starts the dishwasher.",
+  "Programmer vælges på maskinerne.": "Programmes are chosen on the machines.",
+  "Træk i håndtaget eller brug pilene for at ændre rækkefølgen. Vælg nederst, hvilke apparater der skal vises.": "Drag the handle or use the arrows to change the order. Choose at the bottom which appliances to show.",
+  "Billigst start": "Cheapest start",
+  "Svarer ikke i HA lige nu.": "Not responding in HA right now.",
+  "{name} vises ikke længere": "{name} is no longer shown",
+  "Fjern {name} fra siden?": "Remove {name} from the page?",
+  "{name} står også på jeres tegning af huset og forsvinder derfra.": "{name} is also on your drawing of the house and will disappear from there.",
+  Fjern: "Remove",
+  "{name} kører Eco 50°": "{name} is running Eco 50°",
+  "{name} starter Eco kl. {time}, når strømmen er billigst": "{name} starts Eco at {time}, when power is cheapest",
+  "{name} er stoppet": "{name} has stopped",
   "Fundet i Home Assistant": "Found in Home Assistant",
   "Tilføj alle {n}": "Add all {n}",
   "{n} apparater er tilføjet": "{n} appliances added",

@@ -66,6 +66,8 @@ async def test_goal(hass: HomeAssistant, init_integration: MockConfigEntry) -> N
     assert family.goal("oskar")["id"] == "film"
     await family.async_add_points("ida", 500, "")
     assert family.goal("ida") is None
+    await family.async_set_prefs(None, "ida", {"goal": "film"})
+    assert family.goal("ida")["id"] == "film"
 
 
 async def test_decide_without_enough_points(hass: HomeAssistant, init_integration: MockConfigEntry) -> None:

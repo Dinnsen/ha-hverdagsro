@@ -149,6 +149,7 @@ MEMBER = vol.Schema(
         vol.Optional("quick_order", default=[]): id_list,
         vol.Optional("quick_hide", default=[]): id_list,
         vol.Optional("msg_off", default=[]): text_list(20, 40),
+        vol.Optional("goal", default=None): vol.Any(None, ident),
     }
 )
 

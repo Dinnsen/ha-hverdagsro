@@ -81,7 +81,7 @@ function countdown(ctx, d) {
 function av(ctx, id, cls = "") {
   if (id === "fam") return `<span class="av ${cls}" style="background:#11A39A" title="${esc(ctx.t("Familien"))}">F</span>`;
   const m = ctx.member(id);
-  if (m?.photo) return `<span class="av photo ${cls}" style="background:${esc(m.color)} url('${esc(m.photo)}') center / cover no-repeat" title="${esc(m.name)}"></span>`;
+  if (m?.photo) return `<span class="av ${cls}" style="--pc:${esc(m.color)};background:${esc(m.color)}"><img src="${esc(m.photo)}" alt=""></span>`;
   return ctx.avatar(id, cls);
 }
 const kidsOf = (ctx) => ctx.children();
@@ -934,7 +934,7 @@ function quickCreate(ctx, only = null, member = null) {
   if (only) return itemForm(ctx, only, member);
   const s = ctx.sheet(`<h2>${esc(ctx.t("Hurtig opret"))}</h2><div class="qc">
     ${ctx.on("missions") ? `<button data-q="mission">${svg("tasks")}${esc(ctx.t("Mission"))}<small>${esc(ctx.t("En opgave til et barn"))}${ctx.on("points") ? esc(ctx.t(", evt. med point")) : ""}</small></button>` : ""}${ctx.on("shop") ? `<button data-q="reward">${svg("gift")}${esc(ctx.t("Belønning"))}<small>${esc(ctx.t("En vare i pointshoppen"))}</small></button>` : ""}
-    ${ctx.on("calendar") ? `<button data-q="event">${svg("cal")}${esc(ctx.t("Aftale"))}<small>${esc(ctx.t("I kalenderen"))}</small></button>` : ""}${ctx.on("lists") ? `<button data-q="list">${svg("lists")}${esc(ctx.t("Liste"))}<small>${esc(ctx.t("Indkøb og huskelister"))}</small></button>` : ""}</div>
+    ${ctx.on("calendar") ? `<button data-q="event">${svg("cal")}${esc(ctx.t("Aftale"))}<small>${esc(ctx.t("Med »hvem henter«"))}</small></button>` : ""}${ctx.on("lists") ? `<button data-q="list">${svg("lists")}${esc(ctx.t("Liste"))}<small>${esc(ctx.t("Liste, fast liste eller ønskeseddel"))}</small></button>` : ""}</div>
     <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Luk"))}</button></div>`);
   s.el.querySelector(".qc").addEventListener("click", (e) => {
     const b = e.target.closest("[data-q]");
@@ -957,8 +957,8 @@ function itemForm(ctx, kind, member = null) {
   const kids = kidsOf(ctx), m = kind === "mission";
   const owners = m ? [...kids.filter((k) => ctx.feature(k, "missions")), ...ctx.parents()] : [...kids.filter((k) => ctx.feature(k, "shop"))];
   const s = ctx.sheet(`<h2>${esc(m ? ctx.t("Ny mission") : ctx.t("Ny belønning"))}</h2><form id="hh-qf"><div class="field"><label for="hh-qf-t">${esc(m ? ctx.t("Hvad skal gøres") : ctx.t("Belønning"))}</label><input id="hh-qf-t" required maxlength="${m ? 80 : 60}" placeholder="${esc(m ? ctx.t("Fx Pak skoletasken") : ctx.t("Fx Biograftur"))}"></div>
-    <div class="row"><div class="field"><label for="hh-qf-k">${esc(m ? ctx.t("Hvem") : ctx.t("Barn"))}</label><select id="hh-qf-k">${m ? `<option value="all">${esc(ctx.t("Alle børn"))}</option>` : ""}${!m ? `<option value="all">${esc(ctx.t("Alle børn"))}</option>` : ""}${owners.map((k) => `<option value="${esc(k.id)}" ${k.id === member ? "selected" : ""}>${esc(k.name)}</option>`).join("")}</select></div>${!m || ctx.on("points") ? `<div class="field"><label for="hh-qf-p">${esc(m ? ctx.t("Point") : ctx.t("Pris i point"))}</label><input id="hh-qf-p" type="number" min="${m ? 0 : 1}" value="${m ? 5 : 50}"></div>` : ""}</div>
-    ${m ? `<div class="row"><div class="field"><label for="hh-qf-r">${esc(ctx.t("Gentag"))}</label><select id="hh-qf-r"><option value="day">${esc(ctx.t("Hver dag"))}</option><option value="weekdays">${esc(ctx.t("Hverdage"))}</option><option value="evening">${esc(ctx.t("Hver aften"))}</option><option value="week">${esc(ctx.t("Hver uge"))}</option></select></div><div class="field"><label for="hh-qf-tm">${esc(ctx.t("Tidspunkt"))}</label><input id="hh-qf-tm" type="time"></div></div>` : `<div class="field"><label for="hh-qf-e">${esc(ctx.t("Ikon"))}</label><input id="hh-qf-e" value="🎁" maxlength="4"></div>`}
+    <div class="row"><div class="field"><label for="hh-qf-k">${esc(m ? ctx.t("Hvem") : ctx.t("Barn"))}</label><select id="hh-qf-k">${owners.map((k) => `<option value="${esc(k.id)}" ${k.id === member ? "selected" : ""}>${esc(k.name)}</option>`).join("")}<option value="all">${esc(ctx.t("Alle børn"))}</option></select></div>${!m || ctx.on("points") ? `<div class="field"><label for="hh-qf-p">${esc(m ? ctx.t("Point") : ctx.t("Pris i point"))}</label><input id="hh-qf-p" type="number" min="${m ? 0 : 1}" value="${m ? 5 : 50}"></div>` : ""}</div>
+    ${m ? `<div class="row"><div class="field"><label for="hh-qf-r">${esc(ctx.t("Gentag"))}</label><select id="hh-qf-r"><option value="once">${esc(ctx.t("Én gang (ekstra)"))}</option><option value="day" selected>${esc(ctx.t("Hver dag"))}</option><option value="evening">${esc(ctx.t("Hver aften"))}</option><option value="week">${esc(ctx.t("Hver uge"))}</option></select></div><div class="field"><label for="hh-qf-tm">${esc(ctx.t("Tidspunkt"))}</label><input id="hh-qf-tm" type="time"></div></div>` : `<div class="field"><label for="hh-qf-e">${esc(ctx.t("Ikon"))}</label><input id="hh-qf-e" value="🎁" maxlength="4"></div>`}
     <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" type="submit">${esc(ctx.t("Opret"))}</button></div></form>`);
   if (member) s.el.querySelector("#hh-qf-k").value = member;
   setTimeout(() => s.el.querySelector("#hh-qf-t").focus(), 50);
@@ -972,7 +972,7 @@ function itemForm(ctx, kind, member = null) {
     const owner = ctx.member(who);
     if (m) {
       const rep = s.el.querySelector("#hh-qf-r").value;
-      const days = rep === "weekdays" ? [0, 1, 2, 3, 4] : rep === "week" ? [weekday(today0())] : [0, 1, 2, 3, 4, 5, 6];
+      const days = rep === "week" || rep === "once" ? [weekday(today0())] : [0, 1, 2, 3, 4, 5, 6];
       const time = s.el.querySelector("#hh-qf-tm").value || null;
       const list = [...(ctx.data.missions || [])];
       list.push({ id: uniqueId(slug(t).replace(/_/g, "-"), list), title: t, member: who, points: owner?.role === "parent" ? 0 : pts, days, time, emoji: "", part: rep === "evening" ? "evening" : "day" });
@@ -1677,8 +1677,9 @@ const en = {
   ", evt. med point": ", with points if you like",
   "En vare i pointshoppen": "An item in the points shop",
   Aftale: "Event",
-  "I kalenderen": "In the calendar",
-  "Indkøb og huskelister": "Shopping and to-do lists",
+  "Med »hvem henter«": "With »who picks up«",
+  "Liste, fast liste eller ønskeseddel": "List, regular list or wish list",
+  "Én gang (ekstra)": "Once (extra)",
   "Hvad skal gøres": "What to do",
   "Fx Pak skoletasken": "E.g. Pack the school bag",
   "Fx Biograftur": "E.g. Trip to the cinema",

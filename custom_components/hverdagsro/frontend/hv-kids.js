@@ -239,7 +239,7 @@ function subjColor(name) {
   for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return SUBJ_EXTRA[h % SUBJ_EXTRA.length];
 }
-function skemaGrid(ctx, member) {
+export function skemaGrid(ctx, member) {
   const mon = addDays(mondayOf(new Date()), skemaWeek * 7);
   const evs = ctx.events([member.skema], mon, addDays(mon, 5)).filter((e) => !e.allDay);
   const loading = ctx._loading.size && !evs.length;

@@ -33,8 +33,28 @@ const ageFromBirthday = (iso) => {
   return y < 1 ? "baby" : y < 4 ? "toddler" : y < 8 ? "child" : y < 11 ? "bigchild" : y < 13 ? "preteen" : y < 17 ? "teen" : "young";
 };
 /* The room with its defaults filled in (without changing what is stored). */
+/* Like the prototype's roomMeta: a room without an area gets the area with the same name, and a room named after a
+   child is that child's room. */
+const slugDa = (v) => String(v || "").toLowerCase().replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a").normalize("NFKD").replace(/[^a-z0-9]/g, "");
+function areaByName(ctx, name) {
+  const n = slugDa(name);
+  if (!n) return "";
+  const A = (ctx.areas ? ctx.areas() : []) || [];
+  const f = A.find((a) => slugDa(a.name) === n) || A.find((a) => {
+    const id = String(a.area_id || "").replace(/_/g, "");
+    return id && (id.startsWith(n) || n.startsWith(id));
+  });
+  return f ? f.area_id : "";
+}
+const kidByName = (ctx, name) => (ctx.children ? ctx.children() : []).find((c) => c.name && new RegExp(`(^|[^a-zæøå])${c.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(name || ""));
 function meta(ctx, r) {
   const m = { ...r };
+  if (m.kid == null) {
+    const k = kidByName(ctx, m.name);
+    m.kid = k ? k.id : "";
+    if (k && !m.rtype) m.rtype = "kid";
+  }
+  if (m.area == null) m.area = areaByName(ctx, m.name);
   if (!m.rtype) m.rtype = guessType(m.name);
   if (m.rtype === "kid") {
     const kid = m.kid && ctx.member(m.kid);
@@ -351,26 +371,40 @@ function lightModel(ctx, id, extra = {}) {
   let col = WARM;
   if (Array.isArray(a.rgb_color) && a.color_mode && COLOR_MODES.includes(a.color_mode)) col = rgbHex(a.rgb_color);
   else if (a.color_temp_kelvin) col = a.color_temp_kelvin < 2900 ? WARM : a.color_temp_kelvin < 3600 ? SOFT : a.color_temp_kelvin < 4800 ? NEUTRAL : COOL;
-  let L = { id, ent: id, name: extra.name || a.friendly_name || id, type, on: s?.state === "on", bri: s?.state === "on" ? (a.brightness != null ? Math.max(1, Math.round((a.brightness / 255) * 100)) : 100) : a.brightness != null ? Math.round((a.brightness / 255) * 100) : 80, col, lk: extra.lk || "", off: !s || s.state === "unavailable" };
+  const dom = id.split(".")[0];
+  let L = { id, ent: id, dom, name: extra.name || a.friendly_name || id, type: dom === "light" ? type : "onoff", on: s?.state === "on", bri: s?.state === "on" ? (a.brightness != null ? Math.max(1, Math.round((a.brightness / 255) * 100)) : 100) : a.brightness != null ? Math.round((a.brightness / 255) * 100) : 80, col, lk: extra.lk || "", off: !s || s.state === "unavailable" };
   const o = override[id];
   if (o && o.until > Date.now()) L = { ...L, ...o };
   return L;
 }
+/* A light source drawn in Husbyggeren without an entity: shown, but it can't be switched. */
+const noEntity = (it) => ({ id: "i-" + it.id, ent: "", name: it.name || "", type: it.rgb ? "color" : "ct", on: false, bri: 80, col: WARM, lk: it.lk || "", off: true, noent: true });
+/* Like the prototype's genRoom: the light sources placed in the room in Husbyggeren. Without any, the room's own
+   light (as "Loftlampe"), or the lights in the room's area in Home Assistant. */
 function roomLights(ctx, r) {
-  const ids = [];
-  const lk = {};
-  const add = (id, k) => {
-    if (id && id.startsWith("light.") && !ids.includes(id)) ids.push(id);
-    if (id && k && !lk[id]) lk[id] = k;
-  };
-  const house = houseOf(ctx);
-  if (r.pts) for (const it of house.items || []) if ((it.type === "light" || it.type === "lamp") && it.ent && inPoly(it.x, it.y, r.pts)) add(it.ent, it.lk);
-  add(r.light);
-  if (r.area) for (const id of ctx.entities("light")) if (ctx.area(id) === r.area) add(id);
-  const lights = ids.map((id) => lightModel(ctx, id, { lk: lk[id] }));
+  const placed = typeof House.roomLightItems === "function" ? House.roomLightItems(ctx, r.id) : [];
+  const seen = new Set();
+  let lights = [];
+  for (const it of placed) {
+    if (it.ent && ctx.hass.states[it.ent]) {
+      if (seen.has(it.ent)) continue;
+      seen.add(it.ent);
+      lights.push(lightModel(ctx, it.ent, { name: it.name, lk: it.lk }));
+    } else lights.push(noEntity(it));
+  }
+  r._placed = lights.length > 0;
+  // A child's room shows all the lights of its area, like the prototype's own drawn children's rooms.
+  if (r.rtype === "kid" && r.area)
+    for (const id of ctx.entities("light"))
+      if (ctx.area(id) === r.area && !seen.has(id)) {
+        seen.add(id);
+        lights.push(lightModel(ctx, id));
+      }
+  if (!lights.length && r.light && ctx.hass.states[r.light]) lights.push(lightModel(ctx, r.light, { name: ctx.t("Loftlampe") }));
+  if (!lights.length && r.area) for (const id of ctx.entities("light")) if (ctx.area(id) === r.area) lights.push(lightModel(ctx, id));
   lights.sort((a, b) => (a.lk === "strip") - (b.lk === "strip"));
   const w = lights.length === 1 ? 0.85 : 0;
-  lights.forEach((l, i) => (l.w = w || (l.lk === "strip" ? 0.3 : i === 0 ? 0.7 : 0.45)));
+  lights.forEach((l, i) => (l.w = w || (l.lk === "strip" || l.lk === "rgb" ? 0.3 : i === 0 ? 0.7 : 0.45)));
   return lights;
 }
 function areaEntities(ctx, r) {
@@ -511,10 +545,12 @@ function PRESETS(room, lights, slots) {
     ["daempet", "Dæmpet", all(1, 15, WARM)],
   ];
   if (room.rtype === "kid") list.push(["godnat", "Godnat", lights.map((l, i) => (i === lights.length - 1 || slots[i]?.[2] === "lamp" ? [1, 6, "#FFB070"] : [0])), 1]);
-  else if (room.rtype === "living" || room.rtype === "bed") list.push(["film", "Film", lights.map((l) => (l.type === "color" ? [1, 40, "#6366F1"] : [1, 8, WARM]))]);
+  else list.push(["film", "Film", lights.map((l) => (l.lk === "strip" || l.type === "color" ? [1, 40, "#6366F1"] : [1, 8, WARM]))]);
   return list;
 }
 function lightCall(ctx, l, on, bri, col) {
+  if (!l.ent) return;
+  if (l.dom && l.dom !== "light") return ctx.call("homeassistant", on ? "turn_on" : "turn_off", { entity_id: l.ent });
   if (!on) return ctx.call("light", "turn_off", { entity_id: l.ent });
   const data = { entity_id: l.ent };
   if (l.type !== "onoff" && bri != null) data.brightness_pct = bri;
@@ -545,7 +581,11 @@ function lightsCard(ctx, room, lights, cls = "s8") {
   const haScenes = room.area ? Object.keys(ctx.hass.states).filter((id) => (id.startsWith("scene.") || id.startsWith("script.")) && ctx.area(id) === room.area) : [];
   const color = (room.kid && ctx.member(room.kid)?.color) || "var(--violet)";
   const kid = ctx.isKid;
-  return `<section class="card ${cls} rm-card" data-room="${esc(room.id)}" style="--pc:${color}"><div class="card-head"><h2>${esc(t("Lys"))}</h2><span class="meta">${lights.length ? (on ? esc(t("{n} af {total} lys tændt", { n: on, total: lights.length })) : esc(t("Alt er slukket"))) : esc(t("Ingen lys i rummet"))}${temp != null ? ` · ${ctx.fmt.num(temp, 1)} °C` : ""}</span></div>
+  const offline = lights.filter((l) => l.off && !l.noent).map((l) => l.name);
+  const foot = kid
+    ? ""
+    : `<p class="t-sub rm-foot">${esc(room._placed ? t("Scenerne er Hverdagsros egne, og lyskilderne er dem, der står i rummet i Husbyggeren.") : t("Scenerne er Hverdagsros egne, og lyset er rummets lys i Home Assistant."))}${haScenes.length ? ` ${esc(t("Scenerne i Home Assistant ligger til sidst."))}` : ""}${offline.length ? ` ${esc(t("{names} er utilgængelig i HA i dag.", { names: offline.join(t(" og ")) }))}` : ""}</p>`;
+  return `<section class="card ${cls} rm-card" data-room="${esc(room.id)}" style="--pc:${color}"><div class="card-head"><h2>${esc((room.rtype === "kid" && room.area && ctx.hass.areas?.[room.area]?.name) || room.name)}</h2><span class="meta">${lights.length ? (on ? esc(t("{n} af {total} lys tændt", { n: on, total: lights.length })) : esc(t("Alt er slukket"))) : esc(t("Ingen lys i rummet"))}${temp != null ? ` · ${ctx.fmt.num(temp, 1)} °C` : ""}</span></div>
     <div class="rm-wrap"><div class="rm-pic">${sc.svg}${lights.length ? `<span class="rm-hint">${svg("bulb")}${esc(t("Tryk på en lampe"))}</span>` : ""}</div>
     <div class="rm-side">${
       lights.length
@@ -555,13 +595,23 @@ function lightsCard(ctx, room, lights, cls = "s8") {
       <div class="rm-lights">${lights
         .map(
           (l) => `<div class="rm-l${l.on ? " on" : ""}" data-id="${esc(l.id)}" style="--lc:${l.col}"><button class="rm-tg" data-act="room-lamp" data-k="${sc.k}" data-id="${esc(l.id)}" aria-pressed="${l.on}" aria-label="${esc(l.name)}"${l.off ? " disabled" : ""}>${svg("bulb")}</button>
-        <div class="rm-ln"><b>${esc(l.name)}</b><small><span class="rm-pct">${l.off ? esc(t("Svarer ikke")) : l.on ? `${l.bri} %` : esc(t("Slukket"))}</span>${kid ? "" : ` · ${esc(l.ent)}`}</small></div>
+        <div class="rm-ln"><b>${esc(l.name)}</b><small><span class="rm-pct">${l.noent ? esc(t("Slukket")) : l.off ? esc(t("Svarer ikke")) : l.on ? `${l.bri} %` : esc(t("Slukket"))}</span> · ${esc(l.ent || t("Ingen entitet"))}</small></div>
         ${l.type === "onoff" ? "<span></span>" : `<input type="range" min="1" max="100" value="${l.bri}" data-in="room-bri" data-id="${esc(l.id)}" data-room="${esc(room.id)}" aria-label="${esc(t("Lysstyrke {name}", { name: l.name }))}">`}
         ${l.type === "color" || l.type === "ct" ? `<div class="rm-cols">${(l.type === "color" ? SW_COLOR : SW_CT).map((c) => `<button data-act="room-col" data-id="${esc(l.id)}" data-room="${esc(room.id)}" data-col="${c}" style="--sw:${c}" aria-label="${esc(t("Farve"))}" aria-pressed="${c === l.col}"></button>`).join("")}</div>` : ""}</div>`
         )
         .join("")}</div>`
-        : `<p class="t-sub">${esc(kid ? t("Der er ikke koblet noget lys til værelset endnu.") : t("Der er ikke koblet lys til rummet. Vælg rummets område i Home Assistant herunder, eller sæt lyskilder i rummet i Husbyggeren."))}</p>`
-    }</div></div></section>`;
+        : `<p class="t-sub">${esc(kid ? t("Der er ikke koblet noget lys til værelset endnu.") : t("Der er ikke koblet lys til rummet. Sæt lyskilder i rummet i Husbyggeren, eller vælg rummets område i Home Assistant."))}</p>`
+    }</div></div>${foot}</section>`;
+}
+
+/* The prototype's big room card (roomCard: the picture, scenes and lamps), for other pages. `room` is a room of the
+   house, a room id, or a child's member id (that child's room). Empty when there is no such room. */
+export function roomLightsCard(ctx, room, cls = "s12") {
+  const rooms = houseOf(ctx).rooms || [];
+  const raw = typeof room === "string" ? rooms.find((x) => x.id === room) || rooms.find((x) => meta(ctx, x).kid === room) : room;
+  if (!raw) return "";
+  const r = meta(ctx, raw);
+  return lightsCard(ctx, r, roomLights(ctx, r), cls);
 }
 
 /* A small, living card for a room (the home page uses it). Links to the room's page. */
@@ -641,49 +691,28 @@ function thingRow(ctx, id) {
   return `<div class="rp-row st-${unav ? "warn" : cls || "none"}" style="--hc:${col}"><span class="rp-ic">${svg(ic)}</span><div><b>${esc(name)}</b><small>${esc(txt)}</small></div>${ctl}</div>`;
 }
 
-/* ------------------------------------------------------------------ pages */
-function editCard(ctx, room, raw) {
-  const { t, esc, svg } = ctx;
-  const sel = (k, list, cur, label) =>
-    `<label class="field rm-f"><span>${esc(label)}</span><select data-in="room-meta" data-k="${k}" data-id="${esc(room.id)}">${list.map(([v, n, sub]) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(t(n))}${sub ? ` (${esc(t(sub))})` : ""}</option>`).join("")}</select></label>`;
-  const areas = [["", t("Intet område")], ...ctx.areas().map((a) => [a.area_id, a.name])];
-  const kids = [["", t("Ingen")], ...ctx.children().map((m) => [m.id, m.name])];
-  return `<section class="card rm-edit"><div class="card-head"><h2>${esc(t("Rummet"))}</h2><button class="lnk" data-go="husbygger">${svg("edit")}${esc(t("Redigér i Husbyggeren"))}</button></div>
-    <div class="rm-fields">${sel("rtype", RTYPES(), room.rtype, t("Rumtype"))}
-    ${room.rtype === "kid" ? sel("kid", kids, raw.kid || "", t("Barn")) + sel("age", AGES(), room.age, t("Alder")) + sel("style", GSTYLES(), room.style, t("Stil")) : ""}
-    ${sel("area", areas, raw.area || "", t("Område i Home Assistant"))}</div>
-    <div class="rm-photo">${room.img ? `<img src="${esc(room.img)}" alt="">` : `<span class="rm-ph">${svg("camera")}</span>`}<div><b>${esc(room.img ? t("Rummets eget billede") : t("Tegnet ud fra rumtypen"))}</b><small>${esc(t("Læg et billede af rummet ind. Lyset lægges ovenpå."))}</small>
-      <div class="rm-pbtns"><label class="btn soft sm">${svg("camera")}${esc(room.img ? t("Skift billede") : t("Læg billede ind"))}<input type="file" accept="image/*" data-in="room-photo" data-id="${esc(room.id)}" hidden></label>${room.img ? `<button class="btn soft sm" data-act="room-photo-rm" data-id="${esc(room.id)}">${svg("trash")}${esc(t("Fjern"))}</button>` : ""}</div></div></div></section>`;
-}
-let uploading = null;
-function roomPage(ctx, id, own = false) {
+/* ------------------------------------------------------------------ pages (the prototype's pRoomPage and kRoom) */
+function roomPage(ctx, id) {
   const { t, esc, svg } = ctx;
   const raw = (houseOf(ctx).rooms || []).find((x) => x.id === id);
-  if (!raw) return `<section class="card hv-empty">${svg("room", "ic big")}<h2>${esc(t("Rummet findes ikke længere"))}</h2><button class="btn soft" data-go="${ctx.isParent && ctx.on("security") ? "sikkerhed" : ctx.isKid ? "dag" : "hjem"}">${esc(t("Tilbage"))}</button></section>`;
+  if (!raw) return `<section class="card"><h2>${esc(t("Rummet findes ikke længere"))}</h2><button class="btn soft" data-go="${ctx.isParent && ctx.on("security") ? "sikkerhed" : "hjem"}">${esc(t("Til Huset"))}</button></section>`;
   const room = meta(ctx, raw);
   const lights = roomLights(ctx, room);
-  const things = areaEntities(ctx, room).map((x) => thingRow(ctx, x)).filter(Boolean);
-  const ag = AGES().find((a) => a[0] === room.age), st = GSTYLES().find((s) => s[0] === room.style);
-  const area = room.area && ctx.hass.areas?.[room.area]?.name;
-  const back = ctx.isParent && ctx.on("security") ? ["sikkerhed", t("Huset")] : ["hjem", t("Hjem")];
-  return `${own ? "" : `<button class="back" data-go="${back[0]}">${svg("back")}${esc(back[1])}</button>`}
-  <section class="rp-head"><div><span class="eyebrow">${esc(typeName(ctx, room))}${room.rtype === "kid" && ag ? ` · ${esc(t(ag[1]))}${st && st[0] !== "neutral" ? ` · ${esc(t(st[1]))}` : ""}` : ""}${area && !ctx.isKid && area !== room.name && area !== typeName(ctx, room) ? ` · ${esc(area)}` : ""}</span><h2 class="h2">${esc(room.name)}</h2></div>${uploading === room.id ? `<span class="t-sub">${esc(t("Lægger billedet op …"))}</span>` : ""}</section>
-  <div class="grid rp-grid">${lightsCard(ctx, room, lights, !things.length && !ctx.isParent ? "s12" : "s8")}
-    ${!things.length && !ctx.isParent ? "" : `<aside class="rp-side s4"><section class="card"><div class="card-head"><h2>${esc(t("I rummet"))}</h2><span class="meta">${esc(t("{n} ting", { n: things.length }))}</span></div>${things.length ? `<div class="rp-list">${things.join("")}</div>` : `<p class="t-sub">${esc(room.area ? t("Der er ikke andet i rummet i Home Assistant.") : t("Vælg rummets område i Home Assistant for at se, hvad der står i det."))}</p>`}</section>
-    ${ctx.isParent ? editCard(ctx, room, raw) : ""}</aside>`}</div>
-  <p class="foot">${esc(room.img ? t("Billedet er jeres eget. Lyset i billedet følger lamperne i rummet.") : room.rtype === "kid" ? t("Billedet er tegnet ud fra rumtypen, alder og stil. Lyset følger lamperne i rummet, og vinduet følger solen og vejret.") : t("Billedet er tegnet ud fra rumtypen. Lyset følger lamperne i rummet, og vinduet følger solen og vejret."))}</p>`;
+  const plan = typeof House.roomPlan === "function" ? House.roomPlan(ctx, room.id) : null;
+  let things = typeof House.roomThings === "function" ? House.roomThings(ctx, room.id) : [];
+  if (!things.length) things = areaEntities(ctx, room).map((x) => thingRow(ctx, x)).filter(Boolean);
+  const ag = AGES().find((a) => a[0] === room.age), st = GSTYLES().find((s) => s[0] === (room.style || "neutral"));
+  const area = room.area && (ctx.hass.areas?.[room.area]?.name || room.area);
+  const back = ctx.isParent && ctx.on("security") ? "sikkerhed" : "hjem";
+  return `<button class="back" data-go="${back}">${svg("back")}${esc(back === "sikkerhed" ? t("Huset") : t("Hjem"))}</button>
+  <section class="rp-head"><div><span class="eyebrow">${esc(typeName(ctx, room))}${room.rtype === "kid" && ag ? ` · ${esc(t(ag[1]))} · ${esc(t(st ? st[1] : ""))}` : ""}${area ? ` · ${esc(t("område {name}", { name: area }))}` : ""}</span><h2 class="h2">${esc(room.name)}</h2></div>
+    ${ctx.isKid || !ctx.isParent || !ctx.on("house") ? "" : `<button class="btn soft" data-act="house-redit" data-id="${esc(room.id)}">${svg("edit")}${esc(t("Redigér rummet"))}</button>`}</section>
+  <div class="grid rp-grid">${lightsCard(ctx, room, lights, "s8")}
+    <aside class="rp-side s4">${plan ? `<section class="card rp-mini"><div class="card-head"><h2>${esc(t("På tegningen"))}</h2><span class="meta">${esc(t("{n} møbler", { n: plan.furn }))}</span></div>${plan.svg}</section>` : ""}
+      <section class="card"><div class="card-head"><h2>${esc(t("I rummet"))}</h2><span class="meta">${esc(t("{n} ting", { n: things.length }))}</span></div>${things.length ? `<div class="rp-list">${things.join("")}</div>` : `<p class="t-sub">${esc(t("Der er ikke sat enheder i rummet endnu. Det gøres i Husbyggeren."))}</p>`}</section></aside></div>
+  <p class="foot">${esc(room.img ? t("Billedet er jeres eget.") : room.rtype === "kid" ? t("Billedet er tegnet ud fra rumtypen, alder og stil.") : t("Billedet er tegnet ud fra rumtypen."))} ${esc(t("Lamperne i billedet er lyskilderne, I har sat i rummet i Husbyggeren."))}</p>`;
 }
 
-/* ------------------------------------------------------------------ saving the room */
-async function saveRoom(ctx, id, patch) {
-  const house = JSON.parse(JSON.stringify(ctx.data.house || {}));
-  const r = (house.rooms || []).find((x) => x.id === id);
-  if (!r) return;
-  Object.assign(r, patch);
-  for (const [k, v] of Object.entries(patch)) if (v === "" || v == null) delete r[k];
-  ctx.render();
-  if (await ctx.save("house", house)) ctx.render();
-}
 const findRoom = (ctx, id) => (houseOf(ctx).rooms || []).find((x) => x.id === id);
 
 const acts = {
@@ -705,16 +734,16 @@ const acts = {
       row.classList.toggle("on", !l.on);
       row.querySelector(".rm-tg")?.setAttribute("aria-pressed", String(!l.on));
     }
-    return ctx.call("light", l.on ? "turn_off" : "turn_on", { entity_id: l.ent });
+    return lightCall(ctx, l, !l.on, null, null);
   },
   "room-off": (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.id));
-    const lights = roomLights(ctx, room).filter((l) => l.on);
+    const lights = roomLights(ctx, room).filter((l) => l.on && l.ent);
     delete scenes[room.id];
     lights.forEach((l) => setOverride(l, { on: false }));
     repaint(ctx, room);
     ctx.render();
-    if (lights.length) return ctx.call("light", "turn_off", { entity_id: lights.map((l) => l.ent) });
+    if (lights.length) return ctx.call("homeassistant", "turn_off", { entity_id: lights.map((l) => l.ent) });
   },
   "room-scene": async (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.id));
@@ -738,7 +767,7 @@ const acts = {
   "room-col": (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.room));
     const l = roomLights(ctx, room).find((x) => x.id === el.dataset.id);
-    if (!l) return;
+    if (!l || l.off) return;
     const col = el.dataset.col;
     delete scenes[room.id];
     setOverride(l, { on: true, col });
@@ -763,25 +792,13 @@ const acts = {
     if (isNaN(cur)) return;
     return ctx.call("climate", "set_temperature", { entity_id: id, temperature: Math.round((cur + +el.dataset.d) * 2) / 2 });
   },
-  "room-photo-rm": async (el, ev, ctx) => {
-    const raw = findRoom(ctx, el.dataset.id);
-    const m = String(raw?.img || "").match(/\/api\/image\/serve\/([^/]+)\//);
-    await saveRoom(ctx, el.dataset.id, { img: "" });
-    if (m) {
-      try {
-        await ctx.hass.callWS({ type: "image/delete", image_id: m[1] });
-      } catch (e) {
-        /* the picture is gone already, or belongs to something else */
-      }
-    }
-  },
 };
 
 const inputs = {
   "room-bri": (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.room));
     const l = roomLights(ctx, room).find((x) => x.id === el.dataset.id);
-    if (!l) return;
+    if (!l || l.off) return;
     const bri = +el.value;
     delete scenes[room.id];
     setOverride(l, { on: true, bri });
@@ -793,42 +810,6 @@ const inputs = {
     }
     repaint(ctx, room);
     if (ev.type === "change") lightCall(ctx, l, true, bri, null);
-  },
-  "room-meta": (el, ev, ctx) => {
-    if (ev.type !== "change") return;
-    const patch = { [el.dataset.k]: el.value };
-    if (el.dataset.k === "rtype" && el.value === "kid") {
-      const raw = findRoom(ctx, el.dataset.id);
-      if (!raw.style) patch.style = "neutral";
-    }
-    if (el.dataset.k === "kid" && el.value) {
-      const m = ctx.member(el.value);
-      const age = ageFromBirthday(m?.birthday);
-      if (age) patch.age = age;
-    }
-    saveRoom(ctx, el.dataset.id, patch);
-  },
-  "room-photo": async (el, ev, ctx) => {
-    if (ev.type !== "change" || !el.files?.[0]) return;
-    const file = el.files[0];
-    if (file.size > 20e6) return ctx.toast(ctx.t("Billedet er for stort"));
-    const id = el.dataset.id;
-    uploading = id;
-    ctx.render(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await ctx.hass.fetchWithAuth("/api/image/upload", { method: "POST", body: fd });
-      if (!res.ok) throw new Error(res.status === 404 ? ctx.t("Billed-upload er ikke slået til i Home Assistant") : `HTTP ${res.status}`);
-      const img = await res.json();
-      uploading = null;
-      await saveRoom(ctx, id, { img: `/api/image/serve/${img.id}/512x512` });
-      ctx.toast(ctx.t("Billedet er lagt ind"));
-    } catch (err) {
-      uploading = null;
-      ctx.toast(ctx.t("Billedet kunne ikke lægges op: {error}", { error: err?.message || err }));
-      ctx.render();
-    }
   },
 };
 
@@ -842,8 +823,12 @@ const views = {
     module: "house",
     render(ctx) {
       const { t, esc, svg } = ctx;
-      const r = (houseOf(ctx).rooms || []).find((x) => x.kid && x.kid === ctx.me?.id);
-      if (r) return roomPage(ctx, r.id, true);
+      if (ctx.me && !ctx.feature(ctx.me, "room")) return `<section class="card"><h2>${esc(t("Værelset er slået fra"))}</h2><p class="t-sub">${esc(t("Far eller mor kan slå det til."))}</p></section>`;
+      const r = (houseOf(ctx).rooms || []).find((x) => ctx.me && meta(ctx, x).kid === ctx.me.id);
+      if (r) {
+        const room = meta(ctx, r);
+        return lightsCard(ctx, room, roomLights(ctx, room), "s12");
+      }
       return `<section class="card hv-empty rm-none"><span class="rm-none-ic">${svg("room", "ic big")}</span><h2>${esc(t("Dit værelse er ikke sat op endnu"))}</h2><p class="t-sub">${esc(t("Bed far eller mor om at vælge dit værelse, når de tegner huset i Hverdagsro."))}</p></section>`;
     },
     title: (ctx) => ctx.t("Mit værelse"),
@@ -868,7 +853,6 @@ const css = `
 .rm-photo img, .rm-ph { width: 76px; height: 56px; border-radius: 12px; object-fit: cover; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); }
 .rm-photo b { display: block; font-size: 14px; } .rm-photo small { display: block; color: var(--muted); font-size: 12px; margin: 2px 0 8px; }
 .rm-pbtns { display: flex; gap: 6px; flex-wrap: wrap; } .rm-pbtns label { cursor: pointer; }
-.v-rum .rp-head .h2, .v-vaerelse .rp-head .h2 { font: 800 clamp(24px, 4vw, 32px)/1.1 var(--font-display); letter-spacing: -.01em; }
 .rm-ph .ic { width: 24px; height: 24px; }
 .rm-edit .lnk { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; }
 .rm-edit .lnk .ic { width: 14px; height: 14px; }

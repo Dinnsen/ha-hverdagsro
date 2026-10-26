@@ -157,7 +157,7 @@ export function createCtx(host) {
   ctx.initials = (m) => (m?.name || "?").trim().charAt(0).toUpperCase();
   ctx.avatar = (id, cls = "") => {
     const m = ctx.member(id);
-    const pic = m?.person && ctx.hass?.states?.[m.person]?.attributes?.entity_picture;
+    const pic = m?.photo || (m?.person && ctx.hass?.states?.[m.person]?.attributes?.entity_picture);
     return `<span class="av ${cls}" style="--pc:${m?.color || "#6E4AFF"};background:${m?.color || "#6E4AFF"}">${
       pic ? `<img src="${esc(pic)}" alt="">` : esc(ctx.initials(m))
     }</span>`;
