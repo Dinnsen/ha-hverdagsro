@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, SECTIONS, SKIN_MODES, SKINS
+from .const import BOARD_SLOTS, DOMAIN, ROLE_PARENT, SECTIONS, SKIN_MODES, SKINS
 from .family import Family
 from .schema import vol
 from .validation import iso_date
@@ -195,6 +195,120 @@ async def ws_theme(
     connection.send_result(msg["id"])
 
 
+@websocket_api.websocket_command(
+    {vol.Required("type"): "hverdagsro/prefs", vol.Required("member"): cv.string, vol.Required("prefs"): dict}
+)
+@websocket_api.async_response
+@_with_family
+async def ws_prefs(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    """A member's own + menu, messages and picture."""
+    await family.async_set_prefs(connection.user, msg["member"], msg["prefs"])
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "hverdagsro/pin", vol.Required("member"): cv.string, vol.Required("pin"): cv.string}
+)
+@websocket_api.async_response
+@_with_family
+async def ws_pin(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    connection.send_result(msg["id"], {"ok": family.check_pin(msg["member"], msg["pin"])})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hverdagsro/board",
+        vol.Required("member"): cv.string,
+        vol.Required("slot"): vol.In(BOARD_SLOTS),
+        vol.Required("index"): vol.All(vol.Coerce(int), vol.Range(min=0, max=60)),
+        vol.Required("done"): cv.boolean,
+    }
+)
+@websocket_api.async_response
+@_with_family
+async def ws_board(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    done = await family.async_set_board(msg["member"], msg["slot"], msg["index"], msg["done"], connection.user)
+    connection.send_result(msg["id"], {"done": done})
+
+
+def _require_parent_account(connection: websocket_api.ActiveConnection, family: Family, member_id: str) -> None:
+    """Only a parent logs in to Ønskeskyen, and only as themselves (or an administrator for them)."""
+    _require_manager(connection, family)
+    member = family.require_member(member_id)
+    me = family.member_for_user(connection.user)
+    if member["role"] != ROLE_PARENT or (me is not None and me["id"] != member["id"]):
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hverdagsro/osky/login",
+        vol.Required("member"): cv.string,
+        vol.Required("email"): cv.string,
+        vol.Required("password"): cv.string,
+    }
+)
+@websocket_api.async_response
+@_with_family
+async def ws_osky_login(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    _require_parent_account(connection, family, msg["member"])
+    await family.osky.async_login(family.require_member(msg["member"])["id"], msg["email"], msg["password"])
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command({vol.Required("type"): "hverdagsro/osky/logout", vol.Required("member"): cv.string})
+@websocket_api.async_response
+@_with_family
+async def ws_osky_logout(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    _require_parent_account(connection, family, msg["member"])
+    await family.osky.async_logout(family.require_member(msg["member"])["id"])
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command({vol.Required("type"): "hverdagsro/osky/refresh"})
+@websocket_api.async_response
+@_with_family
+async def ws_osky_refresh(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    await family.osky.async_refresh()
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hverdagsro/osky/wish",
+        vol.Required("list"): cv.string,
+        vol.Required("title"): vol.All(cv.string, vol.Length(min=1, max=200)),
+        vol.Optional("price"): vol.Any(None, vol.Coerce(float)),
+        vol.Optional("url"): vol.Any(None, cv.url),
+    }
+)
+@websocket_api.async_response
+@_with_family
+async def ws_osky_wish(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    """Parents add to any list; a child only to the list that is theirs."""
+    if not family.can_manage(connection.user):
+        me = family.member_for_user(connection.user)
+        owner = family.data["settings"].get("osky_to", {}).get(msg["list"])
+        if me is None or owner != me["id"]:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
+    await family.osky.async_add_wish(msg["list"], msg["title"], msg.get("price"), msg.get("url"))
+    connection.send_result(msg["id"])
+
+
 @callback
 def async_register_websocket(hass: HomeAssistant) -> None:
     for command in (
@@ -207,5 +321,12 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_reward_request,
         ws_reward_decide,
         ws_theme,
+        ws_prefs,
+        ws_pin,
+        ws_board,
+        ws_osky_login,
+        ws_osky_logout,
+        ws_osky_refresh,
+        ws_osky_wish,
     ):
         websocket_api.async_register_command(hass, command)

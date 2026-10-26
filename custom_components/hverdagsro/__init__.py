@@ -10,6 +10,8 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, PLATFORMS, STORAGE_KEY, STORAGE_VERSION
 from .family import Family, HverdagsroConfigEntry
+from .messages import Notifier
+from .osky import Osky
 from .panel import async_register_panel, async_unregister_panel
 from .services import async_setup_services
 from .websocket import async_register_websocket
@@ -27,6 +29,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: HverdagsroConfigEntry) -> bool:
     family = Family(hass, entry)
     await family.async_initialize()
+    family.osky = Osky(hass, entry.entry_id, family.async_changed)
+    await family.osky.async_initialize()
+    family.notifier = Notifier(hass, family)
+    family.notifier.async_start()
     entry.runtime_data = family
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
@@ -42,7 +48,10 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 async def async_unload_entry(hass: HomeAssistant, entry: HverdagsroConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        await entry.runtime_data.async_shutdown()
+        family = entry.runtime_data
+        family.notifier.async_stop()
+        family.osky.async_stop()
+        await family.async_shutdown()
         if not [other for other in hass.config_entries.async_loaded_entries(DOMAIN) if other is not entry]:
             async_unregister_panel(hass)
     return unload_ok
@@ -51,6 +60,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: HverdagsroConfigEntry) 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Remove the family's stored data with the integration."""
     await Store[dict[str, object]](hass, STORAGE_VERSION, STORAGE_KEY.format(entry_id=entry.entry_id)).async_remove()
+    await Store[dict[str, object]](hass, 1, f"{DOMAIN}.osky.{entry.entry_id}").async_remove()
 
 
 async def async_remove_config_entry_device(

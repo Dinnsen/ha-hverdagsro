@@ -30,11 +30,21 @@
       "points": {
         "name": "Point",
         "state_attributes": {
-          "goal": { "name": "Mål" },
-          "goal_cost": { "name": "Målets pris" },
-          "missions_today": { "name": "Missioner i dag" },
-          "missions_done": { "name": "Missioner klaret" },
-          "pending_requests": { "name": "Venter på godkendelse" }
+          "goal": {
+            "name": "Mål"
+          },
+          "goal_cost": {
+            "name": "Målets pris"
+          },
+          "missions_today": {
+            "name": "Missioner i dag"
+          },
+          "missions_done": {
+            "name": "Missioner klaret"
+          },
+          "pending_requests": {
+            "name": "Venter på godkendelse"
+          }
         }
       }
     },
@@ -45,34 +55,89 @@
     }
   },
   "exceptions": {
-    "member_not_found": { "message": "Der er ikke noget familiemedlem, der hedder {member}." },
-    "mission_not_found": { "message": "Der er ikke nogen mission, der hedder {mission}." },
-    "reward_not_found": { "message": "Belønningen findes ikke i shoppen." },
-    "request_not_found": { "message": "Købet er allerede afgjort." },
-    "not_enough_points": { "message": "Der er ikke point nok." },
-    "already_requested": { "message": "Belønningen venter allerede på godkendelse." },
-    "not_allowed": { "message": "Det kan kun en forælder." },
-    "unknown_section": { "message": "Ukendt afsnit." }
+    "member_not_found": {
+      "message": "Der er ikke noget familiemedlem, der hedder {member}."
+    },
+    "mission_not_found": {
+      "message": "Der er ikke nogen mission, der hedder {mission}."
+    },
+    "reward_not_found": {
+      "message": "Belønningen findes ikke i shoppen."
+    },
+    "request_not_found": {
+      "message": "Købet er allerede afgjort."
+    },
+    "not_enough_points": {
+      "message": "Der er ikke point nok."
+    },
+    "already_requested": {
+      "message": "Belønningen venter allerede på godkendelse."
+    },
+    "not_allowed": {
+      "message": "Det kan kun en forælder."
+    },
+    "unknown_section": {
+      "message": "Ukendt afsnit."
+    },
+    "too_many_tries": {
+      "message": "For mange forkerte PIN-koder. Prøv igen om lidt."
+    },
+    "osky_login_failed": {
+      "message": "Ønskeskyen godkendte ikke e-mail og adgangskode."
+    },
+    "osky_unavailable": {
+      "message": "Ønskeskyen svarer ikke lige nu."
+    },
+    "osky_unknown_list": {
+      "message": "Ønskesedlen findes ikke i Hverdagsro."
+    },
+    "osky_error": {
+      "message": "Ønskeskyen siger: {error}"
+    }
   },
   "services": {
     "add_points": {
       "name": "Giv point",
       "description": "Giver et barn point, eller trækker point fra med et negativt tal.",
       "fields": {
-        "config_entry_id": { "name": "Hverdagsro", "description": "Kun nødvendig, hvis der er mere end én." },
-        "member": { "name": "Barn", "description": "Barnets navn eller id." },
-        "points": { "name": "Point", "description": "Point, der gives. Et negativt tal trækker point fra." },
-        "reason": { "name": "Begrundelse", "description": "Vises i historikken." }
+        "config_entry_id": {
+          "name": "Hverdagsro",
+          "description": "Kun nødvendig, hvis der er mere end én."
+        },
+        "member": {
+          "name": "Barn",
+          "description": "Barnets navn eller id."
+        },
+        "points": {
+          "name": "Point",
+          "description": "Point, der gives. Et negativt tal trækker point fra."
+        },
+        "reason": {
+          "name": "Begrundelse",
+          "description": "Vises i historikken."
+        }
       }
     },
     "complete_mission": {
       "name": "Klar en mission",
       "description": "Markerer et barns mission som klaret og giver missionens point.",
       "fields": {
-        "config_entry_id": { "name": "Hverdagsro", "description": "Kun nødvendig, hvis der er mere end én." },
-        "mission": { "name": "Mission", "description": "Missionens titel eller id." },
-        "member": { "name": "Barn", "description": "Barnets navn eller id." },
-        "date": { "name": "Dato", "description": "I dag, hvis feltet er tomt." }
+        "config_entry_id": {
+          "name": "Hverdagsro",
+          "description": "Kun nødvendig, hvis der er mere end én."
+        },
+        "mission": {
+          "name": "Mission",
+          "description": "Missionens titel eller id."
+        },
+        "member": {
+          "name": "Barn",
+          "description": "Barnets navn eller id."
+        },
+        "date": {
+          "name": "Dato",
+          "description": "I dag, hvis feltet er tomt."
+        }
       }
     }
   }

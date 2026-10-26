@@ -30,11 +30,21 @@
       "points": {
         "name": "Points",
         "state_attributes": {
-          "goal": { "name": "Goal" },
-          "goal_cost": { "name": "Goal price" },
-          "missions_today": { "name": "Missions today" },
-          "missions_done": { "name": "Missions done" },
-          "pending_requests": { "name": "Awaiting approval" }
+          "goal": {
+            "name": "Goal"
+          },
+          "goal_cost": {
+            "name": "Goal price"
+          },
+          "missions_today": {
+            "name": "Missions today"
+          },
+          "missions_done": {
+            "name": "Missions done"
+          },
+          "pending_requests": {
+            "name": "Awaiting approval"
+          }
         }
       }
     },
@@ -45,34 +55,89 @@
     }
   },
   "exceptions": {
-    "member_not_found": { "message": "There is no family member called {member}." },
-    "mission_not_found": { "message": "There is no mission called {mission}." },
-    "reward_not_found": { "message": "That reward is not in the shop." },
-    "request_not_found": { "message": "That purchase has already been decided." },
-    "not_enough_points": { "message": "There are not enough points." },
-    "already_requested": { "message": "The reward is already waiting for approval." },
-    "not_allowed": { "message": "Only a parent can do that." },
-    "unknown_section": { "message": "Unknown section." }
+    "member_not_found": {
+      "message": "There is no family member called {member}."
+    },
+    "mission_not_found": {
+      "message": "There is no mission called {mission}."
+    },
+    "reward_not_found": {
+      "message": "That reward is not in the shop."
+    },
+    "request_not_found": {
+      "message": "That purchase has already been decided."
+    },
+    "not_enough_points": {
+      "message": "There are not enough points."
+    },
+    "already_requested": {
+      "message": "The reward is already waiting for approval."
+    },
+    "not_allowed": {
+      "message": "Only a parent can do that."
+    },
+    "unknown_section": {
+      "message": "Unknown section."
+    },
+    "too_many_tries": {
+      "message": "Too many wrong PINs. Try again in a few minutes."
+    },
+    "osky_login_failed": {
+      "message": "Ønskeskyen did not accept the e-mail and password."
+    },
+    "osky_unavailable": {
+      "message": "Ønskeskyen does not answer right now."
+    },
+    "osky_unknown_list": {
+      "message": "That wish list is not in Hverdagsro."
+    },
+    "osky_error": {
+      "message": "Ønskeskyen says: {error}"
+    }
   },
   "services": {
     "add_points": {
       "name": "Give points",
       "description": "Gives a child points, or takes them away with a negative number.",
       "fields": {
-        "config_entry_id": { "name": "Hverdagsro", "description": "Only needed if there is more than one." },
-        "member": { "name": "Child", "description": "The child's name or id." },
-        "points": { "name": "Points", "description": "Points to give. A negative number takes points away." },
-        "reason": { "name": "Reason", "description": "Shown in the history." }
+        "config_entry_id": {
+          "name": "Hverdagsro",
+          "description": "Only needed if there is more than one."
+        },
+        "member": {
+          "name": "Child",
+          "description": "The child's name or id."
+        },
+        "points": {
+          "name": "Points",
+          "description": "Points to give. A negative number takes points away."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Shown in the history."
+        }
       }
     },
     "complete_mission": {
       "name": "Complete a mission",
       "description": "Marks a child's mission as done and gives its points.",
       "fields": {
-        "config_entry_id": { "name": "Hverdagsro", "description": "Only needed if there is more than one." },
-        "mission": { "name": "Mission", "description": "The mission's title or id." },
-        "member": { "name": "Child", "description": "The child's name or id." },
-        "date": { "name": "Date", "description": "Today if empty." }
+        "config_entry_id": {
+          "name": "Hverdagsro",
+          "description": "Only needed if there is more than one."
+        },
+        "mission": {
+          "name": "Mission",
+          "description": "The mission's title or id."
+        },
+        "member": {
+          "name": "Child",
+          "description": "The child's name or id."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Today if empty."
+        }
       }
     }
   }

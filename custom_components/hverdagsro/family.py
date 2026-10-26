@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import copy
 from datetime import date, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 
 from homeassistant.auth.models import User
@@ -18,6 +18,8 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    BOARD_SLOTS,
+    DEFAULT_KID_FEATURES,
     DEFAULT_MODULES,
     DOMAIN,
     EVERYONE,
@@ -32,6 +34,10 @@ from .const import (
     STORAGE_VERSION,
 )
 from .validation import validate_section
+
+if TYPE_CHECKING:
+    from .messages import Notifier
+    from .osky import Osky
 
 type HverdagsroConfigEntry = ConfigEntry[Family]
 
@@ -51,6 +57,10 @@ def default_data() -> dict[str, Any]:
         "points": {},
         "ledger": [],
         "requests": [],
+        "quick": [],
+        "routines": {"helpers": [], "pickups": {}, "boards": {}, "cards": []},
+        "pins": {},
+        "board_done": {},
     }
 
 
@@ -65,6 +75,10 @@ class Family:
         )
         self.data: dict[str, Any] = default_data()
         self._unsubs: list[CALLBACK_TYPE] = []
+        self._pin_tries: dict[str, list[datetime]] = {}
+        self.osky: Osky
+        self.notifier: Notifier
+        self.listeners: list[Callable[[str, dict[str, Any]], None]] = []
 
     # ------------------------------------------------------------------ lifecycle
 
@@ -91,11 +105,27 @@ class Family:
         """A new day: yesterday's missions are history; prune old days."""
         oldest = (dt_util.now().date() - timedelta(days=KEEP_COMPLETIONS_DAYS)).isoformat()
         self.data["completions"] = {day: done for day, done in self.data["completions"].items() if day >= oldest}
+        today = dt_util.now().date().isoformat()
+        self.data["board_done"] = {day: done for day, done in self.data["board_done"].items() if day >= today}
+        self.data["pins"] = {
+            key: pin for key, pin in self.data["pins"].items() if not pin.get("until") or pin["until"] >= today
+        }
         self._changed()
 
     @property
     def signal(self) -> str:
         return SIGNAL_UPDATED.format(entry_id=self.entry.entry_id)
+
+    @callback
+    def _emit(self, kind: str, data: dict[str, Any]) -> None:
+        """Something happened that a family member may want a message about."""
+        for listener in list(self.listeners):
+            listener(kind, data)
+
+    @callback
+    def async_changed(self) -> None:
+        """Something outside the stored data changed (the wish lists): tell the panel."""
+        async_dispatcher_send(self.hass, self.signal)
 
     @callback
     def _changed(self) -> None:
@@ -172,10 +202,22 @@ class Family:
     async def async_save_section(self, section: str, value: Any) -> Any:
         if section not in SECTIONS:
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="unknown_section")
+        if section == "family" and isinstance(value, list):
+            # The panel never sees the PINs: a member sent without one keeps the one it has.
+            old = {member["id"]: member.get("pin") for member in self.members}
+            value = [
+                {**item, "pin": old.get(item.get("id"))} if isinstance(item, dict) and "pin" not in item else item
+                for item in value
+            ]
         clean = validate_section(section, value)
         if section == "modules":
             clean = {**self.data["modules"], **clean}
+        before = self.data.get(section)
         self.data[section] = clean
+        if section == "pins":
+            for key, pin in clean.items():
+                if (before or {}).get(key) != pin:
+                    self._emit("pin", {"member": key, "text": pin["text"]})
         if section == "family":
             known = {member["id"] for member in clean}
             self.data["points"] = {key: points for key, points in self.data["points"].items() if key in known}
@@ -195,6 +237,71 @@ class Family:
             if item["id"] == member["id"]:
                 item["skin"], item["mode"] = skin, mode
         await self.async_save_section("family", family)
+
+    def feature(self, member: dict[str, Any], feature: str) -> bool:
+        """A child's module (Moduler pr. barn): on for the child and for the family."""
+        family_key = {"room": "rooms"}.get(feature, feature)
+        if not self.data["modules"].get(family_key, True):
+            return False
+        if feature == "shop" and not self.feature(member, "points"):
+            return False
+        if feature == "skema" and member.get("institution") != "skole":
+            return False
+        return bool({**DEFAULT_KID_FEATURES, **member.get("features", {})}.get(feature, True))
+
+    async def async_set_prefs(self, user: User | None, member_id: str, prefs: dict[str, Any]) -> None:
+        """A member's own settings: the + menu, messages, picture and theme. Children may not change messages."""
+        self._check_member_access(user, member_id)
+        member = self.require_member(member_id)
+        if "msg_off" in prefs and user is not None and not self.can_manage(user):
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
+        allowed = {"quick_order", "quick_hide", "msg_off", "photo", "skin", "mode"}
+        family = copy.deepcopy(self.members)
+        for item in family:
+            if item["id"] == member["id"]:
+                item.update({key: value for key, value in prefs.items() if key in allowed})
+        await self.async_save_section("family", family)
+
+    def check_pin(self, member_id: str, pin: str) -> bool:
+        """A child's PIN on a shared tablet. Members without a PIN need none."""
+        member = self.require_member(member_id)
+        expected = member.get("pin")
+        if not expected:
+            return True
+        now = dt_util.utcnow()
+        tries = [t for t in self._pin_tries.get(member["id"], []) if now - t < timedelta(minutes=5)]
+        if len(tries) >= 5:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="too_many_tries")
+        if str(pin) == expected:
+            self._pin_tries.pop(member["id"], None)
+            return True
+        self._pin_tries[member["id"]] = [*tries, now]
+        return False
+
+    async def async_set_board(
+        self, member_id: str, slot: str, index: int, done: bool, user: User | None = None
+    ) -> list[str]:
+        """Tick a card on the child's routine board. A whole part of the day done gives 5 points."""
+        self._check_member_access(user, member_id)
+        member = self.require_member(member_id)
+        if slot not in BOARD_SLOTS:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="unknown_section")
+        today = dt_util.now().date().isoformat()
+        day = self.data["board_done"].setdefault(today, {})
+        mine: list[str] = day.setdefault(member["id"], [])
+        key = f"{slot}:{int(index)}"
+        if done and key not in mine:
+            mine.append(key)
+        elif not done and key in mine:
+            mine.remove(key)
+        cards = self.data["routines"].get("boards", {}).get(member["id"], {}).get(slot, [])
+        bonus = f"{slot}:bonus"
+        if cards and bonus not in mine and all(f"{slot}:{i}" in mine for i in range(len(cards))):
+            mine.append(bonus)
+            if self.feature(member, "points"):
+                self._add_points(member["id"], 5, "Rutinetavle", None)
+        self._changed()
+        return mine
 
     # ------------------------------------------------------------------ missions
 
@@ -239,6 +346,7 @@ class Family:
         by = self.member_for_user(user)
         if done:
             today[key] = {"at": dt_util.now().isoformat(), "by": by["id"] if by else None}
+            self._emit("mission", {"member": member["id"], "mission": mission})
         else:
             today.pop(key, None)
         if self.data["modules"].get("points", True) and mission["points"]:
@@ -253,7 +361,14 @@ class Family:
         return int(self.data["points"].get(member_id, 0))
 
     def _add_points(self, member_id: str, delta: int, reason: str, by: str | None) -> None:
-        self.data["points"][member_id] = max(0, self.points(member_id) + int(delta))
+        before = self.points(member_id)
+        goal = self.goal(member_id)
+        self.data["points"][member_id] = max(0, before + int(delta))
+        self._emit(
+            "points", {"member": member_id, "delta": int(delta), "reason": reason, "points": self.points(member_id)}
+        )
+        if goal is not None and before < goal["cost"] <= self.points(member_id):
+            self._emit("goal", {"member": member_id, "reward": goal})
         self.data["ledger"].append(
             {"at": dt_util.now().isoformat(), "member": member_id, "delta": int(delta), "reason": reason[:80], "by": by}
         )
@@ -300,6 +415,7 @@ class Family:
         if self.can_manage(user):
             await self.async_decide(request["id"], True, user)
         else:
+            self._emit("shop", {"member": member["id"], "reward": reward})
             self._changed()
         return request
 
@@ -335,8 +451,15 @@ class Family:
         """Everything the panel needs, seen from the user."""
         me = self.member_for_user(user)
         today = dt_util.now().date().isoformat()
+        family = [{**{k: v for k, v in m.items() if k != "pin"}, "has_pin": bool(m.get("pin"))} for m in self.members]
         return {
-            **{key: self.data[key] for key in ("setup_done", "family", "modules", "settings", "missions", "rewards")},
+            **{key: self.data[key] for key in ("setup_done", "modules", "settings", "missions", "rewards")},
+            "family": family,
+            "quick": self.data["quick"],
+            "routines": self.data["routines"],
+            "pins": self.data["pins"],
+            "board_done": self.data["board_done"].get(today, {}),
+            "osky": self.osky.state() if hasattr(self, "osky") else {"accounts": {}, "lists": []},
             "house": self.data["house"],
             "appliances": self.data["appliances"],
             "points": self.data["points"],

@@ -270,3 +270,85 @@ async def test_not_loaded(
     client = await hass_ws_client(hass, hass_access_token)
     msg = await _ws(client, 1, type="hverdagsro/state")
     assert msg["error"]["code"] == "not_loaded"
+
+
+async def test_prefs_pin_and_board(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+) -> None:
+    family = init_integration.runtime_data
+    parent = await hass_ws_client(hass)
+
+    # A PIN is kept when the panel saves the family without it, and never sent to the panel.
+    members = [{**m, "pin": "1234"} if m["id"] == "ida" else m for m in family.members]
+    await family.async_save_section("family", members)
+    await hass.async_block_till_done()
+    family = hass.config_entries.async_get_entry(init_integration.entry_id).runtime_data
+    state = (await _ws(parent, 1, type="hverdagsro/state"))["result"]
+    ida = next(m for m in state["family"] if m["id"] == "ida")
+    assert "pin" not in ida
+    assert ida["has_pin"] is True
+    await family.async_save_section("family", [{k: v for k, v in m.items() if k != "pin"} for m in family.members])
+    assert family.member("ida")["pin"] == "1234"
+
+    assert (await _ws(parent, 2, type="hverdagsro/pin", member="ida", pin="0000"))["result"] == {"ok": False}
+    assert (await _ws(parent, 3, type="hverdagsro/pin", member="ida", pin="1234"))["result"] == {"ok": True}
+    assert (await _ws(parent, 4, type="hverdagsro/pin", member="oskar", pin="9"))["result"] == {"ok": True}
+    for i in range(5):
+        await _ws(parent, 10 + i, type="hverdagsro/pin", member="ida", pin="0000")
+    msg = await _ws(parent, 20, type="hverdagsro/pin", member="ida", pin="1234")
+    assert msg["error"]["code"] == "too_many_tries"
+
+    # Ida's own + menu; she can't turn her messages off herself.
+    child = await hass_ws_client(hass, hass_read_only_access_token)
+    msg = await _ws(child, 30, type="hverdagsro/prefs", member="ida", prefs={"quick_hide": ["nat"], "secret": 1})
+    assert msg["success"]
+    assert family.member("ida")["quick_hide"] == ["nat"]
+    assert "secret" not in family.member("ida")
+    msg = await _ws(child, 31, type="hverdagsro/prefs", member="ida", prefs={"msg_off": ["points"]})
+    assert msg["error"]["code"] == "not_allowed"
+    msg = await _ws(parent, 32, type="hverdagsro/prefs", member="ida", prefs={"msg_off": ["points"]})
+    assert family.member("ida")["msg_off"] == ["points"]
+
+    # The routine board: the whole morning done gives 5 points, once.
+    await family.async_save_section(
+        "routines", {"boards": {"ida": {"morgen": ["op", "taend"], "eftermiddag": [], "aften": []}}}
+    )
+    msg = await _ws(child, 40, type="hverdagsro/board", member="ida", slot="morgen", index=0, done=True)
+    assert msg["result"]["done"] == ["morgen:0"]
+    msg = await _ws(child, 41, type="hverdagsro/board", member="ida", slot="morgen", index=1, done=True)
+    assert "morgen:bonus" in msg["result"]["done"]
+    assert family.points("ida") == 105
+    await _ws(child, 42, type="hverdagsro/board", member="ida", slot="morgen", index=1, done=False)
+    await _ws(child, 43, type="hverdagsro/board", member="ida", slot="morgen", index=1, done=True)
+    assert family.points("ida") == 105
+    msg = await _ws(child, 44, type="hverdagsro/board", member="oskar", slot="morgen", index=0, done=True)
+    assert msg["error"]["code"] == "not_allowed"
+
+
+async def test_quick_and_pins(
+    hass: HomeAssistant, init_integration: MockConfigEntry, hass_ws_client: WebSocketGenerator
+) -> None:
+    client = await hass_ws_client(hass)
+    quick = [
+        {
+            "id": "nat",
+            "label": "Nat",
+            "entity": "script.nat",
+            "icon": "moon",
+            "cond": {"kind": "time", "from": 20, "to": 4},
+            "who": ["anna"],
+            "then": "armed_home",
+        }
+    ]
+    msg = await _ws(client, 1, type="hverdagsro/save", section="quick", value=quick)
+    assert msg["result"]["value"][0]["cond"]["entity"] is None
+    msg = await _ws(client, 2, type="hverdagsro/save", section="quick", value=[{**quick[0], "then": "explode"}])
+    assert msg["error"]["code"] == "invalid_format"
+    msg = await _ws(client, 3, type="hverdagsro/save", section="pins", value={"ida": {"text": "Far henter dig kl. 13"}})
+    assert msg["result"]["value"]["ida"]["until"] is None
+    state = (await _ws(client, 4, type="hverdagsro/state"))["result"]
+    assert state["pins"]["ida"]["text"] == "Far henter dig kl. 13"
+    assert state["osky"] == {"accounts": {}, "lists": []}
