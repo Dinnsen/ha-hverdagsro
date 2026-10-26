@@ -113,6 +113,19 @@ function presence(ctx, m) {
   return { home, text: zone, since: sinceTxt, fresh };
 }
 
+/* The battery of the member's phone: a battery sensor on the same device as their tracker. */
+function phoneBattery(ctx, m) {
+  const ents = ctx.hass.entities || {};
+  const person = m.person && ctx.hass.states[m.person];
+  const trackers = [m.device_tracker, ...(person?.attributes?.device_trackers || [])].filter(Boolean);
+  const tracker = trackers.find((t) => ents[t]?.platform === "mobile_app") || trackers[0];
+  const dev = tracker && ents[tracker]?.device_id;
+  if (!dev) return null;
+  const id = Object.keys(ents).find((e) => ents[e].device_id === dev && e.startsWith("sensor.") && ctx.hass.states[e]?.attributes?.device_class === "battery");
+  const v = id ? Number(ctx.st(id)?.state) : NaN;
+  return Number.isFinite(v) ? Math.round(v) : null;
+}
+
 function calendars(ctx) {
   if (!ctx.on("calendar")) return [];
   const set = new Set([...(ctx.data.settings.calendars || []), ...ctx.members().map((m) => m.calendar)].filter(Boolean));
@@ -211,7 +224,7 @@ function familyBand(ctx) {
   const known = people.filter((m) => presence(ctx, m));
   const homeN = known.filter((m) => presence(ctx, m).home).length;
   const dinner = meals(ctx).find((e) => startOfDay(e.start).getTime() === startOfDay(new Date()).getTime());
-  let h = `<div class="fband stackv" aria-label="${esc(ctx.t("Familien"))}"><div class="fsum"><span class="lbl">${esc(ctx.t("Hjemme nu"))}</span><b class="num">${homeN}<small>/${known.length || people.length}</small></b><div class="dots">${people
+  let h = `<div class="fband stackv" aria-label="${esc(ctx.t("Familien"))}"><div class="fsum"><span class="lbl">${esc(ctx.t("Hjemme nu"))}</span><b class="num">${homeN}<small>/${known.length || people.length}</small></b><div class="dots">${(known.length ? known : people)
     .map((m) => `<i class="${presence(ctx, m)?.home ? "in" : ""}" title="${esc(m.name)}"></i>`)
     .join("")}</div>${dinner ? `<div class="nx">${esc(ctx.t("I aften"))}<strong>${esc(dinner.title)}</strong></div>` : ""}</div>`;
   people.forEach((m, i) => {
@@ -230,7 +243,10 @@ function familyBand(ctx) {
     const label = pr ? `${pr.text}${pr.since ? ` · ${ctx.t("siden {t}", { t: pr.since })}` : ""}` : kid ? ctx.t(INST[m.institution] || "Barn") || ctx.t("Barn") : ctx.t("Forælder");
     h += `<button class="pod" data-go="person:${esc(m.id)}" style="--pc:${esc(m.color)};animation-delay:${(i + 1) * 70}ms" aria-label="${esc(m.name)}${pr ? `: ${esc(pr.text)}` : ""}">
       <span class="ringav">${ring(ctx, m, f)}${ctx.avatar(m.id)}${pr ? `<span class="pres ${pr.home ? "home" : "away"}${pr.fresh ? " fresh" : ""}" title="${esc(pr.text)}">${svg(pr.home ? "home" : "walk")}</span>` : ""}</span>
-      <span class="who"><span class="nm"><span class="nmt">${esc(m.name)}</span></span><span class="pst">${esc(label)}</span></span>
+      <span class="who"><span class="nm"><span class="nmt">${esc(m.name)}</span>${(() => {
+        const b = phoneBattery(ctx, m);
+        return b == null ? "" : `<span class="nbat${b <= 20 ? " low" : ""}" title="${esc(ctx.t("Telefonens batteri"))}"><span class="bglyph"><i style="width:${b}%"></i></span>${b}%</span>`;
+      })()}</span><span class="pst">${esc(label)}</span></span>
       <span class="facts">${facts.join("")}</span>
       <span class="next">${nx ? `<span class="nl">${svg(nx.icon === "star" ? "pstar" : "cal")}<span>${esc(nx.title)}</span></span><b>${esc(nx.when)}</b>` : `<span class="nl"><span>${esc(ctx.t("Intet planlagt"))}</span></span><b>–</b>`}</span>
     </button>`;
@@ -1006,6 +1022,13 @@ const css = `
 .hh-kp.on b { color: var(--pc); }
 .hh-wp { width: 100%; margin: 0; }
 .hh-kids { grid-template-columns: repeat(auto-fit, minmax(180px, 260px)); }
+@media (max-width: 640px) {
+  .hh-kids { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(150px, 44%); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: -16px; padding: 2px 16px 8px; }
+  .hh-kids .kid { scroll-snap-align: start; padding: 12px 10px; }
+  .hh-kids .kid .big-ring { width: 74px; height: 74px; }
+  .hh-kids .kid .score { font-size: 22px; }
+  .hh-kids .kid .streak { font-size: 11px; }
+}
 .hh-tabs { margin: 16px 0 0; max-width: 460px; }
 .hh-add { margin-top: 10px; }
 .hh-mrow, .hh-rrow { grid-template-columns: 40px minmax(0, 1fr) auto auto; }
@@ -1041,6 +1064,7 @@ const css = `
 `;
 
 const en = {
+  "Telefonens batteri": "Phone battery",
   Morgen: "Morning",
   "I løbet af dagen": "During the day",
   Eftermiddag: "Afternoon",

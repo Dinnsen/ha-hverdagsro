@@ -2,6 +2,21 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.2.0] - 2026-10-26
+
+### Added
+- **Electricity and cars under the sky** on the home page: the price now and the next 24 hours with the cheapest and most expensive hour, and a tile for each car in EV Planner with its charge level and plan. Tap a car to open EV Planner.
+- **The + button** with the alarm and your own shortcuts: scripts, scenes and buttons, chosen under Familieindstillinger → Hjemmet.
+- **The Mere menu** as in the prototype: big tiles with what is happening on each page, and links to the Husbygger and the settings.
+- **Phone battery** on each family member's card, from the phone of their person.
+- **Appliances found in Home Assistant** (robots, Home Connect and others) can be added with one tap.
+
+### Changed
+- The panel fills the whole screen on phones: the sky runs up under the status bar, and the tab bar sits at the bottom.
+- The children's cards under Opgaver scroll sideways on phones instead of filling the page.
+- *Hjemme nu* counts the people whose whereabouts are known.
+- The energy module is on by default.
+
 ## [0.1.0] - 2026-10-26
 
 The first release.

@@ -20,7 +20,9 @@ export function demoStates() {
   const S = {};
   const add = (s) => (S[s.entity_id] = s);
   add(st("sun.sun", "above_horizon", { next_rising: iso(day(1, 7, 31)), next_setting: iso(day(0, 16, 42)), elevation: 14 }));
-  add(st("person.anna", "home", { friendly_name: "Anna", user_id: "u-anna" }));
+  add(st("person.anna", "home", { friendly_name: "Anna", user_id: "u-anna", device_trackers: ["device_tracker.anna_telefon"] }));
+  add(st("device_tracker.anna_telefon", "home", { friendly_name: "Annas telefon", source_type: "gps" }));
+  add(st("sensor.anna_telefon_battery_level", "45", { friendly_name: "Annas telefon batteri", device_class: "battery", unit_of_measurement: "%" }));
   add(st("person.mads", "not_home", { friendly_name: "Mads", user_id: "u-mads" }));
   add(st("person.ida", "home", { friendly_name: "Ida", user_id: "u-ida" }));
   add(st("person.oskar", "home", { friendly_name: "Oskar" }));
@@ -57,7 +59,14 @@ export function demoStates() {
   add(st("sensor.restaffald", ymd(day(1)), { friendly_name: "Restaffald", device_class: "date" }));
   add(st("sensor.papir", ymd(day(6)), { friendly_name: "Papir og pap", device_class: "date" }));
   const prices = Array.from({ length: 24 }, (_, h) => ({ hour: iso(day(0, h)), price: +(1.2 + Math.sin((h - 6) / 3.5) * 0.9 + (h >= 17 && h <= 20 ? 1.4 : 0)).toFixed(2) }));
-  add(st("sensor.elpris", "2.31", { friendly_name: "Elpris", unit_of_measurement: "kr/kWh", raw_today: prices }));
+  const tomorrow = Array.from({ length: 24 }, (_, h) => ({ hour: iso(day(1, h)), price: +(0.9 + Math.sin((h - 6) / 3.5) * 0.7 + (h >= 17 && h <= 20 ? 1.2 : 0)).toFixed(2) }));
+  add(st("sensor.tesla_model_3_status", "unplugged", { friendly_name: "Tesla Model 3 Status", soc: 68, target_soc: 100, connected: false, options: ["unplugged", "planned", "charging", "complete"] }));
+  add(st("sensor.tesla_model_3_summary", "04.00-06.28 · 14,07 kr.", { friendly_name: "Tesla Model 3 Summary" }));
+  add(st("sensor.mercedes_eqb_status", "charging", { friendly_name: "Mercedes EQB Status", soc: 97, target_soc: 100, connected: true }));
+  add(st("sensor.mercedes_eqb_summary", "05.00-05.23 · 2,22 kr.", { friendly_name: "Mercedes EQB Summary" }));
+  add(st("sensor.kaffemaskine_operation_state", "ready", { friendly_name: "Kaffemaskine Operation state", device_class: "enum" }));
+  add(st("switch.torretumbler_power", "off", { friendly_name: "Tørretumbler Power" }));
+  add(st("sensor.elpris", "2.31", { friendly_name: "Elpris", unit_of_measurement: "kr/kWh", raw_today: prices, raw_tomorrow: tomorrow }));
   add(st("sensor.vaskemaskine_status", "running", { friendly_name: "Vaskemaskine" }));
   add(st("sensor.vaskemaskine_tid_tilbage", "38", { friendly_name: "Vaskemaskine tid tilbage", unit_of_measurement: "min" }));
   add(st("sensor.opvasker_status", "off", { friendly_name: "Opvasker" }));
@@ -86,7 +95,23 @@ export function demoRegistry(states) {
   const areaOf = { "light.stue": "stue", "light.kokken": "kokken", "light.ida": "ida", "light.oskar": "oskar", "light.sovevaerelse": "sovevaerelse", "light.bad": "bad", "light.have": "have", "media_player.stue": "stue", "media_player.kokken": "kokken", "media_player.ida": "ida", "media_player.tv_stue": "stue", "binary_sensor.vindue_ida": "ida", "binary_sensor.terrassedor": "stue", "binary_sensor.bevaegelse_stue": "stue", "sensor.vaskemaskine_status": "bryggers", "sensor.stue_temperatur": "stue" };
   const entities = {};
   for (const id of Object.keys(states)) entities[id] = { entity_id: id, area_id: areaOf[id] || null, device_id: null, platform: id.split(".")[0] === "media_player" ? "sonos" : "demo" };
-  return { areas, entities, devices: {} };
+  const devices = {
+    dev_tesla: { id: "dev_tesla", name: "Tesla Model 3" },
+    dev_eqb: { id: "dev_eqb", name: "Mercedes EQB" },
+    dev_anna: { id: "dev_anna", name: "Annas iPhone" },
+    dev_kaffe: { id: "dev_kaffe", name: "Kaffemaskine" },
+    dev_tumbler: { id: "dev_tumbler", name: "Tørretumbler" },
+  };
+  const put = (id, device_id, platform) => entities[id] && Object.assign(entities[id], { device_id, platform });
+  put("sensor.tesla_model_3_status", "dev_tesla", "ev_planner");
+  put("sensor.tesla_model_3_summary", "dev_tesla", "ev_planner");
+  put("sensor.mercedes_eqb_status", "dev_eqb", "ev_planner");
+  put("sensor.mercedes_eqb_summary", "dev_eqb", "ev_planner");
+  put("device_tracker.anna_telefon", "dev_anna", "mobile_app");
+  put("sensor.anna_telefon_battery_level", "dev_anna", "mobile_app");
+  put("sensor.kaffemaskine_operation_state", "dev_kaffe", "home_connect");
+  put("switch.torretumbler_power", "dev_tumbler", "home_connect");
+  return { areas, entities, devices };
 }
 
 export function demoData(setupDone = true) {
@@ -124,6 +149,7 @@ export function demoData(setupDone = true) {
       alarm: "alarm_control_panel.huset",
       media: ["media_player.stue", "media_player.kokken", "media_player.ida", "media_player.tv_stue"],
       cameras: ["camera.indkorsel"],
+      quick: ["script.godnat", "scene.film"],
       price: "sensor.elpris",
       waste: [{ entity: "sensor.restaffald", name: "Restaffald", color: "#2F7D4F" }, { entity: "sensor.papir", name: "Papir og pap", color: "#2F6FED" }],
       decor: {},
@@ -322,6 +348,7 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
     themes: { darkMode: dark },
     selectedTheme: null,
     panelUrl: "hverdagsro",
+    panels: { hverdagsro: { url_path: "hverdagsro" }, "ev-planner": { url_path: "ev-planner" } },
     hassUrl: (p = "") => p,
     formatEntityState: (s) => s?.state,
     formatEntityAttributeValue: (s, a) => s?.attributes?.[a],

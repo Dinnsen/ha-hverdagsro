@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
+from typing import Any
 
 from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
@@ -31,6 +33,10 @@ async def async_register_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
         hass.data[_STATIC_KEY] = True
     if PANEL_URL in hass.data.get(frontend.DATA_PANELS, {}):
         frontend.async_remove_panel(hass, PANEL_URL)
+    extra: dict[str, Any] = {}
+    # The panel draws its own sky under the status bar and its tab bar over the home indicator.
+    if "handle_safe_area" in inspect.signature(panel_custom.async_register_panel).parameters:
+        extra["handle_safe_area"] = True
     await panel_custom.async_register_panel(
         hass,
         frontend_url_path=PANEL_URL,
@@ -40,6 +46,7 @@ async def async_register_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
         module_url=f"{base}/{WEBCOMPONENT}.js",
         config={"static_url": base, "version": version},
         require_admin=bool(entry.options.get(CONF_REQUIRE_ADMIN, False)),
+        **extra,
     )
 
 

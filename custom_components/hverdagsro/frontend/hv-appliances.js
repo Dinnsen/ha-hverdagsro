@@ -228,13 +228,61 @@ function tile(ctx, a, i, n) {
   }</span></button>${run && x.progress != null ? `<div class="ap-bar"><i style="width:${Math.max(2, Math.min(100, x.progress))}%"></i></div>` : ""}${ctl.length || extra ? `<div class="ap-c">${ctl.join("")}${extra}</div>` : ""}</div>`;
 }
 
+/* Appliances Home Assistant already knows: robots, Home Connect-style programme sensors, appliance switches
+   and fridge/freezer doors. One per device, not already on the page. */
+function suggest(ctx) {
+  const used = new Set((ctx.data.appliances || []).flatMap((a) => [a.entity, ...(a.controls || [])]));
+  const usedDev = new Set((ctx.data.appliances || []).map((a) => ctx.hass.entities?.[a.entity]?.device_id).filter(Boolean));
+  const rank = (id) => {
+    const d = id.split(".")[0], s = ctx.hass.states[id], n = `${id} ${ctx.name(id)}`.toLowerCase();
+    if (d === "vacuum" || d === "lawn_mower") return 1;
+    if (d === "sensor" && /operation_?state|operationstate|program_?progress|machine_?state|appliance_?state/.test(n)) return 2;
+    if (d === "sensor" && s?.attributes?.device_class === "enum" && guessKind(id, ctx.name(id)) !== "other") return 3;
+    if ((d === "sensor" || d === "binary_sensor") && /door|dør/.test(n) && ["fridge", "freezer"].includes(guessKind(id, ctx.name(id)))) return 4;
+    if (d === "switch" && /power|strøm|tænd/.test(n) && guessKind(id, ctx.name(id)) !== "other") return 5;
+    return 0;
+  };
+  const best = new Map();
+  for (const id of Object.keys(ctx.hass.states)) {
+    if (used.has(id)) continue;
+    const r = rank(id);
+    if (!r) continue;
+    const ent = ctx.hass.entities?.[id];
+    if (ent?.hidden || ent?.entity_category) continue;
+    const dev = ent?.device_id || id;
+    if (usedDev.has(dev)) continue;
+    const cur = best.get(dev);
+    if (!cur || r < cur.r) best.set(dev, { id, r, dev });
+  }
+  return [...best.values()]
+    .map(({ id, dev }) => {
+      const d = ctx.hass.devices?.[dev];
+      const name = (d?.name_by_user || d?.name || ctx.name(id)).slice(0, 40);
+      return { entity: id, name, kind: guessKind(id, `${name} ${ctx.name(id)}`) };
+    })
+    .sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind));
+}
+function suggestBox(ctx) {
+  const list = ctx.isParent ? suggest(ctx) : [];
+  if (!list.length) return "";
+  return `<section class="card apx-sugg"><div class="card-head"><h2>${esc(ctx.t("Fundet i Home Assistant"))}</h2><button class="btn sm" data-act="ap-sugg-all">${svg("plus")}${esc(ctx.t("Tilføj alle {n}", { n: list.length }))}</button></div>
+    <div class="apx-sugg-l">${list.map((x) => `<button class="apx-sg" data-act="ap-sugg" data-entity="${esc(x.entity)}"><span class="ap-art">${apArt(x.kind)}</span><span><b>${esc(x.name)}</b><small>${esc(ctx.t(KIND_NAME[x.kind]))}</small></span>${svg("plus", "ic apx-sg-p")}</button>`).join("")}</div></section>`;
+}
+function fromSuggestion(ctx, x, list) {
+  let base = slug(x.name).replace(/_/g, "-").slice(0, 40) || "apparat", nid = base, n = 2;
+  if (!/^[a-z0-9]/.test(nid)) nid = base = "a" + base;
+  while (list.some((a) => a.id === nid)) nid = `${base}-${n++}`;
+  const controls = siblings(ctx, x.entity).filter((id) => interesting(ctx, id)).slice(0, 12);
+  return { id: nid, entity: x.entity, name: x.name, kind: x.kind, controls };
+}
+
 function render(ctx) {
   const list = (ctx.data.appliances || []).filter((a) => a && a.entity);
   if (!ctx.isParent) editing = false;
   if (!list.length)
     return `<section class="card hv-empty apx-empty"><div class="apx-trio">${apArt("washer", { run: true })}${apArt("coffee", { run: true })}${apArt("vacuum", { run: true })}</div><h2>${esc(ctx.t("Ingen apparater endnu"))}</h2><p class="t-sub">${esc(
       ctx.t("Vis vaskemaskinen, opvaskeren, robotstøvsugeren og de andre her, så alle kan se, hvad der kører, og hvornår det er færdigt.")
-    )}</p>${ctx.isParent ? `<button class="btn" data-act="ap-add">${svg("plus")}${esc(ctx.t("Tilføj apparat"))}</button>` : ""}</section>`;
+    )}</p>${ctx.isParent ? `<button class="btn" data-act="ap-add">${svg("plus")}${esc(ctx.t("Tilføj apparat"))}</button>` : ""}</section>${suggestBox(ctx)}`;
   const sts = list.map((a) => [a, status(ctx, a)]);
   const running = sts.filter(([, s]) => s.key === "run"), done = sts.filter(([, s]) => s.key === "done"), issues = sts.filter(([, s]) => s.key === "offline" || s.key === "error");
   const head = running.length ? ctx.t("{n} kører lige nu", { n: running.length }) : done.length ? ctx.t("{name} er færdig", { name: done[0][0].name || ctx.name(done[0][0].entity) }) : ctx.t("Alt er stille");
@@ -244,6 +292,7 @@ function render(ctx) {
   ];
   return `<section class="ap-top"><div><span class="eyebrow">${esc(ctx.t("Apparater"))}</span><h2 class="h2">${esc(head)}</h2>${notes.length ? `<p class="t-sub">${esc(notes.join(" · "))}</p>` : ""}</div>
     ${ctx.isParent ? `<div class="apx-acts">${editing ? `<button class="btn soft" data-act="ap-add">${svg("plus")}${esc(ctx.t("Tilføj"))}</button>` : ""}<button class="btn ${editing ? "" : "soft"}" data-act="ap-editmode">${svg(editing ? "check" : "edit")}${esc(editing ? ctx.t("Færdig") : ctx.t("Tilpas"))}</button></div>` : ""}</section>
+  ${editing ? suggestBox(ctx) : ""}
   ${editing ? `<div class="ap-edhint">${svg("drag")}<span>${esc(ctx.t("Træk i håndtaget eller brug pilene for at ændre rækkefølgen. Tryk på et apparat for at rette det."))}</span></div>` : ""}
   <div class="ap-tiles${editing ? " editing" : ""}" id="ap-tiles">${list.map((a, i) => tile(ctx, a, i, list.length)).join("")}${
     ctx.isParent ? `<button class="ap-t apx-add" data-act="ap-add"><span class="apx-plus">${svg("plus")}</span><b>${esc(ctx.t("Tilføj apparat"))}</b></button>` : ""
@@ -341,6 +390,19 @@ const acts = {
     ctx.render();
   },
   "ap-add": (el, e, ctx) => editSheet(ctx, null),
+  "ap-sugg": async (el, e, ctx) => {
+    const x = suggest(ctx).find((y) => y.entity === el.dataset.entity);
+    if (!x) return;
+    const list = [...(ctx.data.appliances || [])];
+    list.push(fromSuggestion(ctx, x, list));
+    await saveList(ctx, list, ctx.t("{name} er tilføjet", { name: x.name }));
+  },
+  "ap-sugg-all": async (el, e, ctx) => {
+    const list = [...(ctx.data.appliances || [])];
+    const add = suggest(ctx);
+    for (const x of add) list.push(fromSuggestion(ctx, x, list));
+    await saveList(ctx, list.slice(0, 80), ctx.t("{n} apparater er tilføjet", { n: add.length }));
+  },
   "ap-edit": (el, e, ctx) => {
     ctx.q(".sheet-bg")?.close?.();
     editSheet(ctx, el.dataset.id);
@@ -485,6 +547,15 @@ function init(ctx) {
 }
 
 const css = `
+.apx-sugg { margin-top: 16px; }
+.apx-sugg-l { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.apx-sg { display: flex; align-items: center; gap: 10px; text-align: left; border: 1.5px dashed var(--line); background: var(--surface-2); color: var(--ink); border-radius: 16px; padding: 8px 10px; cursor: pointer; font: inherit; }
+.apx-sg:hover { border-color: var(--violet); }
+.apx-sg .ap-art { width: 44px; height: 44px; flex: none; }
+.apx-sg b { display: block; font-size: 14px; }
+.apx-sg small { color: var(--muted); font-size: 12px; }
+.apx-sg > span:nth-child(2) { flex: 1; min-width: 0; }
+.apx-sg-p { width: 18px; height: 18px; color: var(--violet); flex: none; }
 .apx-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .apx-add { border: 1.5px dashed var(--line) !important; box-shadow: none !important; background: transparent !important; align-items: center; justify-content: center; min-height: 92px; color: var(--muted); cursor: pointer; font: inherit; flex-direction: row !important; gap: 10px !important; }
 .apx-add:hover { color: var(--violet); border-color: var(--violet) !important; }
@@ -524,6 +595,9 @@ const css = `
 `;
 
 const en = {
+  "Fundet i Home Assistant": "Found in Home Assistant",
+  "Tilføj alle {n}": "Add all {n}",
+  "{n} apparater er tilføjet": "{n} appliances added",
   Apparater: "Appliances",
   Vaskemaskine: "Washing machine",
   "Fx Vaskemaskine": "E.g. Washing machine",

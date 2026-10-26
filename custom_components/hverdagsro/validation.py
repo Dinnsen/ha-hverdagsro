@@ -134,6 +134,8 @@ SETTINGS = vol.Schema(
         vol.Optional("alarm", default=None): optional_entity,
         vol.Optional("media", default=[]): entity_list,
         vol.Optional("cameras", default=[]): entity_list,
+        # The scripts, scenes and buttons behind the + button.
+        vol.Optional("quick", default=[]): entity_list,
         vol.Optional("price", default=None): optional_entity,
         vol.Optional("waste", default=[]): vol.All(cv.ensure_list, [WASTE], vol.Length(max=8)),
         vol.Optional("decor", default={}): {vol.Coerce(str): cv.boolean},

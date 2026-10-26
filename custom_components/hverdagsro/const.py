@@ -60,7 +60,7 @@ DEFAULT_MODULES: Final = {
     "security": True,
     "house": True,
     "decor": True,
-    "energy": False,
+    "energy": True,
     "waste": False,
 }
 

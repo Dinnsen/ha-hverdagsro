@@ -47,7 +47,7 @@ const TABS = [
   ["pynt", "Pynt", "sparkle"],
   ["avanceret", "Avanceret", "sliders"],
 ];
-const DOMAIN_ICON = { weather: "sun", calendar: "cal", todo: "lists", alarm_control_panel: "shieldf", media_player: "speaker", camera: "camera", sensor: "bolt", person: "user", device_tracker: "walk" };
+const DOMAIN_ICON = { weather: "sun", calendar: "cal", todo: "lists", alarm_control_panel: "shieldf", media_player: "speaker", camera: "camera", sensor: "bolt", person: "user", device_tracker: "walk", script: "play", scene: "sparkle", button: "power", input_button: "power", automation: "repeat" };
 /* Settings keys that are entities: [key, domains, multi, title] */
 const PICKS = {
   weather: [["weather"], false, "Vejr"],
@@ -58,6 +58,7 @@ const PICKS = {
   media: [["media_player"], true, "Højttalere og TV"],
   cameras: [["camera"], true, "Kameraer"],
   price: [["sensor"], false, "Elpris"],
+  quick: [["script", "scene", "button", "input_button", "automation"], true, "Genveje"],
 };
 const RE_MEALS = /\b(mad|madplan|meal|meals|food|dinner|aftensmad|menu)/i;
 const RE_WASTE = /(affald|skrald|waste|garbage|trash|renovation|papir|plast|rest|bio|glas|metal|pap\b|tømning|tomning)/i;
@@ -367,6 +368,7 @@ function homeEditor(ctx) {
   }
   if (isOn(ctx, "music")) parts.push(["speaker", "#DB2777", ctx.t("Højttalere og TV"), ctx.t("Det, I kan styre under Musik."), pickField(ctx, "media")]);
   if (isOn(ctx, "energy")) parts.push(["bolt", "#22C55E", ctx.t("Elpris"), ctx.t("En sensor med timepriser, fx Nord Pool eller Energi Data Service."), pickField(ctx, "price")]);
+  parts.push(["plus", "#6E4AFF", ctx.t("Genveje"), ctx.t("Rutiner, scener og knapper bag +-knappen nederst til højre, fx Godnat eller Vi tager hjemmefra."), pickField(ctx, "quick")]);
   if (isOn(ctx, "waste")) parts.push(["trash2", "#2F7D4F", ctx.t("Affald"), ctx.t("Sensorer med næste tømningsdag, eller en kalender med tømningerne."), wasteEditor(ctx)]);
   return `<div class="set-hs">${parts.map((p, i) => sec(...p, i)).join("")}</div>`;
 }
@@ -1255,6 +1257,8 @@ const en = {
   "Indkøbslister og huskelister fra Home Assistant.": "Shopping lists and to-do lists from Home Assistant.",
   "Alarmen i toppen og under Huset, fx Alarmo.": "The alarm at the top and under The house, e.g. Alarmo.",
   "Kameraerne under Huset.": "The cameras under The house.",
+  Genveje: "Shortcuts",
+  "Rutiner, scener og knapper bag +-knappen nederst til højre, fx Godnat eller Vi tager hjemmefra.": "Scripts, scenes and buttons behind the + button at the bottom right, e.g. Good night or We're leaving.",
   "Det, I kan styre under Musik.": "What you can control under Music.",
   "En sensor med timepriser, fx Nord Pool eller Energi Data Service.": "A sensor with hourly prices, e.g. Nord Pool or Energi Data Service.",
   "Sensorer med næste tømningsdag, eller en kalender med tømningerne.": "Sensors with the next collection day, or a calendar with the collections.",

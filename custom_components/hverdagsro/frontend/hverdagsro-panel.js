@@ -16,8 +16,9 @@ import security from "./hv-security.js";
 import house from "./hv-house.js";
 import rooms from "./hv-rooms.js";
 import settings from "./hv-settings.js";
+import energy, { hasStatus, statusHtml } from "./hv-energy.js";
 
-const MODULES = [home, lists, music, appliances, security, house, rooms, settings];
+const MODULES = [home, lists, music, appliances, security, house, rooms, settings, energy];
 
 /* The tabs, in order. [view, label, icon, module flag (or null), who] */
 const PARENT_TABS = [
@@ -149,7 +150,9 @@ class HverdagsroPanel extends HTMLElement {
             </div>
           </div>
         </header>
+        <section class="status" id="status-sec" hidden aria-label="El og biler"><div class="wrap" id="status"></div></section>
         <nav class="tabs"><div class="wrap" role="tablist" id="tabs"></div></nav>
+        <div class="fab" id="fab" hidden></div>
         <main class="wrap" id="main"><div class="hv-loading">${svg("home")}<span>${esc(this.ctx.t("Henter Hverdagsro …"))}</span></div></main>
       </div>`;
     this.scroller = this;
@@ -163,6 +166,7 @@ class HverdagsroPanel extends HTMLElement {
     this._sky.start();
     this._bindHeader();
     this._bindMain();
+    this._bindFab();
     this._menuBtn();
     for (const m of MODULES) m.init?.(ctx);
     this._subscribe();
@@ -392,6 +396,15 @@ class HverdagsroPanel extends HTMLElement {
     hero.classList.toggle("open", big && this._wxOpen);
     const view = ctx.views[ctx.view];
     ctx.$("mini-title").textContent = view?.title?.(ctx) || "";
+    // Electricity and cars under the sky, on the parents' home page.
+    const sec = ctx.$("status-sec");
+    const showStatus = big && hasStatus(ctx);
+    sec.hidden = !showStatus;
+    if (showStatus) {
+      const html = statusHtml(ctx);
+      if (html !== this._statusHtml) ctx.$("status").innerHTML = this._statusHtml = html;
+    }
+    this._fab();
     // Sun and weather
     const sun = ctx.hass.states["sun.sun"];
     if (sun) {
@@ -734,17 +747,178 @@ class HverdagsroPanel extends HTMLElement {
     if (id) ctx.toast(ctx.t("Du ser nu Hverdagsro som {name}", { name: ctx.member(id)?.name }));
   }
 
+  _moreStat(id) {
+    const ctx = this.ctx;
+    const st = ctx.data.settings;
+    switch (id) {
+      case "lister":
+        return ctx.t("{n} lister", { n: (st.todo || []).length });
+      case "musik": {
+        const players = (st.media || []).length ? st.media : ctx.entities("media_player");
+        const p = players.map((x) => ctx.hass.states[x]).find((x) => x?.state === "playing");
+        return p ? ctx.t("Spiller {what} · {where}", { what: p.attributes.media_title || p.attributes.media_artist || "", where: p.attributes.friendly_name || "" }) : ctx.t("Intet spiller");
+      }
+      case "apparater": {
+        const list = ctx.data.appliances || [];
+        const run = list.filter((a) => /^(run|running|on|cleaning|mowing|washing|drying|heating|in_progress|active|program_running|brewing)$/i.test(String(ctx.hass.states[a.entity]?.state || "").replace(/^.*\./, ""))).length;
+        const off = list.filter((a) => ["unavailable", "unknown", undefined].includes(ctx.hass.states[a.entity]?.state)).length;
+        return list.length ? (run ? ctx.t("{n} kører lige nu", { n: run }) : off ? ctx.t("Alt er stille · {n} offline", { n: off }) : ctx.t("Alt er stille")) : ctx.t("Tilføj jeres apparater");
+      }
+      case "sikkerhed": {
+        const al = st.alarm && ctx.hass.states[st.alarm];
+        const open = (ctx.data.house?.items || []).filter((i) => ["door", "window", "port"].includes(i.type) && ["on", "open", "opening"].includes(ctx.hass.states[i.ent]?.state)).length;
+        const a = al ? (ctx.hass.formatEntityState ? ctx.hass.formatEntityState(al) : al.state) : ctx.t("Huset");
+        return `${a} · ${open ? ctx.t("{n} står åben", { n: open }) : ctx.t("alt lukket")}`;
+      }
+      case "madplan":
+        return ctx.t("Ugens aftensmad");
+      case "kalender":
+        return ctx.t("Familiens uge");
+      case "opgaver": {
+        const n = (ctx.data.requests || []).filter((r) => r.status === "pending").length;
+        return n ? ctx.t("{n} venter på godkendelse", { n }) : ctx.t("Missioner og belønninger");
+      }
+      case "shop":
+        return ctx.t("{n} point", { n: ctx.points(ctx.me?.id) });
+      case "vaerelse":
+        return ctx.t("Lys og stemning");
+    }
+    return "";
+  }
+
   _moreSheet() {
     const ctx = this.ctx;
-    const s = ctx.sheet(`<h2>${esc(ctx.t("Mere"))}</h2><div class="more-tiles">${this._more
-      .map(([id, name, ic], i) => `<button class="more-t" data-mt="${id}" aria-current="${id === ctx.view}" style="animation-delay:${50 + i * 45}ms"><span class="more-ic">${svg(ic)}</span><span class="more-tx"><b>${esc(name)}</b></span>${svg("go", "ic more-ch")}</button>`)
-      .join("")}</div>`, { cls: "more-sheet" });
-    s.el.addEventListener("click", (e) => {
+    const COL = { lister: "#10B981", musik: "#E4568C", apparater: "#F59E0B", sikkerhed: "#2F6FED", madplan: "#F97316", kalender: "#6E4AFF", opgaver: "#0EA5E9", shop: "#F59E0B", vaerelse: "#F5B301", dag: "#6E4AFF" };
+    const old = ctx.q(".more-bg");
+    if (old) return old.close();
+    const bg = document.createElement("div");
+    bg.className = "more-bg";
+    const links = ctx.isParent
+      ? `<div class="more-links" style="animation-delay:${80 + this._more.length * 45}ms">${ctx.on("house") ? `<button data-mt="husbygger">${svg("house")}${esc(ctx.t("Husbygger"))}</button>` : ""}<button data-mt="indstillinger">${svg("shield")}${esc(ctx.t("Familieindstillinger"))}</button><button data-mt="mig">${svg("gear")}${esc(ctx.t("Mine indstillinger"))}</button></div>`
+      : "";
+    bg.innerHTML = `<div class="more-pop" role="dialog" aria-modal="true" aria-label="${esc(ctx.t("Mere"))}"><span class="more-grab" aria-hidden="true"></span><div class="more-h"><h2>${esc(ctx.t("Mere"))}</h2><button class="iconbtn" data-mclose aria-label="${esc(ctx.t("Luk"))}">${svg("x")}</button></div>
+      <div class="more-tiles">${this._more
+        .map(([id, name, ic], i) => `<button class="more-t" data-mt="${id}" aria-current="${id === ctx.view}" style="--mc:${COL[id] || "var(--violet)"};animation-delay:${50 + i * 45}ms"><span class="more-ic">${svg(ic)}</span><span class="more-tx"><b>${esc(name)}</b><small>${esc(this._moreStat(id))}</small></span>${svg("go", "ic more-ch")}</button>`)
+        .join("")}</div>${links}</div>`;
+    const close = () => {
+      if (bg.classList.contains("out")) return;
+      bg.classList.add("out");
+      setTimeout(() => bg.remove(), 230);
+    };
+    bg.close = close;
+    this.shadowRoot.appendChild(bg);
+    bg.addEventListener("click", (e) => {
       const b = e.target.closest("[data-mt]");
       if (b) {
-        s.close();
+        close();
         ctx.go(b.dataset.mt);
+        return;
       }
+      if (e.target === bg || e.target.closest("[data-mclose]")) close();
+    });
+    const pop = bg.querySelector(".more-pop");
+    let y0 = null, dy = 0;
+    pop.addEventListener("pointerdown", (e) => {
+      if (!e.target.closest(".more-grab, .more-h h2")) return;
+      y0 = e.clientY;
+      dy = 0;
+      pop.setPointerCapture(e.pointerId);
+      pop.style.transition = "none";
+    });
+    pop.addEventListener("pointermove", (e) => {
+      if (y0 == null) return;
+      dy = Math.max(0, e.clientY - y0);
+      pop.style.transform = `translateY(${dy}px)`;
+    });
+    const end = () => {
+      if (y0 == null) return;
+      y0 = null;
+      pop.style.transition = "";
+      if (dy > 70) close();
+      else pop.style.transform = "";
+    };
+    pop.addEventListener("pointerup", end);
+    pop.addEventListener("pointercancel", end);
+  }
+
+  // ------------------------------------------------------------------ the + button
+  _quickItems() {
+    const ctx = this.ctx;
+    if (!ctx.isParent) return [];
+    const items = [];
+    const al = ctx.data.settings.alarm && ctx.on("security") ? ctx.hass.states[ctx.data.settings.alarm] : null;
+    if (al) {
+      const look = this._alarmLook();
+      items.push({ id: "alarm", label: ctx.t("Alarm"), sub: ctx.hass.formatEntityState ? ctx.hass.formatEntityState(al) : al.state, icon: "shieldf", color: look?.color || "#1E9E62", armed: !!look });
+    }
+    for (const id of ctx.data.settings.quick || []) {
+      const s = ctx.hass.states[id];
+      if (!s) continue;
+      const d = id.split(".")[0];
+      const icon = d === "scene" ? "sparkle" : d === "script" ? "play" : d === "automation" ? "repeat" : "power";
+      const color = ["#6E4AFF", "#11A39A", "#F08A3A", "#E4568C", "#2F6FED", "#F2B01E"][items.length % 6];
+      items.push({ id, label: s.attributes.friendly_name || id, sub: ctx.t(d === "scene" ? "Scene" : d === "script" ? "Rutine" : d === "automation" ? "Automatisering" : "Knap"), icon, color, running: s.state === "on" && d === "script" });
+    }
+    return items;
+  }
+
+  _fab() {
+    const ctx = this.ctx;
+    const f = ctx.$("fab");
+    if (!f) return;
+    const items = this._quickItems();
+    const hide = !ctx.isParent || ["guide", "husbygger"].includes(ctx.view);
+    const sig = JSON.stringify([items, this._fabOpen, hide, ctx.lang()]);
+    if (sig === this._fabSig) return;
+    this._fabSig = sig;
+    f.hidden = hide;
+    if (hide) return;
+    const n = items.length + 1;
+    const list = [
+      ...items.map((q, i) => `<button class="fi" data-fab-run="${esc(q.id)}" style="--qc:${q.color};--d:${(n - 1 - i) * 40}ms"><span class="fl"><b>${esc(q.label)}</b><small>${esc(q.sub)}</small></span><span class="qa-ic${q.armed ? " armed" : ""}">${svg(q.icon)}</span></button>`),
+      `<button class="fi edit" data-fab-edit="1" style="--d:0ms"><span class="fl"><b>${esc(ctx.t("Tilpas"))}</b><small>${esc(ctx.t("Vælg genveje"))}</small></span><span class="qa-ic">${svg("edit")}</span></button>`,
+    ];
+    const armed = items.find((q) => q.armed);
+    f.classList.toggle("open", !!this._fabOpen);
+    f.innerHTML = `<div class="fab-scrim" data-fab-close></div><div class="fab-list" role="menu">${list.join("")}</div>
+      <button class="fab-btn" data-fab aria-expanded="${!!this._fabOpen}" aria-label="${esc(ctx.t("Genveje"))}">${svg("plus")}${armed ? `<span class="fab-dot" style="background:${armed.color}"></span>` : ""}</button>`;
+  }
+
+  _bindFab() {
+    const ctx = this.ctx;
+    ctx.$("fab").addEventListener("click", (e) => {
+      const toggle = (open) => {
+        this._fabOpen = open;
+        this._fabSig = "";
+        this._fab();
+      };
+      if (e.target.closest("[data-fab]")) return toggle(!this._fabOpen);
+      if (e.target.closest("[data-fab-close]")) return toggle(false);
+      if (e.target.closest("[data-fab-edit]")) {
+        toggle(false);
+        return ctx.go("indstillinger:hjemmet");
+      }
+      const run = e.target.closest("[data-fab-run]");
+      if (!run) return;
+      toggle(false);
+      const id = run.dataset.fabRun;
+      if (id === "alarm") return ctx.acts.alarm?.(null, null, ctx);
+      this._runQuick(id);
+    });
+  }
+
+  _runQuick(id) {
+    const ctx = this.ctx;
+    const s = ctx.hass.states[id];
+    if (!s) return;
+    const d = id.split(".")[0];
+    const name = s.attributes.friendly_name || id;
+    const sh = ctx.sheet(`<div class="qa-sheet" style="--qc:var(--violet)"><span class="qa-ic big">${svg(d === "scene" ? "sparkle" : "play")}</span><h2>${esc(ctx.t("Kør {name}?", { name }))}</h2><div class="t-sub" style="justify-content:center">${esc(id)}</div>
+      <div class="sheet-actions" style="justify-content:center"><button class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" data-run>${svg("play")}${esc(ctx.t("Kør"))}</button></div></div>`);
+    sh.el.querySelector("[data-run]").addEventListener("click", async () => {
+      sh.close();
+      const svc = d === "script" || d === "scene" ? [d, "turn_on"] : d === "automation" ? [d, "trigger"] : [d, "press"];
+      if (await ctx.call(svc[0], svc[1], { entity_id: id })) ctx.toast(ctx.t("{name} kører", { name }));
     });
   }
 
