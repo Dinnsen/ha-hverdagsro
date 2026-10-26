@@ -3,7 +3,7 @@
    when the parent goes on, so it can be resumed. "indstillinger" holds the same editors as tabs. */
 import { esc, slug } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
-import { occasions, activeDecor, dayNumber, wedName } from "./hv-decor.js";
+import { occasions, activeDecor, dayNumber, wedName, WED, BIG } from "./hv-decor.js";
 import * as House from "./hv-house.js";
 
 /* ------------------------------------------------------------------ constants */
@@ -16,22 +16,72 @@ const INST = [
   ["bornehave", "Børnehave", "🎨"],
   ["skole", "Skole", "🎒"],
 ];
-/* [module, name, icon, colour, description] */
+/* The prototype's Funktioner (FEATS): [module, name, icon, colour, description]. "media" is "music" here. */
 const MODS = [
-  ["missions", "Opgaver", "tasks", "#3B6BF5", "Faste opgaver og missioner, børnene krydser af."],
-  ["points", "Point", "pstar", "#E3A21A", "Børnene tjener point, når opgaverne er klaret."],
-  ["shop", "Pointshop", "shop", "#E4568C", "Point byttes til belønninger, som I godkender."],
-  ["lists", "Lister", "lists", "#10B981", "Indkøb og huskelister fra Home Assistant."],
-  ["calendar", "Kalender", "cal", "#6E4AFF", "Familiens kalendere samlet ét sted og i tidslinjen."],
-  ["meals", "Madplan", "food", "#F97316", "Ugens aftensmad fra en kalender."],
-  ["music", "Musik", "music", "#DB2777", "Styr højttalerne, skift rum og spil overalt."],
-  ["appliances", "Apparater", "plug", "#64748B", "Vaskemaskine, opvasker, robotter og meget mere."],
-  ["security", "Sikkerhed", "shield", "#2F6FED", "Alarm, døre, vinduer, låse og kameraer."],
-  ["house", "Huset", "house", "#0EA5A0", "Tegn huset, og se det hele leve på en plan."],
-  ["decor", "Pynt", "sparkle", "#C9A227", "Himlen pynter selv op til jul, fødselsdage og mærkedage."],
-  ["energy", "Elpris", "bolt", "#22C55E", "Elprisen hen over dagen i tidslinjen."],
-  ["waste", "Affald", "trash2", "#2F7D4F", "Skraldespandene i himlen, når der er tømning."],
+  ["missions", "Missioner", "tasks", "#1E9E62", "Børnene får egne opgaver, de selv krydser af, og perfekte dage"],
+  ["points", "Point", "pstar", "#F2B01E", "Point for missioner og rutiner, som kan bruges i shoppen"],
+  ["shop", "Pointshop", "shop", "#FF7A59", "Belønninger, mål og køb, som forældre godkender. Kræver point"],
+  ["board", "Rutinetavle", "star", "#11A39A", "Visuel tavle for børn, der har brug for faste rutiner"],
+  ["rooms", "Værelser", "bulb", "#F2B01E", "Børnenes værelser med lys og scener fra HA"],
+  ["music", "Musik", "music", "#E4568C", "Alle højttalere, grupper og Spotify"],
+  ["appliances", "Apparater", "plug", "#2F80ED", "Hvidevarer, robotter og ventilation"],
+  ["security", "Sikkerhed", "shield", "#D9473B", "Kameraer, døre, vinduer, porte og låse"],
+  ["decor", "Pynt", "gift", "#E4568C", "Himlen pynter op til jul, påske, fødselsdage og andre mærkedage"],
+  ["pet", "Kæledyr", "star", "#8B5CF6", "Et lille dyr, der bliver gladere, når missionerne er klaret"],
+  ["wish", "Ønsker", "gift", "#2F80ED", "Ønskesedler fra Ønskeskyen"],
+  ["skema", "Skoleskema", "school", "#3B6BF5", "Aulas skema på børnenes sider"],
+  ["read", "Oplæsning", "speaker", "#11A39A", "Læs dagen og beskeder op for børnene"],
+  ["meals", "Madplan", "food", "#6E4AFF", "Middagsros madplan, aftensmad og budget"],
+  ["energy", "El og biler", "bolt", "#1E9E62", "Elpris og bilerne fra EV Planner under himlen"],
+  ["alarm", "Alarm", "shieldf", "#D9473B", "Alarmo med kode"],
+  ["waste", "Tømningsdage", "trash2", "#4B5563", "Skraldespande i himlen og påmindelse aftenen før"],
+  ["quick", "Quick actions", "homein", "#E39A1C", "Rutiner og genveje på forsiden"],
 ];
+/* The prototype's MODULES: what each child has. */
+const KMODS = [["room", "Mit værelse"], ["board", "Rutinetavle"], ["missions", "Missioner"], ["points", "Point"], ["shop", "Pointshop"], ["pet", "Mit dyr"], ["read", "Oplæsning"], ["skema", "Skoleskema"], ["wish", "Ønskeseddel"]];
+const KID_DEFAULTS = { room: true, board: false, missions: true, points: true, shop: true, pet: true, read: false, skema: true, wish: true };
+const KINST = [["dagpleje", "Dagpleje", "🧸"], ["vuggestue", "Vuggestue", "🍼"], ["bornehave", "Børnehave", "🎨"], ["skole", "Skole", "🎒"]];
+const PETS = [["hund", "Hund"], ["kat", "Kat"], ["drage", "Lille drage"]];
+/* Alarm modes: [state, name, icon, colour, description, supported_features bit] */
+const AL_MODES = [
+  ["armed_home", "Hjemme", "home", "#3B6BF5", "Skal-sikring, I er hjemme", 1],
+  ["armed_away", "Ude", "walk", "#E5484D", "Hele huset, ingen hjemme", 2],
+  ["armed_night", "Nat", "moon", "#7B5CFF", "Skal-sikring og nedenunder", 4],
+  ["armed_vacation", "Ferie", "sun", "#11A39A", "Som ude, mens I er væk længe", 32],
+  ["armed_custom_bypass", "Egen", "shield", "#E4568C", "Egne sensorer", 16],
+];
+const RIGHTS = [
+  ["Se hele familiens kalender og opgaver", 1, 0],
+  ["Oprette aftaler for andre", 1, 0],
+  ["Oprette og slette lister", 1, 0],
+  ["Give og trække point", 1, 0],
+  ["Godkende køb i shoppen", 1, 0],
+  ["Sætte priser og belønninger", 1, 0],
+  ["Slå moduler til og fra pr. barn", 1, 0],
+  ["Ændre +-menu, beskeder og PIN", 1, 0],
+  ["Krydse egne missioner af", 1, 1],
+  ["Købe i shoppen (venter på godkendelse)", 0, 1],
+];
+const QA_ICONS = ["homein", "homeout", "sunrise", "moon", "coffee", "bulb", "dish", "curtain", "star", "bolt", "shieldf", "food"];
+const QA_COLORS = ["#1E9E62", "#D98A12", "#F2B01E", "#6E4AFF", "#11A39A", "#9A6B4A", "#E3A21C", "#3B6BF5", "#E4568C", "#D9473B"];
+const QA_DOMAINS = ["script", "scene", "button", "input_button", "input_boolean", "switch", "light", "automation", "cover", "lock", "fan"];
+const QA_THEN = [["", "Intet"], ["disarm", "Frakobl alarmen"], ["armed_home", "Tilkobl · hjemme"], ["armed_away", "Tilkobl · ude"], ["armed_night", "Tilkobl · nat"], ["armed_vacation", "Tilkobl · ferie"]];
+/* What Ønskeskyen calls the lists' access. */
+const ACCESS = { Public: "Offentlig", Private: "Privat", Hidden: "Skjult", Shared: "Delt", Friends: "Venner" };
+/* The occasions' descriptions in the prototype's Pynt rows. */
+const DESC = {
+  jul: "24.–26. december",
+  nytaar: "31. december–1. januar",
+  fastelavn: "Søndag 7 uger før påske",
+  paaske: "Skærtorsdag–2. påskedag",
+  halloween: "31. oktober",
+  fodselsdag: "Alle i husstanden · datoerne står på profilerne",
+  grundlov: "5. juni",
+  sankthans: "23. juni",
+  valentin: "14. februar",
+  aarsdag: "{names} som kærester",
+  bryllup: "{names} · med kobber-, sølv- og guldbryllup",
+};
 const STEPS = [
   ["velkommen", "Velkommen", "👋", "#6E4AFF", "#11A39A"],
   ["familie", "Familien", "👨‍👩‍👧‍👦", "#EE5E52", "#E39A1C"],
@@ -40,13 +90,20 @@ const STEPS = [
   ["huset", "Huset", "📐", "#3B6BF5", "#8B5CF6"],
   ["faerdig", "Færdig", "🎉", "#1FA36A", "#11A39A"],
 ];
+/* The prototype's set-tabs, then what Home Assistant needs on top: the family and the home's entities. */
 const TABS = [
-  ["familie", "Familien", "users"],
-  ["moduler", "Moduler", "grid"],
-  ["hjemmet", "Hjemmet", "home"],
-  ["pynt", "Pynt", "sparkle"],
-  ["avanceret", "Avanceret", "sliders"],
+  ["funk", "Funktioner", null],
+  ["born", "Børn", null],
+  ["osky", "Ønskeskyen", "wish"],
+  ["musik", "Musik", "music"],
+  ["pynt", "Pynt", "decor"],
+  ["qa", "Quick actions", "quick"],
+  ["alarm", "Alarm", "alarm"],
+  ["ret", "Rettigheder", null],
+  ["familie", "Familien", null],
+  ["hjemmet", "Hjemmet", null],
 ];
+const TAB_ALIAS = { moduler: "funk", avanceret: "hjemmet", born: "born", kids: "born", quick: "qa" };
 const DOMAIN_ICON = { weather: "sun", calendar: "cal", todo: "lists", alarm_control_panel: "shieldf", media_player: "speaker", camera: "camera", sensor: "bolt", person: "user", device_tracker: "walk", script: "play", scene: "sparkle", button: "power", input_button: "power", automation: "repeat" };
 /* Settings keys that are entities: [key, domains, multi, title] */
 const PICKS = {
@@ -66,7 +123,7 @@ const RE_OUTDOOR = /(have|garden|terrasse|terrace|indkørsel|indkorsel|driveway|
 
 /* ------------------------------------------------------------------ local state */
 let MODE = "set"; // "guide" while rendering the guide
-let TAB = "familie";
+let TAB = "funk";
 let G = null; // the guide's drafts
 let F = null; // the family draft in settings
 let Fdirty = false;
@@ -195,19 +252,23 @@ function familyProblem(ctx, list) {
   return null;
 }
 function cleanFamily(list) {
-  return list.map((m) => ({
-    id: m.id,
-    name: String(m.name).trim().slice(0, 40),
-    role: m.role,
-    person: m.person || null,
-    color: String(m.color || "#6E4AFF").toUpperCase(),
-    birthday: m.birthday || null,
-    institution: m.role === "child" ? m.institution || "none" : "none",
-    skin: m.skin || "standard",
-    mode: m.mode || "auto",
-    calendar: m.calendar || null,
-    device_tracker: m.device_tracker || null,
-  }));
+  return list.map((m) => {
+    const { has_pin, pin, ...rest } = m;
+    return {
+      ...rest,
+      id: m.id,
+      name: String(m.name).trim().slice(0, 40),
+      role: m.role,
+      person: m.person || null,
+      color: String(m.color || "#6E4AFF").toUpperCase(),
+      birthday: m.birthday || null,
+      institution: m.role === "child" ? m.institution || "none" : "none",
+      skin: m.skin || "standard",
+      mode: m.mode || "auto",
+      calendar: m.calendar || null,
+      device_tracker: m.device_tracker || null,
+    };
+  });
 }
 const fam = (ctx) => (MODE === "guide" ? G.family : F);
 
@@ -279,7 +340,7 @@ function openPicker(ctx, { title, domains, multi, value, filter, suggest = [], n
     `<div class="set-pk"><h2>${esc(title)}</h2>
       <label class="set-pk-search">${svg("search")}<input type="search" placeholder="${esc(ctx.t("Søg på navn eller entitet"))}" aria-label="${esc(ctx.t("Søg"))}"></label>
       <div class="set-pk-list" role="listbox" aria-multiselectable="${multi}">${list()}</div>
-      ${multi ? `<div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" data-pk-done>${esc(ctx.t("Færdig"))}<span class="set-pk-n num"></span></button></div>` : ""}</div>`,
+      ${multi ? `<div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button><button class="btn" data-pk-done>${esc(ctx.t("Færdig"))}<span class="set-pk-n num"></span></button></div>` : ""}</div>`,
     { cls: "set-pk-sheet" }
   );
   const L = s.el.querySelector(".set-pk-list");
@@ -353,7 +414,7 @@ function modulesEditor(ctx) {
 }
 
 /* ------------------------------------------------------------------ editor: the home */
-function homeEditor(ctx) {
+function homeEditor(ctx, inTabs = false) {
   const s = S(ctx);
   const sec = (ic, color, title, text, body, i) =>
     `<div class="set-h" style="--hc:${color};animation-delay:${i * 50}ms"><span class="set-h-ic">${svg(ic)}</span><div class="set-h-b"><b>${esc(title)}</b><small>${esc(text)}</small>${body}</div></div>`;
@@ -366,9 +427,8 @@ function homeEditor(ctx) {
     parts.push(["shieldf", "#2F6FED", ctx.t("Alarm"), ctx.t("Alarmen i toppen og under Huset, fx Alarmo."), pickField(ctx, "alarm")]);
     parts.push(["camera", "#0EA5E9", ctx.t("Kameraer"), ctx.t("Kameraerne under Huset."), pickField(ctx, "cameras")]);
   }
-  if (isOn(ctx, "music")) parts.push(["speaker", "#DB2777", ctx.t("Højttalere og TV"), ctx.t("Det, I kan styre under Musik."), pickField(ctx, "media")]);
+  if (isOn(ctx, "music") && !inTabs) parts.push(["speaker", "#DB2777", ctx.t("Højttalere og TV"), ctx.t("Det, I kan styre under Musik."), pickField(ctx, "media")]);
   if (isOn(ctx, "energy")) parts.push(["bolt", "#22C55E", ctx.t("Elpris"), ctx.t("En sensor med timepriser, fx Nord Pool eller Energi Data Service."), pickField(ctx, "price")]);
-  parts.push(["plus", "#6E4AFF", ctx.t("Genveje"), ctx.t("Rutiner, scener og knapper bag +-knappen nederst til højre, fx Godnat eller Vi tager hjemmefra."), pickField(ctx, "quick")]);
   if (isOn(ctx, "waste")) parts.push(["trash2", "#2F7D4F", ctx.t("Affald"), ctx.t("Sensorer med næste tømningsdag, eller en kalender med tømningerne."), wasteEditor(ctx)]);
   return `<div class="set-hs">${parts.map((p, i) => sec(...p, i)).join("")}</div>`;
 }
@@ -384,11 +444,28 @@ function wasteEditor(ctx) {
     .join("")}${list.length < 8 ? `<button class="set-addc" data-act="set-waste-add">${svg("plus")}${esc(ctx.t("Tilføj en spand"))}</button>` : ""}</div>`;
 }
 
-/* ------------------------------------------------------------------ editor: decorations */
+/* ------------------------------------------------------------------ editor: decorations (the prototype's Pynt rows) */
 const dnDate = (n) => {
   const d = new Date(n * 864e5);
   return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12);
 };
+function parentNames(ctx) {
+  const p = ctx.parents().map((m) => m.name);
+  return p.length > 1 ? `${p.slice(0, -1).join(", ")} ${ctx.t("og")} ${p[p.length - 1]}` : p[0] || ctx.t("I");
+}
+/* The next big wedding anniversary: [years, name, day number]. */
+function nextBig(iso) {
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = dayNumber(new Date());
+  for (const [n, nm] of WED) {
+    if (!(BIG[n] || n % 5 === 0)) continue;
+    const dt = n % 1 ? new Date(Date.UTC(y + Math.floor(n), m - 1 + 6, d)) : new Date(Date.UTC(y + n, m - 1, d));
+    const k = Math.round(dt / 864e5);
+    if (k >= t) return [n, nm, k];
+  }
+  return null;
+}
 function decorEditor(ctx) {
   const s = ctx.data.settings;
   const today = new Date();
@@ -396,64 +473,384 @@ function decorEditor(ctx) {
   const live = new Set(activeDecor(today, s, ctx.data.family).map((x) => x.key));
   const days = s.decor_days || {};
   const ann = s.anniversaries || {};
+  const short = (n) => ctx.fmt.date(dnDate(n), { day: "numeric", month: "short" });
   return `<div class="dec-list">${occasions(s, ctx.data.family)
     .map((o, i) => {
-      const [key, name, em, col, dates, def, greet] = o;
+      const [key, name, em, col, dates, def] = o;
       const on = s.decor?.[key] !== false;
       const before = days[`${key}_before`] ?? def[0];
       const after = days[`${key}_after`] ?? def[1];
-      const wins = [today.getFullYear(), today.getFullYear() + 1].flatMap((Y) => dates(Y)).filter(([, b]) => b + after >= t).sort((x, y) => x[0] - y[0]);
-      const nx = wins[0];
-      let sub = ctx.t(greet);
-      if (key === "fodselsdag" && !ctx.data.family.some((m) => m.birthday)) sub = ctx.t("Skriv fødselsdagene under Familien");
-      else if ((key === "aarsdag" && !ann.together) || (key === "bryllup" && !ann.wedding)) sub = ctx.t("Skriv datoen herunder");
-      else if (nx && on) {
-        const who = key === "fodselsdag" ? ctx.member(nx[2])?.name : null;
-        sub = `${who ? who + " · " : ""}${ctx.t("pyntet {from}–{to}", { from: ctx.fmt.date(dnDate(nx[0] - before), { day: "numeric", month: "short" }), to: ctx.fmt.date(dnDate(nx[1] + after), { day: "numeric", month: "short" }) })}`;
-        if (key === "bryllup" && typeof nx[2] === "number" && ctx.lang() === "da") sub += ` · ${String(nx[2]).replace(".5", "½")} år${wedName(nx[2]) ? ", " + wedName(nx[2]) : ""}`;
-      }
+      const nx = key === "fodselsdag" ? null : [today.getFullYear(), today.getFullYear() + 1].flatMap((Y) => dates(Y)).filter(([, b]) => b + after >= t).sort((x, y) => x[0] - y[0])[0];
+      const isLive = live.has(key) && on;
+      const sub = `${ctx.t(DESC[key] || "", { names: parentNames(ctx) })}${nx && on ? ` · ${ctx.t("pyntet {from}–{to}", { from: short(nx[0] - before), to: short(nx[1] + after) })}` : ""}`;
       const st = (k, label, v) =>
-        `<span class="dec-st"><small>${esc(ctx.t(label))}</small><button data-act="set-dec-step" data-id="${key}" data-k="${k}" data-d="-1" aria-label="${esc(ctx.t("Færre dage"))}" ${v <= 0 ? "disabled" : ""}>−</button><b class="num">${v}</b><button data-act="set-dec-step" data-id="${key}" data-k="${k}" data-d="1" aria-label="${esc(ctx.t("Flere dage"))}" ${v >= 60 ? "disabled" : ""}>+</button><small>${esc(v === 1 ? ctx.t("dag") : ctx.t("dage"))}</small></span>`;
+        `<span class="dec-st"><small>${esc(ctx.t(label))}</small><button data-act="set-dec-step" data-id="${key}" data-k="${k}" data-d="-1" aria-label="${esc(ctx.t("{n} færre dage", { n: ctx.t(label) }))}" ${v <= 0 ? "disabled" : ""}>−</button><b class="num">${v}</b><button data-act="set-dec-step" data-id="${key}" data-k="${k}" data-d="1" aria-label="${esc(ctx.t("{n} flere dage", { n: ctx.t(label) }))}">+</button><small>${esc(v === 1 ? ctx.t("dag") : ctx.t("dage"))}</small></span>`;
       const annKey = key === "aarsdag" ? "together" : key === "bryllup" ? "wedding" : null;
-      return `<div class="dec-row${on ? "" : " off"}${live.has(key) && on ? " live" : ""}" style="--dc:${col};animation-delay:${i * 30}ms"><span class="dec-em">${em}</span>
-        <div class="dec-t"><b>${esc(ctx.t(name))}${live.has(key) && on ? `<i class="dec-live">${esc(ctx.t("Pyntet nu"))}</i>` : ""}</b><small>${esc(sub)}</small></div>
-        <div class="dec-ctl">${st("before", "Før", before)}${st("after", "Efter", after)}<button class="iconbtn" data-act="set-dec-prev" data-id="${key}" aria-label="${esc(ctx.t("Vis {name} i himlen", { name: ctx.t(name) }))}">${svg("eye")}</button></div>
-        <button class="toggle" data-act="set-dec-on" data-id="${key}" aria-pressed="${on}" aria-label="${esc(ctx.t(name))}" style="--tc:${col}"></button>
-        ${annKey ? `<div class="dec-bd"><label class="dec-p"><span>${esc(annKey === "wedding" ? ctx.t("Gift") : ctx.t("Kærester siden"))}</span><input type="date" value="${esc(ann[annKey] || "")}" data-in="set-anniv" data-k="${annKey}" aria-label="${esc(ctx.t(name))}"></label></div>` : ""}</div>`;
+      let bd = "";
+      if (annKey) {
+        const iso = ann[annKey] || "";
+        const nb = key === "bryllup" ? nextBig(iso) : null;
+        const since = iso ? ctx.t("Siden {y}", { y: iso.slice(0, 4) }) : ctx.t("Skriv datoen, så pynter himlen på dagen");
+        const big = nb ? ` · ${ctx.t("næste store: {n} år, {name}, {date}", { n: String(nb[0]).replace(".5", "½"), name: wedName(nb[0]) || "", date: `${short(nb[2])} ${dnDate(nb[2]).getFullYear()}` })}` : "";
+        bd = `<div class="dec-bd"><label class="dec-p"><span>${esc(annKey === "wedding" ? ctx.t("Gift") : ctx.t("Kærester siden"))}</span><input type="date" value="${esc(iso)}" data-in="set-anniv" data-k="${annKey}" aria-label="${esc(ctx.t(name))}"></label><small class="t-sub">${esc(since + big)}</small></div>`;
+      }
+      return `<div class="dec-row${on ? "" : " off"}${isLive ? " live" : ""}" style="--dc:${col}"><span class="dec-em">${em}</span><div class="dec-t"><b>${esc(ctx.t(name))}${isLive ? `<i class="dec-live">${esc(ctx.t("Pyntet nu"))}</i>` : ""}</b><small>${esc(sub)}</small></div>
+        <div class="dec-ctl">${st("before", "Før", before)}${st("after", "Efter", after)}<button class="iconbtn" data-act="set-dec-prev" data-id="${key}" aria-label="${esc(ctx.t("Vis {name} i himlen", { name: ctx.t(name).toLowerCase() }))}">${svg("eye")}</button></div>
+        <button class="toggle" data-act="set-dec-on" data-id="${key}" aria-pressed="${on}" aria-label="${esc(ctx.t(name))}" style="--tc:${col}"></button>${bd}</div>`;
     })
     .join("")}</div>`;
 }
 
-/* ------------------------------------------------------------------ editor: advanced */
-function advancedEditor(ctx) {
+/* ------------------------------------------------------------------ the prototype's sections */
+const lockTag = (ctx) => `<span class="lock">${svg("shield")}${esc(ctx.t("Kun forældre"))}</span>`;
+const sub = (text) => `<p class="t-sub" style="margin:-6px 0 14px">${esc(text)}</p>`;
+
+function featsSection(ctx) {
+  return `<section class="card" data-st="funk"><div class="card-head"><h2>${esc(ctx.t("Funktioner"))}</h2>${lockTag(ctx)}</div>
+    ${sub(ctx.t("Slå det fra, I ikke bruger. Det forsvinder for hele familien. Pr. barn styres det under Børn."))}${modulesEditor(ctx)}</section>`;
+}
+
+/* A member's birthday, like the prototype's bdayField. */
+function bdayField(ctx, m) {
+  const iso = m.birthday;
+  let small = ctx.t("Ikke sat endnu");
+  if (iso) {
+    const d = new Date(iso + "T12:00:00");
+    small = `${ctx.fmt.date(d, { day: "numeric", month: "long", year: "numeric" })} · ${ageText(ctx, iso)}`;
+  }
+  return `<div class="bd-f"><span class="bd-ic">🎂</span><div><b>${esc(ctx.t("Fødselsdag"))}</b><small>${esc(small)}</small></div><input type="date" value="${esc(iso || "")}" data-in="set-bdate" data-id="${esc(m.id)}" aria-label="${esc(ctx.t("{name}s fødselsdag", { name: m.name }))}"></div>`;
+}
+/* What Home Assistant needs for a child's modules, in the prototype's bd-f style. */
+function kidLinks(ctx, k) {
+  const rows = [];
+  const pick = (key, em, title, text) =>
+    `<div class="bd-f set-kl"><span class="bd-ic">${em}</span><div><b>${esc(title)}</b><small>${esc(text)}</small></div><button class="btn soft sm" data-act="set-kpick" data-id="${esc(k.id)}" data-k="${key}">${esc(k[key] ? ctx.t("Skift") : ctx.t("Vælg"))}</button></div>`;
+  if (ctx.feature(k, "pet")) {
+    const pet = k.pet || {};
+    rows.push(`<div class="bd-f set-kl set-pet"><span class="bd-ic">🐾</span><div><b>${esc(ctx.t("Mit dyr"))}</b><small>${esc(ctx.t("Bliver gladere, når dagens missioner er klaret"))}</small></div>
+      <span class="set-pet-in"><input value="${esc(pet.name || "")}" maxlength="20" placeholder="${esc(ctx.t("Navn"))}" data-in="set-pet-name" data-id="${esc(k.id)}" aria-label="${esc(ctx.t("Dyrets navn"))}"><select data-in="set-pet-kind" data-id="${esc(k.id)}" aria-label="${esc(ctx.t("Slags"))}">${PETS.map(([v, n]) => `<option value="${v}" ${(pet.kind || "hund") === v ? "selected" : ""}>${esc(ctx.t(n))}</option>`).join("")}</select></span></div>`);
+  }
+  if (ctx.feature(k, "skema")) rows.push(pick("skema", "📚", ctx.t("Skoleskema"), k.skema ? nameOf(ctx, k.skema) : ctx.t("Vælg kalenderen med skemaet, fx fra Aula")));
+  if (ctx.feature(k, "read")) rows.push(pick("speaker", "🔊", ctx.t("Oplæsning"), k.speaker ? nameOf(ctx, k.speaker) : ctx.t("Vælg højttaleren på værelset")));
+  return rows.join("");
+}
+function kidsSection(ctx) {
+  const kids = ctx.children();
+  return `<section class="card" data-st="born"><div class="card-head"><h2>${esc(ctx.t("Børnene"))}</h2>${lockTag(ctx)}</div>
+    ${kids.length ? `<div class="kset">${kids
+      .map((k) => {
+        const mods = KMODS.filter(([m]) => m !== "skema" || k.institution === "skole");
+        return `<div class="kset-k" style="--pc:${esc(k.color)}"><div class="kset-h">${ctx.avatar(k.id)}<b>${esc(k.name)}</b></div>
+          <div class="inst">${KINST.map(([i, n, em]) => `<button data-act="set-kinst" data-kid="${esc(k.id)}" data-id="${i}" aria-pressed="${k.institution === i}"><span>${em}</span>${esc(ctx.t(n))}</button>`).join("")}</div>
+          ${bdayField(ctx, k)}
+          <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${mods.map(([m, n]) => `<span>${esc(ctx.t(n))}</span><button class="toggle" data-act="set-kmod" data-kid="${esc(k.id)}" data-mod="${m}" aria-pressed="${ctx.feature(k, m)}" aria-label="${esc(ctx.t("{what} for {name}", { what: ctx.t(n), name: k.name }))}" style="--tc:${esc(k.color)}"></button>`).join("")}</div>
+          ${kidLinks(ctx, k)}</div>`;
+      })
+      .join("")}</div>` : `<p class="t-sub">${esc(ctx.t("Der er ingen børn i familien endnu."))} <button class="lnk" data-act="set-tab" data-id="familie">${esc(ctx.t("Tilføj under Familien"))}</button></p>`}
+    <p class="t-sub" style="margin-top:10px">${esc(ctx.t("Institutionen bestemmer, hvad barnet ser: skoleskema kun i skole, ellers dagens aflevering og afhentning fra Hent og bring."))}</p></section>`;
+}
+
+/* Ønskeskyen: whose list is it? A guess until a parent chooses. */
+function oskyTarget(ctx, l) {
+  const set = ctx.data.settings.osky_to || {};
+  if (set[l.id]) return set[l.id];
+  const t = `${l.title} ${l.kid || ""}`.toLowerCase();
+  const m = ctx.members().find((x) => t.includes(x.name.toLowerCase()));
+  if (m) return m.id;
+  const owner = ctx.parents().find((x) => (l.owner || "").toLowerCase() === x.name.toLowerCase());
+  return owner ? owner.id : "andre";
+}
+function oskyTargets(ctx) {
+  const parents = ctx.parents();
+  return [
+    ...ctx.children().map((m) => [m.id, m.name]),
+    ...parents.map((m) => [m.id, m.name]),
+    ...(parents.length > 1 ? [["begge", parentNames(ctx)]] : []),
+    ["andre", ctx.t("Venner og familie")],
+    ["skjul", ctx.t("Vis ikke")],
+  ];
+}
+function oskySection(ctx) {
+  const o = ctx.data.osky || { accounts: {}, lists: [] };
+  const lists = o.lists || [];
+  const when = (iso) => (iso ? `${ctx.fmt.rel(new Date(iso))} ${ctx.fmt.time(new Date(iso))}` : "");
+  const targets = oskyTargets(ctx);
+  return `<section class="card" data-st="osky"><div class="card-head"><h2>${esc(ctx.t("Ønskeskyen"))}</h2><span class="meta">${esc(ctx.t("{n} ønskesedler", { n: lists.length }))}</span></div>
+    ${sub(ctx.t("Hver forælder logger ind med sin egen konto. Så ser Hverdagsro de ønskesedler, I selv har, og dem der er delt med jer."))}
+    <div class="os-acc">${ctx.parents()
+      .map((p) => {
+        const A = o.accounts?.[p.id];
+        const small = A ? (A.error ? ctx.t("Kunne ikke hente: {e}", { e: A.error }) : ctx.t("Logget ind som {name} · hentet {when}", { name: A.name || p.name, when: when(A.at) })) : ctx.t("Ikke logget ind");
+        return `<div class="os-a${A ? " on" : ""}">${ctx.avatar(p.id)}<div><b>${esc(p.name)}</b><small>${esc(small)}</small></div>${A ? `<button class="btn soft sm" data-act="set-osky-out" data-id="${esc(p.id)}">${esc(ctx.t("Log ud"))}</button>` : `<button class="btn sm" data-act="set-osky-in" data-id="${esc(p.id)}">${svg("cloudy")}${esc(ctx.t("Log ind"))}</button>`}</div>`;
+      })
+      .join("")}</div>
+    ${lists.length ? `<div class="t-sub" style="margin:16px 0 8px">${esc(ctx.t("Hvis ønsker er det?"))}</div>
+    <div class="os-lists">${lists
+      .map((l) => {
+        const to = oskyTarget(ctx, l);
+        const via = (l.via || []).map((v) => ctx.member(v)?.name).filter(Boolean);
+        const meta = [l.owner, ctx.t("{n} ønsker", { n: l.count ?? (l.wishes || []).length }), l.access ? ctx.t(ACCESS[l.access] || l.access) : "", via.length > 1 ? ctx.t("via {names}", { names: via.join(` ${ctx.t("og")} `) }) : ""].filter(Boolean).join(" · ");
+        return `<div class="os-l${to === "skjul" ? " off" : ""}"><span class="os-ic">${svg("gift")}</span><div><b>${esc(l.title)}</b><small>${esc(meta)}</small></div>
+          <select data-in="set-osky-to" data-id="${esc(l.id)}" aria-label="${esc(ctx.t("Hvis ønsker er {name}", { name: l.title }))}">${targets.map(([k, n]) => `<option value="${esc(k)}" ${to === k ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></div>`;
+      })
+      .join("")}</div>` : ""}
+    <p class="t-sub" style="margin-top:10px">${esc(ctx.t("Ønskesedler til børnene vises på deres side under Ønsker. Jeres egne og fælles står under Lister. Venner og familie samles under Lister som gaveidéer."))}</p></section>`;
+}
+function oskyLogin(ctx, id) {
+  const p = ctx.member(id);
+  const s = ctx.sheet(`<div class="eyebrow">${esc(ctx.t("Ønskeskyen"))}</div><h2>${esc(ctx.t("Log ind som {name}", { name: p?.name || "" }))}</h2>
+    <div class="field"><label for="os-u">${esc(ctx.t("E-mail"))}</label><input id="os-u" type="email" autocomplete="username" placeholder="${esc(ctx.t("navn@eksempel.dk"))}"></div>
+    <div class="field"><label for="os-p">${esc(ctx.t("Adgangskode"))}</label><input id="os-p" type="password" autocomplete="current-password"></div>
+    <p class="t-sub" style="margin-top:10px">${esc(ctx.t("Hverdagsro logger ind ligesom Ønskeskyen på nettet og gemmer kun nøglen i Home Assistant, ikke adgangskoden. Facebook- og Apple-login kræver, at du først sætter en adgangskode i Ønskeskyen."))}</p>
+    <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button><button class="btn" id="os-go">${esc(ctx.t("Log ind"))}</button></div>`);
+  const u = s.el.querySelector("#os-u");
+  const pw = s.el.querySelector("#os-p");
+  setTimeout(() => u.focus(), 60);
+  const go = async () => {
+    const email = u.value.trim();
+    if (!email) return u.focus();
+    if (!pw.value) return pw.focus();
+    const btn = s.el.querySelector("#os-go");
+    btn.disabled = true;
+    const req = ctx.ws("osky/login", { member: id, email, password: pw.value });
+    pw.value = ""; // The password lives only in this one request.
+    try {
+      await req;
+      s.close();
+      ctx.toast(ctx.t("{name} er logget ind i Ønskeskyen", { name: p?.name || "" }));
+    } catch (err) {
+      btn.disabled = false;
+      pw.focus();
+      ctx.toast(String(err?.message || err));
+    }
+  };
+  s.el.querySelector("#os-go").addEventListener("click", go);
+  pw.addEventListener("keydown", (e) => e.key === "Enter" && go());
+}
+
+/* The prototype's speaker icons by kind. */
+function spkKind(ctx, id) {
+  const st = ctx.hass.states[id];
+  const n = `${id} ${st?.attributes?.friendly_name || ""}`.toLowerCase();
+  if (st?.attributes?.device_class === "tv" || /\btv\b|apple_tv|appletv|chromecast|webos|bravia/.test(n)) return "tv";
+  if (/roam|move/.test(n)) return "roam";
+  if (/nest|home mini|google/.test(n)) return "nest";
+  if (/airport|airplay/.test(n)) return "airport";
+  if (/beam|arc|ray|playbar|soundbar|stue/.test(n)) return "bar";
+  return "one";
+}
+function spkIcon(kind) {
+  const m = { bar: `<rect x="3" y="9" width="18" height="6" rx="2"/><path d="M6 12h.01M9 12h.01M12 12h.01M15 12h.01M18 12h.01"/>`, one: `<rect x="7" y="3" width="10" height="18" rx="3"/><circle class="woof" cx="12" cy="14" r="3"/><circle cx="12" cy="7" r=".8"/>`, roam: `<path d="M9 3h6l2 18H7z"/><circle class="woof" cx="12" cy="14" r="2.4"/>`, nest: `<ellipse cx="12" cy="13" rx="8" ry="7"/><circle class="woof" cx="12" cy="13" r="3"/>`, airport: `<rect x="5" y="5" width="14" height="14" rx="3"/><circle class="woof" cx="12" cy="12" r="2"/>`, tv: `<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 20h6"/>` }[kind];
+  return `<svg viewBox="0 0 24 24" class="ic spk" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${m}</svg>`;
+}
+const allSpeakers = (ctx) => ctx.entities("media_player");
+const shownSpeakers = (ctx) => {
+  const all = allSpeakers(ctx);
+  const chosen = (ctx.data.settings.media || []).filter((id) => all.includes(id) || ctx.hass.states[id]);
+  return chosen.length ? chosen : all;
+};
+function musicSection(ctx) {
+  const all = [...new Set([...allSpeakers(ctx), ...(ctx.data.settings.media || [])])];
+  const shown = new Set(shownSpeakers(ctx));
+  return `<section class="card" data-st="musik"><div class="card-head"><h2>${esc(ctx.t("Højttalere på Musik"))}</h2><span class="meta">${esc(ctx.t("{n} af {m}", { n: all.filter((id) => shown.has(id)).length, m: all.length }))}</span></div>
+    ${all.length ? `<div class="mu-pick">${all.map((id) => `<button data-act="set-spk" data-id="${esc(id)}" aria-pressed="${shown.has(id)}">${spkIcon(spkKind(ctx, id))}<span><b>${esc(nameOf(ctx, id))}</b><small>${esc(id)}</small></span></button>`).join("")}</div>` : `<p class="t-sub">${esc(ctx.t("Home Assistant har ingen højttalere endnu."))}</p>`}</section>`;
+}
+
+/* Quick actions: the prototype's QA list and qaForm. */
+const condText = (ctx, c = {}) =>
+  c.kind === "time" || c.kind === "entity"
+    ? `${c.kind === "entity" && c.entity ? ctx.t("Når {e} er tændt", { e: c.entity.replace(/^[a-z_]+\./, "") }) + " · " : ""}${ctx.t("kl. {from}–{to}", { from: String(c.from ?? 0).padStart(2, "0"), to: String(c.to ?? 0).padStart(2, "0") })}`
+    : ctx.t("Altid");
+function qaIconFor(id, name = "") {
+  const n = `${id} ${name}`.toLowerCase();
+  if (/kom|hjem|arrive/.test(n)) return "homein";
+  if (/gå|gaa|går|leav|ud\b|away/.test(n)) return "homeout";
+  if (/morgen|morning/.test(n)) return "sunrise";
+  if (/nat|night|godnat|sleep/.test(n)) return "moon";
+  if (/kaffe|coffee/.test(n)) return "coffee";
+  if (/opvask|dish/.test(n)) return "dish";
+  if (/gardin|curtain|cover|blind/.test(n)) return "curtain";
+  if (/mad|food|dinner/.test(n)) return "food";
+  if (/alarm/.test(n)) return "shieldf";
+  if (/^light\.|lys/.test(n)) return "bulb";
+  if (/^switch\.|strøm|power/.test(n)) return "bolt";
+  return "star";
+}
+function qaSuggestions(ctx) {
+  const used = new Set((ctx.data.quick || []).map((q) => q.entity));
+  return [...ctx.entities("script"), ...ctx.entities("scene"), ...ctx.entities("input_button")].filter((id) => !used.has(id) && !ctx.hass.entities?.[id]?.hidden).slice(0, 10);
+}
+function qaSection(ctx) {
+  const list = ctx.data.quick || [];
+  const ppl = ctx.members();
+  const sug = qaSuggestions(ctx);
+  return `<section class="card" data-st="qa"><div class="card-head"><h2>${esc(ctx.t("Quick actions"))}</h2><button class="btn sm" data-act="set-qa-new">${svg("plus")}${esc(ctx.t("Ny"))}</button></div>
+    ${sub(ctx.t("Hver knap kører en entitet i Home Assistant. Vælg betingelser for, hvornår den vises, og hvem der ser den."))}
+    <div class="qal">${list
+      .map((q) => `<div class="qar" style="--qc:${esc(q.color)}"><span class="qa-ic sm">${svg(q.icon)}</span><div class="qar-t"><b>${esc(q.label)}</b><small>${esc(q.entity)}</small><span class="cond${q.cond?.kind === "always" || !q.cond?.kind ? "" : " timed"}">${svg(q.cond?.kind === "always" || !q.cond?.kind ? "check" : "clock")}${esc(condText(ctx, q.cond))}</span></div>
+        <div class="qar-who" aria-label="${esc(ctx.t("Vises for"))}">${ppl.map((pp) => `<button class="whob${(q.who || []).includes(pp.id) ? " on" : ""}" data-act="set-qa-who" data-id="${esc(q.id)}" data-p="${esc(pp.id)}" aria-pressed="${(q.who || []).includes(pp.id)}" title="${esc(pp.name)}" style="--pc:${esc(pp.color)}">${ctx.avatar(pp.id, "sm")}</button>`).join("")}</div>
+        <button class="iconbtn" data-act="set-qa-edit" data-id="${esc(q.id)}" aria-label="${esc(ctx.t("Ret {name}", { name: q.label }))}">${svg("edit")}</button></div>`)
+      .join("")}</div>
+    ${!list.length ? `<p class="t-sub">${esc(ctx.t("Ingen knapper endnu. Tryk Ny, eller vælg en af jeres rutiner herunder."))}</p>` : ""}
+    ${sug.length ? `<div class="sugg"><span class="eyebrow">${esc(ctx.t("Fra jeres Home Assistant"))}</span><div class="sugg-row">${sug
+      .map((id, i) => `<button class="chip sg" data-act="set-qa-add" data-id="${esc(id)}" style="--qc:${QA_COLORS[i % QA_COLORS.length]}">${svg(qaIconFor(id, nameOf(ctx, id)))}${esc(nameOf(ctx, id))}<span>+</span></button>`)
+      .join("")}</div></div>` : ""}</section>`;
+}
+function qaId(label, list) {
+  const base = (slug(label).replace(/_/g, "-").slice(0, 40) || "knap").replace(/^[^a-z0-9]+/, "") || "knap";
+  let id = /^[a-z0-9]/.test(base) ? base : `q${base}`;
+  let n = 2;
+  while (list.some((q) => q.id === id)) id = `${base.slice(0, 44)}-${n++}`;
+  return id;
+}
+async function saveQuick(ctx, list, msg) {
+  if (await ctx.save("quick", list)) {
+    if (msg) ctx.toast(msg);
+    ctx.render(true);
+  }
+}
+function qaForm(ctx, q0) {
+  const list = ctx.data.quick || [];
+  const isNew = !q0;
+  const q = q0
+    ? clone(q0)
+    : { id: "", label: "", icon: "star", color: QA_COLORS[list.length % QA_COLORS.length], entity: qaSuggestions(ctx)[0] || "", desc: "", cond: { kind: "always", from: 20, to: 4, entity: null }, who: ctx.parents().map((m) => m.id), option: null, countdown: 0, then: "" };
+  q.cond = { kind: "always", from: 6, to: 10, entity: null, ...(q.cond || {}) };
+  if (q.cond.kind === "always" && q0?.cond?.from == null) Object.assign(q.cond, { from: 6, to: 10 });
+  const hrs = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, "0")}.00</option>`).join("");
+  const conds = ctx.entities("binary_sensor").concat(ctx.entities("input_boolean"), ctx.entities("schedule"));
+  const entOpts = () => {
+    const groups = QA_DOMAINS.map((d) => [d, ctx.entities(d)]).filter(([, ids]) => ids.length);
+    const known = groups.some(([, ids]) => ids.includes(q.entity));
+    const opt = (id) => `<option value="${esc(id)}"${id === q.entity ? " selected" : ""} title="${esc(nameOf(ctx, id))}">${esc(id)}</option>`;
+    return (q.entity && !known ? opt(q.entity) : "") + groups.map(([d, ids]) => `<optgroup label="${esc(d)}">${ids.map(opt).join("")}</optgroup>`).join("");
+  };
+  const s = ctx.sheet(`<h2>${esc(isNew ? ctx.t("Ny quick action") : ctx.t("Rediger {name}", { name: q.label }))}</h2><form id="qf2" class="set-qf">
+    <div class="row"><div class="field"><label for="q-l">${esc(ctx.t("Navn"))}</label><input id="q-l" required maxlength="30" value="${esc(q.label)}" placeholder="${esc(ctx.t("Fx Film"))}"></div>
+      <div class="field"><label for="q-e">${esc(ctx.t("Entitet"))}</label><select id="q-e">${entOpts()}</select></div></div>
+    <div class="field"><span class="lbl">${esc(ctx.t("Ikon"))}</span><div class="iconpick" id="q-i">${QA_ICONS.map((ic) => `<button type="button" data-i="${ic}" aria-pressed="${ic === q.icon}" aria-label="${ic}">${svg(ic)}</button>`).join("")}</div></div>
+    <div class="field"><label for="q-d">${esc(ctx.t("Bekræftelse"))}</label><input id="q-d" maxlength="200" value="${esc(q.desc)}" placeholder="${esc(ctx.t("Det, der står, før den køres"))}"></div>
+    <div class="field"><span class="lbl">${esc(ctx.t("Vis"))}</span><div class="seg" id="q-c"><button type="button" data-c="always" aria-pressed="${q.cond.kind === "always"}">${esc(ctx.t("Altid"))}</button><button type="button" data-c="time" aria-pressed="${q.cond.kind === "time"}">${esc(ctx.t("Tidsrum"))}</button><button type="button" data-c="entity" aria-pressed="${q.cond.kind === "entity"}">${esc(ctx.t("Når en entitet er tændt"))}</button></div></div>
+    <div class="row" id="q-win"${q.cond.kind === "always" ? " hidden" : ""}><div class="field" id="q-ent-f"${q.cond.kind === "entity" ? "" : " hidden"}><label for="q-ent">${esc(ctx.t("Entitet"))}</label><input id="q-ent" list="q-ents" value="${esc(q.cond.entity || "binary_sensor.")}"><datalist id="q-ents">${conds.map((id) => `<option value="${esc(id)}">${esc(nameOf(ctx, id))}</option>`).join("")}</datalist></div><div class="field"><label for="q-f">${esc(ctx.t("Fra"))}</label><select id="q-f">${hrs}</select></div><div class="field"><label for="q-t">${esc(ctx.t("Til"))}</label><select id="q-t">${hrs}</select></div></div>
+    <div class="field"><span class="lbl">${esc(ctx.t("Vises for"))}</span><div class="filters" id="q-w">${ctx.members().map((pp) => `<button type="button" class="fchip" data-w="${esc(pp.id)}" aria-pressed="${(q.who || []).includes(pp.id)}" style="--fc:${esc(pp.color)}">${ctx.avatar(pp.id)}${esc(pp.name)}</button>`).join("")}</div></div>
+    <details class="set-qmore"${q.option || q.countdown || q.then ? " open" : ""}><summary>${esc(ctx.t("Mere: spørgsmål, nedtælling og alarm"))}</summary>
+      <div class="row"><div class="field"><label for="q-ol">${esc(ctx.t("Spørg først"))}</label><input id="q-ol" maxlength="40" value="${esc(q.option?.label || "")}" placeholder="${esc(ctx.t("Fx Start støvsugning"))}"></div>
+        <div class="field"><label for="q-ov">${esc(ctx.t("Sendes til rutinen som"))}</label><input id="q-ov" maxlength="40" value="${esc(q.option?.variable || "")}" placeholder="run_vacuum"></div></div>
+      <div class="row"><div class="field"><label for="q-cd">${esc(ctx.t("Nedtælling"))}</label><select id="q-cd">${[0, 30, 60, 120, 300, 600].map((v) => `<option value="${v}" ${Number(q.countdown || 0) === v ? "selected" : ""}>${esc(v ? (v < 60 ? ctx.t("{n} sek.", { n: v }) : ctx.t("{n} min.", { n: v / 60 })) : ctx.t("Ingen"))}</option>`).join("")}</select></div>
+        <div class="field"><label for="q-th">${esc(ctx.t("Bagefter"))}</label><select id="q-th">${QA_THEN.map(([v, n]) => `<option value="${v}" ${(q.then || "") === v ? "selected" : ""}>${esc(ctx.t(n))}</option>`).join("")}</select></div></div></details>
+    <div class="sheet-actions">${isNew ? "" : `<button type="button" class="btn danger" id="q-del" style="margin-right:auto">${svg("trash")}${esc(ctx.t("Fjern"))}</button>`}<button type="button" class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button><button class="btn" type="submit">${esc(ctx.t("Gem"))}</button></div></form>`);
+  const el = s.el;
+  el.querySelector("#q-f").value = q.cond.from ?? 6;
+  el.querySelector("#q-t").value = q.cond.to ?? 10;
+  let icon = q.icon || "star", kind = q.cond.kind;
+  const color = q.color;
+  el.querySelector("#q-e").addEventListener("change", (e) => {
+    const v = e.target.value;
+    if (!v) return;
+    q.entity = v;
+    const l = el.querySelector("#q-l");
+    if (!l.value.trim()) l.value = nameOf(ctx, v).slice(0, 30);
+    if (!q0) {
+      icon = qaIconFor(v, nameOf(ctx, v));
+      el.querySelectorAll("#q-i button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.i === icon)));
+    }
+  });
+  el.querySelector("#q-i").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-i]");
+    if (!b) return;
+    icon = b.dataset.i;
+    el.querySelectorAll("#q-i button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  });
+  el.querySelector("#q-c").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-c]");
+    if (!b) return;
+    kind = b.dataset.c;
+    el.querySelectorAll("#q-c button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    el.querySelector("#q-win").hidden = kind === "always";
+    el.querySelector("#q-ent-f").hidden = kind !== "entity";
+  });
+  el.querySelector("#q-w").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-w]");
+    if (b) b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+  });
+  el.querySelector("#q-del")?.addEventListener("click", () => {
+    s.close();
+    saveQuick(ctx, list.filter((x) => x.id !== q.id), ctx.t("{name} er fjernet", { name: q.label }));
+  });
+  el.querySelector("#qf2").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const label = el.querySelector("#q-l").value.trim().slice(0, 30);
+    if (!label) return el.querySelector("#q-l").focus();
+    if (!q.entity || !ctx.hass.states[q.entity]) return ctx.toast(ctx.t("Vælg den entitet, knappen skal køre"));
+    const cEnt = el.querySelector("#q-ent").value.trim();
+    if (kind === "entity" && !/^[a-z_]+\.[a-z0-9_]+$/.test(cEnt)) return el.querySelector("#q-ent").focus();
+    const ol = el.querySelector("#q-ol").value.trim();
+    const ov = el.querySelector("#q-ov").value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 40);
+    const nq = {
+      ...q,
+      id: q.id || qaId(label, list),
+      label,
+      icon,
+      color,
+      desc: el.querySelector("#q-d").value.trim().slice(0, 200) || ctx.t("Kører {e}", { e: q.entity }),
+      cond: kind === "always" ? { kind } : { kind, from: +el.querySelector("#q-f").value, to: +el.querySelector("#q-t").value, entity: kind === "entity" ? cEnt : null },
+      who: [...el.querySelectorAll("#q-w [aria-pressed=true]")].map((b) => b.dataset.w),
+      option: ol && ov ? { label: ol, variable: ov } : null,
+      countdown: +el.querySelector("#q-cd").value,
+      then: el.querySelector("#q-th").value,
+    };
+    const next = [...list];
+    const k = next.findIndex((x) => x.id === q.id && q.id);
+    if (k >= 0) next[k] = nq;
+    else next.push(nq);
+    s.close();
+    saveQuick(ctx, next, ctx.t("{name} er gemt", { name: nq.label }));
+  });
+}
+
+/* Alarm: the modes the alarm has, which of them Hverdagsro shows, and who may arm and disarm. */
+function alarmSection(ctx) {
+  const s = ctx.data.settings;
+  const id = s.alarm;
+  const st = id && ctx.hass.states[id];
+  const sup = Number(st?.attributes?.supported_features ?? 63);
+  const r = { code_arm: false, kids_arm: true, kids_disarm: false, modes: [], ...(s.alarm_rights || {}) };
+  const supported = AL_MODES.filter((m) => sup & m[5]).map((m) => m[0]);
+  const shown = r.modes.length ? r.modes.filter((m) => supported.includes(m)) : supported;
+  const names = AL_MODES.filter((m) => supported.includes(m[0])).map((m) => ctx.t(m[1]));
+  const an = st?.attributes?.friendly_name || ctx.t("alarmen");
+  const have = names.length > 1 ? `${names.slice(0, -1).join(", ")} ${ctx.t("og")} ${names[names.length - 1]}` : names[0] || "";
+  if (!id) return `<section class="card" data-st="alarm"><div class="card-head"><h2>${esc(ctx.t("Alarm"))}</h2></div><p class="t-sub">${esc(ctx.t("Vælg jeres alarm under Hjemmet, fx Alarmo."))} <button class="lnk" data-act="set-tab" data-id="hjemmet">${esc(ctx.t("Hjemmet"))}</button></p></section>`;
+  return `<section class="card" data-st="alarm"><div class="card-head"><h2>${esc(ctx.t("Alarm"))}</h2><span class="meta">${esc(id)}</span></div>
+    <div class="t-sub" style="margin:-4px 0 8px">${esc(ctx.t("Tilkoblinger, der vises"))}</div>
+    <div class="al-pick">${AL_MODES.map(([m, n, ic, c, d, bit]) => {
+      const ok = sup & bit;
+      return `<button class="al-pk" data-act="set-almode" data-id="${m}" aria-pressed="${!!ok && shown.includes(m)}" ${ok ? "" : "disabled"} style="--mc:${c}">${svg(ic)}<span><b>${esc(ctx.t(n))}</b><small>${esc(ok ? ctx.t(d) : ctx.t("Slået fra i {alarm}", { alarm: an }))}</small></span></button>`;
+    }).join("")}</div>
+    <p class="t-sub" style="margin:8px 0 14px">${esc(ctx.t("Hverdagsro læser fra {alarm}, hvilke tilkoblinger der findes. I har {list}.", { alarm: an, list: have }))}</p>
+    <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${[["code_arm", "Kræv kode ved tilkobling"], ["kids_arm", "Børn må tilkoble"], ["kids_disarm", "Børn må frakoble"]].map(([k, n]) => `<span>${esc(ctx.t(n))}</span><button class="toggle" data-act="set-alset" data-id="${k}" aria-pressed="${!!r[k]}" aria-label="${esc(ctx.t(n))}"></button>`).join("")}<span>${esc(ctx.t("Kræv kode ved frakobling"))}</span><span class="lock" style="justify-self:center">${svg("lock")}${esc(ctx.t("Altid"))}</span></div>
+    <p class="t-sub" style="margin-top:12px">${esc(ctx.t("Koderne er brugernes egne koder i {alarm}. Hverdagsro sender koden videre, og {alarm} afgør, om den er rigtig.", { alarm: an }))}</p></section>`;
+}
+
+function rightsSection(ctx) {
+  return `<section class="card" data-st="ret"><div class="card-head"><h2>${esc(ctx.t("Rettigheder"))}</h2>${lockTag(ctx)}</div>
+    <div class="rights"><span class="h">${esc(ctx.t("Kan"))}</span><span class="h">${esc(ctx.t("Forælder"))}</span><span class="h">${esc(ctx.t("Barn"))}</span>${RIGHTS.map(([t, a, b]) => `<span>${esc(ctx.t(t))}</span><span class="${a ? "y" : "n"}">${svg(a ? "check" : "x")}</span><span class="${b ? "y" : "n"}">${svg(b ? "check" : "x")}</span>`).join("")}</div>
+    <p class="t-sub" style="margin-top:12px">${esc(ctx.t("Forældre er dem, der er sat som forælder under Familien. Administratorer i Home Assistant, der ikke er med i familien, kan også ændre alt. En bruger uden familiemedlem, fx en fælles skærm i køkkenet, kan vælge et af børnene."))}</p></section>`;
+}
+
+/* The home's basics and about Hverdagsro (what the prototype didn't need). */
+function basicsSection(ctx) {
   const s = ctx.data.settings;
   const v = ctx.config?.version || "";
-  const rights = [
-    ["Ændre indstillinger, opgaver og belønninger", 1, 0],
-    ["Give og trække point", 1, 0],
-    ["Godkende køb i pointshoppen", 1, 0],
-    ["Tegne huset", 1, 0],
-    ["Krydse egne opgaver af", 1, 1],
-    ["Ønske sig noget fra pointshoppen", 0, 1],
-    ["Vælge eget tema", 1, 1],
-  ];
-  return `<div class="set-adv">
-    <section class="card"><div class="card-head"><h2>${esc(ctx.t("Hjemmet"))}</h2></div>
-      <div class="field"><label for="set-hn">${esc(ctx.t("Hjemmets navn"))}</label><input id="set-hn" value="${esc(s.home_name || "")}" maxlength="40" data-in="set-s" data-k="home_name" placeholder="${esc(ctx.t("Fx Hjemme hos os"))}"></div>
-      <div class="field"><span class="lbl">${esc(ctx.t("Sprog"))}</span><div class="seg" role="group">${[["auto", "Som Home Assistant"], ["da", "Dansk"], ["en", "English"]].map(([k, n]) => `<button data-act="set-lang" data-v="${k}" aria-pressed="${(s.language || "auto") === k}">${esc(k === "en" ? n : ctx.t(n))}</button>`).join("")}</div></div>
-      <div class="field"><label for="set-mr">${esc(ctx.t("Opgaverne starter forfra kl."))}</label><input id="set-mr" type="time" value="${esc((s.mission_reset || "00:00").replace(".", ":"))}" data-in="set-s" data-k="mission_reset"></div>
-    </section>
-    <section class="card"><div class="card-head"><h2>${esc(ctx.t("Hvem må hvad"))}</h2><span class="lock">${svg("shield")}${esc(ctx.t("Kun forældre"))}</span></div>
-      <div class="rights"><span class="h">${esc(ctx.t("Kan"))}</span><span class="h">${esc(ctx.t("Forælder"))}</span><span class="h">${esc(ctx.t("Barn"))}</span>${rights.map(([t, a, b]) => `<span>${esc(ctx.t(t))}</span><span class="${a ? "y" : "n"}">${svg(a ? "check" : "x")}</span><span class="${b ? "y" : "n"}">${svg(b ? "check" : "x")}</span>`).join("")}</div>
-      <p class="set-p">${esc(ctx.t("Forældre er dem, der er sat som forælder under Familien. Administratorer i Home Assistant, der ikke er med i familien, kan også ændre alt. En bruger uden familiemedlem, fx en fælles skærm i køkkenet, kan vælge et af børnene."))}</p>
-      <p class="set-p">${esc(ctx.t("Panelets navn, ikon og om det kun er for administratorer ændres under Indstillinger → Enheder og tjenester → Hverdagsro."))}</p>
-    </section>
+  return `<section class="card set-basics"><div class="card-head"><h2>${esc(ctx.t("Hjemmets navn og sprog"))}</h2></div>
+      <div class="row"><div class="field"><label for="set-hn">${esc(ctx.t("Hjemmets navn"))}</label><input id="set-hn" value="${esc(s.home_name || "")}" maxlength="40" data-in="set-s" data-k="home_name" placeholder="${esc(ctx.t("Fx Hjemme hos os"))}"></div>
+      <div class="field"><label for="set-mr">${esc(ctx.t("Opgaverne starter forfra kl."))}</label><input id="set-mr" type="time" value="${esc((s.mission_reset || "00:00").replace(".", ":"))}" data-in="set-s" data-k="mission_reset"></div></div>
+      <div class="field"><span class="lbl">${esc(ctx.t("Sprog"))}</span><div class="seg" role="group">${[["auto", "Som Home Assistant"], ["da", "Dansk"], ["en", "English"]].map(([k, n]) => `<button data-act="set-lang" data-v="${k}" aria-pressed="${(s.language || "auto") === k}">${esc(k === "en" ? n : ctx.t(n))}</button>`).join("")}</div></div></section>
     <section class="card set-about"><div class="card-head"><h2>${esc(ctx.t("Om Hverdagsro"))}</h2>${v ? `<span class="meta">${esc(ctx.t("Version {v}", { v }))}</span>` : ""}</div>
-      <div class="set-about-row">
-        <button class="btn soft" data-act="set-guide">${svg("repeat")}${esc(ctx.t("Kør guiden igen"))}</button>
+      <p class="t-sub" style="margin:-6px 0 12px">${esc(ctx.t("Panelets navn, ikon og om det kun er for administratorer ændres under Indstillinger → Enheder og tjenester → Hverdagsro."))}</p>
+      <div class="set-about-row"><button class="btn soft" data-act="set-guide">${svg("repeat")}${esc(ctx.t("Kør guiden igen"))}</button>
         <a class="btn soft" href="https://github.com/Dinnsen/ha-hverdagsro" target="_blank" rel="noopener">${svg("link")}${esc(ctx.t("Vejledning"))}</a>
-        <a class="btn soft" href="https://github.com/Dinnsen/ha-hverdagsro/issues" target="_blank" rel="noopener">${svg("bell")}${esc(ctx.t("Meld en fejl"))}</a>
-      </div></section></div>`;
+        <a class="btn soft" href="https://github.com/Dinnsen/ha-hverdagsro/issues" target="_blank" rel="noopener">${svg("bell")}${esc(ctx.t("Meld en fejl"))}</a></div></section>`;
 }
 
 /* ------------------------------------------------------------------ the house step */
@@ -682,35 +1079,55 @@ async function guideNext(ctx) {
   else ctx.render(true);
 }
 
-/* ------------------------------------------------------------------ settings view */
+/* ------------------------------------------------------------------ settings view: the prototype's pSettings */
+function settingsTabs(ctx) {
+  return TABS.filter(([, , mod]) => !mod || ctx.on(mod));
+}
 function renderSettings(ctx) {
   MODE = "set";
   G = null;
-  const arg = ctx.arg && TABS.some((t) => t[0] === ctx.arg) ? ctx.arg : TAB;
-  TAB = arg;
+  const tabs = settingsTabs(ctx);
+  const want = TAB_ALIAS[ctx.arg] || ctx.arg;
+  if (want && tabs.some((t) => t[0] === want)) TAB = want;
+  if (!tabs.some((t) => t[0] === TAB)) TAB = "funk";
   if (!F || !Fdirty) F = clone(ctx.data.family);
-  const tabs = `<div class="set-tabs set-tabs2" role="tablist">${TABS.map(([k, n, ic]) => `<button role="tab" data-act="set-tab" data-id="${k}" aria-pressed="${TAB === k}" aria-selected="${TAB === k}">${svg(ic)}${esc(ctx.t(n))}${k === "familie" && Fdirty ? `<i class="set-dirty"></i>` : ""}</button>`).join("")}</div>`;
   let body = "";
-  if (TAB === "familie") {
+  if (TAB === "funk") body = featsSection(ctx);
+  else if (TAB === "born") body = kidsSection(ctx);
+  else if (TAB === "osky") body = oskySection(ctx);
+  else if (TAB === "musik") body = musicSection(ctx);
+  else if (TAB === "pynt")
+    body = `<section class="card" data-st="pynt" id="decor"><div class="card-head"><h2>${esc(ctx.t("Pynt i himlen"))}</h2><span class="meta">${esc(ctx.t("Sættes automatisk"))}</span></div>
+      <p class="t-sub" style="margin:-6px 0 12px">${esc(ctx.t("Himlen pynter selv op til mærkedagene. Vælg hvilke, og hvor mange dage før og efter selve dagen der er pyntet. Tryk på øjet for at se pynten nu."))}</p>${decorEditor(ctx)}</section>`;
+  else if (TAB === "qa") body = qaSection(ctx);
+  else if (TAB === "alarm") body = alarmSection(ctx);
+  else if (TAB === "ret") body = rightsSection(ctx);
+  else if (TAB === "familie") {
     const problem = familyProblem(ctx, F);
-    body = `<section class="card"><div class="card-head"><h2>${esc(ctx.t("Familien"))}</h2><span class="lock">${svg("shield")}${esc(ctx.t("Kun forældre"))}</span></div>${familyEditor(ctx)}</section>
+    body = `<section class="card" data-st="familie"><div class="card-head"><h2>${esc(ctx.t("Familien"))}</h2>${lockTag(ctx)}</div>
+      ${sub(ctx.t("Hvem bor her, og hvem er forælder eller barn. Kobl hver til en person i Home Assistant, så de kan logge ind og se deres egen side."))}${familyEditor(ctx)}</section>
       ${Fdirty ? `<div class="set-bar"><span>${problem ? `${svg("bell")}${esc(problem)}` : esc(ctx.t("Du har ændringer, der ikke er gemt"))}</span><button class="btn soft" data-act="set-fam-undo">${esc(ctx.t("Fortryd"))}</button><button class="btn" data-act="set-fam-save" ${problem ? "disabled" : ""}>${svg("check")}${esc(ctx.t("Gem"))}</button></div>` : ""}`;
-  } else if (TAB === "moduler") body = `<section class="card"><div class="card-head"><h2>${esc(ctx.t("Moduler"))}</h2><span class="meta">${esc(ctx.t("Gælder for hele familien"))}</span></div>${modulesEditor(ctx)}</section>`;
-  else if (TAB === "hjemmet") {
-    const s = ctx.data.settings;
+  } else {
+    const st = ctx.data.settings;
     const g = suggestions(ctx);
-    const missing = ["weather", "alarm", "price", "meals_calendar"].filter((k) => !s[k] && g[k]).length + ["calendars", "todo", "media", "cameras"].filter((k) => !s[k]?.length && g[k].length).length + (!s.waste?.length && g.waste.length ? 1 : 0);
-    body = `<section class="card"><div class="card-head"><h2>${esc(ctx.t("Hjemmet"))}</h2>${missing ? `<button class="btn sm" data-act="set-suggest">${svg("sparkle")}${esc(ctx.t("Udfyld automatisk"))}</button>` : `<span class="meta">${esc(ctx.t("Gemmes med det samme"))}</span>`}</div>${homeEditor(ctx)}</section>`;
-  } else if (TAB === "pynt")
-    body = `<section class="card"><div class="card-head"><h2>${esc(ctx.t("Pynt i himlen"))}</h2><span class="meta">${esc(ctx.t("Sættes automatisk"))}</span></div>
-      <p class="set-p" style="margin:-6px 0 12px">${esc(ctx.t("Himlen pynter selv op til mærkedagene. Vælg hvilke, og hvor mange dage før og efter der er pyntet. Tryk på øjet for at se pynten nu."))}</p>
-      ${ctx.on("decor") ? decorEditor(ctx) : `<div class="set-note">${svg("sparkle")}<span>${esc(ctx.t("Pynt er slået fra."))}</span><button class="btn sm" data-act="set-mod" data-id="decor">${esc(ctx.t("Slå til"))}</button></div>`}</section>`;
-  else body = advancedEditor(ctx);
-  return `<div class="set-page">${tabs}<div class="set-body${animClass(`set:${TAB}`)}" data-tab="${TAB}">${body}</div>
-    <p class="foot">${esc(ctx.t("Indstillingerne gemmes i Hverdagsro i Home Assistant og gælder for hele familien."))}</p></div>`;
+    const missing = ["weather", "alarm", "price", "meals_calendar"].filter((k) => !st[k] && g[k]).length + ["calendars", "todo", "media", "cameras"].filter((k) => !st[k]?.length && g[k].length).length + (!st.waste?.length && g.waste.length ? 1 : 0);
+    body = `<section class="card" data-st="hjemmet"><div class="card-head"><h2>${esc(ctx.t("Hjemmet"))}</h2>${missing ? `<button class="btn sm" data-act="set-suggest">${svg("sparkle")}${esc(ctx.t("Udfyld automatisk"))}</button>` : `<span class="meta">${esc(ctx.t("Gemmes med det samme"))}</span>`}</div>
+      ${sub(ctx.t("Det, Hverdagsro bruger fra Home Assistant: vejret, kalendere, lister, alarm, kameraer, elpris og affald."))}${homeEditor(ctx, true)}</section>${basicsSection(ctx)}`;
+  }
+  return `<div class="set-tabs" role="tablist">${tabs.map(([k, n]) => `<button role="tab" data-act="set-tab" data-id="${k}" aria-pressed="${TAB === k}" aria-selected="${TAB === k}">${esc(ctx.t(n))}${k === "familie" && Fdirty ? `<i class="set-dirty"></i>` : ""}</button>`).join("")}</div>
+  <div class="set-wrap${animClass(`set:${TAB}`)}" data-t="${TAB}">${body}</div><p class="foot">${esc(ctx.t("Indstillingerne gemmes i Hverdagsro i Home Assistant og gælder for hele familien."))}</p>`;
 }
 
 /* ------------------------------------------------------------------ actions */
+/* Save one member's change at once, like the prototype (the rest of the family as it is). */
+async function saveMember(ctx, id, patch, msg) {
+  const list = cleanFamily(ctx.data.family.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  if (F && !Fdirty) F = null;
+  if (await ctx.save("family", list)) {
+    if (msg) ctx.toast(msg);
+    ctx.render(true);
+  }
+}
 const famIdx = (el) => Number(el.dataset.i);
 function famChanged(ctx) {
   if (MODE !== "guide") Fdirty = true;
@@ -803,7 +1220,6 @@ const acts = {
   "set-mod": async (el, e, ctx) => {
     const k = el.dataset.id;
     const next = { ...M(ctx), [k]: !isOn(ctx, k) };
-    if (k === "points" && !next.points) next.shop = false;
     if (MODE === "guide") {
       G.modules = next;
       ctx.render(true);
@@ -811,9 +1227,92 @@ const acts = {
     }
     ctx.render(true);
     if (await ctx.save("modules", next)) {
-      ctx.toast(next[k] ? ctx.t("{name} er slået til", { name: ctx.t(MODS.find((x) => x[0] === k)[1]) }) : ctx.t("{name} er slået fra", { name: ctx.t(MODS.find((x) => x[0] === k)[1]) }));
+      ctx.panel?.requestRender?.(true);
       ctx.render(true);
     }
+  },
+  "set-kinst": (el, e, ctx) => {
+    const m = ctx.member(el.dataset.kid);
+    if (!m) return;
+    saveMember(ctx, m.id, { institution: el.dataset.id }, ctx.t("{name} går i {inst}", { name: m.name, inst: ctx.t(KINST.find((i) => i[0] === el.dataset.id)?.[1] || "").toLowerCase() }));
+  },
+  "set-kmod": (el, e, ctx) => {
+    const m = ctx.member(el.dataset.kid);
+    if (!m) return;
+    const f = el.dataset.mod;
+    const fam2 = f === "room" ? "rooms" : f;
+    if (!ctx.on(fam2) && !ctx.feature(m, f)) return ctx.toast(ctx.t("{what} er slået fra for hele familien under Funktioner", { what: ctx.t(KMODS.find((x) => x[0] === f)?.[1] || f) }));
+    const v = !ctx.feature(m, f);
+    el.setAttribute("aria-pressed", String(v));
+    saveMember(ctx, m.id, { features: { ...KID_DEFAULTS, ...(m.features || {}), [f]: v } });
+  },
+  "set-kpick": (el, e, ctx) => {
+    const m = ctx.member(el.dataset.id);
+    const k = el.dataset.k;
+    if (!m) return;
+    const opts =
+      k === "skema"
+        ? { title: ctx.t("{name}s skoleskema", { name: m.name }), domains: ["calendar"], suggest: ctx.entities("calendar").filter((id) => /skema|aula|skole|school/i.test(id + nameOf(ctx, id)) || nameOf(ctx, id).toLowerCase().includes(m.name.toLowerCase())) }
+        : { title: ctx.t("Højttaler til oplæsning for {name}", { name: m.name }), domains: ["media_player"], suggest: ctx.entities("media_player").filter((id) => nameOf(ctx, id).toLowerCase().includes(m.name.toLowerCase())) };
+    openPicker(ctx, { ...opts, multi: false, value: m[k] }, (v) => saveMember(ctx, m.id, { [k]: v || null }));
+  },
+  "set-osky-in": (el, e, ctx) => oskyLogin(ctx, el.dataset.id),
+  "set-osky-out": async (el, e, ctx) => {
+    const p = ctx.member(el.dataset.id);
+    try {
+      await ctx.ws("osky/logout", { member: el.dataset.id });
+      ctx.toast(ctx.t("{name} er logget ud af Ønskeskyen", { name: p?.name || "" }));
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
+  },
+  "set-spk": (el, e, ctx) => {
+    const id = el.dataset.id;
+    const shown = new Set(shownSpeakers(ctx));
+    if (shown.has(id)) {
+      if (shown.size === 1) return;
+      shown.delete(id);
+    } else shown.add(id);
+    const all = [...new Set([...allSpeakers(ctx), ...(ctx.data.settings.media || [])])];
+    setS(ctx, { media: all.filter((x) => shown.has(x)) });
+  },
+  "set-qa-new": (el, e, ctx) => qaForm(ctx, null),
+  "set-qa-edit": (el, e, ctx) => qaForm(ctx, (ctx.data.quick || []).find((q) => q.id === el.dataset.id)),
+  "set-qa-add": (el, e, ctx) => {
+    const id = el.dataset.id;
+    const list = ctx.data.quick || [];
+    const label = nameOf(ctx, id).slice(0, 30);
+    const q = { id: qaId(label, list), label, entity: id, icon: qaIconFor(id, label), color: el.style.getPropertyValue("--qc") || QA_COLORS[list.length % QA_COLORS.length], desc: ctx.t("Kører {e}", { e: label }), cond: { kind: "always", from: 6, to: 10, entity: null }, who: ctx.parents().map((m) => m.id), option: null, countdown: 0, then: "" };
+    saveQuick(ctx, [...list, q], ctx.t("{name} er tilføjet", { name: label }));
+  },
+  "set-qa-who": (el, e, ctx) => {
+    const list = clone(ctx.data.quick || []);
+    const q = list.find((x) => x.id === el.dataset.id);
+    if (!q) return;
+    const p = el.dataset.p;
+    q.who = (q.who || []).includes(p) ? q.who.filter((w) => w !== p) : [...(q.who || []), p];
+    el.classList.toggle("on", q.who.includes(p));
+    el.setAttribute("aria-pressed", String(q.who.includes(p)));
+    saveQuick(ctx, list);
+  },
+  "set-almode": (el, e, ctx) => {
+    const s2 = ctx.data.settings;
+    const st = s2.alarm && ctx.hass.states[s2.alarm];
+    const sup = Number(st?.attributes?.supported_features ?? 63);
+    const supported = AL_MODES.filter((m) => sup & m[5]).map((m) => m[0]);
+    const r = { code_arm: false, kids_arm: true, kids_disarm: false, modes: [], ...(s2.alarm_rights || {}) };
+    const L = r.modes.length ? r.modes.filter((m) => supported.includes(m)) : supported;
+    const id = el.dataset.id;
+    if (L.includes(id) && L.length === 1) return ctx.toast(ctx.t("Der skal være mindst én tilkobling"));
+    const modes = L.includes(id) ? L.filter((x) => x !== id) : AL_MODES.map((m) => m[0]).filter((m) => m === id || L.includes(m));
+    el.setAttribute("aria-pressed", String(modes.includes(id)));
+    setS(ctx, { alarm_rights: { ...r, modes } });
+  },
+  "set-alset": (el, e, ctx) => {
+    const r = { code_arm: false, kids_arm: true, kids_disarm: false, modes: [], ...(ctx.data.settings.alarm_rights || {}) };
+    r[el.dataset.id] = !r[el.dataset.id];
+    el.setAttribute("aria-pressed", String(r[el.dataset.id]));
+    setS(ctx, { alarm_rights: r });
   },
   "set-pick": (el, e, ctx) => {
     const key = el.dataset.k;
@@ -873,24 +1372,27 @@ const acts = {
     const days = { ...(ctx.data.settings.decor_days || {}) };
     const dk = `${k}_${el.dataset.k}`;
     const cur = days[dk] ?? o[5][el.dataset.k === "before" ? 0 : 1];
-    days[dk] = Math.max(0, Math.min(60, cur + Number(el.dataset.d)));
+    days[dk] = Math.max(0, Math.min(40, cur + Number(el.dataset.d)));
     setS(ctx, { decor_days: days });
   },
   "set-dec-prev": (el, e, ctx) => {
     const p = ctx.panel;
     if (!p) return;
     clearTimeout(previewTimer);
-    p._preview = el.dataset.id;
+    const id = el.dataset.id;
+    const on = p._preview !== id;
+    p._preview = on ? id : null;
     p._decorKey = null;
-    const o = occasions(ctx.data.settings, ctx.data.family).find((x) => x[0] === el.dataset.id);
+    const o = occasions(ctx.data.settings, ctx.data.family).find((x) => x[0] === id);
     // The decorations are seen best in the big sky on the front page.
     ctx.go(ctx.isKid ? "dag" : "hjem");
-    ctx.toast(ctx.t("Sådan ser {name} ud i himlen", { name: ctx.t(o?.[1] || "") }));
-    previewTimer = setTimeout(() => {
-      p._preview = null;
-      p._decorKey = null;
-      p._header?.();
-    }, 12000);
+    ctx.toast(on ? ctx.t("Viser {name} i himlen. Tryk på pynten øverst for at stoppe", { name: ctx.t(o?.[1] || "").toLowerCase() }) : ctx.t("Viser almindelig himmel"));
+    if (on)
+      previewTimer = setTimeout(() => {
+        p._preview = null;
+        p._decorKey = null;
+        p._header?.();
+      }, 20000);
   },
   "set-lang": (el, e, ctx) => setS(ctx, { language: el.dataset.v }),
   "set-house": (el, e, ctx) => {
@@ -942,6 +1444,32 @@ const inputs = {
     if (MODE === "guide") G.settings.waste = cur;
     else setS(ctx, { waste: cur });
   },
+  "set-bdate": (el, e, ctx) => {
+    if (e.type !== "change" || !el.value) return;
+    const m = ctx.member(el.dataset.id);
+    if (m) saveMember(ctx, m.id, { birthday: el.value }, ctx.t("{name}s fødselsdag er gemt", { name: m.name }));
+  },
+  "set-pet-name": (el, e, ctx) => {
+    if (e.type !== "change") return;
+    const m = ctx.member(el.dataset.id);
+    if (!m) return;
+    const name = el.value.trim().slice(0, 20);
+    saveMember(ctx, m.id, { pet: name ? { name, kind: m.pet?.kind || "hund" } : null });
+  },
+  "set-pet-kind": (el, e, ctx) => {
+    if (e.type !== "change") return;
+    const m = ctx.member(el.dataset.id);
+    if (!m) return;
+    saveMember(ctx, m.id, { pet: { name: m.pet?.name || m.name, kind: el.value } });
+  },
+  "set-osky-to": (el, e, ctx) => {
+    if (e.type !== "change") return;
+    const l = (ctx.data.osky?.lists || []).find((x) => x.id === el.dataset.id);
+    const to = { ...(ctx.data.settings.osky_to || {}), [el.dataset.id]: el.value };
+    setS(ctx, { osky_to: to });
+    const who = oskyTargets(ctx).find((x) => x[0] === el.value)?.[1];
+    if (l) ctx.toast(el.value === "skjul" ? ctx.t("{list} vises ikke", { list: l.title }) : ctx.t("{list} vises nu for {who}", { list: l.title, who }));
+  },
   "set-anniv": (el, e, ctx) => {
     if (e.type !== "change") return;
     setS(ctx, { anniversaries: { ...(ctx.data.settings.anniversaries || {}), [el.dataset.k]: el.value || null } });
@@ -956,7 +1484,19 @@ const css = `
 .set-tabs2 button { display: inline-flex; align-items: center; gap: 7px; position: relative; cursor: pointer; }
 .set-tabs2 button .ic { width: 16px; height: 16px; }
 .set-dirty { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); display: inline-block; }
-.set-anim.set-body > .card { animation: hvin .35s cubic-bezier(.2,.9,.3,1) both; }
+.set-wrap[data-t="familie"] > [data-st="familie"], .set-wrap[data-t="hjemmet"] > [data-st="hjemmet"] { display: block; }
+.set-wrap.set-anim > .card { animation: hvin .35s cubic-bezier(.2,.9,.3,1) both; }
+.set-wrap > .card + .card, .set-wrap > .card + .set-bar { margin-top: 14px; }
+.set-tabs .set-dirty { margin-left: 6px; }
+.set-kl { grid-template-columns: 36px minmax(0, 1fr) auto; }
+.set-kl .btn { white-space: nowrap; }
+.set-pet { grid-template-columns: 36px minmax(0, 1fr); }
+.set-pet-in { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.set-pet-in input, .set-pet-in select { border: 1.5px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 8px; color: var(--ink); font: inherit; min-width: 0; }
+.set-qmore { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.set-qmore summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+.set-basics .row > .field { flex: 1 1 200px; }
+.lnk { border: 0; background: none; color: var(--violet); font-weight: 700; padding: 0; cursor: pointer; font: inherit; text-decoration: underline; }
 .set-adv { display: grid; gap: 14px; }
 .set-about-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .set-about-row a { text-decoration: none; }
@@ -1172,6 +1712,180 @@ const css = `
 
 /* ------------------------------------------------------------------ English */
 const en = {
+  "og": "and",
+  "I": "you",
+  "{n} færre dage": "{n} fewer days",
+  "{n} flere dage": "{n} more days",
+  "Siden {y}": "Since {y}",
+  "Skriv datoen, så pynter himlen på dagen": "Enter the date and the sky decorates on the day",
+  "næste store: {n} år, {name}, {date}": "next big one: {n} years, {name}, {date}",
+  "Funktioner": "Features",
+  "Slå det fra, I ikke bruger. Det forsvinder for hele familien. Pr. barn styres det under Børn.": "Turn off what you don't use. It disappears for the whole family. Per child it's set under Children.",
+  "Ikke sat endnu": "Not set yet",
+  "{name}s fødselsdag": "{name}'s birthday",
+  "Mit dyr": "My pet",
+  "Bliver gladere, når dagens missioner er klaret": "Gets happier when today's missions are done",
+  "Dyrets navn": "Pet's name",
+  "Slags": "Kind",
+  "Skoleskema": "School timetable",
+  "Vælg kalenderen med skemaet, fx fra Aula": "Choose the calendar with the timetable, e.g. from Aula",
+  "Oplæsning": "Read aloud",
+  "Vælg højttaleren på værelset": "Choose the speaker in the room",
+  "Børnene": "The children",
+  "{what} for {name}": "{what} for {name}",
+  "Der er ingen børn i familien endnu.": "There are no children in the family yet.",
+  "Tilføj under Familien": "Add under Family",
+  "Institutionen bestemmer, hvad barnet ser: skoleskema kun i skole, ellers dagens aflevering og afhentning fra Hent og bring.": "The institution decides what the child sees: the timetable only at school, otherwise today's drop-off and pick-up from Pick-up and drop-off.",
+  "Venner og familie": "Friends and family",
+  "Vis ikke": "Don't show",
+  "Ønskeskyen": "Ønskeskyen",
+  "{n} ønskesedler": "{n} wish lists",
+  "Hver forælder logger ind med sin egen konto. Så ser Hverdagsro de ønskesedler, I selv har, og dem der er delt med jer.": "Each parent signs in with their own account. Hverdagsro then sees your own wish lists and those shared with you.",
+  "Kunne ikke hente: {e}": "Couldn't fetch: {e}",
+  "Logget ind som {name} · hentet {when}": "Signed in as {name} · fetched {when}",
+  "Ikke logget ind": "Not signed in",
+  "Log ud": "Sign out",
+  "Log ind": "Sign in",
+  "Hvis ønsker er det?": "Whose wishes are these?",
+  "{n} ønsker": "{n} wishes",
+  "via {names}": "via {names}",
+  "Hvis ønsker er {name}": "Whose wishes {name} is",
+  "Ønskesedler til børnene vises på deres side under Ønsker. Jeres egne og fælles står under Lister. Venner og familie samles under Lister som gaveidéer.": "Children's wish lists show on their page under Wishes. Your own and shared ones are under Lists. Friends and family are gathered under Lists as gift ideas.",
+  "Log ind som {name}": "Sign in as {name}",
+  "E-mail": "Email",
+  "navn@eksempel.dk": "name@example.com",
+  "Adgangskode": "Password",
+  "Hverdagsro logger ind ligesom Ønskeskyen på nettet og gemmer kun nøglen i Home Assistant, ikke adgangskoden. Facebook- og Apple-login kræver, at du først sætter en adgangskode i Ønskeskyen.": "Hverdagsro signs in like Ønskeskyen on the web and keeps only the key in Home Assistant, not the password. Facebook and Apple sign-in require that you first set a password in Ønskeskyen.",
+  "{name} er logget ind i Ønskeskyen": "{name} is signed in to Ønskeskyen",
+  "Højttalere på Musik": "Speakers in Music",
+  "{n} af {m}": "{n} of {m}",
+  "Home Assistant har ingen højttalere endnu.": "Home Assistant has no speakers yet.",
+  "Når {e} er tændt": "When {e} is on",
+  "kl. {from}–{to}": "{from}–{to}",
+  "Altid": "Always",
+  "Quick actions": "Quick actions",
+  "Ny": "New",
+  "Hver knap kører en entitet i Home Assistant. Vælg betingelser for, hvornår den vises, og hvem der ser den.": "Each button runs an entity in Home Assistant. Choose when it shows and who sees it.",
+  "Vises for": "Shown for",
+  "Ret {name}": "Edit {name}",
+  "Ingen knapper endnu. Tryk Ny, eller vælg en af jeres rutiner herunder.": "No buttons yet. Tap New, or pick one of your routines below.",
+  "Fra jeres Home Assistant": "From your Home Assistant",
+  "Ny quick action": "New quick action",
+  "Rediger {name}": "Edit {name}",
+  "Fx Film": "E.g. Movie",
+  "Entitet": "Entity",
+  "Ikon": "Icon",
+  "Bekræftelse": "Confirmation",
+  "Det, der står, før den køres": "What it says before it runs",
+  "Vis": "Show",
+  "Tidsrum": "Time window",
+  "Når en entitet er tændt": "When an entity is on",
+  "Fra": "From",
+  "Til": "To",
+  "Mere: spørgsmål, nedtælling og alarm": "More: question, countdown and alarm",
+  "Spørg først": "Ask first",
+  "Fx Start støvsugning": "E.g. Start vacuuming",
+  "Sendes til rutinen som": "Sent to the routine as",
+  "Nedtælling": "Countdown",
+  "{n} sek.": "{n} s",
+  "{n} min.": "{n} min",
+  "Bagefter": "Afterwards",
+  "{name} er fjernet": "{name} was removed",
+  "Vælg den entitet, knappen skal køre": "Choose the entity the button should run",
+  "Kører {e}": "Runs {e}",
+  "{name} er gemt": "{name} was saved",
+  "alarmen": "the alarm",
+  "Vælg jeres alarm under Hjemmet, fx Alarmo.": "Choose your alarm under Home, e.g. Alarmo.",
+  "Tilkoblinger, der vises": "Arming modes shown",
+  "Slået fra i {alarm}": "Turned off in {alarm}",
+  "Hverdagsro læser fra {alarm}, hvilke tilkoblinger der findes. I har {list}.": "Hverdagsro reads from {alarm} which arming modes exist. You have {list}.",
+  "Kræv kode ved frakobling": "Require a code to disarm",
+  "Koderne er brugernes egne koder i {alarm}. Hverdagsro sender koden videre, og {alarm} afgør, om den er rigtig.": "The codes are the users' own codes in {alarm}. Hverdagsro passes the code on, and {alarm} decides whether it is right.",
+  "Rettigheder": "Permissions",
+  "Hjemmets navn og sprog": "Home name and language",
+  "Det, Hverdagsro bruger fra Home Assistant: vejret, kalendere, lister, alarm, kameraer, elpris og affald.": "What Hverdagsro uses from Home Assistant: weather, calendars, lists, alarm, cameras, electricity price and waste.",
+  "{name} går i {inst}": "{name} goes to {inst}",
+  "{what} er slået fra for hele familien under Funktioner": "{what} is turned off for the whole family under Features",
+  "{name}s skoleskema": "{name}'s timetable",
+  "Højttaler til oplæsning for {name}": "Read-aloud speaker for {name}",
+  "{name} er logget ud af Ønskeskyen": "{name} is signed out of Ønskeskyen",
+  "{name} er tilføjet": "{name} was added",
+  "Der skal være mindst én tilkobling": "There must be at least one arming mode",
+  "Viser {name} i himlen. Tryk på pynten øverst for at stoppe": "Showing {name} in the sky. Tap the decoration at the top to stop",
+  "Viser almindelig himmel": "Showing the normal sky",
+  "{name}s fødselsdag er gemt": "{name}'s birthday was saved",
+  "{list} vises ikke": "{list} is hidden",
+  "{list} vises nu for {who}": "{list} now shows for {who}",
+  "Missioner": "Missions",
+  "Børnene får egne opgaver, de selv krydser af, og perfekte dage": "The children get their own tasks to tick off, and perfect days",
+  "Point for missioner og rutiner, som kan bruges i shoppen": "Points for missions and routines to spend in the shop",
+  "Rutinetavle": "Routine board",
+  "Visuel tavle for børn, der har brug for faste rutiner": "Visual board for children who need fixed routines",
+  "Værelser": "Rooms",
+  "Børnenes værelser med lys og scener fra HA": "The children's rooms with lights and scenes from HA",
+  "Alle højttalere, grupper og Spotify": "All speakers, groups and Spotify",
+  "Hvidevarer, robotter og ventilation": "Appliances, robots and ventilation",
+  "Kameraer, døre, vinduer, porte og låse": "Cameras, doors, windows, gates and locks",
+  "Himlen pynter op til jul, påske, fødselsdage og andre mærkedage": "The sky decorates for Christmas, Easter, birthdays and other occasions",
+  "Kæledyr": "Pet",
+  "Et lille dyr, der bliver gladere, når missionerne er klaret": "A little pet that gets happier when missions are done",
+  "Ønsker": "Wishes",
+  "Ønskesedler fra Ønskeskyen": "Wish lists from Ønskeskyen",
+  "Aulas skema på børnenes sider": "Aula's timetable on the children's pages",
+  "Læs dagen og beskeder op for børnene": "Read the day and messages aloud to the children",
+  "Middagsros madplan, aftensmad og budget": "Middagsro meal plan, dinner and budget",
+  "El og biler": "Power and cars",
+  "Elpris og bilerne fra EV Planner under himlen": "Electricity price and the cars from EV Planner under the sky",
+  "Alarmo med kode": "Alarmo with code",
+  "Tømningsdage": "Collection days",
+  "Skraldespande i himlen og påmindelse aftenen før": "Bins in the sky and a reminder the evening before",
+  "Rutiner og genveje på forsiden": "Routines and shortcuts on the front page",
+  "Mit værelse": "My room",
+  "Ønskeseddel": "Wish list",
+  "Hund": "Dog",
+  "Kat": "Cat",
+  "Lille drage": "Little dragon",
+  "Skal-sikring, I er hjemme": "Perimeter, you're home",
+  "Ude": "Away",
+  "Hele huset, ingen hjemme": "Whole house, nobody home",
+  "Nat": "Night",
+  "Skal-sikring og nedenunder": "Perimeter and downstairs",
+  "Ferie": "Vacation",
+  "Som ude, mens I er væk længe": "Like away, while you're gone for long",
+  "Egen": "Custom",
+  "Egne sensorer": "Own sensors",
+  "Se hele familiens kalender og opgaver": "See the whole family's calendar and tasks",
+  "Oprette aftaler for andre": "Create events for others",
+  "Oprette og slette lister": "Create and delete lists",
+  "Godkende køb i shoppen": "Approve purchases in the shop",
+  "Sætte priser og belønninger": "Set prices and rewards",
+  "Slå moduler til og fra pr. barn": "Turn modules on and off per child",
+  "Ændre +-menu, beskeder og PIN": "Change the + menu, messages and PIN",
+  "Krydse egne missioner af": "Tick off own missions",
+  "Købe i shoppen (venter på godkendelse)": "Buy in the shop (awaits approval)",
+  "Intet": "Nothing",
+  "Frakobl alarmen": "Disarm the alarm",
+  "Tilkobl · hjemme": "Arm · home",
+  "Tilkobl · ude": "Arm · away",
+  "Tilkobl · nat": "Arm · night",
+  "Tilkobl · ferie": "Arm · vacation",
+  "Offentlig": "Public",
+  "Privat": "Private",
+  "Skjult": "Hidden",
+  "Delt": "Shared",
+  "Venner": "Friends",
+  "24.–26. december": "24–26 December",
+  "31. december–1. januar": "31 December–1 January",
+  "Søndag 7 uger før påske": "Sunday 7 weeks before Easter",
+  "Skærtorsdag–2. påskedag": "Maundy Thursday–Easter Monday",
+  "31. oktober": "31 October",
+  "Alle i husstanden · datoerne står på profilerne": "Everyone in the household · the dates are on the profiles",
+  "5. juni": "5 June",
+  "23. juni": "23 June",
+  "14. februar": "14 February",
+  "{names} som kærester": "{names} as a couple",
+  "{names} · med kobber-, sølv- og guldbryllup": "{names} · with copper, silver and golden anniversaries",
+  "Børn": "Children",
   "Hjemme": "At home",
   "Dagpleje": "Childminder",
   "Vuggestue": "Nursery",
@@ -1226,7 +1940,7 @@ const en = {
   "Home Assistant har ingen af dem endnu": "Home Assistant doesn't have any yet",
   "Søg på navn eller entitet": "Search by name or entity",
   "Søg": "Search",
-  "Annullér": "Cancel",
+  "Annuller": "Cancel",
   "{n} år": "{n} years",
   "Tilføj mindst ét familiemedlem.": "Add at least one family member.",
   "Alle skal have et navn.": "Everyone needs a name.",

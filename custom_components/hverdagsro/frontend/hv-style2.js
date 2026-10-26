@@ -15,9 +15,6 @@ export default `
 .menu-btn[hidden] { display: none; }
 @media (max-width: 480px) { .hero.compact .mini-title { font-size: 17px; } .hero-top { gap: 6px; } }
 .mini-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.brand { border: 0; background: none; color: #fff; display: inline-flex; align-items: center; gap: 8px; font: 800 17px/1 var(--font-display); padding: 6px 4px; cursor: pointer; }
-.brand .ic { width: 22px; height: 22px; }
-:host([narrow]) .brand span { display: none; }
 .pm-h { display: flex; align-items: center; gap: 12px; padding: 4px 4px 14px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
 .pm-h .av { width: 46px; height: 46px; font-size: 18px; }
 .pm-h b { display: block; font-size: 16px; }
