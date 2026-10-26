@@ -86,8 +86,8 @@ async def test_remove_entry_removes_the_stored_family(
 
 async def test_remove_device(hass: HomeAssistant, init_integration: MockConfigEntry) -> None:
     registry = dr.async_get(hass)
-    ida = registry.async_get_device(identifiers={(DOMAIN, f"{ENTRY_ID}_ida")})
-    assert ida is not None
+    devices = dr.async_entries_for_config_entry(registry, ENTRY_ID)
+    ida = next(device for device in devices if (DOMAIN, f"{ENTRY_ID}_ida") in device.identifiers)
     assert not await async_remove_config_entry_device(hass, init_integration, ida)
 
     gone = registry.async_get_or_create(config_entry_id=ENTRY_ID, identifiers={(DOMAIN, f"{ENTRY_ID}_old")})
