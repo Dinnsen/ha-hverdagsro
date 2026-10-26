@@ -49,6 +49,19 @@ export function status(ctx, a) {
   const d = a.entity.split(".")[0];
   const v = String(s.state).toLowerCase().replace(/\s+/g, "_");
   const num = parseFloat(s.state);
+  // A fridge or freezer is on unless its power switch says otherwise; the main entity is often its door.
+  if (a.kind === "fridge" || a.kind === "freezer") {
+    const dev = ctx.hass.entities?.[a.entity]?.device_id;
+    const sibs = dev ? Object.values(ctx.hass.entities).filter((e) => e.device_id === dev).map((e) => e.entity_id) : [];
+    const power = [a.entity, ...(a.controls || []), ...sibs].find((id) => /^switch\..*(power|strom|strøm)/.test(id));
+    const conn = sibs.find((id) => /^binary_sensor\..*connectivity/.test(id));
+    const door = [a.entity, ...sibs].find((id) => /door|dør|dor$/.test(id) && !/alarm/.test(id));
+    const doorOpen = door && ["on", "open", "opened"].includes(String(ctx.st(door)?.state).toLowerCase());
+    if (power && ctx.st(power)?.state === "off") return { txt: ctx.t("Slukket"), cls: "", key: "off" };
+    if (conn && ctx.st(conn)?.state === "off") return { txt: ctx.t("Ikke forbundet"), cls: "bad", key: "offline" };
+    if (doorOpen) return { txt: ctx.t("Døren står åben"), cls: "bad", key: "error" };
+    return { txt: ctx.t("Tændt"), cls: "ok", key: "on" };
+  }
   if (d === "sensor" && !Number.isNaN(num) && /^-?[\d.]+$/.test(s.state)) {
     const unit = s.attributes.unit_of_measurement || "";
     if (/^k?W$/.test(unit)) return num > (unit === "kW" ? 0.005 : 5) ? { txt: ctx.t("Kører"), cls: "run", key: "run" } : { txt: ctx.t("Slukket"), cls: "", key: "off" };
@@ -754,6 +767,8 @@ const css = `
 `;
 
 const en = {
+  "Døren står åben": "The door is open",
+  Tændt: "On",
   Standby: "Standby",
   "Starter kl. {time}": "Starts at {time}",
   Stop: "Stop",

@@ -84,8 +84,8 @@ export function buildFab(ctx, el, hour) {
     const sub = q.countdown ? ctx.t("Om {n} min", { n: Math.max(1, Math.round(q.countdown / 60)) }) : (q.cond?.kind || "always") === "always" ? ctx.t("Kør") : ctx.t("til kl. {t}", { t: pad(q.cond.to) });
     items.push(`<button class="fi" data-fab-run="${esc(q.id)}" style="--qc:${esc(q.color)}"><span class="fl"><b>${esc(q.label)}</b><small>${esc(sub)}</small></span><span class="qa-ic">${svg(q.icon)}${badge ? `<span class="qa-badge">${badge}</span>` : ""}</span></button>`);
   });
-  later.forEach((q) => items.push(`<span class="fi ghost" style="--qc:${esc(q.color)}"><span class="fl"><b>${esc(q.label)}</b><small>${esc(ctx.t("fra kl. {t}", { t: pad(q.cond?.from ?? 0) }))}</small></span><span class="qa-ic">${svg(q.icon)}</span></span>`));
-  if (!hide && ctx.on("quick") && (items.length || ctx.isParent)) items.push(`<button class="fi edit" data-fab-edit="1"><span class="fl"><b>${esc(ctx.t("Tilpas"))}</b><small>${esc(ctx.t("Min +-menu"))}</small></span><span class="qa-ic">${svg("edit")}</span></button>`);
+  // Only what can be used now: routines outside their time or condition are left out, and so is Tilpas
+  // (that lives under Mine indstillinger).
   const sig = items.join("") + fabOpen + ctx.lang();
   if (sig === fabSig) return;
   fabSig = sig;

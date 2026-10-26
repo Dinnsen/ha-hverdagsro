@@ -439,20 +439,32 @@ function render(ctx) {
     <div class="sx-st"><span class="eyebrow">${esc(L ? L.label : t("Ingen alarm valgt"))}</span><b>${esc(head)}</b><div class="sec-chips">${chips}</div></div>
     ${L ? `<button class="btn" data-act="alarm">${svg("shield")}${esc(L.armed ? t("Frakobl") : t("Tilkobl"))}</button>` : `<button class="btn soft" data-go="indstillinger:hjemmet">${svg("shield")}${esc(t("Vælg alarm"))}</button>`}</section>`;
 
+  // Locks, garage doors and cars as big, living tiles. Every tap asks first.
+  const tile = (kind, id, name, state, sub, bad, off) =>
+    `<button class="sxl sxl-${kind} ${state}${bad ? " bad" : ""}" data-act="sec-ctl" data-id="${esc(id)}" data-kind="${kind === "port" ? "port" : "lock"}" data-name="${esc(name)}"${off ? " disabled" : ""}><span class="sxl-art">${SXL_ART[kind](state)}</span><span class="sxl-t"><b>${esc(name)}</b><small>${esc(sub)}</small></span><span class="sxl-pill">${esc(
+      state === "locked" ? t("Låst") : state === "unlocked" ? t("Ulåst") : state === "open" ? t("Åben") : state === "closed" ? t("Lukket") : state === "away" ? t("Ude") : sub
+    )}</span></button>`;
+  const lockState = (id) => {
+    const v = ctx.hass.states[id]?.state;
+    return v === "locked" || v === "locking" ? "locked" : v === "unlocked" || v === "open" || v === "unlocking" ? "unlocked" : "unknown";
+  };
   const ctls = [
-    ...st.filter((s) => s.kind === "port" && s.ent.startsWith("cover.")).map((s) => `<button class="sx-ctl${s.bad ? " bad" : ""}" data-act="sec-ctl" data-id="${esc(s.ent)}" data-kind="port"${s.off ? " disabled" : ""}>${svg("garage")}<span><b>${esc(s.name)}</b><small>${esc(s.bad ? t("Åben · tryk for at lukke") : t("Lukket · tryk for at åbne"))}</small></span></button>`),
+    ...st.filter((s) => s.kind === "port" && s.ent.startsWith("cover.")).map((s) => tile("port", s.ent, s.name, s.bad ? "open" : "closed", s.bad ? t("Tryk for at lukke") : t("Tryk for at åbne"), s.bad, s.off)),
     ...lockDoors.map((d) => {
-      const locked = ctx.hass.states[d.lock].state === "locked";
-      return `<button class="sx-ctl${locked ? "" : " bad"}" data-act="sec-ctl" data-id="${esc(d.lock)}" data-kind="lock">${svg("lock")}<span><b>${esc(d.name)}</b><small>${esc(locked ? t("Låst") : t("Ulåst"))}</small></span></button>`;
+      const ls = lockState(d.lock);
+      return tile("lock", d.lock, d.name, ls, ls === "locked" ? t("Tryk for at låse op") : t("Tryk for at låse"), ls !== "locked");
     }),
-    ...looseLocks.map((s) => `<button class="sx-ctl${s.bad ? " bad" : ""}" data-act="sec-ctl" data-id="${esc(s.ent)}" data-kind="lock"${s.off ? " disabled" : ""}>${svg("lock")}<span><b>${esc(s.name)}</b><small>${esc(s.txt)}</small></span></button>`),
-    ...carsAway(ctx).map((c) => `<span class="sx-ctl">${svg("car")}<span><b>${esc(c.name)}</b><small>${esc(t("Ude"))}</small></span></span>`),
+    ...looseLocks.map((s) => {
+      const ls = lockState(s.ent);
+      return tile("lock", s.ent, s.name, ls, ls === "locked" ? t("Tryk for at låse op") : ls === "unlocked" ? t("Tryk for at låse") : s.txt, s.bad, s.off);
+    }),
+    ...carsAway(ctx).map((c) => `<span class="sxl sxl-car away"><span class="sxl-art">${SXL_ART.car("away")}</span><span class="sxl-t"><b>${esc(c.name)}</b><small>${esc(t("Ikke hjemme"))}</small></span><span class="sxl-pill">${esc(t("Ude"))}</span></span>`),
     ...CL.map((l) => {
-      const locked = ctx.hass.states[l.id]?.state === "locked";
-      return `<button class="sx-ctl${locked ? "" : " bad"}" data-act="sec-ctl" data-id="${esc(l.id)}" data-kind="lock">${svg("car")}<span><b>${esc(l.name)}</b><small>${esc(locked ? t("Låst") : t("Ulåst"))}</small></span></button>`;
+      const ls = lockState(l.id);
+      return tile("car", l.id, l.name, ls, ls === "locked" ? t("Tryk for at låse op") : t("Tryk for at låse"), ls !== "locked");
     }),
   ].join("");
-  const ctlRow = ctls ? `<div class="sx-ctls">${ctls}</div>` : "";
+  const ctlRow = ctls ? `<div class="sxl-grid">${ctls}</div>` : "";
 
   let plan;
   const hp = H("housePlan");
@@ -548,21 +560,58 @@ const acts = {
   "sec-ctl": (el, ev, ctx) => {
     const id = el.dataset.id, s = ctx.hass.states[id];
     if (!s) return;
+    const nm = el.dataset.name || ctx.name(id);
+    // Everything asks first.
     if (el.dataset.kind === "lock") {
       if (s.state === "locked")
-        return ctx.confirm(ctx.t("Lås {name} op?", { name: ctx.name(id) }), ctx.t("Låsen åbnes med det samme."), ctx.t("Lås op"), () => ctx.call("lock", "unlock", { entity_id: id }));
-      ctx.toast(ctx.t("{name} låses", { name: ctx.name(id) }));
-      return ctx.call("lock", "lock", { entity_id: id });
+        return ctx.confirm(ctx.t("Lås {name} op?", { name: nm }), ctx.t("Låsen åbnes med det samme."), ctx.t("Lås op"), () => ctx.call("lock", "unlock", { entity_id: id }));
+      return ctx.confirm(ctx.t("Lås {name}?", { name: nm }), ctx.t("Låsen låses med det samme."), ctx.t("Lås"), () => ctx.call("lock", "lock", { entity_id: id }));
     }
     const open = s.state === "open" || s.state === "opening";
     if (!open)
-      return ctx.confirm(ctx.t("Åbn {name}?", { name: ctx.name(id) }), ctx.t("Porten åbner med det samme."), ctx.t("Åbn"), () => ctx.call("cover", "open_cover", { entity_id: id }));
-    ctx.toast(ctx.t("{name} lukker", { name: ctx.name(id) }));
-    return ctx.call("cover", "close_cover", { entity_id: id });
+      return ctx.confirm(ctx.t("Åbn {name}?", { name: nm }), ctx.t("Porten åbner med det samme."), ctx.t("Åbn"), () => ctx.call("cover", "open_cover", { entity_id: id }));
+    return ctx.confirm(ctx.t("Luk {name}?", { name: nm }), ctx.t("Porten lukker med det samme. Hold øje med, at ingen står i vejen."), ctx.t("Luk"), () => ctx.call("cover", "close_cover", { entity_id: id }));
   },
 };
 
+/* The drawings on the lock tiles: a padlock whose shackle lifts, a garage door that rolls up, a car with its lock. */
+const SXL_ART = {
+  lock: (st) => `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" class="sxl-halo"/><path class="sxl-shackle" d="M22 30v-8a10 10 0 0 1 20 0v8" fill="none" stroke-width="5" stroke-linecap="round"/><rect x="16" y="29" width="32" height="24" rx="7" class="sxl-body"/><circle cx="32" cy="39" r="3.4" class="sxl-key"/><path d="M32 41v5" stroke-width="3" stroke-linecap="round" class="sxl-keyl"/></svg>`,
+  port: (st) => `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" class="sxl-halo"/><path d="M12 26 32 12l20 14v24H12z" class="sxl-house"/><rect x="18" y="30" width="28" height="20" rx="2" class="sxl-hole"/><g class="sxl-door"><rect x="18" y="30" width="28" height="20" rx="2" class="sxl-panel"/><path d="M18 35h28M18 40h28M18 45h28" class="sxl-lines"/></g></svg>`,
+  car: (st) => `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" class="sxl-halo"/><path d="M12 38l4-10c1-3 3-4 6-4h20c3 0 5 1 6 4l4 10v8a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2z" class="sxl-carb"/><path d="M19 28l2-4h22l2 4z" class="sxl-glass"/><circle cx="20" cy="47" r="4" class="sxl-wheel"/><circle cx="44" cy="47" r="4" class="sxl-wheel"/>${st === "away" ? "" : `<g class="sxl-badge"><circle cx="48" cy="18" r="9" class="sxl-bb"/><path class="sxl-shackle" d="M45 18v-2.5a3 3 0 0 1 6 0V18" fill="none" stroke-width="2" stroke-linecap="round"/><rect x="43.5" y="17.5" width="9" height="7" rx="2" class="sxl-body"/></g>`}</svg>`,
+};
+
 const css = `
+.sxl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 14px; }
+.sxl { --c: var(--good); position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; text-align: left; border: 0; border-radius: 20px; padding: 12px; background: linear-gradient(150deg, color-mix(in srgb, var(--c) 14%, var(--surface)), var(--surface)); box-shadow: var(--shadow), inset 0 0 0 1.5px color-mix(in srgb, var(--c) 30%, transparent); color: var(--ink); cursor: pointer; font: inherit; overflow: hidden; transition: transform .2s; animation: pop .45s both; }
+.sxl:active { transform: scale(.96); }
+.sxl.bad, .sxl.unlocked, .sxl.open { --c: var(--bad); }
+.sxl.away { --c: var(--muted); cursor: default; }
+.sxl[disabled] { opacity: .5; }
+.sxl-art { grid-row: 1 / 3; width: 52px; height: 52px; }
+.sxl-art svg { width: 100%; height: 100%; overflow: visible; }
+.sxl-t b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 14px; line-height: 1.2; overflow: hidden; overflow-wrap: anywhere; }
+.sxl-t small { display: block; font-size: 11.5px; color: var(--muted); }
+.sxl-pill { grid-column: 2; justify-self: start; margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); padding: 2px 8px; border-radius: 999px; }
+.sxl-halo { fill: color-mix(in srgb, var(--c) 16%, transparent); }
+.sxl.bad .sxl-halo, .sxl.unlocked .sxl-halo, .sxl.open .sxl-halo { animation: sxlping 2s ease-out infinite; transform-origin: 32px 32px; }
+@keyframes sxlping { 0% { transform: scale(.85); opacity: 1; } 100% { transform: scale(1.12); opacity: .25; } }
+.sxl-body, .sxl-bb { fill: var(--c); }
+.sxl-bb { fill: var(--surface); stroke: var(--c); stroke-width: 2; }
+.sxl-badge .sxl-body { fill: var(--c); }
+.sxl-shackle { stroke: color-mix(in srgb, var(--c) 70%, var(--ink)); transition: transform .45s cubic-bezier(.3,1.6,.5,1); }
+.sxl.unlocked .sxl-shackle { transform: translateY(-6px) rotate(-14deg); transform-origin: 42px 30px; }
+.sxl-car.unlocked .sxl-shackle { transform: translateY(-2.5px) rotate(-14deg); transform-origin: 51px 18px; }
+.sxl-key { fill: var(--surface); } .sxl-keyl { stroke: var(--surface); }
+.sxl-house { fill: color-mix(in srgb, var(--ink) 10%, var(--surface)); stroke: color-mix(in srgb, var(--ink) 30%, transparent); stroke-width: 1.5; }
+.sxl-hole { fill: #1B1530; }
+.sxl-panel { fill: var(--c); }
+.sxl-lines { stroke: rgba(255,255,255,.45); stroke-width: 1.4; }
+.sxl-door { transition: transform .8s cubic-bezier(.4,0,.2,1); transform-origin: 32px 30px; }
+.sxl.open .sxl-door { transform: scaleY(.22); }
+.sxl-carb { fill: var(--c); } .sxl-glass { fill: rgba(255,255,255,.75); } .sxl-wheel { fill: #1B1530; }
+@media (max-width: 480px) { .sxl-grid { grid-template-columns: 1fr 1fr; } .sxl { grid-template-columns: 44px minmax(0, 1fr); padding: 10px; } .sxl-art { width: 44px; height: 44px; } }
+
 .sec-h3 { font-size: 14px; margin: 18px 0 8px; color: var(--muted); font-weight: 800; }
 .sec-sens { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
 .sec-srow { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 0; background: var(--surface-2); color: var(--ink); text-align: left; border-radius: 14px; padding: 7px 10px 7px 7px; animation: pop .35s both; cursor: pointer; }
@@ -599,6 +648,9 @@ const css = `
 `;
 
 const en = {
+  "Lås {name}?": "Lock {name}?", "Låsen låses med det samme.": "The lock locks right away.", Lås: "Lock", "Luk {name}?": "Close {name}?",
+  "Porten lukker med det samme. Hold øje med, at ingen står i vejen.": "The gate closes right away. Make sure nobody is in the way.", Luk: "Close",
+  "Tryk for at lukke": "Tap to close", "Tryk for at åbne": "Tap to open", "Tryk for at låse op": "Tap to unlock", "Tryk for at låse": "Tap to lock", "Ikke hjemme": "Not at home",
   Hjemme: "Home", Ude: "Away", Nat: "Night", Ferie: "Vacation", Egen: "Custom",
   "Skal-sikring, I er hjemme": "Perimeter, you're home", "Hele huset, ingen hjemme": "The whole house, nobody home", "Skal-sikring om natten": "Perimeter at night", "Som ude, mens I er væk længe": "Like away, while you're gone long", "Egne sensorer": "Your own sensors",
   Frakoblet: "Disarmed", "Tilkoblet · hjemme": "Armed · home", "Tilkoblet · ude": "Armed · away", "Tilkoblet · nat": "Armed · night", "Tilkoblet · ferie": "Armed · vacation", "Tilkoblet · egen": "Armed · custom",

@@ -360,3 +360,49 @@ export const slug = (v) =>
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 40) || "x";
+
+/* Patch a page in place instead of replacing it: elements that are still there are kept, so an open picker stays
+   open, a focused field keeps its text, the scroll position stays and nothing plays its entrance animation again. */
+export function morph(target, html) {
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  morphKids(target, tpl.content);
+}
+function morphKids(a, b) {
+  const want = [...b.childNodes];
+  let have = [...a.childNodes];
+  for (let i = 0; i < want.length; i++) {
+    const n = want[i], o = have[i];
+    if (!o) a.appendChild(n);
+    else if (!sameKind(o, n)) a.replaceChild(n, o);
+    else morphNode(o, n);
+  }
+  have = [...a.childNodes];
+  for (let i = want.length; i < have.length; i++) have[i].remove();
+}
+const sameKind = (o, n) => o.nodeType === n.nodeType && o.nodeName === n.nodeName && (o.nodeType !== 1 || (o.getAttribute("id") || "") === (n.getAttribute("id") || ""));
+function morphNode(o, n) {
+  if (o.nodeType !== 1) {
+    if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue;
+    return;
+  }
+  const focused = o.getRootNode?.().activeElement === o;
+  for (const { name } of [...o.attributes]) if (!n.hasAttribute(name) && name !== "data-bound") o.removeAttribute(name);
+  for (const { name, value } of [...n.attributes]) {
+    if (o.getAttribute(name) === value) continue;
+    if (focused && (name === "value" || name === "checked")) continue;
+    o.setAttribute(name, value);
+    if (name === "value" && "value" in o && o.tagName !== "OPTION") o.value = value;
+    if (name === "checked") o.checked = true;
+  }
+  if (!focused && o.tagName === "INPUT" && (o.type === "checkbox" || o.type === "radio")) o.checked = n.hasAttribute("checked");
+  if (o.tagName === "TEXTAREA") {
+    if (!focused && o.value !== n.value) o.value = n.value;
+    return;
+  }
+  morphKids(o, n);
+  if (o.tagName === "SELECT" && !focused) {
+    const sel = n.querySelector("option[selected]");
+    o.value = sel ? sel.value : o.options[0]?.value ?? "";
+  }
+}

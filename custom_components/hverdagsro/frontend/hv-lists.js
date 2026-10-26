@@ -494,16 +494,37 @@ function wishCard(ctx, l, w, i) {
     <div class="wish-b">${kid || !kidId || !ctx.on("shop") ? "" : `<button class="btn soft sm" data-act="lists-wish2shop" data-l="${esc(l.id)}" data-i="${i}" ${inShop ? "disabled" : ""}>${inShop ? esc(ctx.t("Er et mål i shoppen")) : `${STAR}${esc(ctx.t("Gør til mål"))}`}</button>`}${w.url ? `<a class="iconbtn" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(ctx.t("Åbn {name}", { name: w.title }))}">${svg("go")}</a>` : ""}</div></div>`;
 }
 
+let LISTS_FOR_PICK = [];
+function listPicker(ctx) {
+  const row = (l) => `<button class="lx-opt" role="option" data-pick="${esc(l.id)}" aria-selected="${l.id === listId}"><span class="dot" style="background:${l.color}">${svg(l.icon)}</span><span class="lx-n">${esc(l.name)}</span><small class="num">${l.n}</small>${l.id === listId ? svg("check", "ic lx-ok") : ""}</button>`;
+  const own = LISTS_FOR_PICK.filter((l) => !l.wish), wish = LISTS_FOR_PICK.filter((l) => l.wish);
+  const s = ctx.sheet(`<h2>${esc(ctx.t("Vælg liste"))}</h2><div class="lx-opts" role="listbox">${own.map(row).join("")}</div>${wish.length ? `<div class="eyebrow" style="margin:14px 0 6px">${esc(ctx.t("Ønskesedler"))}</div><div class="lx-opts" role="listbox">${wish.map(row).join("")}</div>` : ""}`, { cls: "lx-sheet" });
+  s.el.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pick]");
+    if (!b) return;
+    s.close();
+    listId = b.dataset.pick;
+    ctx.render(true);
+  });
+}
+
 function pLists(ctx) {
   const LS = allLists(ctx);
   let L = LS.find((l) => l.id === listId) || LS[0];
-  const chips = `<div class="lists">${LS.map((l) => {
-    const n = l.kind === "onske" ? l.osky.wishes.length || l.osky.count : (() => {
-      const v = Number(ctx.hass.states[l.id]?.state);
-      return Number.isFinite(v) ? v : "";
-    })();
-    return `<button class="lchip" data-act="lists-list" data-id="${esc(l.id)}" aria-pressed="${L && l.id === L.id}"><span class="dot" style="background:${l.color}">${svg(l.icon)}</span>${esc(l.name)}<small>${n}</small></button>`;
-  }).join("")}${ctx.isParent ? `<button class="lchip new" data-act="lists-newlist">${svg("plus")}${esc(ctx.t("Ny liste"))}</button>` : ""}</div>`;
+  const count = (l) =>
+    l.kind === "onske"
+      ? l.osky.wishes.length || l.osky.count
+      : (() => {
+          const v = Number(ctx.hass.states[l.id]?.state);
+          return Number.isFinite(v) ? v : "";
+        })();
+  // One list at a time, chosen in a dropdown (the lists and the wish lists in groups).
+  const chips = `<div class="lx-bar">${
+    L
+      ? `<button class="lx-pick" data-act="lists-pick" aria-haspopup="listbox"><span class="dot" style="background:${L.color}">${svg(L.icon)}</span><span class="lx-n">${esc(L.name)}</span><small class="num">${count(L)}</small>${svg("chev", "ic lx-ch")}</button>`
+      : ""
+  }${ctx.isParent ? `<button class="lchip new" data-act="lists-newlist">${svg("plus")}${esc(ctx.t("Ny liste"))}</button>` : ""}</div>`;
+  LISTS_FOR_PICK = LS.map((l) => ({ id: l.id, name: l.name, color: l.color, icon: l.icon, wish: l.kind === "onske", n: count(l) }));
   if (!L) return chips + `<section class="card"><h2>${esc(ctx.t("Ingen lister"))}</h2><p class="t-sub">${esc(ctx.isParent ? ctx.t("Opret den første liste med knappen ovenfor.") : ctx.t("Bed far eller mor om at lave en liste."))}</p></section>`;
   listId = L.id;
   const mid = LS.some((l) => l.locked);
@@ -638,6 +659,7 @@ const acts = {
     history.pushState(null, "", `/${el.dataset.id}`);
     window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
   },
+  "lists-pick": (el, e, ctx) => listPicker(ctx),
   "lists-list": (el, e, ctx) => {
     listId = el.dataset.id;
     listConfirm = null;
@@ -718,8 +740,9 @@ const acts = {
 
 /* ---------------------------------------------------------------- forms */
 function after(ctx) {
+  // The page is patched in place on updates, so a form can still have its listener from last time.
   const add = ctx.$("ls-add");
-  if (add)
+  if (add && !add._hv && (add._hv = 1))
     add.addEventListener("submit", async (e) => {
       e.preventDefault();
       const input = ctx.$("ls-add-t");
@@ -733,7 +756,7 @@ function after(ctx) {
       if (await ctx.call("todo", "add_item", { entity_id: id, item: text })) refreshSoon(ctx, id);
     });
   const wf = ctx.$("wish-f");
-  if (wf)
+  if (wf && !wf._hv && (wf._hv = 1))
     wf.addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = ctx.$("wa-t").value.trim();
@@ -760,6 +783,18 @@ function after(ctx) {
 }
 
 const css = `
+.lx-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+.lx-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 16px; padding: 8px 12px 8px 8px; font: 800 17px var(--font-display); cursor: pointer; box-shadow: var(--shadow); text-align: left; }
+.lx-pick .dot, .lx-opt .dot { width: 32px; height: 32px; border-radius: 11px; display: grid; place-items: center; color: #fff; flex: none; }
+.lx-pick .dot .ic, .lx-opt .dot .ic { width: 18px; height: 18px; }
+.lx-n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lx-pick small, .lx-opt small { color: var(--muted); font: 700 13px var(--font-body); }
+.lx-ch { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.lx-opts { display: grid; gap: 4px; }
+.lx-opt { display: flex; align-items: center; gap: 10px; border: 0; background: none; color: var(--ink); padding: 8px; border-radius: 14px; font: 700 15px var(--font-body); cursor: pointer; text-align: left; }
+.lx-opt[aria-selected="true"] { background: var(--surface-2); }
+.lx-ok { width: 18px; height: 18px; color: var(--violet); }
+
 .ls-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 90; }
 .ls-skel { display: grid; gap: 8px; padding: 4px; }
 .ls-skel i { display: block; height: 34px; border-radius: 10px; background: linear-gradient(90deg, var(--surface-2), var(--line), var(--surface-2)); background-size: 200% 100%; animation: lsshine 1.2s linear infinite; }
@@ -770,6 +805,7 @@ const css = `
 `;
 
 const en = {
+  "Vælg liste": "Choose a list",
   Familien: "The family",
   "Ny aftale": "New appointment",
   "Intet i kalenderen": "Nothing in the calendar",

@@ -90,10 +90,19 @@ function battery(ctx, m) {
   const ents = ctx.hass.entities || {};
   const person = m.person && ctx.hass.states[m.person];
   const trackers = [m.device_tracker, ...(person?.attributes?.device_trackers || [])].filter(Boolean);
-  const tracker = trackers.find((t) => ents[t]?.platform === "mobile_app") || trackers[0];
-  const dev = tracker && ents[tracker]?.device_id;
-  if (!dev) return null;
-  const id = Object.keys(ents).find((e) => ents[e].device_id === dev && e.startsWith("sensor.") && ctx.hass.states[e]?.attributes?.device_class === "battery");
+  const devBattery = (dev) => Object.keys(ents).find((e) => ents[e].device_id === dev && e.startsWith("sensor.") && ctx.hass.states[e]?.attributes?.device_class === "battery");
+  const tracker = trackers.find((t) => ents[t]?.device_id && ents[t]?.platform === "mobile_app") || trackers.find((t) => ents[t]?.device_id);
+  let id = tracker ? devBattery(ents[tracker].device_id) : null;
+  if (!id) {
+    // The person is followed by a helper tracker (no device): find the member's phone in the companion app by name.
+    const key = slug(m.name).replace(/_/g, "");
+    const phones = Object.keys(ents)
+      .filter((t) => t.startsWith("device_tracker.") && ents[t].platform === "mobile_app" && ents[t].device_id)
+      .filter((t) => `${t} ${ctx.hass.states[t]?.attributes?.friendly_name || ""}`.toLowerCase().replace(/[^a-z0-9æøå]/g, "").includes(key))
+      .filter((t) => !/ipad|watch|tablet|mac|book/i.test(t));
+    const found = phones.map((t) => devBattery(ents[t].device_id)).filter(Boolean);
+    id = found.sort((a, b) => new Date(ctx.hass.states[b]?.last_updated || 0) - new Date(ctx.hass.states[a]?.last_updated || 0))[0] || null;
+  }
   const v = id ? Number(ctx.st(id)?.state) : NaN;
   return Number.isFinite(v) ? Math.round(v) : null;
 }
@@ -731,6 +740,12 @@ function personPage(ctx) {
     ${card(ctx.feature(p, "pet"), ctx.feature(p, "skema") ? "s4" : "s12", `<div class="card-head"><h2>${esc(ctx.t("Mit dyr"))}</h2><span class="meta">${esc(ctx.t("Slået til"))}</span></div>${petBlock(ctx, p)}<div class="minis">${ctx.feature(p, "shop") ? `<div class="mini"><span>${esc(ctx.t("Mål"))}</span><span>${esc(r.em)} ${esc(r.t)} · ${pts}/${r.cost}</span></div>` : ""}${pin ? `<div class="mini"><span>${esc(ctx.t("Besked"))}</span><span>${esc(pin.text)}</span></div>` : ""}</div>`)}
     ${card(ctx.feature(p, "missions"), ctx.feature(p, "shop") ? "s6" : "s12", `<div class="card-head"><h2>${esc(ctx.t("Missioner"))}</h2><button class="btn soft sm" data-act="home-quick" data-kind="mission" data-member="${esc(id)}">${svg("plus")}${esc(ctx.t("Ny mission"))}</button></div><div class="tasks">${mine.map((t) => taskRow(ctx, t)).join("") || `<div class="t-sub">${esc(ctx.t("Ingen missioner"))}</div>`}</div>`)}
     ${card(ctx.feature(p, "shop"), ctx.feature(p, "missions") ? "s6" : "s12", `<div class="card-head"><h2>${esc(ctx.t("Pointshop"))}</h2><span class="meta">${esc(ctx.t("Forældre sætter priserne"))}</span></div><div class="tasks">${shop.map((w) => `<div class="task" style="grid-template-columns:40px minmax(0,1fr) auto auto"><span style="font-size:26px;text-align:center">${esc(w.emoji)}</span><div><div class="t-ttl">${esc(w.title)}</div><div class="t-sub">${esc(w.id === r.id ? ctx.t("Mål") : w.member === "all" ? ctx.t("Belønning · alle børn") : ctx.t("Belønning"))}</div></div><span class="t-pts">${w.cost}${STAR}</span><button class="iconbtn" data-act="home-delreward" data-id="${esc(w.id)}" aria-label="${esc(ctx.t("Fjern {what}", { what: w.title }))}">${svg("trash")}</button></div>`).join("") || `<div class="t-sub">${esc(ctx.t("Ingen belønninger endnu"))}</div>`}</div><button class="btn soft sm" data-act="home-quick" data-kind="reward" data-member="${esc(id)}" style="margin-top:12px">${svg("plus")}${esc(ctx.t("Ny belønning"))}</button>`)}
+    ${(() => {
+      // The child's wish lists from Ønskeskyen (chosen under Familieindstillinger › Ønskeskyen).
+      const wl = typeof Kids.wishListsFor === "function" ? Kids.wishListsFor(ctx, id) : [];
+      if (!ctx.on("wish") || !wl.length) return "";
+      return wl.map((l) => (typeof Kids.onskeCard === "function" ? `<div class="s12">${Kids.onskeCard(ctx, l)}</div>` : "")).join("");
+    })()}
     <section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Profil"))}</h2><button class="btn soft sm" data-go="indstillinger:born">${svg("shield")}${esc(ctx.t("Moduler og institution"))}</button></div><div class="kprof">${bdayField(ctx, p)}${inst ? `<div class="bd-f"><span class="bd-ic">${inst[2]}</span><div><b>${esc(ctx.t(inst[1]))}</b><small>${esc(p.institution === "skole" ? ctx.t("Skoleskema fra Aula") : ctx.t("Dagens aflevering og afhentning fra Hent og bring"))}</small></div></div>` : ""}</div></section>
   </div>`;
 }
