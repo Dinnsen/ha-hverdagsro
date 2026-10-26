@@ -1,14 +1,12 @@
-/* Hverdagsro – home: the parents' front page, a person's page, the child's day, the shop,
-   managing missions and rewards, "who are you?" on a shared tablet and my own settings. */
+/* Hverdagsro – home: the parents' front page with the family band, a person's page, the child's day and shop,
+   Opgaver, "who are you?" on a shared tablet and Mine indstillinger. Ported 1:1 from the prototype
+   (pHome, familyBand/BANDS, personPage, parentPage, pets, kDay, kShop, pTasks, pMe), with Home Assistant's data. */
 import { addDays, esc, slug, startOfDay, uid } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
+import * as Rooms from "./hv-rooms.js";
+import * as Kids from "./hv-kids.js";
+import * as House from "./hv-house.js";
 
-const PARTS = [
-  ["morning", "Morgen", "sunrise"],
-  ["day", "I løbet af dagen", "sun"],
-  ["afternoon", "Eftermiddag", "partly"],
-  ["evening", "Aften", "moon"],
-];
 const SKINS = [
   ["standard", "Hverdagsro", "#6E4AFF", "#F2F4F6"],
   ["nordlys", "Nordlys", "#0EA5A0", "#EEF6F5"],
@@ -19,102 +17,76 @@ const SKINS = [
   ["rummet", "Rummet", "#8B5CF6", "#0E1024"],
   ["kontrast", "Kontrast", "#111111", "#FFFFFF"],
 ];
-const INST = { none: "", dagpleje: "Dagpleje", vuggestue: "Vuggestue", bornehave: "Børnehave", skole: "Skole" };
-const EMOJI = ["🪥", "🛏️", "🎒", "🍽️", "🧸", "🌙", "👕", "🧹", "🐶", "📚", "🎹", "🥦", "🚿", "🧺", "🗑️", "🌱", "⭐", "🎁"];
-const REWARD_EMOJI = ["🎁", "🎬", "🍦", "🧱", "📱", "🎮", "🍕", "🏊", "🎨", "📚", "🧸", "⚽", "🍿", "🎡"];
+const INST = [
+  ["dagpleje", "Dagpleje", "🧸"],
+  ["vuggestue", "Vuggestue", "🍼"],
+  ["bornehave", "Børnehave", "🎨"],
+  ["skole", "Skole", "🎒"],
+];
+const MSGS = {
+  parent: [["shop", "Børnene køber i shoppen"], ["mission", "En mission er klaret"], ["goal", "Et mål er nået"], ["calendar", "Aftaler flyttet eller aflyst"], ["pickup", "Hvem henter i dag"], ["waste", "Skrald skal stilles ud"]],
+  kid: [["points", "Mine point"], ["next", "Næste aftale"], ["school", "Skoledagen slutter"], ["pin", "Besked fra far eller mor"]],
+};
+const BANDS = [["historier", "Historier"], ["huset", "Huset"], ["spor", "Dagens spor"], ["bobler", "Bobler"], ["live", "Live-linje"], ["kort", "Kort"]];
+const SUBJ = { Dansk: "#7C5CF0", Matematik: "#3B6BF5", Engelsk: "#11A39A", "Natur/teknik": "#2E9E55", Idræt: "#F08A3A", Musik: "#E4568C", Billedkunst: "#D99A12", Historie: "#9A6B4A", Kristendom: "#6B7A99", "Klassens tid": "#8A86A0", "Leg og læring": "#E3A21C" };
+const DAYS_ISO = ["Hver dag", "Hverdage", "Weekender"];
 const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>`;
 const STAR = svg("pstar");
+const DINNER = "17:30";
 
-// Local UI state
-let kidDay = 0; // the child's day picker: 0 = today
-let shopKid = null; // the parents' shop: which child
-let opTab = "missioner";
-let celebrated = "";
+// ---------------------------------------------------------------- local state
+let kidDay = 0;
+let bandStyle = (() => {
+  try {
+    return localStorage.getItem("hverdagsro-band") || "kort";
+  } catch (e) {
+    return "kort";
+  }
+})();
+let storyT = null;
+let storyKey = null;
+let liveI = 0;
+let liveTimer = null;
 
-// ---------------------------------------------------------------- helpers
+// ---------------------------------------------------------------- time helpers
+const pad = (n) => String(n).padStart(2, "0");
+const isoOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const weekday = (d) => (d.getDay() + 6) % 7; // Monday = 0
-const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const todayDate = (ctx) => (ctx.data?.today ? new Date(`${ctx.data.today}T12:00:00`) : new Date());
-const PART_ORDER = Object.fromEntries(PARTS.map((p, i) => [p[0], i]));
-const sortMissions = (list) =>
-  [...list].sort((a, b) => (PART_ORDER[a.part] ?? 1) - (PART_ORDER[b.part] ?? 1) || String(a.time || "99").localeCompare(String(b.time || "99")));
-
-function missionsFor(ctx, member, date = todayDate(ctx)) {
-  if (!member || !ctx.on("missions")) return [];
-  const wd = weekday(date);
-  const forAll = member.role === "child";
-  return sortMissions((ctx.data.missions || []).filter((m) => (m.member === member.id || (forAll && m.member === "all")) && (m.days || []).includes(wd)));
-}
-function doneOn(ctx, iso) {
-  if (iso === ctx.data.today) return ctx.data.done_today || {};
-  return (ctx.data.done_week || {})[iso] || {};
-}
-const isDone = (ctx, mission, memberId, iso = ctx.data.today) => `${mission.id}:${memberId}` in doneOn(ctx, iso);
-function progress(ctx, member, date = todayDate(ctx)) {
-  const list = missionsFor(ctx, member, date);
-  const iso = isoOf(date);
-  return { list, total: list.length, done: list.filter((m) => isDone(ctx, m, member.id, iso)).length };
-}
-function weekDates(ctx) {
-  const t = todayDate(ctx);
-  const mon = addDays(t, -weekday(t));
-  return Array.from({ length: 7 }, (_, i) => addDays(mon, i));
-}
-function perfectDays(ctx, member) {
-  const today = ctx.data.today;
-  return weekDates(ctx).filter((d) => {
-    const iso = isoOf(d);
-    if (iso > today) return false;
-    const p = progress(ctx, member, d);
-    return p.total > 0 && p.done === p.total;
-  }).length;
-}
-function rewardsFor(ctx, id) {
-  return (ctx.data.rewards || []).filter((r) => r.member === "all" || r.member === id).sort((a, b) => a.cost - b.cost);
-}
-function goalOf(ctx, id) {
-  const pts = ctx.points(id);
-  const list = rewardsFor(ctx, id);
-  return list.find((r) => r.cost > pts) || list[list.length - 1] || null;
-}
-const pending = (ctx, id) => (ctx.data.requests || []).filter((r) => r.status === "pending" && (!id || r.member === id));
-const reward = (ctx, id) => (ctx.data.rewards || []).find((r) => r.id === id);
-const pointsOn = (ctx) => ctx.on("points");
-const timeText = (ctx, hhmm) => {
-  if (!hhmm) return "";
-  const [h, m] = hhmm.split(":").map(Number);
-  return ctx.fmt.time(new Date(2000, 0, 1, h, m));
-};
-const timeDate = (hhmm, base = new Date()) => {
-  const [h, m] = String(hhmm).split(":").map(Number);
+const hoursOf = (d) => d.getHours() + d.getMinutes() / 60;
+const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const at = (base, t) => {
+  const [h, m] = String(t || "00:00").split(/[:.]/).map(Number);
   const d = new Date(base);
-  d.setHours(h, m, 0, 0);
+  d.setHours(h || 0, m || 0, 0, 0);
   return d;
 };
+const pct = (h) => ((Math.max(6, Math.min(24, h)) - 6) / 18) * 100;
+const today0 = () => startOfDay(new Date());
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const DA_SHORT = ["man", "tir", "ons", "tor", "fre", "lør", "søn"];
+const shortDay = (ctx, d) => (ctx.lang() === "da" ? DA_SHORT[weekday(d)] : ctx.fmt.short(d).replace(/\.$/, "").toLowerCase());
 
-function until(ctx, d) {
-  const mins = Math.round((d - Date.now()) / 60000);
-  const sameDay = startOfDay(d).getTime() === startOfDay(new Date()).getTime();
-  if (mins < -1) return sameDay ? ctx.fmt.time(d) : `${ctx.fmt.rel(d)} ${ctx.fmt.time(d)}`;
-  if (mins <= 0) return ctx.t("nu");
-  if (mins < 60) return ctx.t("om {n} min", { n: mins });
-  if (sameDay) return ctx.t("om {h} t {m} min", { h: Math.floor(mins / 60), m: mins % 60 });
-  return `${ctx.fmt.rel(d)} ${ctx.fmt.time(d)}`;
+/* "om 26 min", "nu", "man. 13.00" – the prototype's countdown() */
+function countdown(ctx, d) {
+  if (!d) return "";
+  const days = Math.round((startOfDay(d) - today0()) / 864e5);
+  if (days > 0) return `${shortDay(ctx, d)}. ${ctx.fmt.time(d)}`;
+  const m = Math.round((d - Date.now()) / 60000);
+  if (m <= 0 && m > -20) return ctx.t("nu");
+  if (m < 0) return ctx.fmt.time(d);
+  return m < 60 ? ctx.t("om {n} min", { n: m }) : ctx.t("om {h} t {m} min", { h: Math.floor(m / 60), m: m % 60 });
 }
 
-function presence(ctx, m) {
-  const s = m.person && ctx.st(m.person);
-  if (!s || s.state === "unknown" || s.state === "unavailable") return null;
-  const home = s.state === "home";
-  const zone = home ? ctx.t("Hjemme") : s.state === "not_home" ? ctx.t("Ude") : ctx.hass.formatEntityState ? ctx.hass.formatEntityState(s) : s.state;
-  const since = s.last_changed ? new Date(s.last_changed) : null;
-  const fresh = since && Date.now() - since < 15 * 60000;
-  const sinceTxt = since ? (startOfDay(since).getTime() === startOfDay(new Date()).getTime() ? ctx.fmt.time(since) : ctx.fmt.rel(since)) : "";
-  return { home, text: zone, since: sinceTxt, fresh };
+// ---------------------------------------------------------------- members, presence and pictures
+function av(ctx, id, cls = "") {
+  if (id === "fam") return `<span class="av ${cls}" style="background:#11A39A" title="${esc(ctx.t("Familien"))}">F</span>`;
+  const m = ctx.member(id);
+  if (m?.photo) return `<span class="av ${cls}" style="--pc:${esc(m.color)};background:${esc(m.color)}"><img src="${esc(m.photo)}" alt=""></span>`;
+  return ctx.avatar(id, cls);
 }
+const kidsOf = (ctx) => ctx.children();
 
-/* The battery of the member's phone: a battery sensor on the same device as their tracker. */
-function phoneBattery(ctx, m) {
+function battery(ctx, m) {
   const ents = ctx.hass.entities || {};
   const person = m.person && ctx.hass.states[m.person];
   const trackers = [m.device_tracker, ...(person?.attributes?.device_trackers || [])].filter(Boolean);
@@ -126,433 +98,894 @@ function phoneBattery(ctx, m) {
   return Number.isFinite(v) ? Math.round(v) : null;
 }
 
-function calendars(ctx) {
-  if (!ctx.on("calendar")) return [];
-  const set = new Set([...(ctx.data.settings.calendars || []), ...ctx.members().map((m) => m.calendar)].filter(Boolean));
-  return [...set];
+/* The prototype's PRES: home, the text, since when, fresh, the phone's battery. A child without a phone follows a parent. */
+function pres(ctx, m) {
+  const s = m.person && ctx.st(m.person);
+  if (s && !["unknown", "unavailable"].includes(s.state)) {
+    const home = s.state === "home";
+    const since = s.last_changed ? new Date(s.last_changed) : null;
+    const zone = home ? ctx.t("Hjemme") : s.state === "not_home" ? ctx.t("Ude") : `${ctx.t("Ude")} · ${ctx.hass.formatEntityState ? ctx.hass.formatEntityState(s) : s.state}`;
+    return {
+      known: true,
+      home,
+      txt: zone,
+      since: since ? (startOfDay(since).getTime() === today0().getTime() ? ctx.fmt.time(since) : ctx.fmt.rel(since)) : "",
+      sinceH: since && startOfDay(since).getTime() === today0().getTime() ? hoursOf(since) : null,
+      fresh: since && Date.now() - since < 2 * 3600e3,
+      battery: battery(ctx, m),
+    };
+  }
+  const parents = ctx.parents().map((p) => [p, p.person && ctx.hass.states[p.person]]).filter(([, st]) => st);
+  const home = parents.find(([, st]) => st.state === "home");
+  if (!parents.length) return { known: false, home: null, txt: m.role === "child" ? ctx.t((INST.find((i) => i[0] === m.institution) || [0, "Barn"])[1]) : ctx.t("Forælder") };
+  const p = home ? home[0] : parents[0][0];
+  return { known: true, home: !!home, txt: `${home ? ctx.t("Hjemme") : ctx.t("Ude")} · ${ctx.t("følger {name}", { name: p.name })}`, since: "", fresh: false, battery: null };
 }
+
+function whoName(ctx, id) {
+  if (id === "mor") return ctx.t("Mor");
+  if (id === "far") return ctx.t("Far");
+  return ctx.member(id)?.name || (ctx.data.routines?.helpers || []).find((h) => h.id === id)?.name || id || "";
+}
+
+// ---------------------------------------------------------------- missions (the prototype's TASKS)
+function missionsFor(ctx, m, date = today0()) {
+  const wd = weekday(date);
+  const kid = m.role === "child";
+  return (ctx.data.missions || [])
+    .filter((x) => (x.member === m.id || (kid && x.member === "all")) && (x.days || []).includes(wd))
+    .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+}
+function doneSet(ctx, iso) {
+  if (iso === ctx.data.today) return ctx.data.done_today || {};
+  return (ctx.data.done_week || {})[iso] || {};
+}
+function daysText(ctx, days) {
+  const d = [...(days || [])].sort().join(",");
+  if (d === "0,1,2,3,4,5,6") return ctx.t("Hver dag");
+  if (d === "0,1,2,3,4") return ctx.t("Hverdage");
+  if (d === "5,6") return ctx.t("Weekender");
+  const ds = (days || []).map((i) => addDays(today0(), (i - weekday(today0()) + 7) % 7));
+  return ds.length === 1 ? cap(ctx.fmt.day(ds[0])) : ds.map((d) => cap(shortDay(ctx, d))).join(", ");
+}
+function tasksFor(ctx, m, date = today0()) {
+  const iso = isoOf(date);
+  const done = doneSet(ctx, iso);
+  return missionsFor(ctx, m, date).map((x) => ({
+    id: x.id,
+    who: m.id,
+    t: x.title,
+    em: x.emoji,
+    pts: x.points,
+    done: `${x.id}:${m.id}` in done,
+    due: x.time ? ctx.fmt.time(at(date, x.time)) : "",
+    time: x.time,
+    rep: daysText(ctx, x.days),
+    extra: (x.days || []).length === 1 && date.getTime() === today0().getTime() ? false : false,
+  }));
+}
+function streak(ctx, m) {
+  const t = today0();
+  let n = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(t, -i);
+    if (d < addDays(t, -weekday(t))) break;
+    const L = tasksFor(ctx, m, d);
+    if (!L.length) continue;
+    const perfect = L.every((x) => x.done);
+    if (perfect) n++;
+    else if (i > 0) break;
+  }
+  return n;
+}
+function rewardsOf(ctx, id) {
+  return (ctx.data.rewards || []).filter((r) => r.member === id || r.member === "all").sort((a, b) => a.cost - b.cost);
+}
+let CTX = null;
+function chosenGoal(id) {
+  return CTX?.member(id)?.goal || null;
+}
+/* The prototype's goalOf: the chosen goal, else the cheapest reward not yet afforded. */
+function goalOf(ctx, k) {
+  const list = rewardsOf(ctx, k.id);
+  const pts = ctx.points(k.id);
+  const pick = list.find((r) => r.id === (k.goal || chosenGoal(k.id))) || list.find((r) => r.cost > pts) || list[list.length - 1];
+  return pick ? { id: pick.id, em: pick.emoji, t: pick.title, cost: pick.cost } : { id: null, em: "🎁", t: ctx.t("Intet mål"), cost: 100 };
+}
+const pending = (ctx, id) => (ctx.on("shop") ? (ctx.data.requests || []).filter((r) => r.status === "pending" && (!id || r.member === id)) : []);
+const rewardById = (ctx, id) => (ctx.data.rewards || []).find((r) => r.id === id);
+
+// ---------------------------------------------------------------- calendar, dinner and pickups
 function sharedCalendars(ctx) {
   const own = new Set(ctx.members().map((m) => m.calendar).filter(Boolean));
   return (ctx.data.settings.calendars || []).filter((c) => !own.has(c));
 }
-function events(ctx, days = 2) {
-  const cals = calendars(ctx);
-  if (!cals.length) return [];
-  const s = startOfDay(new Date());
-  return ctx.events(cals, s, addDays(s, Math.max(2, days)));
+function allCalendars(ctx) {
+  if (!ctx.on("calendar")) return [];
+  return [...new Set([...(ctx.data.settings.calendars || []), ...ctx.members().map((m) => m.calendar)].filter(Boolean))];
 }
-const calOwner = (ctx, cal) => ctx.members().find((m) => m.calendar === cal);
-function meals(ctx) {
+function events(ctx, days = 2) {
+  const cals = allCalendars(ctx);
+  if (!cals.length) return [];
+  return ctx.events(cals, today0(), addDays(today0(), days));
+}
+const nameRe = (m) => new RegExp(`\\b${m.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`, "i");
+/* The members an event is about: the owner of its calendar, or everyone named in the title. */
+function eventWho(ctx, e) {
+  const owner = ctx.members().find((m) => m.calendar === e.calendar);
+  if (owner) return [owner.id];
+  const named = ctx.members().filter((m) => nameRe(m).test(e.title)).map((m) => m.id);
+  return named.length ? named : sharedCalendars(ctx).includes(e.calendar) ? ["fam"] : [];
+}
+function eventsOf(ctx, m, days = 7) {
+  return events(ctx, days).filter((e) => e.calendar === m.calendar || (sharedCalendars(ctx).includes(e.calendar) && nameRe(m).test(e.title)));
+}
+const stripName = (m, title) => cap(title.replace(nameRe(m), "").replace(/\s{2,}/g, " ").trim()) || title;
+function meals(ctx, days = 3) {
   const id = ctx.data.settings.meals_calendar;
   if (!id || !ctx.on("meals")) return [];
-  const s = startOfDay(new Date());
-  return ctx.events([id], s, addDays(s, 3));
+  return ctx.events([id], today0(), addDays(today0(), days));
+}
+function dinnerOn(ctx, date) {
+  const d = startOfDay(date).getTime();
+  const e = meals(ctx, 8).find((x) => startOfDay(x.start).getTime() === d);
+  if (!e) return null;
+  return { title: e.title, at: e.allDay ? at(date, DINNER) : e.start, desc: e.description || "", calendar: e.calendar };
+}
+/* Hent og bring on a day: [{kid, part: bring|hent, who, at: Date}] */
+function pickupsOn(ctx, date) {
+  const wd = String(weekday(date) + 1);
+  const out = [];
+  const kids = typeof Kids.pickupFor === "function" ? ctx.children().map((k) => [k.id, null]) : Object.entries(ctx.data.routines?.pickups || {});
+  for (const [kidId, plan] of kids) {
+    const kid = ctx.member(kidId);
+    const day = typeof Kids.pickupFor === "function" ? Kids.pickupFor(ctx, kidId, date) : plan?.[wd];
+    if (!kid || !day) continue;
+    for (const part of ["bring", "hent"]) {
+      const step = day[part];
+      if (step?.who && step.at) out.push({ kid, part, who: step.who, at: at(date, step.at) });
+    }
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+function skemaOn(ctx, m, date) {
+  if (!m.skema || !ctx.feature(m, "skema")) return [];
+  const s = startOfDay(date);
+  return ctx.events([m.skema], s, addDays(s, 1)).filter((e) => !e.allDay);
 }
 
+/* The prototype's NEXTUP: the next thing for the member, from pickups, school, missions with a time and the calendar. */
 function nextUp(ctx, m) {
-  const now = new Date();
-  const options = [];
-  if (m.role === "child") {
-    const open = missionsFor(ctx, m).filter((x) => x.time && !isDone(ctx, x, m.id) && timeDate(x.time) > now - 30 * 60000);
-    if (open.length) options.push({ icon: "star", title: open[0].title, at: timeDate(open[0].time) });
+  const now = Date.now();
+  const c = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(today0(), i);
+    for (const p of pickupsOn(ctx, d)) {
+      if (p.who === m.id) c.push({ icon: "pickup", title: `${p.part === "bring" ? ctx.t("Bringer") : ctx.t("Henter")} ${p.kid.name}`, at: p.at });
+      if (p.kid.id === m.id && p.part === "bring" && m.institution !== "skole") c.push({ icon: "school", title: ctx.t((INST.find((x) => x[0] === m.institution) || [0, "Institution"])[1]), at: p.at });
+    }
+    const sk = skemaOn(ctx, m, d);
+    if (sk.length) c.push({ icon: "school", title: ctx.t("Skole"), at: sk[0].start });
+    if (c.some((x) => x.at > now) && i > 0) break;
   }
-  if (m.calendar) {
-    const ev = events(ctx).find((e) => e.calendar === m.calendar && !e.allDay && e.end > now);
-    if (ev) options.push({ icon: "cal", title: ev.title, at: ev.start });
-  }
-  options.sort((a, b) => a.at - b.at);
-  const o = options[0];
-  return o ? { ...o, when: until(ctx, o.at) } : null;
+  for (const t of tasksFor(ctx, m)) if (t.time && !t.done) c.push({ icon: "tasks", title: t.t, at: at(today0(), t.time) });
+  for (const e of eventsOf(ctx, m)) if (!e.allDay) c.push({ icon: m.role === "child" ? "star" : "cal", title: stripName(m, e.title), at: e.start });
+  const fut = c.filter((x) => x.at - now > -20 * 60000).sort((a, b) => a.at - b.at);
+  return fut[0] || null;
 }
 
-function ring(ctx, m, f, size = 66, r = 30) {
-  const C = 2 * Math.PI * r;
-  return `<svg viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="4"/><circle class="arc" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${esc(m.color)}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - Math.max(f, 0.03))).toFixed(1)}"/></svg>`;
+/* The prototype's LANES: the day as blocks on a track from 6 to 24, and when the member came home. */
+function lanesOf(ctx, m) {
+  const pr = pres(ctx, m);
+  const blocks = [];
+  for (const e of eventsOf(ctx, m, 1)) {
+    if (e.allDay || startOfDay(e.start).getTime() !== today0().getTime()) continue;
+    blocks.push([hoursOf(e.start), Math.min(24, e.end > addDays(today0(), 1) ? 24 : hoursOf(e.end)), m.color, stripName(m, e.title)]);
+  }
+  for (const t of tasksFor(ctx, m)) if (t.time) blocks.push([hoursOf(at(today0(), t.time)), hoursOf(at(today0(), t.time)) + 0.25, m.color, t.t]);
+  for (const p of pickupsOn(ctx, today0())) if (p.who === m.id) blocks.push([hoursOf(p.at), hoursOf(p.at) + 0.33, m.color, `${p.part === "bring" ? ctx.t("Bringer") : ctx.t("Henter")} ${p.kid.name}`]);
+  const dn = dinnerOn(ctx, today0());
+  if (dn) blocks.push([hoursOf(dn.at), hoursOf(dn.at) + 0.75, "#6E4AFF", ctx.t("Aftensmad")]);
+  blocks.sort((a, b) => a[0] - b[0]);
+  return { mark: pr.home && pr.sinceH != null ? [pr.sinceH, ctx.t("Kom hjem kl. {t}", { t: pr.since })] : null, away: !pr.home && pr.sinceH != null ? pr.sinceH : null, blocks };
 }
-function bigRing(ctx, m) {
-  const g = goalOf(ctx, m.id);
-  const f = g ? Math.min(1, ctx.points(m.id) / g.cost) : 0;
-  const C = 2 * Math.PI * 46;
-  return `<div class="big-ring"><svg viewBox="0 0 104 104" aria-hidden="true"><circle cx="52" cy="52" r="46" stroke="var(--surface-2)" stroke-width="9" fill="none"/><circle cx="52" cy="52" r="46" stroke="${esc(m.color)}" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - f)).toFixed(1)}" class="hh-ringarc"/></svg>${ctx.avatar(m.id)}</div>`;
-}
-function daysText(ctx, days) {
-  const d = [...(days || [])].sort();
-  if (d.length === 7) return ctx.t("Hver dag");
-  if (d.join() === "0,1,2,3,4") return ctx.t("Hverdage");
-  if (d.join() === "5,6") return ctx.t("Weekender");
-  const mon = new Date(2024, 0, 1);
-  return d.map((i) => cap(ctx.fmt.short(addDays(mon, i)))).join(", ");
-}
-const partName = (ctx, part) => ctx.t((PARTS.find((p) => p[0] === part) || PARTS[1])[1]);
+const hm = (ctx, h) => ctx.fmt.time(at(today0(), `${Math.floor(h)}:${Math.round((h % 1) * 60)}`));
 
-// ---------------------------------------------------------------- rows
-function missionRow(ctx, mission, member, { big = false, iso = ctx.data.today, locked = false, noWho = false } = {}) {
-  const done = isDone(ctx, mission, member.id, iso);
-  const canTick = !locked && iso === ctx.data.today;
-  const sub = big || noWho
-    ? [mission.time ? `${svg("clock")}${timeText(ctx, mission.time)}` : "", big ? "" : esc(partName(ctx, mission.part))].filter(Boolean).join(" · ") || (big ? esc(ctx.t("Når du vil")) : "")
-    : `${ctx.avatar(member.id, "sm")}<span>${esc(member.name)} · ${esc(partName(ctx, mission.part))}</span>${mission.time ? `<span>${svg("clock")}${timeText(ctx, mission.time)}</span>` : ""}`;
-  return `<div class="task${big ? " mission" : ""}${done ? " done" : ""}" style="--pc:${esc(member.color)}">
-    <button class="check" data-act="home-mission" data-id="${esc(mission.id)}" data-member="${esc(member.id)}" aria-pressed="${done}" aria-label="${esc(ctx.t("Marker {name} som klaret", { name: mission.title }))}" style="${done ? `background:${esc(member.color)}` : ""}" ${canTick ? "" : "disabled"}>${CHECK}</button>
-    <div style="min-width:0"><div class="t-ttl">${mission.emoji ? `<span class="hh-emo">${esc(mission.emoji)}</span>` : ""}${esc(mission.title)}</div><div class="t-sub">${sub}</div></div>
-    ${pointsOn(ctx) && mission.points ? `<span class="t-pts"${big ? ' style="font-size:16px"' : ""}>+${mission.points}${STAR}</span>` : "<span></span>"}
+// ---------------------------------------------------------------- rows (the prototype's ag, taskRow, approveRow)
+function ag(ctx, time, ttl, sub, who, color, cls = "") {
+  return `<div class="ag ${cls}"><span class="time">${time}</span><span class="bar" style="background:${color}"></span><div style="min-width:0"><div class="ttl">${esc(ttl)}</div><div class="sub">${esc(sub)}</div></div><div class="who">${who.map((w) => av(ctx, w, "sm")).join("")}</div></div>`;
+}
+function taskRow(ctx, t) {
+  const p = ctx.member(t.who);
+  const pts = t.pts && p?.role === "child" && ctx.feature(p, "points");
+  return `<div class="task${t.done ? " done" : ""}" data-task="${esc(t.id)}">
+    <button class="check" data-act="home-task" data-id="${esc(t.id)}" data-member="${esc(t.who)}" aria-label="${esc(ctx.t("Marker {what} som klaret", { what: t.t }))}" aria-pressed="${!!t.done}" style="${t.done ? `background:${esc(p?.color)}` : ""}">${CHECK}</button>
+    <div style="min-width:0"><div class="t-ttl">${esc(t.t)}</div><div class="t-sub">${av(ctx, t.who, "sm")}<span>${esc(p?.name || "")}</span>${t.due ? `<span>${esc(t.due)}</span>` : t.rep ? `<span>${svg("repeat")}${esc(t.rep)}</span>` : ""}</div></div>
+    ${pts ? `<span class="t-pts">+${t.pts}${STAR}</span>` : "<span></span>"}
   </div>`;
 }
-
-function approveRow(ctx, rq) {
-  const k = ctx.member(rq.member);
-  const r = reward(ctx, rq.reward) || { emoji: "🎁", title: ctx.t("En belønning"), cost: 0 };
+function approveRow(ctx, pq) {
+  const k = ctx.member(pq.member);
+  const r = rewardById(ctx, pq.reward) || { emoji: "🎁", title: ctx.t("En belønning"), cost: 0 };
   if (!k) return "";
-  return `<div class="approve">${ctx.avatar(k.id)}<div class="t-ttl">${ctx.t("{name} vil købe {what} for {n} point", { name: esc(k.name), what: `<b>${esc(r.emoji)} ${esc(r.title)}</b>`, n: r.cost })}<div class="t-sub">${esc(ctx.t("Venter på en forælder · {name} har {n} point", { name: k.name, n: ctx.points(k.id) }))}</div></div>
-    <button class="btn sm" data-act="home-decide" data-id="${esc(rq.id)}" data-ok="1" ${ctx.points(k.id) < r.cost ? "disabled" : ""}>${esc(ctx.t("Godkend"))}</button><button class="btn soft sm" data-act="home-decide" data-id="${esc(rq.id)}">${esc(ctx.t("Afvis"))}</button></div>`;
+  return `<div class="approve">${av(ctx, k.id)}<div class="t-ttl">${esc(k.name)} ${esc(ctx.t("vil købe"))} <b>${esc(r.emoji)} ${esc(r.title)}</b> ${esc(ctx.t("for {n} point", { n: r.cost }))}<div class="t-sub">${esc(ctx.t("Venter på en forælder · {name} har {n} point", { name: k.name, n: ctx.points(k.id) }))}</div></div><button class="btn sm" data-act="home-approve" data-id="${esc(pq.id)}">${esc(ctx.t("Godkend"))}</button><button class="btn soft sm" data-act="home-reject" data-id="${esc(pq.id)}">${esc(ctx.t("Afvis"))}</button></div>`;
 }
 
-function ag(ctx, time, ttl, sub, who, color, cls = "") {
-  return `<div class="ag ${cls}"><span class="time">${time}</span><span class="bar" style="background:${esc(color)}"></span><div style="min-width:0"><div class="ttl">${esc(ttl)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div><div class="who">${who.map((w) => ctx.avatar(w, "sm")).join("")}</div></div>`;
+// ---------------------------------------------------------------- pets
+function petMood(ctx, p) {
+  const mine = tasksFor(ctx, p);
+  const r = mine.length ? mine.filter((t) => t.done).length / mine.length : 0;
+  return r >= 0.99 ? [ctx.t("Superglad"), "happy"] : r >= 0.5 ? [ctx.t("Glad"), "happy"] : r > 0 ? [ctx.t("Okay"), ""] : [ctx.t("Savner dig"), ""];
 }
-function evRow(ctx, e) {
-  const owner = calOwner(ctx, e.calendar);
-  const now = new Date();
-  const cls = e.end < now ? "past" : e.start <= now ? "next" : "";
-  const sub = [e.location, owner ? "" : ctx.name(e.calendar)].filter(Boolean).join(" · ");
-  return ag(ctx, e.allDay ? ctx.t("Hele dagen") : ctx.fmt.time(e.start), e.title, sub, owner ? [owner.id] : [], owner?.color || "var(--violet)", cls);
+function petSvg(ctx, p) {
+  const mood = petMood(ctx, p), col = esc(p.color), kind = p.pet?.kind || "hund";
+  const ears =
+    kind === "kat"
+      ? `<path d="M30 34 26 14 44 28M70 34 74 14 56 28" fill="${col}"/>`
+      : kind === "drage"
+        ? `<path d="M36 26 32 10 46 24M64 26 68 10 54 24" fill="${col}"/><path d="M14 66c-9-5-10-16-2-21 0 8 6 12 10 14" fill="${col}" opacity=".7"/>`
+        : `<ellipse cx="26" cy="38" rx="9" ry="16" fill="${col}" opacity=".8" transform="rotate(20 26 38)"/><ellipse cx="74" cy="38" rx="9" ry="16" fill="${col}" opacity=".8" transform="rotate(-20 74 38)"/>`;
+  const mouth = mood[1] ? `<path d="M42 62q8 8 16 0" stroke="#1B1530" stroke-width="3" fill="none" stroke-linecap="round"/>` : `<path d="M43 64h14" stroke="#1B1530" stroke-width="3" stroke-linecap="round"/>`;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><ellipse cx="50" cy="93" rx="28" ry="5" fill="currentColor" opacity=".12"/><g class="body">${ears}<ellipse cx="50" cy="56" rx="32" ry="30" fill="${col}"/><ellipse cx="50" cy="67" rx="18" ry="13" fill="#fff" opacity=".85"/><circle cx="39" cy="50" r="5" fill="#1B1530"/><circle cx="61" cy="50" r="5" fill="#1B1530"/><circle cx="40.5" cy="48.5" r="1.6" fill="#fff"/><circle cx="62.5" cy="48.5" r="1.6" fill="#fff"/><ellipse cx="50" cy="58" rx="4" ry="3" fill="#1B1530"/>${mouth}<circle cx="31" cy="60" r="4" fill="#FF7A9A" opacity=".5"/><circle cx="69" cy="60" r="4" fill="#FF7A9A" opacity=".5"/></g></svg>`;
+}
+const hasPet = (ctx, p) => p.role === "child" && !!p.pet && ctx.feature(p, "pet");
+function petBlock(ctx, p) {
+  if (!p.pet) return `<p class="t-sub">${esc(ctx.t("{name} har ikke et dyr endnu. Vælg et under Familieindstillinger › Børn.", { name: p.name }))}</p>`;
+  const mood = petMood(ctx, p);
+  const kind = p.pet.kind === "hund" ? ctx.t("Hund") : p.pet.kind === "kat" ? ctx.t("Kat") : ctx.t("Lille drage");
+  return `<div class="pet ${mood[1]}">${petSvg(ctx, p)}<div><h3>${esc(p.pet.name)}</h3><div class="t-sub">${esc(kind)}</div><div class="mood" style="color:${esc(p.color)}">${esc(mood[0])}</div><div class="t-sub">${esc(ctx.t("Bliver gladere, når dagens missioner er klaret"))}</div></div></div>`;
 }
 
-// ---------------------------------------------------------------- family band (cards)
+// ---------------------------------------------------------------- the family band: Kort and the five other styles
+const doneFirst = (ctx, id) => tasksFor(ctx, ctx.member(id)).sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0));
+const arcDeg = (cx, cy, r, a0, a1) => {
+  const pt = (a) => [cx + r * Math.cos((a * Math.PI) / 180), cy + r * Math.sin((a * Math.PI) / 180)].map((v) => v.toFixed(2)).join(" ");
+  return `M${pt(a0)} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${pt(a1)}`;
+};
+const shortState = (ctx, p) => {
+  const pr = pres(ctx, p);
+  return pr.home ? ctx.t("Hjemme") : pr.known ? ctx.t("Ude") : "";
+};
+function nextText(ctx, p) {
+  const nx = nextUp(ctx, p);
+  return nx ? `${nx.title} ${countdown(ctx, nx.at)}` : ctx.t("Intet planlagt");
+}
+
+function familyBandPicker(ctx) {
+  return `<div class="band-pick" role="group" aria-label="${esc(ctx.t("Vælg familiebåndet"))}"><span>${esc(ctx.t("Vis som"))}</span>${BANDS.map(([k, n], i) => `<button data-act="home-band" data-id="${k}" aria-pressed="${k === bandStyle}">${i < 5 ? `${i + 1}. ` : ""}${esc(ctx.t(n))}</button>`).join("")}</div>`;
+}
 function familyBand(ctx) {
-  const people = ctx.members();
-  const known = people.filter((m) => presence(ctx, m));
-  const homeN = known.filter((m) => presence(ctx, m).home).length;
-  const dinner = meals(ctx).find((e) => startOfDay(e.start).getTime() === startOfDay(new Date()).getTime());
-  let h = `<div class="fband stackv" aria-label="${esc(ctx.t("Familien"))}"><div class="fsum"><span class="lbl">${esc(ctx.t("Hjemme nu"))}</span><b class="num">${homeN}<small>/${known.length || people.length}</small></b><div class="dots">${(known.length ? known : people)
-    .map((m) => `<i class="${presence(ctx, m)?.home ? "in" : ""}" title="${esc(m.name)}"></i>`)
-    .join("")}</div>${dinner ? `<div class="nx">${esc(ctx.t("I aften"))}<strong>${esc(dinner.title)}</strong></div>` : ""}</div>`;
-  people.forEach((m, i) => {
-    const pr = presence(ctx, m);
-    const p = progress(ctx, m);
-    const kid = m.role === "child";
-    const f = p.total ? p.done / p.total : 0;
-    const facts = [];
-    if (kid && pointsOn(ctx)) facts.push(`<span class="fact fpts">${STAR}<span class="num">${ctx.points(m.id)}</span></span>`);
-    if (kid && ctx.on("missions")) {
-      const perfect = perfectDays(ctx, m);
-      if (perfect) facts.push(`<span class="fact flame" title="${esc(ctx.t("Perfekte dage i denne uge"))}">${svg("flame")}${perfect}</span>`);
-    }
-    if (p.total) facts.push(`<span class="fact">${p.done}/${p.total}${kid && pointsOn(ctx) ? "" : ` ${esc(ctx.t("klaret"))}`}</span>`);
-    const nx = nextUp(ctx, m);
-    const label = pr ? `${pr.text}${pr.since ? ` · ${ctx.t("siden {t}", { t: pr.since })}` : ""}` : kid ? ctx.t(INST[m.institution] || "Barn") || ctx.t("Barn") : ctx.t("Forælder");
-    h += `<button class="pod" data-go="person:${esc(m.id)}" style="--pc:${esc(m.color)};animation-delay:${(i + 1) * 70}ms" aria-label="${esc(m.name)}${pr ? `: ${esc(pr.text)}` : ""}">
-      <span class="ringav">${ring(ctx, m, f)}${ctx.avatar(m.id)}${pr ? `<span class="pres ${pr.home ? "home" : "away"}${pr.fresh ? " fresh" : ""}" title="${esc(pr.text)}">${svg(pr.home ? "home" : "walk")}</span>` : ""}</span>
-      <span class="who"><span class="nm"><span class="nmt">${esc(m.name)}</span>${(() => {
-        const b = phoneBattery(ctx, m);
-        return b == null ? "" : `<span class="nbat${b <= 20 ? " low" : ""}" title="${esc(ctx.t("Telefonens batteri"))}"><span class="bglyph"><i style="width:${b}%"></i></span>${b}%</span>`;
-      })()}</span><span class="pst">${esc(label)}</span></span>
-      <span class="facts">${facts.join("")}</span>
-      <span class="next">${nx ? `<span class="nl">${svg(nx.icon === "star" ? "pstar" : "cal")}<span>${esc(nx.title)}</span></span><b>${esc(nx.when)}</b>` : `<span class="nl"><span>${esc(ctx.t("Intet planlagt"))}</span></span><b>–</b>`}</span>
-    </button>`;
-  });
-  return h + "</div>";
+  return ({ historier: bandStories, huset: bandHouse, spor: bandLanes, bobler: bandBubbles, live: bandLive, kort: bandCards })[bandStyle]?.(ctx) || bandCards(ctx);
 }
 
-// ---------------------------------------------------------------- views
-function emptyFamily(ctx) {
-  return `<section class="card hv-empty">${svg("users", "ic big")}<h2>${esc(ctx.t("Ingen i familien endnu"))}</h2><p class="t-sub">${esc(ctx.t("Tilføj familien under Familieindstillinger, så kommer forsiden til live."))}</p><button class="btn" data-go="indstillinger:familie">${svg("users")}${esc(ctx.t("Tilføj familien"))}</button></section>`;
-}
-
-function pHome(ctx) {
-  if (!ctx.members().length) return emptyFamily(ctx);
-  const kids = ctx.children();
-  const pend = ctx.on("shop") ? pending(ctx) : [];
-  const evs = events(ctx);
-  const today = startOfDay(new Date());
-  const tomorrow = addDays(today, 1);
-  const evToday = evs.filter((e) => e.start < tomorrow && e.end > today);
-  const evTomorrow = evs.filter((e) => e.start >= tomorrow && e.start < addDays(tomorrow, 1));
-  const ml = meals(ctx);
-  const dinner = ml.find((e) => e.start < tomorrow && e.end > today);
-  const cards = [];
-  if (pend.length) cards.push(`<section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Godkend køb"))}</h2><span class="lock">${svg("shield")}${esc(ctx.t("Kun forældre"))}</span></div><div class="tasks">${pend.map((r) => approveRow(ctx, r)).join("")}</div></section>`);
-  if (calendars(ctx).length) {
-    const span = `${ctx.fmt.short(today)} ${ctx.fmt.date(today, { day: "numeric" })} – ${ctx.fmt.short(tomorrow)} ${ctx.fmt.date(tomorrow, { day: "numeric", month: "short" })}`;
-    cards.push(`<section class="card s12"><div class="card-head"><h2>${esc(ctx.t("I dag og i morgen"))}</h2><span class="meta">${esc(span)}</span></div>
-      <div class="agenda" style="--kc:var(--violet)"><div class="day-split">${esc(ctx.t("I dag"))}</div>${evToday.map((e) => evRow(ctx, e)).join("") || `<div class="t-sub hh-none">${esc(ctx.t("Ingen aftaler i dag"))}</div>`}
-      <div class="day-split">${esc(ctx.t("I morgen, {day}", { day: ctx.fmt.day(tomorrow) }))}</div>${evTomorrow.map((e) => evRow(ctx, e)).join("") || `<div class="t-sub hh-none">${esc(ctx.t("Ingen aftaler i morgen"))}</div>`}</div>
-      ${ctx.on("calendar") ? `<div class="hh-foot"><button class="btn soft sm" data-go="kalender">${svg("cal")}${esc(ctx.t("Kalender"))}</button></div>` : ""}</section>`);
-  }
-  const goals = pointsOn(ctx) && ctx.on("shop") && kids.length;
-  if (ctx.data.settings.meals_calendar && ctx.on("meals")) {
-    const later = ml.filter((e) => e.start >= tomorrow).slice(0, 2);
-    cards.push(`<section class="card ${goals ? "s6" : "s12"}"><div class="card-head"><h2>${esc(ctx.t("Aftensmad"))}</h2><button class="btn soft sm" data-go="madplan">${esc(ctx.t("Madplan"))}</button></div>
-      <div class="dinner"><div class="plate">${svg("food")}</div><div style="min-width:0"><div class="eyebrow">${esc(ctx.t("I aften"))}</div><h3>${esc(dinner?.title || ctx.t("Ikke planlagt endnu"))}</h3>${dinner?.description ? `<div class="t-sub">${esc(dinner.description.slice(0, 120))}</div>` : ""}</div></div>
-      ${later.length ? `<div class="minis">${later.map((e) => `<div class="mini"><span>${esc(cap(ctx.fmt.rel(e.start)))}</span><span>${esc(e.title)}</span></div>`).join("")}</div>` : ""}</section>`);
-  }
-  if (goals) {
-    cards.push(`<section class="card ${ctx.data.settings.meals_calendar && ctx.on("meals") ? "s6" : "s12"}"><div class="card-head"><h2>${esc(ctx.t("Børnenes mål"))}</h2><button class="btn soft sm" data-go="shop">${svg("shop")}${esc(ctx.t("Shop"))}</button></div>
-      <div class="tasks">${kids
-        .map((k) => {
-          const g = goalOf(ctx, k.id);
-          const pts = ctx.points(k.id);
-          return `<button class="task hh-goalrow" data-go="person:${esc(k.id)}">${ctx.avatar(k.id)}<div style="min-width:0"><div class="t-ttl">${g ? `${esc(g.emoji)} ${esc(g.title)}` : esc(ctx.t("Intet mål endnu"))}</div><div class="progress" style="margin:6px 0 0"><i style="width:${g ? Math.min(100, (pts / g.cost) * 100) : 0}%;background:${esc(k.color)}"></i></div></div><span class="t-pts num">${pts}${g ? `/${g.cost}` : ""}</span></button>`;
-        })
-        .join("")}</div></section>`);
-  }
-  if (ctx.on("missions") && kids.length) {
-    const groups = kids.map((k) => ({ k, p: progress(ctx, k) })).filter((g) => g.p.total);
-    cards.push(`<section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Børnene i dag"))}</h2><button class="btn soft sm" data-go="opgaver">${esc(ctx.t("Alle opgaver"))}</button></div>
-      ${groups.length ? `<div class="hh-kidsday">${groups
-        .map(({ k, p }) => {
-          const open = p.list.filter((m) => !isDone(ctx, m, k.id));
-          return `<div class="hh-kd" style="--pc:${esc(k.color)}"><button class="hh-kd-h" data-go="person:${esc(k.id)}">${ctx.avatar(k.id, "sm")}<b>${esc(k.name)}</b><span class="hh-kd-n num">${p.done}/${p.total}</span></button><div class="progress"><i style="width:${(p.done / p.total) * 100}%;background:${esc(k.color)}"></i></div>
-          <div class="tasks">${(open.length ? open.slice(0, 3) : []).map((m) => missionRow(ctx, m, k, { noWho: true })).join("") || `<div class="hh-alldone">${svg("check")}${esc(ctx.t("Alle missioner er klaret"))}</div>`}${open.length > 3 ? `<button class="hh-more" data-go="person:${esc(k.id)}">${esc(ctx.t("+{n} mere", { n: open.length - 3 }))}</button>` : ""}</div></div>`;
-        })
-        .join("")}</div>` : `<p class="t-sub">${esc(ctx.t("Ingen missioner i dag."))} <button class="lnk" data-go="opgaver">${esc(ctx.t("Opret missioner"))}</button></p>`}</section>`);
-  }
-  if (!cards.length) cards.push(`<section class="card s12 hv-empty">${svg("sparkle", "ic big")}<h2>${esc(ctx.t("Alt er roligt"))}</h2><p class="t-sub">${esc(ctx.t("Slå flere moduler til under Familieindstillinger."))}</p><button class="btn soft" data-go="indstillinger:moduler">${esc(ctx.t("Moduler"))}</button></section>`);
-  return `<div class="homegrid"><aside class="home-fam" aria-label="${esc(ctx.t("Familien"))}">${familyBand(ctx)}</aside><div class="grid home-main">${cards.join("")}</div></div>`;
-}
-
-function weekStrip(ctx, m) {
-  const dates = weekDates(ctx);
-  const today = ctx.data.today;
-  return `<div class="hh-week1">${dates
-    .map((d) => {
-      const iso = isoOf(d);
-      const p = progress(ctx, m, d);
-      const future = iso > today;
-      const f = p.total ? p.done / p.total : 0;
-      const perfect = p.total && p.done === p.total && !future;
-      return `<div class="hh-wd${iso === today ? " today" : ""}${future ? " future" : ""}${perfect ? " perfect" : ""}" style="--pc:${esc(m.color)}"><small>${esc(ctx.fmt.short(d))}</small><span class="hh-wd-c"><i style="height:${future ? 0 : Math.max(f, p.total ? 0.06 : 0) * 100}%"></i>${perfect ? svg("check") : ""}</span><b class="num">${p.total ? (future ? p.total : `${p.done}/${p.total}`) : "–"}</b></div>`;
+/* 1. Historier */
+function bandStories(ctx) {
+  return `<div class="stories">${ctx
+    .members()
+    .map((p, i) => {
+      const mine = doneFirst(ctx, p.id), n = Math.max(1, mine.length), seg = 360 / n, gap = n > 1 ? 16 : 0;
+      const ring = mine.length
+        ? mine.map((t, k) => `<path d="${arcDeg(34, 34, 31, k * seg + gap / 2 - 90, (k + 1) * seg - gap / 2 - 90)}" stroke="${t.done ? esc(p.color) : "var(--line)"}" stroke-width="4" fill="none" stroke-linecap="round"/>`).join("")
+        : `<circle cx="34" cy="34" r="31" stroke="var(--line)" stroke-width="4" fill="none"/>`;
+      const pr = pres(ctx, p);
+      return `<button class="story${pr.fresh ? " fresh" : ""}" data-act="home-story" data-id="${esc(p.id)}" style="--pc:${esc(p.color)};animation-delay:${i * 70}ms">
+      <span class="sr"><svg viewBox="0 0 68 68" aria-hidden="true">${ring}</svg>${av(ctx, p.id)}${p.role === "child" && ctx.feature(p, "points") ? `<span class="sbadge">${svg("pstar")}${ctx.points(p.id)}</span>` : ""}<span class="sdot ${pr.home ? "in" : "out"}"></span></span>
+      <b>${esc(p.name)}</b><small>${esc(shortState(ctx, p))}</small><small class="snext">${esc(nextText(ctx, p))}</small></button>`;
     })
     .join("")}</div>`;
 }
+function closeStory(ctx) {
+  clearTimeout(storyT);
+  ctx.root.querySelectorAll(".storyv").forEach((x) => x.remove());
+  if (storyKey) ctx.root.removeEventListener("keydown", storyKey, true);
+  storyKey = null;
+}
+function openStory(ctx, id, slide = 0, fresh = true) {
+  closeStory(ctx);
+  const p = ctx.member(id);
+  if (!p) return;
+  const pr = pres(ctx, p), mine = tasksFor(ctx, p), done = mine.filter((t) => t.done).length, nx = nextUp(ctx, p), kid = p.role === "child", g = kid ? goalOf(ctx, p) : null;
+  const pts = ctx.points(id);
+  const slides = [
+    `<small>${esc(ctx.t("Lige nu"))}</small><h3>${esc(pr.txt)}</h3><p>${pr.since ? esc((pr.home ? ctx.t("Kom hjem kl. ") : ctx.t("Gik kl. ")) + pr.since) : pr.home ? esc(ctx.t("Hjemme")) : ""}</p>`,
+    `<small>${esc(ctx.t("Næste"))}</small><h3>${esc(nx ? nx.title : ctx.t("Intet planlagt"))}</h3><p class="big num">${esc(nx ? countdown(ctx, nx.at) : "")}</p>`,
+    kid && ctx.feature(p, "points")
+      ? `<small>${esc(ctx.t("Point"))}</small><h3><span class="num">${pts}</span>${svg("pstar")}</h3><p>${ctx.feature(p, "missions") ? `${svg("flame")}${esc(ctx.t("{n} perfekte dage · {d}/{t} missioner", { n: streak(ctx, p), d: done, t: mine.length }))}` : ""}</p>${ctx.feature(p, "shop") ? `<div class="sbar"><i style="width:${Math.min(100, (pts / g.cost) * 100)}%"></i></div><p>${esc(g.em)} ${esc(g.t)} · ${pts}/${g.cost}</p>` : ""}${hasPet(ctx, p) ? `<div class="spet">${petSvg(ctx, p)}</div>` : ""}`
+      : kid && ctx.feature(p, "missions")
+        ? `<small>${esc(ctx.t("Missioner"))}</small><h3>${esc(ctx.t("{d}/{t} klaret", { d: done, t: mine.length }))}</h3><p>${svg("flame")}${esc(ctx.t("{n} perfekte dage", { n: streak(ctx, p) }))}</p>${hasPet(ctx, p) ? `<div class="spet">${petSvg(ctx, p)}</div>` : ""}`
+        : `<small>${esc(ctx.t("Dagen"))}</small><h3>${esc(ctx.t("{d}/{t} opgaver klaret", { d: done, t: mine.length }))}</h3><p>${pr.battery != null ? `${svg("battery")}${pr.battery} % ` : ""}</p>`,
+  ];
+  const el = document.createElement("div");
+  el.className = "storyv" + (fresh ? " first" : "");
+  el.style.setProperty("--pc", p.color);
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-label", ctx.t("{name}s historie", { name: p.name }));
+  el.innerHTML = `<div class="sv-in"><div class="sv-bars">${slides.map((_, k) => `<span><i class="${k < slide ? "full" : k === slide ? "run" : ""}"></i></span>`).join("")}</div>
+    <div class="sv-head">${av(ctx, id)}<b>${esc(p.name)}</b><button class="sv-x" aria-label="${esc(ctx.t("Luk"))}">${svg("x")}</button></div>
+    <div class="sv-body">${slides[slide]}</div><button class="btn sv-go" data-sv-person>${esc(ctx.t("Se {name}s side", { name: p.name }))}</button><span class="sv-hint">${esc(ctx.t("Tryk til højre for næste, til venstre for forrige"))}</span></div>`;
+  ctx.root.appendChild(el);
+  const people = ctx.members();
+  const step = (d) => {
+    const ns = slide + d;
+    if (ns < 0) return openStory(ctx, id, 0, false);
+    if (ns >= slides.length) {
+      const k = people.findIndex((x) => x.id === id);
+      return k < people.length - 1 ? openStory(ctx, people[k + 1].id, 0, false) : closeStory(ctx);
+    }
+    openStory(ctx, id, ns, false);
+  };
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (e.target.closest(".sv-x")) return closeStory(ctx);
+    if (e.target.closest("[data-sv-person]")) {
+      closeStory(ctx);
+      return ctx.go("person:" + id);
+    }
+    step(e.clientX < window.innerWidth / 3 ? -1 : 1);
+  });
+  storyT = setTimeout(() => step(1), 4200);
+  storyKey = (e) => {
+    if (e.key === "Escape") closeStory(ctx);
+    else if (e.key === "ArrowRight") step(1);
+    else if (e.key === "ArrowLeft") step(-1);
+  };
+  ctx.root.addEventListener("keydown", storyKey, true);
+}
 
-function personPage(ctx) {
-  const m = ctx.member(ctx.arg);
-  if (!m) return `<button class="back" data-go="hjem">${svg("back")}${esc(ctx.t("Hjem"))}</button>${emptyFamily(ctx)}`;
-  const kid = m.role === "child";
-  const pr = presence(ctx, m);
-  const p = progress(ctx, m);
-  const stats = [];
-  if (pr) stats.push(`<span>${svg(pr.home ? "home" : "walk")}${esc(pr.text)}${pr.since ? ` · ${esc(ctx.t("siden {t}", { t: pr.since }))}` : ""}</span>`);
-  if (kid && pointsOn(ctx)) stats.push(`<span>${STAR}${esc(ctx.t("{n} point", { n: ctx.points(m.id) }))}</span>`);
-  if (p.total) stats.push(`<span>${esc(ctx.t("{done}/{total} missioner i dag", { done: p.done, total: p.total }))}</span>`);
-  if (kid && ctx.on("missions")) stats.push(`<span>${svg("flame")}${esc(ctx.t("{n} perfekte dage i ugen", { n: perfectDays(ctx, m) }))}</span>`);
-  const role = kid ? [ctx.t("Barn"), ctx.t(INST[m.institution] || "")].filter(Boolean).join(" · ") : ctx.t("Forælder");
-  const acts = [];
-  if (kid) acts.push(`<button class="btn" data-act="home-seeas" data-id="${esc(m.id)}">${svg("user")}${esc(ctx.t("Se som {name}", { name: m.name }))}</button>`);
-  if (kid && pointsOn(ctx)) acts.push(`<button class="btn" data-act="home-points" data-id="${esc(m.id)}">${STAR}${esc(ctx.t("Point"))}</button>`);
-  if (m.id === ctx.data.me) acts.push(`<button class="btn" data-go="mig">${svg("gear")}${esc(ctx.t("Mine indstillinger"))}</button>`);
-  const cards = [];
-  const pend = pending(ctx, m.id);
-  if (pend.length && ctx.on("shop")) cards.push(`<section class="card s12"><div class="tasks">${pend.map((r) => approveRow(ctx, r)).join("")}</div></section>`);
-  if (ctx.on("missions") && (kid || p.total)) {
-    cards.push(`<section class="card s6"><div class="card-head"><h2>${esc(ctx.t("Missioner i dag"))}</h2><button class="btn soft sm" data-act="home-newmission" data-member="${esc(m.id)}">${svg("plus")}${esc(ctx.t("Ny mission"))}</button></div>
-      <div class="tasks">${p.list.map((x) => missionRow(ctx, x, m, { noWho: true })).join("") || `<div class="t-sub">${esc(ctx.t("Ingen missioner i dag"))}</div>`}</div>
-      <div class="card-head" style="margin:20px 0 10px"><h2>${esc(ctx.t("Ugen"))}</h2></div>${weekStrip(ctx, m)}</section>`);
-  }
-  if (kid && pointsOn(ctx)) {
-    const led = (ctx.data.ledger || []).filter((l) => l.member === m.id).slice(-8).reverse();
-    const g = goalOf(ctx, m.id);
-    cards.push(`<section class="card s6"><div class="card-head"><h2>${esc(ctx.t("Point"))}</h2><span class="meta num">${ctx.points(m.id)} ${esc(ctx.t("point"))}</span></div>
-      ${g && ctx.on("shop") ? `<div class="hh-goalmini" style="--pc:${esc(m.color)}"><span class="hh-gem">${esc(g.emoji)}</span><div style="flex:1;min-width:0"><b>${esc(g.title)}</b><div class="progress" style="margin:6px 0 0"><i style="width:${Math.min(100, (ctx.points(m.id) / g.cost) * 100)}%;background:${esc(m.color)}"></i></div></div><span class="t-pts num">${ctx.points(m.id)}/${g.cost}</span></div>` : ""}
-      <div class="hh-quick">${[5, 10, 25].map((n) => `<button class="btn soft sm" data-act="home-give" data-id="${esc(m.id)}" data-n="${n}">+${n}</button>`).join("")}<button class="btn soft sm" data-act="home-give" data-id="${esc(m.id)}" data-n="-5">−5</button><button class="btn soft sm" data-act="home-points" data-id="${esc(m.id)}">${esc(ctx.t("Andet …"))}</button></div>
-      <div class="hh-ledger">${led.length ? led.map((l) => `<div class="hh-led"><span class="hh-led-d num ${l.delta < 0 ? "neg" : ""}">${l.delta > 0 ? "+" : ""}${l.delta}</span><div style="min-width:0"><b>${esc(l.reason || ctx.t("Point"))}</b><small>${esc(cap(ctx.fmt.rel(l.at)))} ${esc(ctx.fmt.time(l.at))}${l.by && ctx.member(l.by) ? ` · ${esc(ctx.member(l.by).name)}` : ""}</small></div></div>`).join("") : `<div class="t-sub">${esc(ctx.t("Ingen point endnu"))}</div>`}</div></section>`);
-  }
-  if (m.calendar && ctx.on("calendar")) {
-    const s = startOfDay(new Date());
-    const evs = ctx.events([m.calendar], s, addDays(s, 7));
-    let last = "";
-    const rows = evs
-      .map((e) => {
-        const d = startOfDay(e.start) < s ? s : startOfDay(e.start);
-        const head = d.getTime() !== last ? `<div class="day-split">${esc(cap(ctx.fmt.rel(d)))}</div>` : "";
-        last = d.getTime();
-        return head + evRow(ctx, e);
+/* 2. Huset */
+function bandHouse(ctx) {
+  const people = ctx.members();
+  const home = people.filter((p) => pres(ctx, p).home), away = people.filter((p) => !pres(ctx, p).home);
+  const dn = dinnerOn(ctx, today0());
+  return `<div class="hb"><div class="hb-house"><span class="hb-smoke" aria-hidden="true"><i></i><i></i><i></i></span><div class="hb-roof" aria-hidden="true"></div>
+    <div class="hb-body"><div class="hb-top"><b>${esc(ctx.t("Hjemme {n} af {t}", { n: home.length, t: people.length }))}</b>${dn ? `<span>${svg("food")}${esc(countdown(ctx, dn.at))}</span>` : ""}</div>
+    <div class="hb-people">${home.map((p, i) => `<button class="hb-p" data-go="person:${esc(p.id)}" style="animation-delay:${i * 90}ms">${av(ctx, p.id)}<small>${esc(p.name)}</small></button>`).join("")}</div></div></div>
+    <div class="hb-out"><div class="hb-road" aria-hidden="true"></div>${away.map((p) => `<button class="hb-walker" data-go="person:${esc(p.id)}">${av(ctx, p.id)}<small>${esc(p.name)}<br>${esc(pres(ctx, p).txt.replace(`${ctx.t("Ude")} · `, ""))}</small></button>`).join("") || `<span class="t-sub">${esc(ctx.t("Alle er hjemme"))}</span>`}</div></div>`;
+}
+
+/* 3. Dagens spor */
+function bandLanes(ctx) {
+  const h = hoursOf(new Date());
+  const f = pct(h) / 100;
+  return `<div class="lanes card"><div class="lanes-in">
+    <div class="lanes-axis">${[6, 9, 12, 15, 18, 21, 24].map((x) => `<span style="left:calc(34px + (100% - 34px) * ${pct(x) / 100})">${pad(x)}</span>`).join("")}</div>
+    ${ctx
+      .members()
+      .map((p, i) => {
+        const L = lanesOf(ctx, p);
+        return `<button class="lane" data-go="person:${esc(p.id)}" style="--pc:${esc(p.color)}" aria-label="${esc(p.name)}">${av(ctx, p.id, "sm")}<span class="ltrack">${L.away != null ? `<i class="laway" style="left:${pct(L.away)}%;width:${Math.max(0, pct(h) - pct(L.away))}%" title="${esc(ctx.t("Ude"))}"></i>` : ""}${L.blocks.map((b, k) => `<i class="lblk" style="left:${pct(b[0])}%;width:${Math.max(0.8, pct(b[1]) - pct(b[0]))}%;background:${esc(b[2])};animation-delay:${i * 80 + k * 60}ms" title="${esc(b[3])} ${hm(ctx, b[0])}"><span>${esc(b[3])}</span></i>`).join("")}${L.mark ? `<i class="lmark" style="left:${pct(L.mark[0])}%" title="${esc(L.mark[1])}"></i>` : ""}</span></button>`;
       })
-      .join("");
-    cards.push(`<section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Den næste uge"))}</h2><span class="meta">${esc(ctx.name(m.calendar))}</span></div><div class="agenda">${rows || `<div class="t-sub">${esc(ctx.t("Ingen aftaler den næste uge"))}</div>`}</div></section>`);
-  }
-  const prof = [];
-  if (m.birthday) {
-    const b = new Date(`${m.birthday}T12:00:00`);
-    const t = new Date();
-    let age = t.getFullYear() - b.getFullYear();
-    if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) age--;
-    prof.push(`<div class="bd-f"><span class="bd-ic">🎂</span><div><b>${esc(ctx.fmt.date(b, { day: "numeric", month: "long", year: "numeric" }))}</b><small>${esc(ctx.t("{n} år", { n: age }))}</small></div></div>`);
-  }
-  if (m.person) prof.push(`<div class="bd-f"><span class="bd-ic">${svg("user")}</span><div><b>${esc(ctx.name(m.person))}</b><small>${esc(ctx.t("Person i Home Assistant"))}</small></div></div>`);
-  if (m.calendar) prof.push(`<div class="bd-f"><span class="bd-ic">${svg("cal")}</span><div><b>${esc(ctx.name(m.calendar))}</b><small>${esc(ctx.t("Kalender"))}</small></div></div>`);
-  cards.push(`<section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Profil"))}</h2><button class="btn soft sm" data-go="indstillinger:familie">${svg("shield")}${esc(ctx.t("Ret i Familieindstillinger"))}</button></div>${prof.length ? `<div class="kprof">${prof.join("")}</div>` : `<p class="t-sub">${esc(ctx.t("Tilføj fødselsdag, person og kalender under Familieindstillinger."))}</p>`}</section>`);
-  return `<button class="back" data-go="hjem">${svg("back")}${esc(ctx.t("Hjem"))}</button>
-    <section class="p-hero" style="--pc:${esc(m.color)}">${ctx.avatar(m.id)}<div style="position:relative;z-index:1"><h2>${esc(m.name)}</h2><div class="role">${esc(role)}</div><div class="stats">${stats.join("")}</div></div><div class="acts">${acts.join("")}</div></section>
-    <div class="grid" style="margin-top:16px">${cards.join("")}</div>`;
+      .join("")}
+    <span class="lnow" style="left:calc(34px + (100% - 34px) * ${f})"><b>${hm(ctx, h)}</b></span></div></div>`;
 }
 
-function kidDayView(ctx) {
-  const me = ctx.me;
-  if (!me) return "";
-  const base = todayDate(ctx);
-  const date = addDays(base, kidDay);
-  const iso = isoOf(date);
-  const p = progress(ctx, me, date);
-  const showMissions = ctx.on("missions");
-  // The agenda: my calendar and the family's shared calendars.
-  const cals = ctx.on("calendar") ? [me.calendar, ...sharedCalendars(ctx)].filter(Boolean) : [];
-  const s = startOfDay(date);
-  const evs = cals.length ? ctx.events(cals, s, addDays(s, 1)) : [];
-  const dinner = meals(ctx).find((e) => startOfDay(e.start).getTime() <= s.getTime() && e.end > s);
-  const now = new Date();
-  const timed = evs.filter((e) => !e.allDay);
-  const cur = kidDay === 0 ? timed.filter((e) => e.start <= now && e.end > now).at(-1) : null;
-  const next = timed.find((e) => (kidDay === 0 ? e.start > now : true));
-  const days = Array.from({ length: 6 }, (_, i) => addDays(base, i));
-  const parts = PARTS.map(([k, label, ic]) => {
-    const list = p.list.filter((m) => (m.part || "day") === k);
-    if (!list.length) return "";
-    return `<div class="hh-part"><span class="hh-part-h">${svg(ic)}${esc(ctx.t(label))}</span><div class="tasks">${list.map((m) => missionRow(ctx, m, me, { big: true, iso })).join("")}</div></div>`;
-  }).join("");
-  const allDone = p.total && p.done === p.total;
-  const g = pointsOn(ctx) && ctx.on("shop") ? goalOf(ctx, me.id) : null;
-  const pts = ctx.points(me.id);
-  const missionsCard = showMissions
-    ? `<section class="card s7"><div class="card-head"><h2>${esc(kidDay === 0 ? ctx.t("Mine missioner i dag") : ctx.t("Missioner {day}", { day: ctx.fmt.day(date) }))}</h2><span class="meta num">${esc(ctx.t("{done}/{total} klaret", { done: p.done, total: p.total }))}</span></div>
-      ${p.total ? `<div class="rb-bar" style="--kc:${esc(me.color)}"><i style="width:${(p.done / p.total) * 100}%"></i><span class="num">${p.done} ${esc(ctx.t("af"))} ${p.total}</span></div>` : ""}
-      ${allDone && kidDay === 0 ? `<div class="rb-yay" style="--kc:${esc(me.color)};margin-bottom:14px"><span class="rb-star">🌟</span><h2>${esc(ctx.t("Perfekt dag!"))}</h2><p>${esc(ctx.t("Du har klaret alle dine missioner, {name}.", { name: me.name }))}</p></div>` : ""}
-      ${parts || `<div class="hv-empty"><span style="font-size:40px">🌈</span><p class="t-sub">${esc(ctx.t("Ingen missioner {day}.", { day: kidDay === 0 ? ctx.t("i dag") : ctx.fmt.day(date) }))}</p></div>`}</section>`
-    : "";
-  const pointsCard =
-    pointsOn(ctx)
-      ? `<section class="card ${showMissions ? "s5" : "s12"} hh-me" style="--pc:${esc(me.color)}">${bigRing(ctx, me)}<div class="score num">${pts}${STAR}</div>${ctx.on("missions") ? `<span class="streak">${svg("flame")}${esc(ctx.t("{n} perfekte dage i ugen", { n: perfectDays(ctx, me) }))}</span>` : ""}${g ? `<div class="goal">${g.cost > pts ? ctx.t("{n} point til {what}", { n: g.cost - pts, what: `<b>${esc(g.emoji)} ${esc(g.title)}</b>` }) : ctx.t("{what} er tjent!", { what: `<b>${esc(g.emoji)} ${esc(g.title)}</b>` })}</div><button class="btn soft sm" data-go="shop">${svg("shop")}${esc(ctx.t("Til shoppen"))}</button>` : ""}</section>`
-      : "";
-  const agenda = `<section class="card ${showMissions ? "s5" : "s12"}"><div class="nownext" style="margin-bottom:14px;--kc:${esc(me.color)}"><div class="nn now"><small>${esc(kidDay === 0 ? ctx.t("Nu") : ctx.t("Først"))}</small><b>${esc(kidDay === 0 ? cur?.title || ctx.t("Fri") : timed[0]?.title || ctx.t("Fri"))}</b></div><div class="nn"><small>${esc(ctx.t("Næste"))}</small><b>${next && (kidDay !== 0 || next !== timed[0] || true) ? esc(`${next.title} ${ctx.t("kl.")} ${ctx.fmt.time(next.start)}`) : esc(ctx.t("Godnat"))}</b></div></div>
-    <div class="agenda" style="--kc:${esc(me.color)}">${dinner ? ag(ctx, ctx.t("I aften"), dinner.title, ctx.t("Aftensmad"), [], "var(--coral)") : ""}${evs.map((e) => evRow(ctx, e)).join("") || `<div class="t-sub">${esc(ctx.t("Ingen aftaler"))}</div>`}</div></section>`;
-  return `<div style="--kc:${esc(me.color)}">
-    <div class="days">${days.map((d, i) => `<button class="dbtn" data-act="home-kday" data-i="${i}" aria-pressed="${i === kidDay}"><small>${esc(i === 0 ? ctx.t("I dag") : ctx.fmt.short(d))}</small><b>${d.getDate()}</b></button>`).join("")}</div>
-    <div class="grid" style="margin-top:14px">${missionsCard}${showMissions ? `<div class="s5 hh-col">${pointsCard}${agenda}</div>` : pointsCard + agenda}</div></div>`;
+/* 4. Bobler */
+function bandBubbles(ctx) {
+  const people = ctx.members();
+  const home = people.filter((p) => pres(ctx, p).home), away = people.filter((p) => !pres(ctx, p).home);
+  const POS = [[15, 56], [38, 62], [61, 54], [84, 62]];
+  const evs = events(ctx, 2);
+  const size = (p) => (window.innerWidth < 640 ? 34 : 46) + Math.min(4, tasksFor(ctx, p).filter((t) => !t.done).length + evs.filter((e) => eventWho(ctx, e).includes(p.id)).length) * 5;
+  const bub = (p, [x, y], i) => `<button class="bubble" data-go="person:${esc(p.id)}" style="left:${x}%;top:${y}%;--s:${size(p)}px;--pc:${esc(p.color)};animation-duration:${5 + (i % 3)}s;animation-delay:-${i * 0.8}s" title="${esc(p.name)}">${av(ctx, p.id)}${p.role === "child" && ctx.feature(p, "points") ? `<span class="orbit" aria-hidden="true"><span class="sat">${ctx.points(p.id)}</span></span>` : ""}<small>${esc(p.name)}</small></button>`;
+  return `<div class="bub"><div class="bub-home"><span class="bub-l">${svg("home")}${esc(ctx.t("Hjemme"))} · ${home.length}</span>${home.map((p, i) => bub(p, POS[i % 4], i)).join("")}</div>
+    <div class="bub-away"><span class="bub-l">${svg("walk")}${esc(ctx.t("Ude"))} · ${away.length}</span>${away.map((p, i) => bub(p, [50, 58], i + 4)).join("")}</div></div>`;
 }
 
-function shopView(ctx) {
-  const kids = ctx.children();
-  let kid = ctx.isKid ? ctx.me : null;
-  if (!kid) {
-    if (!kids.length) return emptyFamily(ctx);
-    kid = ctx.member(shopKid) || kids[0];
+/* 5. Live-linje */
+function bandLive(ctx) {
+  const people = ctx.members();
+  const homeN = people.filter((p) => pres(ctx, p).home).length;
+  const dn = dinnerOn(ctx, today0());
+  const items = [{ ic: "home", html: `<b>${esc(ctx.t("{n} af {t}", { n: homeN, t: people.length }))}</b> ${esc(ctx.t("er hjemme"))}${dn ? ` · ${esc(ctx.t("aftensmad"))} ${esc(countdown(ctx, dn.at))}` : ""}` }];
+  for (const p of people) {
+    const pr = pres(ctx, p);
+    const nx = nextUp(ctx, p);
+    const pq = pending(ctx, p.id)[0];
+    const r = pq && rewardById(ctx, pq.reward);
+    let html = `<b>${esc(p.name)}</b> ${esc(pr.txt.toLowerCase())}${pr.since ? ` · ${esc(ctx.t("siden {t}", { t: pr.since }))}` : ""}`;
+    if (r) html = `<b>${esc(p.name)}</b> ${esc(ctx.t("vil købe {what} · venter på jer", { what: r.title.toLowerCase() }))}`;
+    else if (p.role === "child" && ctx.feature(p, "points")) html = `<b>${esc(p.name)}</b> ${esc(ctx.t("har {p} point og {s} perfekte dage", { p: ctx.points(p.id), s: streak(ctx, p) }))}`;
+    if (nx) html += ` · ${esc(nx.title.toLowerCase())} ${esc(countdown(ctx, nx.at))}`;
+    items.push({ id: p.id, html });
   }
-  if (!pointsOn(ctx)) return `<section class="card hv-empty">${svg("shop", "ic big")}<h2>${esc(ctx.t("Point er slået fra"))}</h2><p class="t-sub">${esc(ctx.t("Shoppen bruger point. Slå point til under Familieindstillinger."))}</p></section>`;
-  const pts = ctx.points(kid.id);
-  const list = rewardsFor(ctx, kid.id);
-  const g = goalOf(ctx, kid.id);
-  const pend = pending(ctx, kid.id);
-  const recent = (ctx.data.requests || []).filter((r) => r.member === kid.id && r.status !== "pending");
-  const switcher = ctx.isParent
-    ? `<div class="hh-kids-pick" role="group" aria-label="${esc(ctx.t("Vælg barn"))}">${kids.map((k) => `<button class="hh-kp${k.id === kid.id ? " on" : ""}" data-act="home-shopkid" data-id="${esc(k.id)}" style="--pc:${esc(k.color)}" aria-pressed="${k.id === kid.id}">${ctx.avatar(k.id, "sm")}<span>${esc(k.name)}</span><b class="num">${ctx.points(k.id)}</b></button>`).join("")}<span class="grow"></span><button class="btn soft sm" data-act="home-optab" data-id="belonninger">${svg("edit")}${esc(ctx.t("Ret belønninger"))}</button></div>`
-    : "";
-  if (!list.length)
-    return `${switcher}<section class="card hv-empty">${svg("gift", "ic big")}<h2>${esc(ctx.t("Shoppen er tom"))}</h2><p class="t-sub">${esc(ctx.isParent ? ctx.t("Opret belønninger, som børnene kan købe for deres point.") : ctx.t("Far eller mor har ikke lagt noget i shoppen endnu."))}</p>${ctx.isParent ? `<button class="btn" data-act="home-editreward">${svg("plus")}${esc(ctx.t("Ny belønning"))}</button>` : ""}</section>`;
-  return `${switcher}
-    ${g ? `<div class="goal-card" style="background:linear-gradient(135deg, ${esc(kid.color)}, var(--coral))"><span class="em">${esc(g.emoji)}</span><div style="flex:1;min-width:180px"><div class="eyebrow" style="color:rgba(255,255,255,.8)">${esc(ctx.isKid ? ctx.t("Mit mål") : ctx.t("{name}s mål", { name: kid.name }))}</div><h3>${esc(g.title)}</h3><div class="bar"><i style="width:${Math.min(100, (pts / g.cost) * 100)}%"></i></div><div style="margin-top:6px;font-weight:700" class="num">${esc(ctx.t("{n} af {cost} point", { n: pts, cost: g.cost }))}</div></div></div>` : ""}
-    ${pend.length ? `<div class="approve" style="margin-top:14px">${svg("lock")}<span class="t-ttl">${esc(ctx.t("{what} venter på, at en forælder godkender", { what: pend.map((x) => reward(ctx, x.reward)?.title || "").join(", ") }))}</span>${ctx.isParent ? pend.map((x) => `<button class="btn sm" data-act="home-decide" data-id="${esc(x.id)}" data-ok="1">${esc(ctx.t("Godkend"))}</button>`).join("") : ""}</div>` : ""}
-    <h2 class="h2" style="margin:22px 0 12px">${esc(ctx.isKid ? ctx.t("Min pointshop") : ctx.t("{name}s pointshop", { name: kid.name }))}</h2>
-    <div class="shop">${list
-      .map((w, i) => {
-        const waiting = pend.some((x) => x.reward === w.id);
-        const lack = w.cost - pts;
-        const label = waiting ? ctx.t("Venter") : lack > 0 ? ctx.t("Mangler {n}", { n: lack }) : ctx.isParent ? ctx.t("Køb for {name}", { name: kid.name }) : ctx.t("Køb");
-        return `<div class="ware" style="animation:pop .45s ${i * 60}ms both">${g && w.id === g.id ? `<span class="tag">${esc(ctx.t("Mål"))}</span>` : ""}<span class="em">${esc(w.emoji)}</span><b>${esc(w.title)}</b><span class="price">${w.cost}${STAR}</span>
-          ${lack > 0 ? `<div class="progress hh-wp"><i style="width:${Math.min(100, (pts / w.cost) * 100)}%;background:${esc(kid.color)}"></i></div>` : ""}
-          <button class="btn sm" data-act="home-buy" data-id="${esc(w.id)}" data-member="${esc(kid.id)}" ${lack > 0 || waiting ? "disabled" : ""}>${esc(label)}</button></div>`;
-      })
-      .join("")}</div>
-    ${recent.length ? `<div class="card" style="margin-top:16px"><div class="card-head"><h2>${esc(ctx.t("I dag"))}</h2></div><div class="tasks">${recent.map((r) => `<div class="hh-led"><span class="hh-led-d ${r.status === "approved" ? "" : "neg"}">${r.status === "approved" ? svg("check") : svg("x")}</span><div><b>${esc(reward(ctx, r.reward)?.title || "")}</b><small>${esc(r.status === "approved" ? ctx.t("Godkendt") : ctx.t("Afvist"))}</small></div></div>`).join("")}</div></div>` : ""}
-    <p class="foot">${esc(ctx.t("Pointene trækkes først, når en forælder har godkendt købet."))}</p>`;
+  liveI = 0;
+  return `<div class="live card"><div class="stack">${people.map((p) => `<button class="stk" data-go="person:${esc(p.id)}" title="${esc(p.name)}">${av(ctx, p.id)}<i class="${pres(ctx, p).home ? "in" : "out"}"></i></button>`).join("")}</div>
+    <div class="live-win" aria-live="polite"><div class="live-track" id="hh-live-track">${items.map((it) => `<button class="live-it" ${it.id ? `data-go="person:${esc(it.id)}"` : ""}>${it.id ? av(ctx, it.id, "sm") : `<span class="live-ic">${svg(it.ic)}</span>`}<span>${it.html}</span></button>`).join("")}</div></div>
+    <span class="live-tag"><i></i>${esc(ctx.t("Live"))}</span></div>`;
 }
 
-function tasksView(ctx) {
-  const kids = ctx.children();
+/* Kort: one long card per person */
+function bandCards(ctx) {
+  const people = ctx.members();
+  const homeN = people.filter((p) => pres(ctx, p).home).length;
+  const dn = dinnerOn(ctx, today0());
+  const h = hoursOf(new Date());
+  let html = `<div class="fband stackv" aria-label="${esc(ctx.t("Familien"))}"><div class="fsum"><span class="lbl">${esc(ctx.t("Hjemme nu"))}</span><b class="num">${homeN}<small>/${people.length}</small></b><div class="dots">${people.map((p) => `<i class="${pres(ctx, p).home ? "in" : ""}" title="${esc(p.name)}"></i>`).join("")}</div>${dn ? `<div class="nx">${esc(ctx.t("Aftensmad sammen"))}<strong>${esc(countdown(ctx, dn.at))}</strong></div>` : ""}</div>`;
+  people.forEach((p, i) => {
+    const pr = pres(ctx, p), mine = tasksFor(ctx, p), done = mine.filter((t) => t.done).length, f = mine.length ? done / mine.length : 0, C = 2 * Math.PI * 30, nx = nextUp(ctx, p);
+    const kid = p.role === "child";
+    const facts = kid
+      ? `${ctx.feature(p, "points") ? `<span class="fact fpts">${svg("pstar")}<span class="num">${ctx.points(p.id)}</span></span>` : ""}${ctx.feature(p, "missions") ? `<span class="fact flame">${svg("flame")}${streak(ctx, p)}</span><span class="fact">${done}/${mine.length}${ctx.feature(p, "points") ? "" : ` ${esc(ctx.t("klaret"))}`}</span>` : ""}`
+      : `<span class="fact">${done}/${mine.length} ${esc(ctx.t("klaret"))}</span>`;
+    const bat = pr.battery != null ? `<span class="nbat${pr.battery <= 20 ? " low" : ""}" title="${esc(ctx.t("Telefonens batteri"))}"><span class="bglyph"><i style="width:${pr.battery}%"></i></span>${pr.battery}%</span>` : "";
+    const L = lanesOf(ctx, p);
+    html += `<button class="pod" data-go="person:${esc(p.id)}" style="--pc:${esc(p.color)};animation-delay:${(i + 1) * 70}ms" aria-label="${esc(p.name)}: ${esc(pr.txt)}">
+      <span class="ringav"><svg viewBox="0 0 66 66" aria-hidden="true"><circle cx="33" cy="33" r="30" fill="none" stroke="var(--surface-2)" stroke-width="4"/><circle class="arc" cx="33" cy="33" r="30" fill="none" stroke="${esc(p.color)}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - Math.max(f, 0.03))).toFixed(1)}"/></svg>${av(ctx, p.id)}${pr.known ? `<span class="pres ${pr.home ? "home" : "away"}${pr.fresh ? " fresh" : ""}" title="${esc(pr.txt)}">${svg(pr.home ? "home" : "walk")}</span>` : ""}</span>
+      <span class="who"><span class="nm"><span class="nmt">${esc(p.name)}</span>${hasPet(ctx, p) ? `<span class="ipet" aria-hidden="true">${petSvg(ctx, p)}</span>` : ""}${bat}</span><span class="pst">${esc(pr.txt)}${pr.since ? ` · ${esc(ctx.t("siden {t}", { t: pr.since }))}` : ""}</span></span>
+      <span class="facts">${facts}</span>
+      <span class="rlane" aria-hidden="true"><span class="ltrack">${L.away != null ? `<i class="laway" style="left:${pct(L.away)}%;width:${Math.max(0, pct(h) - pct(L.away))}%"></i>` : ""}${L.blocks.map((b, k) => `<i class="lblk" style="left:${pct(b[0])}%;width:${Math.max(0.8, pct(b[1]) - pct(b[0]))}%;background:${esc(b[2])};animation-delay:${i * 80 + k * 60}ms" title="${esc(b[3])} ${hm(ctx, b[0])}"><span>${esc(b[3])}</span></i>`).join("")}${L.mark ? `<i class="lmark" style="left:${pct(L.mark[0])}%"></i>` : ""}<i class="rnow" style="left:${pct(h)}%"></i></span><span class="rl-ax"><span>06</span><span>12</span><span>18</span><span>24</span></span></span>
+      <span class="next">${nx ? `<span class="nl">${svg(nx.icon)}<span>${esc(nx.title)}</span></span><b>${esc(countdown(ctx, nx.at))}</b>` : `<span class="nl"><span>${esc(ctx.t("Intet planlagt"))}</span></span><b>–</b>`}</span>
+    </button>`;
+  });
+  return html + "</div>";
+}
+
+// ---------------------------------------------------------------- the parents' home (pHome)
+function emptyFamily(ctx) {
+  return `<section class="card hv-empty">${svg("users", "ic big")}<h2>${esc(ctx.t("Ingen i familien endnu"))}</h2><p class="t-sub">${esc(ctx.t("Tilføj familien under Familieindstillinger, så kommer forsiden til live."))}</p><button class="btn" data-go="indstillinger:familie">${svg("users")}${esc(ctx.t("Tilføj familien"))}</button></section>`;
+}
+function pickupLine(ctx) {
+  const now = Date.now();
+  const list = [0, 1].flatMap((i) => pickupsOn(ctx, addDays(today0(), i))).filter((p) => p.at > now && ctx.member(p.who));
+  const p = list.find((x) => x.who === ctx.me?.id && x.part === "hent") || list.find((x) => x.who === ctx.me?.id) || list.find((x) => x.part === "hent") || list[0];
+  if (!p) return "";
+  const who = ctx.member(p.who);
+  const verb = p.part === "bring" ? ctx.t("bringer") : ctx.t("henter");
+  const today = startOfDay(p.at).getTime() === today0().getTime();
+  const remind = ctx.data.settings.pickup_reminder !== false ? `<div class="t-sub">${esc(ctx.t("Påmindelse til {name} kl. {t}", { name: who.name, t: ctx.fmt.time(new Date(+p.at - 30 * 60000)) }))}</div>` : "";
+  return `<div class="pickup">${svg("pickup")}<div style="flex:1;min-width:0"><b>${esc(`${who.name} ${verb} ${p.kid.name}${today ? "" : ` ${ctx.t("i morgen")}`} ${ctx.t("kl.")} ${ctx.fmt.time(p.at)}`)}</b>${remind}</div></div>`;
+}
+function pHome(ctx) {
   if (!ctx.members().length) return emptyFamily(ctx);
-  const pend = ctx.on("shop") ? pending(ctx) : [];
-  const tabs = [["missioner", "Missioner"], ...(pointsOn(ctx) && ctx.on("shop") ? [["belonninger", "Belønninger"]] : []), ["ugen", "Ugen"]];
-  if (!tabs.some((t) => t[0] === opTab)) opTab = "missioner";
-  let body = "";
-  if (opTab === "missioner") {
-    const owners = [...kids, { id: "all", name: ctx.t("Alle børn"), color: "var(--violet)", role: "child", all: true }, ...ctx.parents()];
-    body = `<div class="cols-2" style="margin-top:12px">${owners
-      .map((o) => {
-        const list = sortMissions((ctx.data.missions || []).filter((m) => m.member === o.id));
-        if (!list.length && o.role === "parent") return "";
-        return `<section class="card" style="--pc:${esc(o.color)}"><div class="person-head">${o.all ? `<span class="av" style="background:var(--violet)">${svg("users")}</span>` : ctx.avatar(o.id)}<h3>${esc(o.name)}</h3><span class="meta">${esc(ctx.t("{n} missioner", { n: list.length }))}</span></div>
-          <div class="tasks">${list.map((m) => missionEditRow(ctx, m)).join("") || `<div class="t-sub">${esc(o.all ? ctx.t("Missioner for alle børnene, fx tandbørstning.") : ctx.t("Ingen missioner endnu"))}</div>`}</div>
-          <button class="btn soft sm hh-add" data-act="home-newmission" data-member="${esc(o.id)}">${svg("plus")}${esc(ctx.t("Ny mission"))}</button></section>`;
-      })
-      .join("")}</div>`;
-  } else if (opTab === "belonninger") {
-    const list = [...(ctx.data.rewards || [])].sort((a, b) => a.cost - b.cost);
-    body = `<section class="card" style="margin-top:12px"><div class="card-head"><h2>${esc(ctx.t("Belønninger"))}</h2><button class="btn sm" data-act="home-editreward">${svg("plus")}${esc(ctx.t("Ny belønning"))}</button></div>
-      <div class="tasks">${list
-        .map((r) => {
-          const who = r.member === "all" ? ctx.t("Alle børn") : ctx.member(r.member)?.name || r.member;
-          return `<div class="task hh-rrow"><span class="hh-bigemo">${esc(r.emoji)}</span><div style="min-width:0"><div class="t-ttl">${esc(r.title)}</div><div class="t-sub">${esc(who)}</div></div><span class="t-pts num">${r.cost}${STAR}</span><span class="hh-rowbtns"><button class="iconbtn" data-act="home-editreward" data-id="${esc(r.id)}" aria-label="${esc(ctx.t("Ret {name}", { name: r.title }))}">${svg("edit")}</button><button class="iconbtn" data-act="home-delreward" data-id="${esc(r.id)}" aria-label="${esc(ctx.t("Slet {name}", { name: r.title }))}">${svg("trash")}</button></span></div>`;
-        })
-        .join("") || `<div class="t-sub">${esc(ctx.t("Ingen belønninger endnu. Børnene kan købe dem for deres point."))}</div>`}</div></section>`;
-  } else {
-    const dates = weekDates(ctx);
-    body = `<section class="card" style="margin-top:12px;overflow:auto"><div class="card-head"><h2>${esc(ctx.t("Ugen"))}</h2><span class="meta">${esc(ctx.t("Uge {n}", { n: isoWeek(todayDate(ctx)) }))}</span></div>
-      <div class="hh-wgrid" style="grid-template-columns:minmax(110px,1.2fr) repeat(7,minmax(40px,1fr))"><span></span>${dates.map((d) => `<span class="hh-wh${isoOf(d) === ctx.data.today ? " today" : ""}">${esc(ctx.fmt.short(d))}<small>${d.getDate()}</small></span>`).join("")}
-      ${kids
-        .map((k) => `<span class="hh-wn">${ctx.avatar(k.id, "sm")}${esc(k.name)}</span>${dates
-          .map((d) => {
-            const iso = isoOf(d);
-            const p = progress(ctx, k, d);
-            const fut = iso > ctx.data.today;
-            const f = p.total ? p.done / p.total : 0;
-            return `<span class="hh-wc${fut ? " future" : ""}${p.total && f === 1 && !fut ? " perfect" : ""}" style="--pc:${esc(k.color)};--f:${fut ? 0 : f}" title="${esc(`${k.name}: ${p.done}/${p.total}`)}">${p.total ? (fut ? p.total : f === 1 ? svg("check") : `${p.done}/${p.total}`) : "–"}</span>`;
-          })
-          .join("")}`)
-        .join("")}</div></section>`;
+  const kids = kidsOf(ctx);
+  const t0 = today0(), t1 = addDays(t0, 1);
+  const evs = events(ctx, 2).filter((e) => !e.allDay || e.start < addDays(t0, 2));
+  const dayRows = (d) => {
+    const rows = evs
+      .filter((e) => startOfDay(e.start).getTime() === d.getTime() || (e.allDay && e.start <= d && e.end > d))
+      .map((e) => {
+        const who = eventWho(ctx, e);
+        const owner = ctx.member(who[0]);
+        const cal = ctx.hass.states[e.calendar]?.attributes?.friendly_name || "";
+        return { s: e.allDay ? "" : hhmm(e.start), html: ag(ctx, e.allDay ? ctx.t("Hele dagen") : ctx.fmt.time(e.start), e.title, [e.location, cal].filter(Boolean).join(" · "), who, owner?.color || "#11A39A") };
+      });
+    const dn = dinnerOn(ctx, d);
+    if (dn) rows.push({ s: hhmm(dn.at), html: ag(ctx, ctx.fmt.time(dn.at), d.getTime() === t0.getTime() ? ctx.t("Aftensmad") : dn.title, d.getTime() === t0.getTime() ? dn.title : ctx.hass.states[dn.calendar]?.attributes?.friendly_name || ctx.t("Madplan"), ["fam"], "#6E4AFF") });
+    return rows.sort((a, b) => a.s.localeCompare(b.s)).map((r) => r.html).join("");
+  };
+  const cards = [];
+  const pend = pending(ctx);
+  if (pend.length) cards.push(`<section class="card s12"><div class="tasks">${pend.map((r) => approveRow(ctx, r)).join("")}</div></section>`);
+  const span = `${cap(shortDay(ctx, t0))} ${t0.getDate()}. – ${shortDay(ctx, t1)} ${ctx.fmt.date(t1, { day: "numeric", month: "short" })}`;
+  cards.push(`<section class="card s12">
+      <div class="card-head"><h2>${esc(ctx.t("I dag og i morgen"))}</h2><span class="meta">${esc(span)}</span></div>
+      <div class="agenda">
+        <div class="day-split">${esc(ctx.t("I dag"))}</div>${dayRows(t0) || `<div class="t-sub">${esc(ctx.t("Ingen aftaler i dag"))}</div>`}
+        <div class="day-split">${esc(ctx.t("I morgen, {day}", { day: ctx.fmt.day(t1) }))}</div>${dayRows(t1) || `<div class="t-sub">${esc(ctx.t("Ingen aftaler i morgen"))}</div>`}
+      </div>${pickupLine(ctx)}
+    </section>`);
+  const goals = ctx.on("points") && ctx.on("shop") && kids.some((k) => ctx.feature(k, "shop"));
+  if (ctx.on("meals") && ctx.data.settings.meals_calendar) {
+    const dn = dinnerOn(ctx, t0);
+    const later = [1, 2].map((i) => [addDays(t0, i), dinnerOn(ctx, addDays(t0, i))]).filter(([, x]) => x);
+    const from = dn ? ctx.hass.states[dn.calendar]?.attributes?.friendly_name || "" : "";
+    const mins = dn?.desc.match(/(\d+)\s*min/i)?.[1];
+    cards.push(`<section class="card ${goals ? "s6" : "s12"}">
+      <div class="card-head"><h2>${esc(ctx.t("Aftensmad"))}</h2><button class="btn soft sm" data-go="madplan">${esc(ctx.t("Madplan"))}</button></div>
+      <div class="dinner"><div class="plate">${svg("food")}</div><div style="min-width:0"><div class="eyebrow">${esc(ctx.t("I aften"))}${mins ? ` · ${esc(mins)} min` : ""}</div><h3>${esc(dn?.title || ctx.t("Ikke planlagt endnu"))}</h3>${from ? `<div class="t-sub">${esc(ctx.t("Fra {name}", { name: from }))}</div>` : ""}</div></div>
+      ${later.length ? `<div class="minis">${later.map(([d, x], i) => `<div class="mini"><span>${esc(i === 0 ? ctx.t("I morgen") : cap(ctx.fmt.day(d)))}</span><span>${esc(x.title)}</span></div>`).join("")}</div>` : ""}
+    </section>`);
   }
-  return `${pend.length ? `<section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${esc(ctx.t("Godkend køb"))}</h2><span class="lock">${svg("shield")}${esc(ctx.t("Kun forældre"))}</span></div><div class="tasks">${pend.map((r) => approveRow(ctx, r)).join("")}</div></section>` : ""}
-    ${kids.length && pointsOn(ctx) ? `<div class="kids hh-kids">${kids
-      .map((k) => {
-        const g = ctx.on("shop") ? goalOf(ctx, k.id) : null;
-        const pts = ctx.points(k.id);
-        return `<button class="kid" style="--kc:${esc(k.color)}" data-go="person:${esc(k.id)}">${bigRing(ctx, k)}<div class="score num">${pts}${STAR}</div>${ctx.on("missions") ? `<span class="streak">${svg("flame")}${esc(ctx.t("{n} perfekte dage i ugen", { n: perfectDays(ctx, k) }))}</span>` : ""}${g ? `<div class="goal">${g.cost > pts ? ctx.t("{n} point til {what}", { n: g.cost - pts, what: `<b>${esc(g.emoji)} ${esc(g.title)}</b>` }) : ctx.t("{what} er tjent!", { what: `<b>${esc(g.title)}</b>` })}</div>` : ""}</button>`;
-      })
-      .join("")}</div>` : ""}
-    <div class="seg hh-tabs" role="tablist">${tabs.map(([k, n]) => `<button role="tab" data-act="home-optab" data-id="${k}" aria-pressed="${opTab === k}">${esc(ctx.t(n))}</button>`).join("")}</div>
-    ${body}`;
+  if (goals) {
+    const lid = (ctx.data.settings.todo || [])[0];
+    const items = lid && ctx.on("lists") ? ctx.load("todo:" + lid, () => ctx.hass.callWS({ type: "todo/item/list", entity_id: lid }).then((r) => r.items || []), 30000) : null;
+    const lname = lid ? ctx.name(lid) : "";
+    cards.push(`<section class="card ${ctx.on("meals") && ctx.data.settings.meals_calendar ? "s6" : "s12"}">
+      <div class="card-head"><h2>${esc(ctx.t("Børnenes mål"))}</h2><button class="btn soft sm" data-act="home-quick">${svg("plus")}${esc(ctx.t("Hurtig opret"))}</button></div>
+      <div class="tasks">${kids
+        .filter((k) => ctx.feature(k, "shop"))
+        .map((k) => {
+          const r = goalOf(ctx, k), pts = ctx.points(k.id);
+          return `<button class="task" style="grid-template-columns:auto minmax(0,1fr) auto;border:0;text-align:left" data-go="person:${esc(k.id)}">${av(ctx, k.id)}<div><div class="t-ttl">${esc(r.em)} ${esc(r.t)}</div><div class="progress" style="margin:6px 0 0"><i style="width:${Math.min(100, (pts / r.cost) * 100)}%;background:${esc(k.color)}"></i></div></div><span class="t-pts num">${pts}/${r.cost}</span></button>`;
+        })
+        .join("")}</div>
+      ${lid && ctx.on("lists") ? `<div class="mini" style="margin-top:14px"><span>${esc(ctx.t("Liste"))}</span><span>${items ? `${esc(lname)}: ${esc(ctx.t("{d} af {t} klaret", { d: items.filter((i) => i.status === "completed").length, t: items.length }))} · ` : `${esc(lname)} · `}<a href="#" data-go="lister" style="color:var(--violet);font-weight:700">${esc(ctx.t("åbn"))}</a></span></div>` : ""}
+    </section>`);
+  }
+  const todo = ctx
+    .members()
+    .flatMap((m) => tasksFor(ctx, m))
+    .filter((t) => !t.done)
+    .slice(0, 4);
+  if (ctx.on("missions"))
+    cards.push(`<section class="card s12">
+      <div class="card-head"><h2>${esc(ctx.t("Opgaver i dag"))}</h2><button class="btn soft sm" data-go="opgaver">${esc(ctx.t("Alle opgaver"))}</button></div>
+      <div class="tasks">${todo.map((t) => taskRow(ctx, t)).join("") || `<div class="t-sub">${esc(ctx.t("Alt er klaret i dag"))}</div>`}</div>
+    </section>`);
+  return `<div class="homegrid">
+  <aside class="home-fam" aria-label="${esc(ctx.t("Familien"))}">${familyBand(ctx)}</aside>
+  <div class="grid home-main">${cards.join("")}</div></div>`;
 }
 
-function missionEditRow(ctx, m) {
-  return `<div class="task hh-mrow"><span class="hh-bigemo">${esc(m.emoji || "⭐")}</span><div style="min-width:0"><div class="t-ttl">${esc(m.title)}</div><div class="t-sub"><span>${esc(daysText(ctx, m.days))}</span><span>${esc(partName(ctx, m.part))}</span>${m.time ? `<span>${svg("clock")}${timeText(ctx, m.time)}</span>` : ""}</div></div>
-    ${pointsOn(ctx) && m.points ? `<span class="t-pts">+${m.points}${STAR}</span>` : "<span></span>"}<span class="hh-rowbtns"><button class="iconbtn" data-act="home-editmission" data-id="${esc(m.id)}" aria-label="${esc(ctx.t("Ret {name}", { name: m.title }))}">${svg("edit")}</button><button class="iconbtn" data-act="home-delmission" data-id="${esc(m.id)}" aria-label="${esc(ctx.t("Slet {name}", { name: m.title }))}">${svg("trash")}</button></span></div>`;
+// ---------------------------------------------------------------- Opgaver (pTasks)
+function bigRing(ctx, k) {
+  const r = goalOf(ctx, k), C = 2 * Math.PI * 46, f = Math.min(1, ctx.points(k.id) / r.cost);
+  return `<div class="big-ring"><svg viewBox="0 0 104 104" aria-hidden="true"><circle cx="52" cy="52" r="46" stroke="var(--surface-2)" stroke-width="9" fill="none"/><circle cx="52" cy="52" r="46" stroke="${esc(k.color)}" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - f)).toFixed(1)}" style="transition:stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1)"/></svg>${av(ctx, k.id)}</div>`;
+}
+function startCard(ctx) {
+  const nRec = (ctx.data.missions || []).length;
+  const boards = kidsOf(ctx).filter((k) => ctx.feature(k, "board") && Object.values(ctx.data.routines?.boards?.[k.id] || {}).some((l) => l.length)).map((k) => k.name);
+  const nHb = Object.values(ctx.data.routines?.pickups || {}).flatMap((p) => Object.values(p || {}).flatMap((d) => [d?.bring, d?.hent])).filter((s) => s?.who && s.who !== "mor").length;
+  return `<section class="kig"><div class="kig-t"><span class="eyebrow">${esc(ctx.t("Kom i gang"))}</span><h2 class="h2">${esc(ctx.t("Faste rutiner på 2 minutter"))}</h2></div><div class="kig-row">
+    <button class="kig-b" data-go="rutiner:opgaver" style="--kc:#F2B01E"><span class="kig-em">🧺</span><b>${esc(ctx.t("Faste opgaver"))}</b><small>${esc(ctx.t("{n} gentager sig", { n: nRec }))}</small></button>
+    <button class="kig-b" data-go="rutiner:hent" style="--kc:#3B6BF5"><span class="kig-em">🚗</span><b>${esc(ctx.t("Hent og bring"))}</b><small>${esc(ctx.t("{n} ture om ugen", { n: nHb }))}</small></button>
+    ${ctx.on("board") ? `<button class="kig-b" data-go="rutiner:tavle" style="--kc:#11A39A"><span class="kig-em">🌈</span><b>${esc(ctx.t("Rutinetavle"))}</b><small>${esc(boards.length ? boards.join(` ${ctx.t("og")} `) : ctx.t("Ingen endnu"))}</small></button>` : ""}</div></section>`;
+}
+function pTasks(ctx) {
+  if (!ctx.members().length) return emptyFamily(ctx);
+  const kids = kidsOf(ctx);
+  const groups = [...kids.filter((k) => ctx.feature(k, "missions")), ...ctx.parents()].map((p) => ({ p, list: tasksFor(ctx, p) })).filter((g) => g.list.length);
+  const pend = pending(ctx);
+  return `${startCard(ctx)}
+  ${pend.length ? `<section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${esc(ctx.t("Godkend køb"))}</h2><span class="lock">${svg("shield")}${esc(ctx.t("Kun forældre"))}</span></div><div class="tasks">${pend.map((r) => approveRow(ctx, r)).join("")}</div></section>` : ""}
+  ${ctx.on("points") ? `<div class="kids">${kids
+    .filter((k) => ctx.feature(k, "points"))
+    .map((k) => {
+      const r = goalOf(ctx, k), pts = ctx.points(k.id);
+      return `<button class="kid" style="--kc:${esc(k.color)}" data-go="person:${esc(k.id)}">${bigRing(ctx, k)}<div class="score num">${pts}${svg("pstar")}</div>${ctx.feature(k, "missions") ? `<span class="streak">${svg("flame")}${esc(ctx.t("{n} perfekte dage", { n: streak(ctx, k) }))}</span>` : ""}${ctx.feature(k, "shop") ? `<div class="goal">${r.cost - pts > 0 ? ctx.t("{n} point til {what}", { n: r.cost - pts, what: `<b>${esc(r.em)} ${esc(r.t)}</b>` }) : ctx.t("{what} er tjent!", { what: `<b>${esc(r.t)}</b>` })}</div>` : ""}</button>`;
+    })
+    .join("")}</div>` : ""}
+  <div style="display:flex;justify-content:flex-end;margin:16px 0 0"><button class="btn" data-act="home-quick">${svg("plus")}${esc(ctx.t("Hurtig opret"))}</button></div>
+  <div class="cols-2" style="margin-top:12px">${groups.map((g) => `<section class="card"><div class="person-head">${av(ctx, g.p.id)}<h3>${esc(g.p.name)}</h3><span class="meta">${esc(ctx.t("{d} af {t} klaret", { d: g.list.filter((t) => t.done).length, t: g.list.length }))}</span></div><div class="tasks">${g.list.map((t) => taskRow(ctx, t)).join("")}</div></section>`).join("") || `<section class="card"><p class="t-sub">${esc(ctx.t("Ingen opgaver i dag. Lav faste opgaver under Faste rutiner."))}</p></section>`}</div>
+  <p class="foot">${esc(ctx.t("Missioner og point er to funktioner: børnene kan have missioner uden point. Med point får de dem, så snart de krydser af; et køb i shoppen venter på en forælder. Når alle dagens missioner er klaret, tæller dagen som perfekt."))}</p>`;
 }
 
+// ---------------------------------------------------------------- the school schedule (from the skema calendar)
+function subjColor(name, fallback) {
+  const key = Object.keys(SUBJ).find((k) => String(name).toLowerCase().startsWith(k.toLowerCase()));
+  return key ? SUBJ[key] : fallback;
+}
+/* The prototype's skemaGrid: this week's lessons from the schedule calendar, Monday to Friday. */
+function skemaCard(ctx, m) {
+  if (typeof Kids.skemaGrid === "function") return Kids.skemaGrid(ctx, m);
+  const mon = addDays(today0(), -weekday(today0()) + (weekday(today0()) > 4 ? 7 : 0));
+  const evs = ctx.events([m.skema], mon, addDays(mon, 5)).filter((e) => !e.allDay);
+  let T0 = 8, T1 = 14;
+  evs.forEach((e) => {
+    T0 = Math.min(T0, e.start.getHours());
+    T1 = Math.max(T1, Math.ceil(hoursOf(e.end)));
+  });
+  T1 = Math.min(T1, 18);
+  const PXH = 60, Hh = (T1 - T0) * PXH;
+  const tY = (d) => (hoursOf(d) - T0) * PXH;
+  const t0 = today0();
+  let h = `<div class="skema-wrap"><div class="skema"><span></span>`;
+  for (let i = 0; i < 5; i++) {
+    const d = addDays(mon, i), rel = Math.round((d - t0) / 864e5);
+    h += `<div class="sk-h${rel === 0 ? " today" : ""}">${esc(cap(shortDay(ctx, d)))}<small>${esc(`${d.getDate()}. ${ctx.fmt.date(d, { month: "short" }).replace(/\.$/, "")}.`)}${rel === 0 ? ` · ${esc(ctx.t("i dag"))}` : rel === 1 ? ` · ${esc(ctx.t("i morgen"))}` : ""}</small></div>`;
+  }
+  const hours = [];
+  for (let x = T0; x <= T1; x++) hours.push(x);
+  h += `<div class="sk-times" style="height:${Hh}px">${hours.map((x) => `<span style="top:${(x - T0) * PXH}px">${pad(x)}.00</span>`).join("")}</div>`;
+  for (let i = 0; i < 5; i++) {
+    const d = addDays(mon, i);
+    const day = evs.filter((e) => startOfDay(e.start).getTime() === d.getTime()).sort((a, b) => a.start - b.start);
+    h += `<div class="sk-col" style="height:${Hh}px">`;
+    day.forEach((e, k) => {
+      const n = day[k + 1];
+      if (n && n.start - e.end >= 10 * 60000) h += `<div class="sk-break" style="top:${tY(e.end)}px;height:${tY(n.start) - tY(e.end)}px" title="${esc(ctx.t("Frikvarter"))}"></div>`;
+    });
+    day.forEach((e, li) => {
+      const who = [e.location, (e.description || "").split("\n")[0]].filter(Boolean).join(" · ").slice(0, 40);
+      const st = ctx.fmt.time(e.start), en = ctx.fmt.time(e.end);
+      h += `<div class="sk-l" style="top:${tY(e.start) + 2}px;height:${Math.max(18, tY(e.end) - tY(e.start) - 4)}px;background:${subjColor(e.title, m.color)};animation-delay:${i * 60 + li * 40}ms" title="${esc(`${e.title} ${st}–${en}${who ? ` · ${who}` : ""}`)}"><b>${esc(e.title)}</b><small>${esc(st)}${who ? ` · ${esc(who)}` : ""}</small></div>`;
+    });
+    h += `</div>`;
+  }
+  h += `</div></div><div class="sk-legend"><span class="chip"><i style="background:${SUBJ.Dansk}"></i>${esc(ctx.t("Fra {cal}", { cal: ctx.name(m.skema) }))}</span>${evs.length ? "" : `<span class="chip">${esc(ctx.t("Ingen timer i denne uge"))}</span>`}</div>`;
+  return h;
+}
+
+// ---------------------------------------------------------------- person pages
+function bdayField(ctx, m) {
+  const input = ctx.isParent ? `<input type="date" data-in="home-bday" data-id="${esc(m.id)}" value="${esc(m.birthday || "")}" aria-label="${esc(ctx.t("Fødselsdag for {name}", { name: m.name }))}">` : "";
+  if (!m.birthday) return `<div class="bd-f"><span class="bd-ic">🎂</span><div><b>${esc(ctx.t("Fødselsdag"))}</b><small>${esc(ctx.t("Ikke sat"))}</small></div>${input}</div>`;
+  const [y] = m.birthday.split("-").map(Number);
+  const d = new Date(`${m.birthday}T12:00:00`);
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  if (now < new Date(now.getFullYear(), d.getMonth(), d.getDate())) age--;
+  return `<div class="bd-f"><span class="bd-ic">🎂</span><div><b>${esc(ctx.t("Fødselsdag"))}</b><small>${esc(ctx.fmt.date(d, { day: "numeric", month: "long", year: "numeric" }))} · ${esc(ctx.t("{n} år", { n: age }))}</small></div>${input}</div>`;
+}
+/* The child's room as the prototype's roomCard (lights, scenes, the drawing); the rooms module owns it. */
+function roomBlock(ctx, room) {
+  if (typeof Rooms.roomLightsCard === "function") return Rooms.roomLightsCard(ctx, room, "s12");
+  if (typeof Rooms.roomCard === "function") return `<div class="s12 hh-room">${Rooms.roomCard(ctx, room)}</div>`;
+  return "";
+}
+function personPage(ctx) {
+  const p = ctx.member(ctx.arg) || ctx.members()[0];
+  if (!p) return emptyFamily(ctx);
+  if (p.role === "parent") return parentPage(ctx, p);
+  const id = p.id, r = goalOf(ctx, p), mine = tasksFor(ctx, p), shop = rewardsOf(ctx, id), pend = pending(ctx, id), pts = ctx.points(id);
+  let house = null;
+  try {
+    house = typeof House.houseModel === "function" ? House.houseModel(ctx) : null;
+  } catch (e) {
+    house = null;
+  }
+  const rooms = (house || ctx.data.house || {}).rooms || [];
+  const room = rooms.find((x) => x.kid === id) || rooms.find((x) => !x.kid && (x.id === id || nameRe(p).test(x.name || "")));
+  const pin = ctx.data.pins?.[id];
+  const inst = INST.find((i) => i[0] === p.institution);
+  const card = (on, cls, body) => (on ? `<section class="card ${cls}">${body}</section>` : "");
+  return `
+  <button class="back" data-go="hjem">${svg("back")}${esc(ctx.t("Hjem"))}</button>
+  <section class="p-hero" style="--pc:${esc(p.color)}">${av(ctx, id)}<div style="position:relative;z-index:1"><h2>${esc(p.name)}</h2><div class="role">${esc([ctx.t("Barn"), p.person ? ctx.t("person i Home Assistant") : ctx.t("profil uden telefon"), p.has_pin ? ctx.t("egen PIN") : ""].filter(Boolean).join(" · "))}</div>
+    <div class="stats">${ctx.feature(p, "points") ? `<span>${svg("pstar")}${esc(ctx.t("{n} point", { n: pts }))}</span>` : ""}${ctx.feature(p, "missions") ? `<span>${svg("flame")}${esc(ctx.t("{n} perfekte dage", { n: streak(ctx, p) }))}</span><span>${esc(ctx.t("{d}/{t} missioner i dag", { d: mine.filter((t) => t.done).length, t: mine.length }))}</span>` : ""}</div></div>
+    <div class="acts"><button class="btn" data-act="home-photo" data-id="${esc(id)}">${svg("camera")}${esc(p.photo ? ctx.t("Skift billede") : ctx.t("Sæt billede"))}</button><button class="btn" data-act="home-seeas" data-id="${esc(id)}">${svg("user")}${esc(ctx.t("Se som {name}", { name: p.name }))}</button>${ctx.feature(p, "points") ? `<button class="btn" data-act="home-givepts" data-id="${esc(id)}">${STAR}${esc(ctx.t("Giv 5 point"))}</button>` : ""}</div></section>
+  <div class="grid" style="margin-top:16px">
+    ${ctx.feature(p, "room") && room ? roomBlock(ctx, room) : ""}
+    ${pend.length ? `<section class="card s12"><div class="tasks">${pend.map((x) => approveRow(ctx, x)).join("")}</div></section>` : ""}
+    ${card(ctx.feature(p, "skema"), hasPet(ctx, p) ? "s8" : "s12", `<div class="card-head"><h2>${esc(ctx.t("Skoleskema"))}</h2><span class="meta">${esc(p.skema ? ctx.t("Uge {n} · fra {cal}", { n: isoWeek(today0()), cal: ctx.name(p.skema) }) : ctx.t("Uge {n}", { n: isoWeek(today0()) }))}</span></div>${p.skema ? skemaCard(ctx, p) : `<p class="t-sub">${esc(ctx.t("Vælg skemaets kalender (fx fra Aula) under Familieindstillinger › Børn."))}</p>`}`)}
+    ${card(ctx.feature(p, "pet"), ctx.feature(p, "skema") ? "s4" : "s12", `<div class="card-head"><h2>${esc(ctx.t("Mit dyr"))}</h2><span class="meta">${esc(ctx.t("Slået til"))}</span></div>${petBlock(ctx, p)}<div class="minis">${ctx.feature(p, "shop") ? `<div class="mini"><span>${esc(ctx.t("Mål"))}</span><span>${esc(r.em)} ${esc(r.t)} · ${pts}/${r.cost}</span></div>` : ""}${pin ? `<div class="mini"><span>${esc(ctx.t("Besked"))}</span><span>${esc(pin.text)}</span></div>` : ""}</div>`)}
+    ${card(ctx.feature(p, "missions"), ctx.feature(p, "shop") ? "s6" : "s12", `<div class="card-head"><h2>${esc(ctx.t("Missioner"))}</h2><button class="btn soft sm" data-act="home-quick" data-kind="mission" data-member="${esc(id)}">${svg("plus")}${esc(ctx.t("Ny mission"))}</button></div><div class="tasks">${mine.map((t) => taskRow(ctx, t)).join("") || `<div class="t-sub">${esc(ctx.t("Ingen missioner"))}</div>`}</div>`)}
+    ${card(ctx.feature(p, "shop"), ctx.feature(p, "missions") ? "s6" : "s12", `<div class="card-head"><h2>${esc(ctx.t("Pointshop"))}</h2><span class="meta">${esc(ctx.t("Forældre sætter priserne"))}</span></div><div class="tasks">${shop.map((w) => `<div class="task" style="grid-template-columns:40px minmax(0,1fr) auto auto"><span style="font-size:26px;text-align:center">${esc(w.emoji)}</span><div><div class="t-ttl">${esc(w.title)}</div><div class="t-sub">${esc(w.id === r.id ? ctx.t("Mål") : w.member === "all" ? ctx.t("Belønning · alle børn") : ctx.t("Belønning"))}</div></div><span class="t-pts">${w.cost}${STAR}</span><button class="iconbtn" data-act="home-delreward" data-id="${esc(w.id)}" aria-label="${esc(ctx.t("Fjern {what}", { what: w.title }))}">${svg("trash")}</button></div>`).join("") || `<div class="t-sub">${esc(ctx.t("Ingen belønninger endnu"))}</div>`}</div><button class="btn soft sm" data-act="home-quick" data-kind="reward" data-member="${esc(id)}" style="margin-top:12px">${svg("plus")}${esc(ctx.t("Ny belønning"))}</button>`)}
+    <section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Profil"))}</h2><button class="btn soft sm" data-go="indstillinger:born">${svg("shield")}${esc(ctx.t("Moduler og institution"))}</button></div><div class="kprof">${bdayField(ctx, p)}${inst ? `<div class="bd-f"><span class="bd-ic">${inst[2]}</span><div><b>${esc(ctx.t(inst[1]))}</b><small>${esc(p.institution === "skole" ? ctx.t("Skoleskema fra Aula") : ctx.t("Dagens aflevering og afhentning fra Hent og bring"))}</small></div></div>` : ""}</div></section>
+  </div>`;
+}
+function parentPage(ctx, p) {
+  const mine = tasksFor(ctx, p);
+  const evs = events(ctx, 7).filter((e) => e.start > Date.now() - 3600e3 && (eventWho(ctx, e).includes(p.id) || eventWho(ctx, e).includes("fam")));
+  const picks = [0, 1, 2, 3, 4, 5, 6].flatMap((i) => pickupsOn(ctx, addDays(today0(), i))).filter((x) => x.who === p.id && x.part === "hent" && x.at > Date.now());
+  const pr = pres(ctx, p);
+  const rows = [
+    ...evs.map((e) => ({ at: e.start, html: ag(ctx, e.allDay ? ctx.t("Hele dagen") : ctx.fmt.time(e.start), e.title, `${ctx.fmt.day(e.start)} · ${ctx.hass.states[e.calendar]?.attributes?.friendly_name || ""}`, eventWho(ctx, e), ctx.member(eventWho(ctx, e)[0])?.color || "#11A39A") })),
+    ...picks.map((x) => ({ at: x.at, html: ag(ctx, ctx.fmt.time(x.at), `${p.name} ${ctx.t("henter")} ${x.kid.name}`, `${ctx.fmt.day(x.at)} · ${ctx.t("Hvem henter")} · ${ctx.t("du henter")}`, [x.kid.id], x.kid.color) })),
+  ].sort((a, b) => a.at - b.at);
+  const lists = (ctx.data.osky?.lists || []).filter((l) => ["begge", p.id].includes(ctx.data.settings.osky_to?.[l.id]));
+  return `
+  <button class="back" data-go="hjem">${svg("back")}${esc(ctx.t("Hjem"))}</button>
+  <section class="p-hero" style="--pc:${esc(p.color)}">${av(ctx, p.id)}<div style="position:relative;z-index:1"><h2>${esc(p.name)}</h2><div class="role">${esc([p.title, ctx.t("forælder"), ctx.hass.user?.is_admin && ctx.data.me === p.id ? ctx.t("administrator") : ""].filter(Boolean).join(" · "))}</div><div class="stats"><span>${esc(ctx.t("{n} åbne opgaver", { n: mine.filter((t) => !t.done).length }))}</span><span>${esc(ctx.t("{n} aftaler i ugen", { n: rows.length }))}</span><span>${esc(pr.txt)}${pr.since ? ` · ${esc(ctx.t("siden {t}", { t: pr.since }))}` : ""}</span></div></div><div class="acts"><button class="btn" data-act="home-photo" data-id="${esc(p.id)}">${svg("camera")}${esc(p.photo ? ctx.t("Skift billede") : ctx.t("Sæt billede"))}</button></div></section>
+  <div class="grid" style="margin-top:16px">
+    <section class="card s6"><div class="card-head"><h2>${esc(ctx.t("Opgaver"))}</h2></div><div class="tasks">${mine.map((t) => taskRow(ctx, t)).join("") || `<div class="t-sub">${esc(ctx.t("Ingen opgaver"))}</div>`}</div>
+      <div class="card-head" style="margin:20px 0 10px"><h2>${esc(ctx.t("Ugen"))}</h2></div><div class="agenda">${rows.map((r) => r.html).join("") || `<div class="t-sub">${esc(ctx.t("Ingen aftaler"))}</div>`}</div></section>
+    <section class="card s6"><div class="card-head"><h2>${esc(ctx.t("Profil"))}</h2></div>${bdayField(ctx, p)}
+      <div class="card-head" style="margin:18px 0 8px"><h2>${esc(ctx.t("Ønskesedler"))}</h2></div>${lists.length ? `<div class="sec-list">${lists.map((l) => `<button class="sec-row" data-go="lister:osky-${esc(l.id)}" style="border:0;text-align:left;width:100%"><span class="sec-ic">${svg("gift")}</span><div><b>${esc(l.title)}</b><small>${esc(ctx.t("{n} ønsker · Ønskeskyen", { n: l.count }))}</small></div><span></span></button>`).join("")}</div>` : `<p class="t-sub">${esc(ctx.t("Ingen ønskesedler valgt. Vælg dem under Familieindstillinger › Ønskeskyen."))}</p>`}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="btn soft sm" data-go="mig">${svg("gear")}${esc(ctx.t("Mine indstillinger"))}</button><button class="btn soft sm" data-go="indstillinger">${svg("shield")}${esc(ctx.t("Familieindstillinger"))}</button></div>
+    </section>
+  </div>`;
+}
+
+// ---------------------------------------------------------------- the child's day (kDay) and shop (kShop)
+function kidSchedule(ctx, m, i) {
+  const d = addDays(today0(), i);
+  const items = [];
+  for (const e of skemaOn(ctx, m, d)) items.push({ s: hhmm(e.start), e: e.end, t: e.title, sub: [ctx.t("Skole"), e.location].filter(Boolean).join(" · "), c: SUBJ[e.title] || SUBJ[e.title.split(/[ ,·]/)[0]] || m.color, school: true });
+  for (const e of eventsOf(ctx, m, 8)) if (!e.allDay && startOfDay(e.start).getTime() === d.getTime()) items.push({ s: hhmm(e.start), t: stripName(m, e.title), sub: ctx.hass.states[e.calendar]?.attributes?.friendly_name || "", c: m.color });
+  if (m.institution !== "skole")
+    for (const p of pickupsOn(ctx, d).filter((x) => x.kid.id === m.id)) {
+      const nm = ctx.t((INST.find((x) => x[0] === m.institution) || [0, "institution"])[1]).toLowerCase();
+      items.push(p.part === "bring" ? { s: hhmm(p.at), t: ctx.t("Afleveres i {where}", { where: nm }), sub: ctx.t("{name} afleverer", { name: whoName(ctx, p.who) }), c: m.color } : { s: hhmm(p.at), t: ctx.t("Bliver hentet"), sub: ctx.t("{name} henter", { name: whoName(ctx, p.who) }), c: m.color });
+    }
+  for (const t of tasksFor(ctx, m, d)) if (t.time) items.push({ s: t.time, t: t.t, sub: ctx.t("Mission"), c: m.color });
+  const dn = dinnerOn(ctx, d);
+  if (dn) items.push({ s: hhmm(dn.at), t: ctx.t("Aftensmad"), sub: dn.title, c: "#6E4AFF" });
+  return items.sort((a, b) => a.s.localeCompare(b.s));
+}
+function readText(ctx, m) {
+  const mine = tasksFor(ctx, m).filter((t) => !t.done);
+  const pin = ctx.data.pins?.[m.id]?.text;
+  return `${ctx.t("Hej {name}.", { name: m.name })} ${ctx.feature(m, "points") ? ctx.t("Du har {n} point.", { n: ctx.points(m.id) }) : ""} ${!ctx.feature(m, "missions") ? "" : mine.length ? ctx.t("Dine missioner er: {list}.", { list: mine.map((t) => t.t).join(", ") }) : ctx.t("Du har klaret alle dine missioner.")} ${pin ? `${pin}.` : ""}`.replace(/\s+/g, " ").trim();
+}
+function kDay(ctx) {
+  const p = ctx.me;
+  if (!p) return "";
+  const items = kidSchedule(ctx, p, kidDay), mine = tasksFor(ctx, p, addDays(today0(), kidDay)), done = mine.filter((t) => t.done).length;
+  const nowS = kidDay === 0 ? hhmm(new Date()) : "00:00";
+  const nextI = items.findIndex((x) => x.s >= nowS), cur = kidDay === 0 ? items.filter((x) => x.s < nowS).at(-1) : null, next = items[nextI];
+  const lessons = items.filter((x) => x.school);
+  const lastLesson = lessons.length ? ctx.fmt.time(lessons.reduce((a, b) => (b.e > a ? b.e : a), lessons[0].e)) : null;
+  const pin = ctx.data.pins?.[p.id];
+  const from = ctx.parents()[0];
+  const canTick = kidDay === 0;
+  return `<div style="--kc:${esc(p.color)}">
+  ${pin ? `<div class="pin-msg card" style="margin-bottom:14px">${from ? av(ctx, from.id, "sm") : ""}<span class="txt">${esc(pin.text)}</span>${ctx.feature(p, "read") ? `<button class="iconbtn" data-act="home-read" data-txt="${esc(pin.text)}" aria-label="${esc(ctx.t("Læs beskeden op"))}">${svg("speaker")}</button>` : ""}</div>` : ctx.feature(p, "read") ? `<div class="pin-msg card" style="margin-bottom:14px">${svg("speaker")}<span class="txt">${esc(ctx.t("Hør din dag"))}</span><button class="iconbtn" data-act="home-read" aria-label="${esc(ctx.t("Læs dagen op"))}">${svg("speaker")}</button></div>` : ""}
+  <div class="days">${[0, 1, 2, 3, 4, 5].map((i) => { const d = addDays(today0(), i); return `<button class="dbtn" data-act="home-kday" data-i="${i}" aria-pressed="${i === kidDay}"><small>${esc(i === 0 ? ctx.t("I dag") : cap(shortDay(ctx, d)))}</small><b>${d.getDate()}</b></button>`; }).join("")}</div>
+  <div class="grid" style="margin-top:14px">
+    <section class="card ${ctx.feature(p, "missions") || hasPet(ctx, p) ? "s7" : "s12"}">
+      <div class="nownext" style="margin-bottom:14px"><div class="nn now"><small>${esc(kidDay === 0 ? ctx.t("Nu") : ctx.t("Først"))}</small><b>${esc(kidDay === 0 ? (cur ? cur.t : ctx.t("Fri")) : items[0]?.t || ctx.t("Fri"))}</b></div><div class="nn"><small>${esc(ctx.t("Næste"))}</small><b>${esc(next ? `${next.t} ${ctx.t("kl.")} ${ctx.fmt.time(at(today0(), next.s))}` : ctx.t("Godnat"))}</b></div></div>
+      <div class="agenda">${items.map((x, i) => ag(ctx, ctx.fmt.time(at(today0(), x.s)), x.t, x.sub, [], x.c, kidDay === 0 && x.s < nowS ? "past" : i === nextI && kidDay === 0 ? "next" : "")).join("") || `<div class="t-sub">${esc(ctx.t("Ingen planer"))}</div>`}</div>
+      ${lastLesson ? `<div class="approve" style="margin-top:12px;background:color-mix(in srgb,var(--kc) 12%,var(--surface))"><span class="t-ttl">${esc(ctx.t("Skoledagen slutter kl. {t}", { t: lastLesson }))}</span><button class="btn sm" data-act="home-toast" data-msg="${esc(ctx.t("Skoledagen er afsluttet. Godt gået!"))}">${esc(ctx.t("Afslut dagen"))}</button><button class="btn soft sm" data-act="home-sick">${esc(ctx.t("Meld syg"))}</button></div>` : ""}
+    </section>
+    ${ctx.feature(p, "missions") || hasPet(ctx, p) ? `<section class="card s5">` : ""}${ctx.feature(p, "missions") ? `
+      <div class="card-head"><h2>${esc(kidDay === 0 ? ctx.t("Missioner i dag") : ctx.t("Missioner"))}</h2><span class="meta num">${esc(ctx.t("{d}/{t} klaret", { d: done, t: mine.length }))}</span></div>
+      <div class="tasks">${mine.map((t) => `<div class="task mission${t.done ? " done" : ""}" data-task="${esc(t.id)}"><button class="check" data-act="home-task" data-id="${esc(t.id)}" data-member="${esc(p.id)}" aria-label="${esc(t.t)}" aria-pressed="${!!t.done}" ${canTick ? "" : "disabled"} style="${t.done ? `background:${esc(p.color)}` : ""}">${CHECK}</button><div style="min-width:0"><div class="t-ttl">${esc(t.t)}</div><div class="t-sub">${esc(ctx.t("Dagens mission"))}${t.due ? ` · ${esc(t.due)}` : ""}</div></div>${ctx.feature(p, "points") && t.pts ? `<span class="t-pts" style="font-size:16px">+${t.pts}${STAR}</span>` : "<span></span>"}</div>`).join("") || `<div class="t-sub">${esc(ctx.t("Ingen missioner"))}</div>`}</div>` : ""}
+      ${hasPet(ctx, p) ? `<div style="margin-top:16px">${petBlock(ctx, p)}</div>` : ""}
+    ${ctx.feature(p, "missions") || hasPet(ctx, p) ? `</section>` : ""}
+  </div></div>`;
+}
+function kShop(ctx) {
+  const p = ctx.isKid ? ctx.me : ctx.member(ctx.arg) || kidsOf(ctx).find((k) => ctx.feature(k, "shop"));
+  if (!p) return `<section class="card"><h2>${esc(ctx.t("Ingen børn med shop"))}</h2></section>`;
+  if (!ctx.feature(p, "shop")) return `<section class="card"><h2>${esc(ctx.t("Shoppen er slået fra"))}</h2><p class="t-sub">${esc(ctx.t("Far eller mor kan slå den til."))}</p></section>`;
+  const r = goalOf(ctx, p), pend = pending(ctx, p.id), pts = ctx.points(p.id);
+  const shop = rewardsOf(ctx, p.id).sort((a, b) => (b.id === r.id) - (a.id === r.id));
+  const picker = ctx.isParent ? `<div class="filters" style="margin-bottom:14px">${kidsOf(ctx).filter((k) => ctx.feature(k, "shop")).map((k) => `<button class="fchip" data-go="shop:${esc(k.id)}" aria-pressed="${k.id === p.id}" style="--fc:${esc(k.color)}">${av(ctx, k.id)}${esc(k.name)}</button>`).join("")}</div>` : "";
+  return `${picker}<div class="goal-card"><span class="em">${esc(r.em)}</span><div style="flex:1;min-width:180px"><div class="eyebrow" style="color:rgba(255,255,255,.8)">${esc(ctx.isKid ? ctx.t("Mit mål") : ctx.t("{name}s mål", { name: p.name }))}</div><h3>${esc(r.t)}</h3><div class="bar"><i style="width:${Math.min(100, (pts / r.cost) * 100)}%"></i></div><div style="margin-top:6px;font-weight:700" class="num">${esc(ctx.t("{p} af {c} point", { p: pts, c: r.cost }))}</div></div></div>
+  ${pend.length ? `<div class="approve" style="margin-top:14px">${svg("lock")}<span class="t-ttl">${esc(ctx.t("{what} venter på, at far eller mor godkender", { what: pend.map((x) => rewardById(ctx, x.reward)?.title || "").join(", ") }))}</span>${ctx.isParent ? pend.map((x) => `<button class="btn sm" data-act="home-approve" data-id="${esc(x.id)}">${esc(ctx.t("Godkend"))}</button>`).join("") : ""}</div>` : ""}
+  <h2 class="h2" style="margin:22px 0 12px">${esc(ctx.isKid ? ctx.t("Min pointshop") : ctx.t("{name}s pointshop", { name: p.name }))}</h2>
+  <div class="shop">${shop
+    .map((w, i) => {
+      const waiting = pend.some((x) => x.reward === w.id);
+      return `<div class="ware" style="animation:pop .45s ${i * 60}ms both">${w.id === r.id ? `<span class="tag">${esc(ctx.t("Mål"))}</span>` : ""}<span class="em">${esc(w.emoji)}</span><b>${esc(w.title)}</b><span class="price">${w.cost}${STAR}</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><button class="btn sm" data-act="home-buy" data-id="${esc(w.id)}" data-member="${esc(p.id)}" ${pts < w.cost || waiting ? "disabled" : ""}>${esc(waiting ? ctx.t("Venter") : pts < w.cost ? ctx.t("Mangler {n}", { n: w.cost - pts }) : ctx.isKid ? ctx.t("Køb") : ctx.t("Køb for {name}", { name: p.name }))}</button>${w.id !== r.id ? `<button class="btn soft sm" data-act="home-setgoal" data-id="${esc(w.id)}" data-member="${esc(p.id)}">${esc(ctx.t("Gør til mål"))}</button>` : ""}</div></div>`;
+    })
+    .join("") || `<p class="t-sub">${esc(ctx.t("Der er ingen belønninger endnu."))}</p>`}</div>
+  <p class="foot">${esc(ctx.t("Pointene trækkes først, når far eller mor har godkendt købet."))}</p>`;
+}
+
+// ---------------------------------------------------------------- Mine indstillinger (pMe)
+const condText = (ctx, c) =>
+  !c || c.kind === "always" ? ctx.t("Altid") : `${c.kind === "entity" ? ctx.t("Når {e} er tændt · ", { e: String(c.entity || "").replace("binary_sensor.", "") }) : ""}${ctx.t("kl.")} ${pad(c.from)}–${pad(c.to)}`;
+function myQuick(ctx, m) {
+  const order = m.quick_order || [];
+  const mine = (ctx.data.quick || []).filter((q) => (q.who || []).includes(m.id));
+  return mine.sort((a, b) => {
+    const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
+    return (ia < 0 ? 999 + mine.indexOf(a) : ia) - (ib < 0 ? 999 + mine.indexOf(b) : ib);
+  });
+}
+function meRow(ctx, m, q, i, n) {
+  const hidden = (m.quick_hide || []).includes(q.id);
+  return `<div class="qar me-r${hidden ? " off" : ""}" style="--qc:${esc(q.color)}"><span class="qa-ic sm">${svg(q.icon)}</span><div class="qar-t"><b>${esc(q.label)}</b><small>${esc(q.entity)}</small><span class="cond${!q.cond || q.cond.kind === "always" ? "" : " timed"}">${svg(!q.cond || q.cond.kind === "always" ? "check" : "clock")}${esc(condText(ctx, q.cond))}</span></div>
+    <span class="ord">${i >= 0 ? `<button class="iconbtn" data-act="home-qaup" data-id="${esc(q.id)}" aria-label="${esc(ctx.t("Flyt op"))}" ${i === 0 ? "disabled" : ""}>${svg("up")}</button><button class="iconbtn" data-act="home-qadown" data-id="${esc(q.id)}" aria-label="${esc(ctx.t("Flyt ned"))}" ${i === n - 1 ? "disabled" : ""}>${svg("down")}</button>` : ""}</span>
+    <button class="toggle" data-act="home-qahide" data-id="${esc(q.id)}" aria-pressed="${!hidden}" aria-label="${esc(ctx.t("Vis {what} i min +-menu", { what: q.label }))}" style="--tc:${esc(q.color)}"></button></div>`;
+}
+function skinPicker(ctx, m) {
+  const skin = m.skin || "standard", mode = m.mode || "auto";
+  return `<section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Tema"))}</h2><span class="meta">${esc(ctx.t("Kun for {name}", { name: m.name }))}</span></div>
+    <div class="sk-grid">${SKINS.map(([k, n, acc, bg]) => `<button class="sk" data-act="home-skin" data-id="${k}" aria-pressed="${skin === k}" style="--sa:${acc};--sb:${bg}"><span class="sk-prev"><i class="sk-sky"></i><i class="sk-card"></i><i class="sk-btn"></i><i class="sk-chip"></i></span><b>${esc(ctx.t(n))}</b></button>`).join("")}</div>
+    <div class="seg" style="margin-top:14px;max-width:360px">${[["auto", "Automatisk"], ["light", "Lyst"], ["dark", "Mørkt"]].map(([k, n]) => `<button data-act="home-skinmode" data-id="${k}" aria-pressed="${mode === k}" ${skin === "rummet" ? "disabled" : ""}>${esc(ctx.t(n))}</button>`).join("")}</div></section>`;
+}
+function pMe(ctx) {
+  const p = ctx.me;
+  if (!p) return `<section class="card hv-empty">${svg("user", "ic big")}<h2>${esc(ctx.t("Du er ikke med i familien"))}</h2><p class="t-sub">${esc(ctx.t("Tilføj dig selv under Familieindstillinger for at vælge dit eget tema."))}</p>${ctx.isParent ? `<button class="btn" data-go="indstillinger:familie">${esc(ctx.t("Familieindstillinger"))}</button>` : ""}</section>`;
+  const kid = p.role === "child";
+  const mine = myQuick(ctx, p);
+  const msgs = kid ? MSGS.kid : MSGS.parent;
+  const off = p.msg_off || [];
+  const alarmRow = ctx.on("alarm") && ctx.data.settings.alarm && (!kid || ctx.data.settings.alarm_rights?.kids_arm !== false || ctx.data.settings.alarm_rights?.kids_disarm);
+  return `<section class="me-hero" style="--pc:${esc(p.color)}">${av(ctx, p.id)}<div><h2>${esc(p.name)}</h2><small>${esc(kid ? ctx.t("Barn") : `${p.title ? `${p.title} · ` : ""}${ctx.t("forælder")}`)}${esc(p.person ? ` · ${ctx.t("person i Home Assistant")}` : ` · ${ctx.t("profil")}`)}</small></div><button class="btn soft sm" data-act="home-photo" data-id="${esc(p.id)}">${svg("camera")}${esc(p.photo ? ctx.t("Skift billede") : ctx.t("Sæt billede"))}</button></section>
+  <div class="grid" style="margin-top:16px">
+  <section class="card s7"${kid ? " inert" : ""}><div class="card-head"><h2>${esc(ctx.t("Min +-menu"))}</h2><span class="meta">${kid ? `${svg("lock")}${esc(ctx.t("Far eller mor bestemmer"))}` : esc(ctx.t("Kun for {name}", { name: p.name }))}</span></div>
+    <p class="t-sub" style="margin:-6px 0 12px">${esc(ctx.t("Vælg, hvilke knapper der står i din +-menu, og i hvilken rækkefølge."))}${kid ? "" : ` ${esc(ctx.t("Nye knapper og hvem der må bruge dem, styres i familieindstillingerne."))}`}</p>
+    <div class="qal">${alarmRow ? meRow(ctx, p, { id: "alarm", label: ctx.t("Alarm"), icon: "shieldf", color: "#D9473B", entity: ctx.data.settings.alarm, cond: { kind: "always" } }, -1, 0) : ""}${ctx.on("quick") ? mine.map((q, i) => meRow(ctx, p, q, i, mine.length)).join("") : ""}</div>
+    ${!mine.length ? `<p class="t-sub">${esc(ctx.t("Der er ingen knapper til dig endnu."))}${kid ? ` ${esc(ctx.t("Bed far eller mor om at give dig nogle."))}` : ""}</p>` : ""}
+    ${kid ? "" : `<button class="btn soft sm" data-go="indstillinger:qa" style="margin-top:12px">${svg("shield")}${esc(ctx.t("Familieindstillinger"))}</button>`}</section>
+  <section class="card s5"><div class="card-head"><h2>${esc(ctx.t("Beskeder til mig"))}</h2>${kid ? `<span class="meta">${svg("lock")}${esc(ctx.t("Far eller mor bestemmer"))}</span>` : ""}</div><div${kid && !ctx.data.can_manage ? ' inert class="kid-lock"' : ""}>
+    ${p.notify ? "" : `<p class="t-sub" style="margin:-4px 0 10px">${esc(ctx.t("Vælg din telefon under Familieindstillinger › Familien for at få beskeder."))}</p>`}
+    <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${msgs.map(([k, t]) => `<span>${esc(ctx.t(t))}</span><button class="toggle" data-act="home-msg" data-id="${k}" aria-pressed="${!off.includes(k)}" aria-label="${esc(ctx.t(t))}"></button>`).join("")}</div>
+    ${kid ? `<div class="card-head" style="margin:18px 0 8px"><h2>${esc(ctx.t("Min PIN"))}</h2></div><p class="t-sub">${svg("lock")} ${esc(ctx.t("Din PIN skiftes af far eller mor."))}</p>` : ""}</div>
+    <button class="btn soft" data-act="home-who" style="margin-top:16px">${svg("users")}${esc(ctx.t("Skift bruger"))}</button></section>${skinPicker(ctx, p)}</div>`;
+}
+
+// ---------------------------------------------------------------- who are you (shared tablet) and PIN
 function whoView(ctx) {
-  const kids = ctx.children();
-  return `<section class="hv-who"><span style="font-size:46px">👋</span><h1 class="h2" style="font-size:32px;margin:8px 0 4px">${esc(ctx.t("Hvem er du?"))}</h1><p class="t-sub" style="justify-content:center">${esc(ctx.t("Vælg dig selv. Skærmen husker det, til du skifter."))}</p>
-    <div class="who-grid hh-whogrid">${kids.map((k, i) => `<button data-act="home-as" data-id="${esc(k.id)}" style="--pc:${esc(k.color)};animation:pop .5s ${i * 80}ms both">${ctx.avatar(k.id)}<span>${esc(k.name)}</span></button>`).join("") || `<p class="t-sub">${esc(ctx.t("Der er ingen børn i familien endnu."))}</p>`}</div>
-    <p class="foot" style="margin:24px auto 0">${esc(ctx.t("Forældre logger ind med deres egen bruger for at styre familien."))}</p></section>`;
+  const kids = kidsOf(ctx);
+  return `<section class="hv-who"><span class="eyebrow">${esc(ctx.data.settings.home_name || ctx.t("Hverdagsro"))}</span><h1 class="h2" style="font-size:32px;margin:6px 0 0">${esc(ctx.t("Hvem er du?"))}</h1><p class="t-sub" style="justify-content:center">${esc(ctx.t("Tryk på dig selv. Har du en PIN, skal du skrive den."))}</p>
+    <div class="who-grid">${kids.map((k, i) => `<button data-act="home-pick" data-id="${esc(k.id)}" style="animation:pop .45s ${i * 70}ms both">${av(ctx, k.id)}<span>${esc(k.name)}</span></button>`).join("")}</div></section>`;
+}
+function pinSheet(ctx, id, then) {
+  const p = ctx.member(id);
+  let code = "";
+  const s = ctx.sheet(`<div style="text-align:center">${av(ctx, id, "pin-av")}<h2 style="margin-top:10px">${esc(ctx.t("Hej {name}", { name: p.name }))}</h2><div class="t-sub" style="justify-content:center">${esc(ctx.t("Skriv din PIN."))}</div></div>
+    <div class="pin-dots" id="hh-pd">${"<i></i>".repeat(4)}</div><div class="pinpad" id="hh-pp">${[1, 2, 3, 4, 5, 6, 7, 8, 9, "", 0, "⌫"].map((n) => (n === "" ? "<span></span>" : `<button data-n="${n}" aria-label="${n === "⌫" ? esc(ctx.t("Slet")) : n}">${n}</button>`)).join("")}</div>
+    <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button></div>`);
+  const dots = s.el.querySelector("#hh-pd");
+  s.el.querySelector("#hh-pp").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-n]");
+    if (!b) return;
+    const n = b.dataset.n;
+    code = n === "⌫" ? code.slice(0, -1) : (code + n).slice(0, 6);
+    dots.querySelectorAll("i").forEach((d, i) => d.classList.toggle("on", i < code.length));
+    if (code.length < 4) return;
+    let ok = false;
+    try {
+      ok = (await ctx.ws("pin", { member: id, pin: code }))?.ok;
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
+    if (ok) {
+      s.close();
+      then();
+    } else if (code.length >= 4) {
+      dots.classList.remove("shake");
+      void dots.offsetWidth;
+      dots.classList.add("shake");
+      code = "";
+      setTimeout(() => dots.querySelectorAll("i").forEach((d) => d.classList.remove("on")), 300);
+    }
+  });
+}
+function whoSheet(ctx) {
+  const people = ctx.data.can_manage ? ctx.members() : kidsOf(ctx);
+  const s = ctx.sheet(`<h2>${esc(ctx.t("Hvem bruger Hverdagsro?"))}</h2><div class="t-sub">${esc(ctx.t("Forældre ser alt. Børn ser deres egen dag og bruger deres PIN."))}</div>
+    <div class="who-list">${people.map((p) => `<button data-who="${esc(p.id)}" aria-current="${p.id === ctx.me?.id}">${av(ctx, p.id)}<span>${esc(p.name)}<small>${esc(p.role === "parent" ? `${p.title ? `${p.title} · ` : ""}${ctx.t("forælder")}` : `${ctx.t("Barn")}${p.has_pin ? " · PIN" : ""}`)}</small></span></button>`).join("")}</div>
+    <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Luk"))}</button></div>`);
+  s.el.querySelector(".who-list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-who]");
+    if (!b) return;
+    const id = b.dataset.who;
+    s.close();
+    if (id === ctx.me?.id) return;
+    const real = ctx.data.me === id;
+    const go = () => ctx.panel.viewAs(real ? null : id);
+    if (ctx.member(id)?.role === "child" && ctx.member(id)?.has_pin && !ctx.data.can_manage) pinSheet(ctx, id, go);
+    else go();
+  });
 }
 
-function notReady(ctx) {
-  return `<section class="card hv-empty" style="max-width:560px;margin:24px auto">${svg("home", "ic big")}<h2>${esc(ctx.t("Hverdagsro er ikke klar endnu"))}</h2><p class="t-sub" style="justify-content:center;text-align:center">${esc(ctx.t("En forælder skal først gøre opsætningen færdig. Så dukker familien, missionerne og resten op her."))}</p></section>`;
+// ---------------------------------------------------------------- quick create (Hurtig opret)
+function quickCreate(ctx, only = null, member = null) {
+  if (only) return itemForm(ctx, only, member);
+  const s = ctx.sheet(`<h2>${esc(ctx.t("Hurtig opret"))}</h2><div class="qc">
+    ${ctx.on("missions") ? `<button data-q="mission">${svg("tasks")}${esc(ctx.t("Mission"))}<small>${esc(ctx.t("En opgave til et barn"))}${ctx.on("points") ? esc(ctx.t(", evt. med point")) : ""}</small></button>` : ""}${ctx.on("shop") ? `<button data-q="reward">${svg("gift")}${esc(ctx.t("Belønning"))}<small>${esc(ctx.t("En vare i pointshoppen"))}</small></button>` : ""}
+    ${ctx.on("calendar") ? `<button data-q="event">${svg("cal")}${esc(ctx.t("Aftale"))}<small>${esc(ctx.t("Med »hvem henter«"))}</small></button>` : ""}${ctx.on("lists") ? `<button data-q="list">${svg("lists")}${esc(ctx.t("Liste"))}<small>${esc(ctx.t("Liste, fast liste eller ønskeseddel"))}</small></button>` : ""}</div>
+    <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Luk"))}</button></div>`);
+  s.el.querySelector(".qc").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-q]");
+    if (!b) return;
+    s.close();
+    const q = b.dataset.q;
+    if (q === "mission" || q === "reward") return itemForm(ctx, q);
+    if (q === "event") return ctx.acts["lists-newev"] ? ctx.acts["lists-newev"](document.createElement("button"), null, ctx) : ctx.go("kalender");
+    ctx.go("lister");
+  });
+}
+function uniqueId(base, list) {
+  let id = (base || "").replace(/^[^a-z0-9]+/, "").slice(0, 40) || uid("m");
+  if (!/^[a-z0-9][a-z0-9_-]{0,47}$/.test(id)) id = uid("m");
+  let out = id, n = 2;
+  while (list.some((x) => x.id === out)) out = `${id.slice(0, 44)}-${n++}`;
+  return out;
+}
+function itemForm(ctx, kind, member = null) {
+  const kids = kidsOf(ctx), m = kind === "mission";
+  const owners = m ? [...kids.filter((k) => ctx.feature(k, "missions")), ...ctx.parents()] : [...kids.filter((k) => ctx.feature(k, "shop"))];
+  const s = ctx.sheet(`<h2>${esc(m ? ctx.t("Ny mission") : ctx.t("Ny belønning"))}</h2><form id="hh-qf"><div class="field"><label for="hh-qf-t">${esc(m ? ctx.t("Hvad skal gøres") : ctx.t("Belønning"))}</label><input id="hh-qf-t" required maxlength="${m ? 80 : 60}" placeholder="${esc(m ? ctx.t("Fx Pak skoletasken") : ctx.t("Fx Biograftur"))}"></div>
+    <div class="row"><div class="field"><label for="hh-qf-k">${esc(m ? ctx.t("Hvem") : ctx.t("Barn"))}</label><select id="hh-qf-k">${owners.map((k) => `<option value="${esc(k.id)}" ${k.id === member ? "selected" : ""}>${esc(k.name)}</option>`).join("")}<option value="all">${esc(ctx.t("Alle børn"))}</option></select></div>${!m || ctx.on("points") ? `<div class="field"><label for="hh-qf-p">${esc(m ? ctx.t("Point") : ctx.t("Pris i point"))}</label><input id="hh-qf-p" type="number" min="${m ? 0 : 1}" value="${m ? 5 : 50}"></div>` : ""}</div>
+    ${m ? `<div class="row"><div class="field"><label for="hh-qf-r">${esc(ctx.t("Gentag"))}</label><select id="hh-qf-r"><option value="once">${esc(ctx.t("Én gang (ekstra)"))}</option><option value="day" selected>${esc(ctx.t("Hver dag"))}</option><option value="evening">${esc(ctx.t("Hver aften"))}</option><option value="week">${esc(ctx.t("Hver uge"))}</option></select></div><div class="field"><label for="hh-qf-tm">${esc(ctx.t("Tidspunkt"))}</label><input id="hh-qf-tm" type="time"></div></div>` : `<div class="field"><label for="hh-qf-e">${esc(ctx.t("Ikon"))}</label><input id="hh-qf-e" value="🎁" maxlength="4"></div>`}
+    <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" type="submit">${esc(ctx.t("Opret"))}</button></div></form>`);
+  if (member) s.el.querySelector("#hh-qf-k").value = member;
+  setTimeout(() => s.el.querySelector("#hh-qf-t").focus(), 50);
+  s.el.querySelector("#hh-qf").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const t = s.el.querySelector("#hh-qf-t").value.trim();
+    if (!t) return;
+    const who = s.el.querySelector("#hh-qf-k").value;
+    const pf = s.el.querySelector("#hh-qf-p");
+    const pts = pf ? Math.max(m ? 0 : 1, parseInt(pf.value, 10) || 0) : 0;
+    const owner = ctx.member(who);
+    if (m) {
+      const rep = s.el.querySelector("#hh-qf-r").value;
+      const days = rep === "week" || rep === "once" ? [weekday(today0())] : [0, 1, 2, 3, 4, 5, 6];
+      const time = s.el.querySelector("#hh-qf-tm").value || null;
+      const list = [...(ctx.data.missions || [])];
+      list.push({ id: uniqueId(slug(t).replace(/_/g, "-"), list), title: t, member: who, points: owner?.role === "parent" ? 0 : pts, days, time, emoji: "", part: rep === "evening" ? "evening" : "day" });
+      s.close();
+      if (await ctx.save("missions", list)) ctx.toast(ctx.t("Missionen er oprettet til {name}", { name: owner?.name || ctx.t("alle børn") }));
+    } else {
+      const list = [...(ctx.data.rewards || [])];
+      list.push({ id: uniqueId(slug(t).replace(/_/g, "-"), list), title: t, member: who, cost: pts, emoji: s.el.querySelector("#hh-qf-e").value.trim() || "🎁" });
+      s.close();
+      if (await ctx.save("rewards", list)) ctx.toast(ctx.t("Belønningen er oprettet til {name}", { name: owner?.name || ctx.t("alle børn") }));
+    }
+    ctx.render();
+  });
 }
 
-function meView(ctx) {
-  const m = ctx.me;
-  if (!m) return `<section class="card hv-empty">${svg("user", "ic big")}<h2>${esc(ctx.t("Du er ikke med i familien"))}</h2><p class="t-sub">${esc(ctx.t("Tilføj dig selv under Familieindstillinger for at vælge dit eget tema."))}</p>${ctx.isParent ? `<button class="btn" data-go="indstillinger:familie">${esc(ctx.t("Familieindstillinger"))}</button>` : ""}</section>`;
-  const tablet = !ctx.data.me && !ctx.data.can_manage;
-  const skin = m.skin || "standard";
-  const mode = m.mode || "auto";
-  return `<section class="me-hero" style="--pc:${esc(m.color)}">${ctx.avatar(m.id)}<div><h2>${esc(m.name)}</h2><small>${esc(m.role === "parent" ? ctx.t("Forælder") : ctx.t("Barn"))}${m.person ? ` · ${esc(ctx.t("person i Home Assistant"))}` : ""}</small></div>${tablet ? `<button class="btn soft sm" data-act="home-as" data-id="">${svg("users")}${esc(ctx.t("Skift bruger"))}</button>` : ""}</section>
-    <div class="grid" style="margin-top:16px"><section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Tema"))}</h2><span class="meta">${esc(ctx.t("Kun for {name}", { name: m.name }))}</span></div>
-      <div class="sk-grid">${SKINS.map(([k, n, acc, bg]) => `<button class="sk" data-act="home-skin" data-id="${k}" aria-pressed="${skin === k}" style="--sa:${acc};--sb:${bg}"><span class="sk-prev"><i class="sk-sky"></i><i class="sk-card"></i><i class="sk-btn"></i><i class="sk-chip"></i></span><b>${esc(ctx.t(n))}</b></button>`).join("")}</div>
-      <div class="seg" style="margin-top:14px;max-width:360px">${[["auto", "Automatisk"], ["light", "Lyst"], ["dark", "Mørkt"]].map(([k, n]) => `<button data-act="home-skinmode" data-id="${k}" aria-pressed="${mode === k}" ${skin === "rummet" ? "disabled" : ""}>${esc(ctx.t(n))}</button>`).join("")}</div>
-      <p class="t-sub" style="margin-top:10px">${esc(ctx.t("Automatisk følger Home Assistants lyse eller mørke tema."))}</p></section>
-    ${ctx.isParent ? `<section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Familien"))}</h2></div><div class="hh-quick"><button class="btn soft sm" data-go="indstillinger">${svg("shield")}${esc(ctx.t("Familieindstillinger"))}</button><button class="btn soft sm" data-go="person:${esc(m.id)}">${svg("user")}${esc(ctx.t("Min side"))}</button></div></section>` : ""}</div>`;
-}
-
-// ---------------------------------------------------------------- effects
+// ---------------------------------------------------------------- effects (confetti and flying points)
 function confettiCanvas(ctx) {
   let cv = ctx.root.querySelector("canvas.hh-confetti");
   if (!cv) {
@@ -622,157 +1055,82 @@ function flyPts(ctx, x, y, n) {
   setTimeout(() => f.remove(), 1000);
 }
 
-// ---------------------------------------------------------------- sheets
-function missionSheet(ctx, mission, memberId) {
-  const isNew = !mission;
-  const m = mission || { id: "", title: "", member: memberId || ctx.children()[0]?.id || "all", points: 5, days: [0, 1, 2, 3, 4, 5, 6], time: null, emoji: "⭐", part: "day" };
-  const mon = new Date(2024, 0, 1);
-  const owners = [...ctx.children().map((k) => [k.id, k.name]), ["all", ctx.t("Alle børn")], ...ctx.parents().map((p) => [p.id, p.name])];
-  const s = ctx.sheet(`<div class="eyebrow">${esc(isNew ? ctx.t("Ny mission") : ctx.t("Ret mission"))}</div><h2>${esc(isNew ? ctx.t("Hvad skal klares?") : m.title)}</h2>
-    <form class="hh-form" novalidate>
-      <div class="field"><label for="hh-title">${esc(ctx.t("Mission"))}</label><input id="hh-title" name="title" maxlength="80" required value="${esc(m.title)}" placeholder="${esc(ctx.t("Fx Red seng"))}" autocomplete="off"></div>
-      <div class="field"><span class="lbl">${esc(ctx.t("Ikon"))}</span><div class="hh-emos">${EMOJI.map((e) => `<button type="button" class="hh-emobtn" data-emo="${e}" aria-pressed="${m.emoji === e}">${e}</button>`).join("")}<input name="emoji" class="hh-emoin" maxlength="8" value="${esc(m.emoji)}" aria-label="${esc(ctx.t("Eget ikon"))}"></div></div>
-      <div class="field"><label for="hh-who">${esc(ctx.t("Hvem"))}</label><select id="hh-who" name="member">${owners.map(([id, n]) => `<option value="${esc(id)}" ${id === m.member ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></div>
-      <div class="field"><span class="lbl">${esc(ctx.t("Dage"))}</span><div class="hh-days">${[0, 1, 2, 3, 4, 5, 6].map((i) => `<button type="button" class="hh-day" data-day="${i}" aria-pressed="${m.days.includes(i)}">${esc(ctx.fmt.short(addDays(mon, i)))}</button>`).join("")}</div>
-        <div class="hh-dayq"><button type="button" class="lnk" data-days="0,1,2,3,4,5,6">${esc(ctx.t("Hver dag"))}</button><button type="button" class="lnk" data-days="0,1,2,3,4">${esc(ctx.t("Hverdage"))}</button><button type="button" class="lnk" data-days="5,6">${esc(ctx.t("Weekender"))}</button></div></div>
-      <div class="field"><span class="lbl">${esc(ctx.t("Hvornår på dagen"))}</span><div class="seg hh-partseg">${PARTS.map(([k, n, ic]) => `<button type="button" data-part="${k}" aria-pressed="${m.part === k}">${svg(ic)}<span>${esc(ctx.t(n))}</span></button>`).join("")}</div></div>
-      <div class="hh-row2"><div class="field"><label for="hh-time">${esc(ctx.t("Klokken (valgfrit)"))}</label><input id="hh-time" name="time" type="time" value="${esc(m.time || "")}"></div>
-      ${pointsOn(ctx) ? `<div class="field"><label for="hh-pts">${esc(ctx.t("Point"))}</label><input id="hh-pts" name="points" type="number" min="0" max="1000" step="1" inputmode="numeric" value="${m.points}"></div>` : ""}</div>
-      <div class="sheet-actions">${isNew ? "" : `<button type="button" class="btn soft danger-t" data-del>${svg("trash")}${esc(ctx.t("Slet"))}</button><span class="grow"></span>`}<button type="button" class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button type="submit" class="btn">${esc(ctx.t("Gem"))}</button></div>
-    </form>`);
-  const form = s.el.querySelector("form");
-  let days = [...m.days];
-  let part = m.part;
-  const paintDays = () => s.el.querySelectorAll("[data-day]").forEach((b) => b.setAttribute("aria-pressed", String(days.includes(+b.dataset.day))));
-  s.el.addEventListener("click", (e) => {
-    const emo = e.target.closest("[data-emo]");
-    if (emo) {
-      form.emoji.value = emo.dataset.emo;
-      s.el.querySelectorAll("[data-emo]").forEach((b) => b.setAttribute("aria-pressed", String(b === emo)));
-    }
-    const d = e.target.closest("[data-day]");
-    if (d) {
-      const i = +d.dataset.day;
-      days = days.includes(i) ? days.filter((x) => x !== i) : [...days, i].sort();
-      paintDays();
-    }
-    const q = e.target.closest("[data-days]");
-    if (q) {
-      days = q.dataset.days.split(",").map(Number);
-      paintDays();
-    }
-    const p = e.target.closest("[data-part]");
-    if (p) {
-      part = p.dataset.part;
-      s.el.querySelectorAll("[data-part]").forEach((b) => b.setAttribute("aria-pressed", String(b === p)));
-    }
-    if (e.target.closest("[data-del]")) {
-      s.close();
-      deleteMission(ctx, m.id);
-    }
-  });
-  setTimeout(() => form.title.focus(), 50);
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const title = form.title.value.trim();
-    if (!title) return form.title.focus();
-    if (!days.length) return ctx.toast(ctx.t("Vælg mindst én dag"));
-    const list = [...(ctx.data.missions || [])];
-    const item = {
-      id: m.id || uniqueId(slug(title).replace(/_/g, "-"), list),
-      title,
-      member: form.member.value,
-      points: pointsOn(ctx) ? Math.max(0, Math.min(1000, parseInt(form.points?.value, 10) || 0)) : m.points,
-      days,
-      time: form.time.value || null,
-      emoji: form.emoji.value.trim().slice(0, 8),
-      part,
-    };
-    const i = list.findIndex((x) => x.id === m.id);
-    if (i >= 0) list[i] = item;
-    else list.push(item);
-    s.close();
-    if (await ctx.save("missions", list)) ctx.toast(isNew ? ctx.t("Missionen er oprettet") : ctx.t("Missionen er gemt"));
-    ctx.render();
-  });
-}
-
-function uniqueId(base, list) {
-  let id = (base || "").replace(/^[^a-z0-9]+/, "").slice(0, 40) || uid("m");
-  if (!/^[a-z0-9][a-z0-9_-]{0,47}$/.test(id)) id = uid("m");
-  let out = id, n = 2;
-  while (list.some((x) => x.id === out)) out = `${id.slice(0, 44)}-${n++}`;
-  return out;
-}
-
-function deleteMission(ctx, id) {
-  const m = (ctx.data.missions || []).find((x) => x.id === id);
-  if (!m) return;
-  ctx.confirm(ctx.t("Slet {name}?", { name: m.title }), ctx.t("Missionen forsvinder for alle. Point, der allerede er givet, bliver."), ctx.t("Slet"), async () => {
-    if (await ctx.save("missions", (ctx.data.missions || []).filter((x) => x.id !== id))) ctx.toast(ctx.t("Missionen er slettet"));
-    ctx.render();
-  });
-}
-
-function rewardSheet(ctx, r0) {
-  const isNew = !r0;
-  const r = r0 || { id: "", title: "", member: "all", cost: 50, emoji: "🎁" };
-  const owners = [["all", ctx.t("Alle børn")], ...ctx.children().map((k) => [k.id, k.name])];
-  const s = ctx.sheet(`<div class="eyebrow">${esc(isNew ? ctx.t("Ny belønning") : ctx.t("Ret belønning"))}</div><h2>${esc(isNew ? ctx.t("Hvad kan man købe?") : r.title)}</h2>
-    <form class="hh-form" novalidate>
-      <div class="field"><label for="hh-rt">${esc(ctx.t("Belønning"))}</label><input id="hh-rt" name="title" maxlength="60" value="${esc(r.title)}" placeholder="${esc(ctx.t("Fx Vælg aftenens film"))}" autocomplete="off"></div>
-      <div class="field"><span class="lbl">${esc(ctx.t("Ikon"))}</span><div class="hh-emos">${REWARD_EMOJI.map((e) => `<button type="button" class="hh-emobtn" data-emo="${e}" aria-pressed="${r.emoji === e}">${e}</button>`).join("")}<input name="emoji" class="hh-emoin" maxlength="8" value="${esc(r.emoji)}" aria-label="${esc(ctx.t("Eget ikon"))}"></div></div>
-      <div class="hh-row2"><div class="field"><label for="hh-rw">${esc(ctx.t("Hvem"))}</label><select id="hh-rw" name="member">${owners.map(([id, n]) => `<option value="${esc(id)}" ${id === r.member ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></div>
-      <div class="field"><label for="hh-rc">${esc(ctx.t("Pris i point"))}</label><input id="hh-rc" name="cost" type="number" min="1" max="100000" inputmode="numeric" value="${r.cost}"></div></div>
-      <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button type="submit" class="btn">${esc(ctx.t("Gem"))}</button></div></form>`);
-  const form = s.el.querySelector("form");
-  s.el.addEventListener("click", (e) => {
-    const emo = e.target.closest("[data-emo]");
-    if (!emo) return;
-    form.emoji.value = emo.dataset.emo;
-    s.el.querySelectorAll("[data-emo]").forEach((b) => b.setAttribute("aria-pressed", String(b === emo)));
-  });
-  setTimeout(() => form.title.focus(), 50);
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const title = form.title.value.trim();
-    if (!title) return form.title.focus();
-    const list = [...(ctx.data.rewards || [])];
-    const item = { id: r.id || uniqueId(slug(title).replace(/_/g, "-"), list), title, member: form.member.value, cost: Math.max(1, Math.min(100000, parseInt(form.cost.value, 10) || 1)), emoji: form.emoji.value.trim().slice(0, 8) || "🎁" };
-    const i = list.findIndex((x) => x.id === r.id);
-    if (i >= 0) list[i] = item;
-    else list.push(item);
-    s.close();
-    if (await ctx.save("rewards", list)) ctx.toast(isNew ? ctx.t("Belønningen er oprettet") : ctx.t("Belønningen er gemt"));
-    ctx.render();
-  });
-}
-
-function pointsSheet(ctx, id) {
-  const m = ctx.member(id);
-  if (!m) return;
-  const s = ctx.sheet(`<div class="eyebrow">${esc(ctx.t("Point"))}</div><h2>${esc(ctx.t("Giv eller træk point fra {name}", { name: m.name }))}</h2>
-    <form class="hh-form" novalidate><div class="hh-row2"><div class="field"><label for="hh-pn">${esc(ctx.t("Point"))}</label><input id="hh-pn" name="n" type="number" inputmode="numeric" value="5" min="-100000" max="100000"></div>
-    <div class="field"><label for="hh-pr">${esc(ctx.t("Hvorfor"))}</label><input id="hh-pr" name="reason" maxlength="80" placeholder="${esc(ctx.t("Fx Hjalp med indkøb"))}"></div></div>
-    <p class="t-sub">${esc(ctx.t("Brug minus for at trække point fra. {name} har {n} point nu.", { name: m.name, n: ctx.points(m.id) }))}</p>
-    <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button type="submit" class="btn">${esc(ctx.t("Gem"))}</button></div></form>`);
-  const form = s.el.querySelector("form");
-  setTimeout(() => form.n.select(), 50);
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const n = parseInt(form.n.value, 10);
-    if (!n) return form.n.focus();
-    s.close();
-    await givePoints(ctx, m.id, n, form.reason.value.trim());
-  });
-}
-
-async function givePoints(ctx, id, n, reason = "") {
+// ---------------------------------------------------------------- reading aloud (Oplæsning)
+async function speak(ctx, text) {
+  const m = ctx.me;
+  const tts = ctx.entities("tts")[0];
+  const player = m?.speaker || (ctx.data.settings.media || [])[0];
+  if (tts && player) {
+    if (await ctx.call("tts", "speak", { entity_id: tts, media_player_entity_id: player, message: text, cache: false })) ctx.toast(ctx.t("Læser op på {where} …", { where: ctx.name(player) }));
+    return;
+  }
   try {
-    const r = await ctx.ws("points", { member: id, delta: n, reason: reason || (n > 0 ? ctx.t("Ekstra point") : ctx.t("Point trukket fra")) });
-    ctx.data.points = { ...ctx.data.points, [id]: r.points };
-    ctx.toast(n > 0 ? ctx.t("{name} fik {n} point", { name: ctx.member(id)?.name, n }) : ctx.t("{n} point trukket fra {name}", { name: ctx.member(id)?.name, n: -n }));
-    ctx.render();
+    if (!("speechSynthesis" in window)) throw new Error("no speech");
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = ctx.lang() === "da" ? "da-DK" : "en-GB";
+    u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+    ctx.toast(ctx.t("Læser op …"));
+  } catch (e) {
+    ctx.toast(ctx.t("Vælg en højttaler til oplæsning under Familieindstillinger › Børn."));
+  }
+}
+
+// ---------------------------------------------------------------- photos
+function pickPhoto(ctx, id) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.addEventListener("change", async () => {
+    const f = input.files?.[0];
+    if (!f) return;
+    let url = null;
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const r = await ctx.hass.fetchWithAuth("/api/image/upload", { method: "POST", body: fd });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json();
+      url = `/api/image/serve/${j.id}/512x512`;
+    } catch (err) {
+      // Without image upload: a small picture straight in Hverdagsro.
+      url = await new Promise((res) => {
+        const rd = new FileReader();
+        rd.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement("canvas"), S = 192, k = Math.max(S / img.width, S / img.height);
+            c.width = S;
+            c.height = S;
+            c.getContext("2d").drawImage(img, (S - img.width * k) / 2, (S - img.height * k) / 2, img.width * k, img.height * k);
+            res(c.toDataURL("image/jpeg", 0.82));
+          };
+          img.onerror = () => res(null);
+          img.src = rd.result;
+        };
+        rd.readAsDataURL(f);
+      });
+    }
+    if (!url) return ctx.toast(ctx.t("Billedet kunne ikke læses. Prøv et JPG eller PNG."));
+    try {
+      await ctx.ws("prefs", { member: id, prefs: { photo: url } });
+      const m = ctx.member(id);
+      if (m) m.photo = url;
+      ctx.toast(ctx.t("Nyt billede af {name}", { name: m?.name || "" }));
+      ctx.render();
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
+  });
+  input.click();
+}
+
+async function setPrefs(ctx, m, prefs) {
+  Object.assign(m, prefs);
+  ctx.render();
+  try {
+    await ctx.ws("prefs", { member: m.id, prefs });
   } catch (err) {
     ctx.toast(String(err?.message || err));
   }
@@ -780,17 +1138,15 @@ async function givePoints(ctx, id, n, reason = "") {
 
 // ---------------------------------------------------------------- acts
 const acts = {
-  async "home-mission"(el, ev, ctx) {
-    const mid = el.dataset.id;
+  async "home-task"(el, ev, ctx) {
     const member = ctx.member(el.dataset.member);
-    const mission = (ctx.data.missions || []).find((x) => x.id === mid);
+    const mission = (ctx.data.missions || []).find((x) => x.id === el.dataset.id);
     if (!member || !mission) return;
     if (ctx.isKid && ctx.me?.id !== member.id) return ctx.toast(ctx.t("Det kan kun far eller mor"));
-    const key = `${mid}:${member.id}`;
+    const key = `${mission.id}:${member.id}`;
     const done = !(key in (ctx.data.done_today || {}));
-    // Show it at once; the server's answer follows.
     const before = { done: { ...(ctx.data.done_today || {}) }, points: { ...(ctx.data.points || {}) } };
-    const row = el.closest(".task");
+    const row = el.closest("[data-task]");
     row?.classList.toggle("done", done);
     el.style.background = done ? member.color : "";
     el.setAttribute("aria-pressed", String(done));
@@ -799,59 +1155,87 @@ const acts = {
     else delete dt[key];
     ctx.data.done_today = dt;
     ctx.data.done_week = { ...(ctx.data.done_week || {}), [ctx.data.today]: dt };
-    const usePts = pointsOn(ctx) && mission.points;
+    const usePts = member.role === "child" && ctx.feature(member, "points") && mission.points;
     if (usePts) ctx.data.points = { ...ctx.data.points, [member.id]: Math.max(0, ctx.points(member.id) + (done ? mission.points : -mission.points)) };
     if (done) {
       const r = el.getBoundingClientRect();
       burst(ctx, r.left + r.width / 2, r.top + r.height / 2, member.color);
       if (usePts) flyPts(ctx, r.right + 6, r.top, mission.points);
-      const p = progress(ctx, member);
-      const tag = `${ctx.data.today}:${member.id}`;
-      if (p.total && p.done === p.total && celebrated !== tag) {
-        celebrated = tag;
-        setTimeout(() => {
-          burst(ctx, window.innerWidth / 2, window.innerHeight / 3, member.color, 90);
-          ctx.toast(ctx.t("Perfekt dag! {name} har klaret alle missioner", { name: member.name }));
-        }, 450);
-      }
+      const mine = tasksFor(ctx, member);
+      if (member.role === "child" && mine.length && mine.every((t) => t.done)) setTimeout(() => ctx.toast(ctx.t("Perfekt dag! {name} har nu {n} perfekte dage i træk", { name: member.name, n: streak(ctx, member) })), 700);
     }
     setTimeout(() => ctx.render(), 650);
     try {
-      await ctx.ws("mission", { mission: mid, member: member.id, done });
+      await ctx.ws("mission", { mission: mission.id, member: member.id, done });
     } catch (err) {
       ctx.data.done_today = before.done;
-      ctx.data.done_week = { ...(ctx.data.done_week || {}), [ctx.data.today]: before.done };
       ctx.data.points = before.points;
       ctx.toast(String(err?.message || err));
       ctx.render();
     }
   },
-  async "home-decide"(el, ev, ctx) {
-    const ok = !!el.dataset.ok;
+  async "home-approve"(el, ev, ctx) {
+    const pq = (ctx.data.requests || []).find((x) => x.id === el.dataset.id);
     el.disabled = true;
     try {
-      await ctx.ws("reward/decide", { request: el.dataset.id, approve: ok });
-      ctx.toast(ok ? ctx.t("Købet er godkendt") : ctx.t("Købet er afvist"));
-      if (ok) {
-        const r = el.getBoundingClientRect();
-        burst(ctx, r.left + r.width / 2, r.top, "#F2B01E");
-      }
+      await ctx.ws("reward/decide", { request: el.dataset.id, approve: true });
+      const b = el.getBoundingClientRect();
+      burst(ctx, b.left + 30, b.top + 10, "#F2B01E");
+      ctx.toast(ctx.t("Godkendt: {name} får {what}", { name: ctx.member(pq?.member)?.name || "", what: rewardById(ctx, pq?.reward)?.title || "" }));
     } catch (err) {
       el.disabled = false;
       ctx.toast(String(err?.message || err));
     }
   },
+  async "home-reject"(el, ev, ctx) {
+    el.disabled = true;
+    try {
+      await ctx.ws("reward/decide", { request: el.dataset.id, approve: false });
+      ctx.toast(ctx.t("Købet er afvist, og pointene er bevaret"));
+    } catch (err) {
+      el.disabled = false;
+      ctx.toast(String(err?.message || err));
+    }
+  },
+  async "home-givepts"(el, ev, ctx) {
+    const k = ctx.member(el.dataset.id);
+    const b = el.getBoundingClientRect();
+    try {
+      const r = await ctx.ws("points", { member: k.id, delta: 5, reason: ctx.t("Ekstra point") });
+      ctx.data.points = { ...ctx.data.points, [k.id]: r.points };
+      flyPts(ctx, b.right, b.top, 5);
+      burst(ctx, b.left + 40, b.top + 10, k.color);
+      ctx.toast(ctx.t("{name} fik 5 point", { name: k.name }));
+      ctx.render();
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
+  },
+  "home-seeas"(el, ev, ctx) {
+    ctx.panel.viewAs(el.dataset.id);
+  },
   async "home-buy"(el, ev, ctx) {
     const member = el.dataset.member;
-    const r = reward(ctx, el.dataset.id);
+    const r = rewardById(ctx, el.dataset.id);
     el.disabled = true;
     try {
       const req = await ctx.ws("reward/request", { member, reward: el.dataset.id });
       const box = el.getBoundingClientRect();
       burst(ctx, box.left + box.width / 2, box.top, ctx.member(member)?.color, 40);
-      ctx.toast(req?.status === "approved" ? ctx.t("{what} er købt", { what: r?.title }) : ctx.t("Sendt til far og mor. De skal godkende {what}.", { what: r?.title }));
+      ctx.toast(req?.status === "approved" ? ctx.t("{what} er købt", { what: r?.title }) : ctx.t("{what} venter på godkendelse fra far eller mor", { what: r?.title }));
     } catch (err) {
       el.disabled = false;
+      ctx.toast(String(err?.message || err));
+    }
+  },
+  async "home-setgoal"(el, ev, ctx) {
+    const m = ctx.member(el.dataset.member);
+    if (m) m.goal = el.dataset.id;
+    ctx.render();
+    try {
+      await ctx.ws("prefs", { member: el.dataset.member, prefs: { goal: el.dataset.id } });
+      ctx.toast(ctx.t("Nyt mål!"));
+    } catch (err) {
       ctx.toast(String(err?.message || err));
     }
   },
@@ -859,82 +1243,121 @@ const acts = {
     kidDay = +el.dataset.i || 0;
     ctx.render(true);
   },
-  "home-shopkid"(el, ev, ctx) {
-    shopKid = el.dataset.id;
+  "home-read"(el, ev, ctx) {
+    speak(ctx, el.dataset.txt || readText(ctx, ctx.me));
+  },
+  "home-toast"(el, ev, ctx) {
+    ctx.toast(el.dataset.msg);
+  },
+  async "home-sick"(el, ev, ctx) {
+    const m = ctx.me;
+    let sent = 0;
+    for (const p of ctx.parents()) if (p.notify && (await ctx.call("notify", p.notify.split(".")[1], { title: ctx.t("Syg"), message: ctx.t("{name} har meldt sig syg", { name: m?.name }) }))) sent++;
+    ctx.toast(sent ? ctx.t("Far og mor har fået besked om, at du er syg") : ctx.t("Sig det til far eller mor"));
+  },
+  "home-band"(el, ev, ctx) {
+    bandStyle = el.dataset.id;
+    try {
+      localStorage.setItem("hverdagsro-band", bandStyle);
+    } catch (e) {
+      /* private mode */
+    }
     ctx.render(true);
   },
-  "home-optab"(el, ev, ctx) {
-    opTab = el.dataset.id;
-    if (ctx.view !== "opgaver") ctx.go("opgaver");
-    else ctx.render(true);
+  "home-story"(el, ev, ctx) {
+    openStory(ctx, el.dataset.id);
   },
-  "home-newmission"(el, ev, ctx) {
-    missionSheet(ctx, null, el.dataset.member);
-  },
-  "home-editmission"(el, ev, ctx) {
-    missionSheet(ctx, (ctx.data.missions || []).find((x) => x.id === el.dataset.id));
-  },
-  "home-delmission"(el, ev, ctx) {
-    deleteMission(ctx, el.dataset.id);
-  },
-  "home-editreward"(el, ev, ctx) {
-    rewardSheet(ctx, el.dataset.id ? reward(ctx, el.dataset.id) : null);
+  "home-quick"(el, ev, ctx) {
+    if (!ctx.isParent) return ctx.toast(ctx.t("Det kan kun far eller mor"));
+    quickCreate(ctx, el.dataset.kind || null, el.dataset.member || null);
   },
   "home-delreward"(el, ev, ctx) {
-    const r = reward(ctx, el.dataset.id);
+    const r = rewardById(ctx, el.dataset.id);
     if (!r) return;
-    ctx.confirm(ctx.t("Slet {name}?", { name: r.title }), ctx.t("Belønningen forsvinder fra shoppen."), ctx.t("Slet"), async () => {
-      if (await ctx.save("rewards", (ctx.data.rewards || []).filter((x) => x.id !== r.id))) ctx.toast(ctx.t("Belønningen er slettet"));
+    ctx.confirm(ctx.t("Fjern {what}?", { what: r.title }), ctx.t("Belønningen forsvinder fra shoppen."), ctx.t("Fjern"), async () => {
+      await ctx.save("rewards", (ctx.data.rewards || []).filter((x) => x.id !== r.id));
       ctx.render();
     });
   },
-  "home-points"(el, ev, ctx) {
-    pointsSheet(ctx, el.dataset.id);
+  "home-photo"(el, ev, ctx) {
+    pickPhoto(ctx, el.dataset.id);
   },
-  "home-give"(el, ev, ctx) {
-    const n = parseInt(el.dataset.n, 10);
-    if (n > 0) {
-      const r = el.getBoundingClientRect();
-      flyPts(ctx, r.left + r.width / 2, r.top, n);
-    }
-    return givePoints(ctx, el.dataset.id, n);
+  "home-msg"(el, ev, ctx) {
+    const m = ctx.me;
+    if (!m) return;
+    const off = new Set(m.msg_off || []);
+    if (off.has(el.dataset.id)) off.delete(el.dataset.id);
+    else off.add(el.dataset.id);
+    el.setAttribute("aria-pressed", String(!off.has(el.dataset.id)));
+    setPrefs(ctx, m, { msg_off: [...off] });
   },
-  "home-seeas"(el, ev, ctx) {
-    ctx.panel?.viewAs(el.dataset.id);
+  "home-qahide"(el, ev, ctx) {
+    const m = ctx.me;
+    if (!m) return;
+    const hide = new Set(m.quick_hide || []);
+    if (hide.has(el.dataset.id)) hide.delete(el.dataset.id);
+    else hide.add(el.dataset.id);
+    setPrefs(ctx, m, { quick_hide: [...hide] });
   },
-  "home-as"(el, ev, ctx) {
-    kidDay = 0;
-    ctx.panel?.viewAs(el.dataset.id || null);
+  "home-qaup"(el, ev, ctx) {
+    const m = ctx.me;
+    const ids = myQuick(ctx, m).map((q) => q.id);
+    const i = ids.indexOf(el.dataset.id);
+    if (i > 0) [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
+    setPrefs(ctx, m, { quick_order: ids });
+  },
+  "home-qadown"(el, ev, ctx) {
+    const m = ctx.me;
+    const ids = myQuick(ctx, m).map((q) => q.id);
+    const i = ids.indexOf(el.dataset.id);
+    if (i >= 0 && i < ids.length - 1) [ids[i + 1], ids[i]] = [ids[i], ids[i + 1]];
+    setPrefs(ctx, m, { quick_order: ids });
+  },
+  "home-who"(el, ev, ctx) {
+    whoSheet(ctx);
+  },
+  "home-pick"(el, ev, ctx) {
+    const k = ctx.member(el.dataset.id);
+    if (!k) return;
+    const go = () => ctx.panel.viewAs(k.id);
+    if (k.has_pin) pinSheet(ctx, k.id, go);
+    else go();
   },
   async "home-skin"(el, ev, ctx) {
-    await setTheme(ctx, el.dataset.id, el.dataset.id === "rummet" ? "dark" : ctx.me?.mode || "auto");
+    const m = ctx.me;
+    if (!m) return;
+    const old = { skin: m.skin, mode: m.mode };
+    m.skin = el.dataset.id;
+    ctx.applyTheme?.();
+    ctx.render();
+    try {
+      await ctx.ws("theme", { member: m.id, skin: m.skin, mode: m.mode || "auto" });
+    } catch (err) {
+      Object.assign(m, old);
+      ctx.applyTheme?.();
+      ctx.toast(String(err?.message || err));
+      ctx.render();
+    }
   },
   async "home-skinmode"(el, ev, ctx) {
-    await setTheme(ctx, ctx.me?.skin || "standard", el.dataset.id);
+    const m = ctx.me;
+    if (!m) return;
+    const old = m.mode;
+    m.mode = el.dataset.id;
+    ctx.applyTheme?.();
+    ctx.render();
+    try {
+      await ctx.ws("theme", { member: m.id, skin: m.skin || "standard", mode: m.mode });
+    } catch (err) {
+      m.mode = old;
+      ctx.applyTheme?.();
+      ctx.toast(String(err?.message || err));
+      ctx.render();
+    }
   },
 };
 
-async function setTheme(ctx, skin, mode) {
-  const m = ctx.me;
-  if (!m) return;
-  const before = { skin: m.skin, mode: m.mode };
-  m.skin = skin;
-  m.mode = mode;
-  ctx.applyTheme?.();
-  ctx.render(true);
-  try {
-    await ctx.ws("theme", { member: m.id, skin, mode });
-  } catch (err) {
-    Object.assign(m, before);
-    ctx.applyTheme?.();
-    ctx.render(true);
-    ctx.toast(String(err?.message || err));
-  }
-}
-
-function cap(s) {
-  return s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s;
-}
+// ---------------------------------------------------------------- views
 function isoWeek(d) {
   const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const day = x.getUTCDay() || 7;
@@ -942,133 +1365,272 @@ function isoWeek(d) {
   const y0 = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
   return Math.ceil(((x - y0) / 864e5 + 1) / 7);
 }
-
-// ---------------------------------------------------------------- module
 const views = {
-  hjem: { render: pHome, title: (ctx) => ctx.t("Hjem"), parentOnly: true },
-  person: { render: personPage, title: (ctx) => ctx.member(ctx.arg)?.name || "", parentOnly: true },
+  hjem: { parentOnly: true, render: pHome, title: (ctx) => ctx.t("Hjem"), after: (ctx) => startLive(ctx) },
+  person: { parentOnly: true, render: personPage, title: (ctx) => ctx.member(ctx.arg)?.name || "" },
   dag: {
-    render: kidDayView,
-    title: (ctx) => ctx.t("Min dag"),
     kidOnly: true,
-    summary(ctx) {
-      const p = progress(ctx, ctx.me);
-      return { done: p.done, total: p.total };
+    render: kDay,
+    title: (ctx) => ctx.t("Min dag"),
+    summary: (ctx) => {
+      const L = ctx.me ? tasksFor(ctx, ctx.me) : [];
+      return { done: L.filter((t) => t.done).length, total: L.length };
     },
-    badge(ctx) {
-      if (!ctx.me) return 0;
-      const p = progress(ctx, ctx.me);
-      return p.total - p.done;
-    },
+    badge: (ctx) => (ctx.me && ctx.feature(ctx.me, "missions") ? tasksFor(ctx, ctx.me).filter((t) => !t.done).length : 0),
   },
-  shop: { render: shopView, title: (ctx) => ctx.t("Shop"), module: "shop" },
-  opgaver: { render: tasksView, title: (ctx) => ctx.t("Opgaver"), parentOnly: true, module: "missions" },
+  shop: { module: "shop", render: kShop, title: (ctx) => ctx.t("Shop") },
+  opgaver: { parentOnly: true, module: "missions", render: pTasks, title: (ctx) => ctx.t("Opgaver"), badge: (ctx) => ctx.members().flatMap((m) => tasksFor(ctx, m)).filter((t) => !t.done).length },
   hvem: { render: whoView, title: (ctx) => ctx.t("Hvem er du?") },
-  "ikke-klar": { render: notReady, title: () => "" },
-  mig: { render: meView, title: (ctx) => ctx.t("Mine indstillinger") },
+  "ikke-klar": {
+    render: (ctx) => `<section class="card hv-empty">${svg("sparkle", "ic big")}<h2>${esc(ctx.t("Hverdagsro er ikke sat op endnu"))}</h2><p class="t-sub">${esc(ctx.t("Far eller mor skal lige gøre guiden færdig. Så er alt klar."))}</p></section>`,
+    title: () => "",
+  },
+  mig: { render: pMe, title: (ctx) => ctx.t("Mine indstillinger") },
 };
+function startLive(ctx) {
+  clearInterval(liveTimer);
+  if (bandStyle !== "live") return;
+  liveTimer = setInterval(() => {
+    const t = ctx.root.getElementById("hh-live-track");
+    if (!t || reduce()) return t ? undefined : clearInterval(liveTimer);
+    liveI = (liveI + 1) % t.children.length;
+    t.style.transform = `translateY(-${liveI * 44}px)`;
+  }, 3200);
+}
 
 const css = `
-.hh-whogrid { grid-template-columns: repeat(auto-fit, minmax(140px, 180px)) !important; justify-content: center; }
 .hh-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 98; }
-.hh-emo { margin-right: 6px; }
-.hh-none { padding: 6px; }
-.hh-foot { display: flex; justify-content: flex-end; margin-top: 10px; }
-.hh-goalrow { grid-template-columns: auto minmax(0, 1fr) auto; border: 0; text-align: left; width: 100%; color: var(--ink); cursor: pointer; }
-.hh-kidsday { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-.hh-kd { border-radius: 18px; padding: 12px; background: color-mix(in srgb, var(--pc) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--pc) 16%, var(--line)); min-width: 0; }
-.hh-kd-h { display: flex; align-items: center; gap: 8px; border: 0; background: none; color: var(--ink); padding: 0; width: 100%; font: inherit; cursor: pointer; }
-.hh-kd-h b { font-weight: 800; }
-.hh-kd-n { margin-left: auto; font-weight: 800; color: var(--pc); }
-.hh-kd .progress { margin: 8px 0 10px; }
-.hh-kd .task { background: var(--surface); }
-.hh-alldone { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--good); padding: 8px 4px; }
-.hh-alldone .ic { width: 18px; height: 18px; }
-.hh-more, .lnk { border: 0; background: none; color: var(--violet); font-weight: 700; padding: 4px 2px; cursor: pointer; font: inherit; font-weight: 700; }
-.hh-week1 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
-.hh-wd { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; }
-.hh-wd small { color: var(--muted); font-weight: 700; text-transform: capitalize; }
-.hh-wd.today small { color: var(--pc); }
-.hh-wd-c { width: 100%; max-width: 40px; height: 46px; border-radius: 12px; background: var(--surface-2); position: relative; overflow: hidden; display: grid; place-items: center; }
-.hh-wd-c i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--pc); opacity: .85; border-radius: 10px 10px 0 0; animation: hhgrow .9s cubic-bezier(.2,.8,.2,1) both; transform-origin: bottom; }
-.hh-wd-c .ic { position: relative; color: #fff; width: 18px; height: 18px; }
-.hh-wd.today .hh-wd-c { box-shadow: 0 0 0 2px var(--pc); }
-.hh-wd.future { opacity: .5; }
-.hh-wd b { font-weight: 800; font-size: 11.5px; }
-@keyframes hhgrow { from { transform: scaleY(0); } }
-.hh-goalmini { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--pc) 9%, var(--surface-2)); }
-.hh-gem { font-size: 28px; }
-.hh-quick { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
-.hh-ledger { display: flex; flex-direction: column; gap: 4px; }
-.hh-led { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line); }
-.hh-led:last-child { border-bottom: 0; }
-.hh-led b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hh-led small { color: var(--muted); font-size: 12px; }
-.hh-led-d { font-weight: 800; color: var(--good); text-align: center; border-radius: 10px; background: color-mix(in srgb, var(--good) 12%, transparent); padding: 4px 0; display: grid; place-items: center; }
-.hh-led-d.neg { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
-.hh-led-d .ic { width: 16px; height: 16px; }
-.hh-part + .hh-part { margin-top: 14px; }
-.hh-part-h { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin: 0 4px 8px; }
-.hh-part-h .ic { width: 16px; height: 16px; color: var(--kc, var(--violet)); }
-.hh-part .mission .t-sub .ic, .task .t-sub .ic { width: 13px; height: 13px; vertical-align: -2px; }
-.hh-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.hh-me { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--pc) 16%, var(--surface)), var(--surface)); }
-.hh-me .hh-ringarc { transition: stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1); }
-.hh-kids-pick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-.hh-kids-pick .grow { flex: 1; }
-.hh-kp { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 4px 12px 4px 4px; font-weight: 700; cursor: pointer; transition: border-color .2s, background .2s; }
-.hh-kp b { color: var(--muted); font-size: 12.5px; }
-.hh-kp.on { border-color: var(--pc); background: color-mix(in srgb, var(--pc) 10%, var(--surface)); }
-.hh-kp.on b { color: var(--pc); }
-.hh-wp { width: 100%; margin: 0; }
-.hh-kids { grid-template-columns: repeat(auto-fit, minmax(180px, 260px)); }
-@media (max-width: 640px) {
-  .hh-kids { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(150px, 44%); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: -16px; padding: 2px 16px 8px; }
-  .hh-kids .kid { scroll-snap-align: start; padding: 12px 10px; }
-  .hh-kids .kid .big-ring { width: 74px; height: 74px; }
-  .hh-kids .kid .score { font-size: 22px; }
-  .hh-kids .kid .streak { font-size: 11px; }
-}
-.hh-tabs { margin: 16px 0 0; max-width: 460px; }
-.hh-add { margin-top: 10px; }
-.hh-mrow, .hh-rrow { grid-template-columns: 40px minmax(0, 1fr) auto auto; }
-.hh-bigemo { font-size: 24px; text-align: center; line-height: 1; }
-.hh-rowbtns { display: inline-flex; }
-.hh-wgrid { display: grid; gap: 6px; align-items: center; min-width: 440px; }
-.hh-wh { text-align: center; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: capitalize; }
-.hh-wh small { display: block; font-size: 11px; font-weight: 600; }
-.hh-wh.today { color: var(--violet); }
-.hh-wn { display: flex; align-items: center; gap: 8px; font-weight: 700; min-width: 0; }
-.hh-wc { height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--pc) calc(var(--f) * 55%), var(--surface-2)); color: var(--ink); }
-.hh-wc.perfect { background: var(--pc); color: #fff; }
-.hh-wc.perfect .ic { width: 18px; height: 18px; }
-.hh-wc.future { opacity: .45; }
-.hh-form .field:first-child { margin-top: 6px; }
-.hh-row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0 12px; }
-.hh-form input, .hh-form select { color: var(--ink); font: inherit; }
-.hh-emos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.hh-emobtn { width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface-2); font-size: 20px; cursor: pointer; transition: transform .15s; }
-.hh-emobtn[aria-pressed="true"] { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, var(--surface)); transform: scale(1.08); }
-.hh-emoin { width: 64px; text-align: center; font-size: 18px !important; }
-.hh-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.hh-day { border: 1.5px solid var(--line); background: var(--surface-2); color: var(--muted); border-radius: 10px; padding: 9px 0; font-weight: 800; font-size: 12.5px; text-transform: capitalize; cursor: pointer; }
-.hh-day[aria-pressed="true"] { background: var(--violet); border-color: var(--violet); color: #fff; }
-.hh-dayq { display: flex; gap: 12px; margin-top: 4px; font-size: 13px; }
-.hh-partseg { flex-wrap: wrap; }
-.hh-partseg button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 96px; }
-.hh-partseg .ic { width: 15px; height: 15px; }
-.sheet-actions .grow { flex: 1; }
-.danger-t { color: var(--bad) !important; }
-.task .check[disabled] { opacity: .5; cursor: default; }
-@media (max-width: 640px) { .hh-partseg button span { font-size: 12px; } .hh-week1 { gap: 3px; } }
+.home-fam .band-pick { margin-top: 12px; }
+.task .check[disabled] { opacity: .5; }
+.hh-room > .rm-mini { width: 100%; }
+.hh-room .rm-pic { max-height: 280px; overflow: hidden; }
 `;
 
 const en = {
+  nu: "now",
+  "om {n} min": "in {n} min",
+  "om {h} t {m} min": "in {h} h {m} min",
+  Hjemme: "Home",
+  Ude: "Out",
+  "følger {name}": "with {name}",
+  Barn: "Child",
+  Forælder: "Parent",
+  forælder: "parent",
+  Mor: "Mum",
+  Far: "Dad",
+  Dagpleje: "Childminder",
+  Vuggestue: "Nursery",
+  Børnehave: "Kindergarten",
+  Skole: "School",
+  Institution: "Institution",
+  "Hver dag": "Every day",
+  Hverdage: "Weekdays",
+  Weekender: "Weekends",
+  "Intet mål": "No goal",
+  Bringer: "Brings",
+  Henter: "Picks up",
+  bringer: "brings",
+  henter: "picks up",
+  "Kom hjem kl. {t}": "Came home at {t}",
+  Aftensmad: "Dinner",
+  "Marker {what} som klaret": "Mark {what} as done",
+  "En belønning": "A reward",
+  "vil købe": "wants to buy",
+  "for {n} point": "for {n} points",
+  "Venter på en forælder · {name} har {n} point": "Waiting for a parent · {name} has {n} points",
+  Godkend: "Approve",
+  Afvis: "Decline",
+  Superglad: "Overjoyed",
+  Glad: "Happy",
+  Okay: "Okay",
+  "Savner dig": "Misses you",
+  Hund: "Dog",
+  Kat: "Cat",
+  "Lille drage": "Little dragon",
+  "Bliver gladere, når dagens missioner er klaret": "Gets happier when today's missions are done",
+  "{name} har ikke et dyr endnu. Vælg et under Familieindstillinger › Børn.": "{name} has no pet yet. Choose one under Family settings › Children.",
+  "Intet planlagt": "Nothing planned",
+  "Vælg familiebåndet": "Choose the family band",
+  "Vis som": "Show as",
+  Historier: "Stories",
+  Huset: "The house",
+  "Dagens spor": "Today's tracks",
+  Bobler: "Bubbles",
+  "Live-linje": "Live line",
+  Kort: "Cards",
+  "Lige nu": "Right now",
+  "Kom hjem kl. ": "Came home at ",
+  "Gik kl. ": "Left at ",
+  Næste: "Next",
+  Point: "Points",
+  "{n} perfekte dage · {d}/{t} missioner": "{n} perfect days · {d}/{t} missions",
+  Missioner: "Missions",
+  "{d}/{t} klaret": "{d}/{t} done",
+  "{n} perfekte dage": "{n} perfect days",
+  Dagen: "The day",
+  "{d}/{t} opgaver klaret": "{d}/{t} tasks done",
+  "{name}s historie": "{name}'s story",
+  Luk: "Close",
+  "Se {name}s side": "See {name}'s page",
+  "Tryk til højre for næste, til venstre for forrige": "Tap right for next, left for previous",
+  "Hjemme {n} af {t}": "Home {n} of {t}",
+  "Alle er hjemme": "Everyone is home",
+  "{n} af {t}": "{n} of {t}",
+  "er hjemme": "are home",
+  aftensmad: "dinner",
+  "siden {t}": "since {t}",
+  "vil købe {what} · venter på jer": "wants to buy {what} · waiting for you",
+  "har {p} point og {s} perfekte dage": "has {p} points and {s} perfect days",
+  Live: "Live",
+  Familien: "The family",
+  "Hjemme nu": "Home now",
+  "Aftensmad sammen": "Dinner together",
+  klaret: "done",
   "Telefonens batteri": "Phone battery",
-  Morgen: "Morning",
-  "I løbet af dagen": "During the day",
-  Eftermiddag: "Afternoon",
-  Aften: "Evening",
+  "Ingen i familien endnu": "No one in the family yet",
+  "Tilføj familien under Familieindstillinger, så kommer forsiden til live.": "Add the family under Family settings and the home page comes alive.",
+  "Tilføj familien": "Add the family",
+  "Påmindelse til {name} kl. {t}": "Reminder to {name} at {t}",
+  "kl.": "at",
+  "Hele dagen": "All day",
+  "Hent og bring": "Drop-off and pick-up",
+  "I dag og i morgen": "Today and tomorrow",
+  "I dag": "Today",
+  "Ingen aftaler i dag": "Nothing planned today",
+  "I morgen, {day}": "Tomorrow, {day}",
+  "Ingen aftaler i morgen": "Nothing planned tomorrow",
+  Madplan: "Meal plan",
+  "I aften": "Tonight",
+  "Ikke planlagt endnu": "Not planned yet",
+  "Fra {name}": "From {name}",
+  "I morgen": "Tomorrow",
+  "i morgen": "tomorrow",
+  "Børnenes mål": "The children's goals",
+  "Hurtig opret": "Quick add",
+  Liste: "List",
+  "{d} af {t} klaret": "{d} of {t} done",
+  åbn: "open",
+  "Opgaver i dag": "Tasks today",
+  "Alle opgaver": "All tasks",
+  "Alt er klaret i dag": "Everything is done today",
+  "Kom i gang": "Get started",
+  "Faste rutiner på 2 minutter": "Routines in 2 minutes",
+  "Faste opgaver": "Regular tasks",
+  "{n} gentager sig": "{n} repeat",
+  "{n} ture om ugen": "{n} trips a week",
+  Rutinetavle: "Routine board",
+  og: "and",
+  "Ingen endnu": "None yet",
+  "Godkend køb": "Approve purchases",
+  "Kun forældre": "Parents only",
+  "{n} point til {what}": "{n} points to {what}",
+  "{what} er tjent!": "{what} is earned!",
+  "Ingen opgaver i dag. Lav faste opgaver under Faste rutiner.": "No tasks today. Make regular tasks under Routines.",
+  "Missioner og point er to funktioner: børnene kan have missioner uden point. Med point får de dem, så snart de krydser af; et køb i shoppen venter på en forælder. Når alle dagens missioner er klaret, tæller dagen som perfekt.":
+    "Missions and points are two features: children can have missions without points. With points they get them as soon as they tick off; a purchase in the shop waits for a parent. When all of today's missions are done, the day counts as perfect.",
+  "i dag": "today",
+  Frikvarter: "Break",
+  "Fra {cal}": "From {cal}",
+  "Ingen timer i denne uge": "No lessons this week",
+  Fødselsdag: "Birthday",
+  "Fødselsdag for {name}": "Birthday for {name}",
+  "Fødselsdagen er gemt": "The birthday is saved",
+  "Hvem henter": "Who picks up",
+  "Ikke sat": "Not set",
+  "{n} år": "{n} years",
+  "person i Home Assistant": "person in Home Assistant",
+  "profil uden telefon": "profile without a phone",
+  "egen PIN": "own PIN",
+  "{n} point": "{n} points",
+  "{d}/{t} missioner i dag": "{d}/{t} missions today",
+  "Skift billede": "Change picture",
+  "Sæt billede": "Add picture",
+  "Se som {name}": "See as {name}",
+  "Giv 5 point": "Give 5 points",
+  Skoleskema: "School schedule",
+  "Uge {n}": "Week {n}",
+  "Uge {n} · fra {cal}": "Week {n} · from {cal}",
+  "Vælg skemaets kalender (fx fra Aula) under Familieindstillinger › Børn.": "Choose the schedule's calendar (e.g. from Aula) under Family settings › Children.",
+  "Mit dyr": "My pet",
+  "Slået til": "On",
+  Mål: "Goal",
+  Besked: "Message",
+  "Ny mission": "New mission",
+  "Ingen missioner": "No missions",
+  Pointshop: "Points shop",
+  "Forældre sætter priserne": "Parents set the prices",
+  "Belønning · alle børn": "Reward · all children",
+  Belønning: "Reward",
+  "Fjern {what}": "Remove {what}",
+  "Ingen belønninger endnu": "No rewards yet",
+  "Ny belønning": "New reward",
+  Profil: "Profile",
+  "Moduler og institution": "Modules and institution",
+  "Skoleskema fra Aula": "School schedule from Aula",
+  "Dagens aflevering og afhentning fra Hent og bring": "Today's drop-off and pick-up from Drop-off and pick-up",
+  administrator: "administrator",
+  "du henter": "you pick up",
+  "{n} åbne opgaver": "{n} open tasks",
+  "{n} aftaler i ugen": "{n} events this week",
+  Opgaver: "Tasks",
+  "Ingen opgaver": "No tasks",
+  Ugen: "The week",
+  "Ingen aftaler": "No events",
+  Ønskesedler: "Wish lists",
+  "{n} ønsker · Ønskeskyen": "{n} wishes · Ønskeskyen",
+  "Ingen ønskesedler valgt. Vælg dem under Familieindstillinger › Ønskeskyen.": "No wish lists chosen. Choose them under Family settings › Ønskeskyen.",
+  "Mine indstillinger": "My settings",
+  Familieindstillinger: "Family settings",
+  Hjem: "Home",
+  "Afleveres i {where}": "Dropped off at {where}",
+  "{name} afleverer": "{name} drops off",
+  "Bliver hentet": "Picked up",
+  "{name} henter": "{name} picks up",
+  Mission: "Mission",
+  "Hej {name}.": "Hi {name}.",
+  "Du har {n} point.": "You have {n} points.",
+  "Dine missioner er: {list}.": "Your missions are: {list}.",
+  "Du har klaret alle dine missioner.": "You've done all your missions.",
+  "Læs beskeden op": "Read the message aloud",
+  "Hør din dag": "Hear your day",
+  "Læs dagen op": "Read the day aloud",
+  Nu: "Now",
+  Først: "First",
+  Fri: "Free",
+  Godnat: "Good night",
+  "Ingen planer": "No plans",
+  "Skoledagen slutter kl. {t}": "School ends at {t}",
+  "Skoledagen er afsluttet. Godt gået!": "School's done. Well done!",
+  "Afslut dagen": "End the day",
+  "Meld syg": "Report sick",
+  "Missioner i dag": "Missions today",
+  "Dagens mission": "Today's mission",
+  "Ingen børn med shop": "No children with a shop",
+  "Shoppen er slået fra": "The shop is off",
+  "Far eller mor kan slå den til.": "Mum or Dad can turn it on.",
+  "Mit mål": "My goal",
+  "{name}s mål": "{name}'s goal",
+  "{p} af {c} point": "{p} of {c} points",
+  "{what} venter på, at far eller mor godkender": "{what} is waiting for Mum or Dad to approve",
+  "Min pointshop": "My points shop",
+  "{name}s pointshop": "{name}'s points shop",
+  Venter: "Waiting",
+  "Mangler {n}": "{n} to go",
+  Køb: "Buy",
+  "Køb for {name}": "Buy for {name}",
+  "Gør til mål": "Make it my goal",
+  "Der er ingen belønninger endnu.": "There are no rewards yet.",
+  "Pointene trækkes først, når far eller mor har godkendt købet.": "The points are only taken when Mum or Dad has approved the purchase.",
+  Altid: "Always",
+  "Når {e} er tændt · ": "When {e} is on · ",
+  "Flyt op": "Move up",
+  "Flyt ned": "Move down",
+  "Vis {what} i min +-menu": "Show {what} in my + menu",
+  Tema: "Theme",
+  "Kun for {name}": "Only for {name}",
+  Automatisk: "Automatic",
+  Lyst: "Light",
+  Mørkt: "Dark",
   Hverdagsro: "Hverdagsro",
   Nordlys: "Northern lights",
   Hav: "Sea",
@@ -1077,194 +1639,101 @@ const en = {
   Rosa: "Pink",
   Rummet: "Space",
   Kontrast: "Contrast",
-  Dagpleje: "Childminder",
-  Vuggestue: "Nursery",
-  Børnehave: "Kindergarten",
-  Skole: "School",
-  nu: "now",
-  "om {n} min": "in {n} min",
-  "om {h} t {m} min": "in {h} h {m} min",
-  Hjemme: "Home",
-  Ude: "Away",
-  "Hver dag": "Every day",
-  Hverdage: "Weekdays",
-  Weekender: "Weekends",
-  "Marker {name} som klaret": "Mark {name} as done",
-  "En belønning": "A reward",
-  "{name} vil købe {what} for {n} point": "{name} wants to buy {what} for {n} points",
-  "Venter på en forælder · {name} har {n} point": "Waiting for a parent · {name} has {n} points",
-  Godkend: "Approve",
-  Afvis: "Decline",
-  "Hele dagen": "All day",
-  Familien: "The family",
-  "Hjemme nu": "Home now",
-  "I aften": "Tonight",
-  "Perfekte dage i denne uge": "Perfect days this week",
-  klaret: "done",
-  Barn: "Child",
-  Forælder: "Parent",
-  "siden {t}": "since {t}",
-  "Intet planlagt": "Nothing planned",
-  "Ingen i familien endnu": "No one in the family yet",
-  "Tilføj familien under Familieindstillinger, så kommer forsiden til live.": "Add the family in Family settings and the front page comes to life.",
-  "Tilføj familien": "Add the family",
-  "Godkend køb": "Approve purchases",
-  "Kun forældre": "Parents only",
-  "I dag og i morgen": "Today and tomorrow",
-  "I dag": "Today",
-  "Ingen aftaler i dag": "Nothing planned today",
-  "I morgen, {day}": "Tomorrow, {day}",
-  "Ingen aftaler i morgen": "Nothing planned tomorrow",
-  Kalender: "Calendar",
-  Aftensmad: "Dinner",
-  Madplan: "Meal plan",
-  "Ikke planlagt endnu": "Not planned yet",
-  "Børnenes mål": "The children's goals",
-  Shop: "Shop",
-  "Intet mål endnu": "No goal yet",
-  "Børnene i dag": "The children today",
-  "Alle opgaver": "All tasks",
-  "Alle missioner er klaret": "All missions done",
-  "+{n} mere": "+{n} more",
-  "Ingen missioner i dag.": "No missions today.",
-  "Opret missioner": "Create missions",
-  "Alt er roligt": "All is calm",
-  "Slå flere moduler til under Familieindstillinger.": "Turn on more modules in Family settings.",
-  Moduler: "Modules",
-  Hjem: "Home",
-  "{n} point": "{n} points",
-  "{done}/{total} missioner i dag": "{done}/{total} missions today",
-  "{n} perfekte dage i ugen": "{n} perfect days this week",
-  "Se som {name}": "See as {name}",
-  Point: "Points",
-  "Mine indstillinger": "My settings",
-  "Missioner i dag": "Missions today",
-  "Ny mission": "New mission",
-  "Ingen missioner i dag": "No missions today",
-  Ugen: "The week",
-  point: "points",
-  "Andet …": "Other …",
-  "Ingen point endnu": "No points yet",
-  "Den næste uge": "The coming week",
-  "Ingen aftaler den næste uge": "Nothing planned the coming week",
-  "{n} år": "{n} years",
-  "Person i Home Assistant": "Person in Home Assistant",
-  Profil: "Profile",
-  "Ret i Familieindstillinger": "Edit in Family settings",
-  "Tilføj fødselsdag, person og kalender under Familieindstillinger.": "Add birthday, person and calendar in Family settings.",
-  "Mine missioner i dag": "My missions today",
-  "Missioner {day}": "Missions {day}",
-  "{done}/{total} klaret": "{done}/{total} done",
-  af: "of",
-  "Perfekt dag!": "Perfect day!",
-  "Du har klaret alle dine missioner, {name}.": "You have done all your missions, {name}.",
-  "Ingen missioner {day}.": "No missions {day}.",
-  "i dag": "today",
-  "{n} point til {what}": "{n} points to {what}",
-  "{what} er tjent!": "{what} is earned!",
-  "Til shoppen": "To the shop",
-  Nu: "Now",
-  Først: "First",
-  Fri: "Free",
-  Næste: "Next",
-  "kl.": "at",
-  Godnat: "Good night",
-  "Ingen aftaler": "Nothing planned",
-  "Point er slået fra": "Points are turned off",
-  "Shoppen bruger point. Slå point til under Familieindstillinger.": "The shop uses points. Turn points on in Family settings.",
-  "Vælg barn": "Choose child",
-  "Ret belønninger": "Edit rewards",
-  "Shoppen er tom": "The shop is empty",
-  "Opret belønninger, som børnene kan købe for deres point.": "Create rewards the children can buy with their points.",
-  "Far eller mor har ikke lagt noget i shoppen endnu.": "Mum or dad hasn't put anything in the shop yet.",
-  "Ny belønning": "New reward",
-  "Mit mål": "My goal",
-  "{name}s mål": "{name}'s goal",
-  "{n} af {cost} point": "{n} of {cost} points",
-  "{what} venter på, at en forælder godkender": "{what} is waiting for a parent to approve",
-  "Min pointshop": "My points shop",
-  "{name}s pointshop": "{name}'s points shop",
-  Venter: "Waiting",
-  "Mangler {n}": "{n} to go",
-  "Køb for {name}": "Buy for {name}",
-  Køb: "Buy",
-  Mål: "Goal",
-  Godkendt: "Approved",
-  Afvist: "Declined",
-  "Pointene trækkes først, når en forælder har godkendt købet.": "The points are only taken when a parent has approved the purchase.",
-  Missioner: "Missions",
-  Belønninger: "Rewards",
-  "Alle børn": "All children",
-  "{n} missioner": "{n} missions",
-  "Missioner for alle børnene, fx tandbørstning.": "Missions for all the children, like brushing teeth.",
-  "Ingen missioner endnu": "No missions yet",
-  "Ret {name}": "Edit {name}",
-  "Slet {name}": "Delete {name}",
-  "Ingen belønninger endnu. Børnene kan købe dem for deres point.": "No rewards yet. The children can buy them with their points.",
-  "Uge {n}": "Week {n}",
-  "Hvem er du?": "Who are you?",
-  "Vælg dig selv. Skærmen husker det, til du skifter.": "Pick yourself. This screen remembers until you switch.",
-  "Der er ingen børn i familien endnu.": "There are no children in the family yet.",
-  "Forældre logger ind med deres egen bruger for at styre familien.": "Parents sign in with their own user to manage the family.",
-  "Hverdagsro er ikke klar endnu": "Hverdagsro isn't ready yet",
-  "En forælder skal først gøre opsætningen færdig. Så dukker familien, missionerne og resten op her.": "A parent needs to finish the setup first. Then the family, the missions and the rest show up here.",
   "Du er ikke med i familien": "You're not in the family",
-  "Tilføj dig selv under Familieindstillinger for at vælge dit eget tema.": "Add yourself in Family settings to pick your own theme.",
-  Familieindstillinger: "Family settings",
-  "person i Home Assistant": "person in Home Assistant",
+  "Tilføj dig selv under Familieindstillinger for at vælge dit eget tema.": "Add yourself under Family settings to choose your own theme.",
+  profil: "profile",
+  "Min +-menu": "My + menu",
+  "Far eller mor bestemmer": "Mum or Dad decides",
+  "Vælg, hvilke knapper der står i din +-menu, og i hvilken rækkefølge.": "Choose which buttons are in your + menu, and in which order.",
+  "Nye knapper og hvem der må bruge dem, styres i familieindstillingerne.": "New buttons, and who may use them, are set in the family settings.",
+  Alarm: "Alarm",
+  "Der er ingen knapper til dig endnu.": "There are no buttons for you yet.",
+  "Bed far eller mor om at give dig nogle.": "Ask Mum or Dad to give you some.",
+  "Beskeder til mig": "Messages to me",
+  "Vælg din telefon under Familieindstillinger › Familien for at få beskeder.": "Choose your phone under Family settings › The family to get messages.",
+  "Børnene køber i shoppen": "The children buy in the shop",
+  "En mission er klaret": "A mission is done",
+  "Et mål er nået": "A goal is reached",
+  "Aftaler flyttet eller aflyst": "Events moved or cancelled",
+  "Hvem henter i dag": "Who picks up today",
+  "Skrald skal stilles ud": "The bin must go out",
+  "Mine point": "My points",
+  "Næste aftale": "Next event",
+  "Skoledagen slutter": "School ends",
+  "Besked fra far eller mor": "Message from Mum or Dad",
+  "Min PIN": "My PIN",
+  "Din PIN skiftes af far eller mor.": "Mum or Dad changes your PIN.",
   "Skift bruger": "Switch user",
-  Tema: "Theme",
-  "Kun for {name}": "Only for {name}",
-  Automatisk: "Automatic",
-  Lyst: "Light",
-  Mørkt: "Dark",
-  "Automatisk følger Home Assistants lyse eller mørke tema.": "Automatic follows Home Assistant's light or dark theme.",
-  "Min side": "My page",
-  "Ret mission": "Edit mission",
-  "Hvad skal klares?": "What needs doing?",
-  Mission: "Mission",
-  "Fx Red seng": "E.g. Make the bed",
-  Ikon: "Icon",
-  "Eget ikon": "Own icon",
-  Hvem: "Who",
-  Dage: "Days",
-  "Hvornår på dagen": "When in the day",
-  "Klokken (valgfrit)": "Time (optional)",
+  "Hvem er du?": "Who are you?",
+  "Tryk på dig selv. Har du en PIN, skal du skrive den.": "Tap yourself. If you have a PIN, type it.",
+  "Hej {name}": "Hi {name}",
+  "Skriv din PIN.": "Type your PIN.",
   Slet: "Delete",
   Annullér: "Cancel",
-  Gem: "Save",
-  "Vælg mindst én dag": "Pick at least one day",
-  "Missionen er oprettet": "The mission is created",
-  "Missionen er gemt": "The mission is saved",
-  "Slet {name}?": "Delete {name}?",
-  "Missionen forsvinder for alle. Point, der allerede er givet, bliver.": "The mission disappears for everyone. Points already given stay.",
-  "Missionen er slettet": "The mission is deleted",
-  "Ret belønning": "Edit reward",
-  "Hvad kan man købe?": "What can be bought?",
-  Belønning: "Reward",
-  "Fx Vælg aftenens film": "E.g. Pick tonight's film",
+  "Hvem bruger Hverdagsro?": "Who is using Hverdagsro?",
+  "Forældre ser alt. Børn ser deres egen dag og bruger deres PIN.": "Parents see everything. Children see their own day and use their PIN.",
+  "En opgave til et barn": "A task for a child",
+  ", evt. med point": ", with points if you like",
+  "En vare i pointshoppen": "An item in the points shop",
+  Aftale: "Event",
+  "Med »hvem henter«": "With »who picks up«",
+  "Liste, fast liste eller ønskeseddel": "List, regular list or wish list",
+  "Én gang (ekstra)": "Once (extra)",
+  "Hvad skal gøres": "What to do",
+  "Fx Pak skoletasken": "E.g. Pack the school bag",
+  "Fx Biograftur": "E.g. Trip to the cinema",
+  Hvem: "Who",
+  "Alle børn": "All children",
   "Pris i point": "Price in points",
-  "Belønningen er oprettet": "The reward is created",
-  "Belønningen er gemt": "The reward is saved",
-  "Giv eller træk point fra {name}": "Give or take points from {name}",
-  Hvorfor: "Why",
-  "Fx Hjalp med indkøb": "E.g. Helped with the shopping",
-  "Brug minus for at trække point fra. {name} har {n} point nu.": "Use minus to take points away. {name} has {n} points now.",
+  Gentag: "Repeat",
+  "Hver aften": "Every evening",
+  "Hver uge": "Every week",
+  Tidspunkt: "Time",
+  Ikon: "Icon",
+  Opret: "Create",
+  "Missionen er oprettet til {name}": "The mission is created for {name}",
+  "Belønningen er oprettet til {name}": "The reward is created for {name}",
+  "alle børn": "all children",
+  "Læser op på {where} …": "Reading aloud on {where} …",
+  "Læser op …": "Reading aloud …",
+  "Vælg en højttaler til oplæsning under Familieindstillinger › Børn.": "Choose a speaker for reading aloud under Family settings › Children.",
+  "Billedet kunne ikke læses. Prøv et JPG eller PNG.": "The picture couldn't be read. Try a JPG or PNG.",
+  "Nyt billede af {name}": "New picture of {name}",
+  "Det kan kun far eller mor": "Only Mum or Dad can do that",
+  "Perfekt dag! {name} har nu {n} perfekte dage i træk": "Perfect day! {name} now has {n} perfect days in a row",
+  "Godkendt: {name} får {what}": "Approved: {name} gets {what}",
+  "Købet er afvist, og pointene er bevaret": "The purchase is declined, and the points are kept",
   "Ekstra point": "Extra points",
-  "Point trukket fra": "Points taken away",
-  "{name} fik {n} point": "{name} got {n} points",
-  "{n} point trukket fra {name}": "{n} points taken from {name}",
-  "Det kan kun far eller mor": "Only mum or dad can do that",
-  "Perfekt dag! {name} har klaret alle missioner": "Perfect day! {name} has done all missions",
-  "Købet er godkendt": "The purchase is approved",
-  "Købet er afvist": "The purchase is declined",
+  "{name} fik 5 point": "{name} got 5 points",
   "{what} er købt": "{what} is bought",
-  "Sendt til far og mor. De skal godkende {what}.": "Sent to mum and dad. They need to approve {what}.",
+  "{what} venter på godkendelse fra far eller mor": "{what} is waiting for approval from Mum or Dad",
+  "Nyt mål!": "New goal!",
+  Syg: "Sick",
+  "{name} har meldt sig syg": "{name} has reported sick",
+  "Far og mor har fået besked om, at du er syg": "Mum and Dad know you're sick",
+  "Sig det til far eller mor": "Tell Mum or Dad",
+  "Fjern {what}?": "Remove {what}?",
   "Belønningen forsvinder fra shoppen.": "The reward disappears from the shop.",
-  "Belønningen er slettet": "The reward is deleted",
+  Fjern: "Remove",
   "Min dag": "My day",
-  Opgaver: "Tasks",
-  "Når du vil": "Whenever you like",
+  Shop: "Shop",
+  "Hverdagsro er ikke sat op endnu": "Hverdagsro isn't set up yet",
+  "Far eller mor skal lige gøre guiden færdig. Så er alt klar.": "Mum or Dad just has to finish the guide. Then everything is ready.",
 };
 
-export default { id: "home", views, acts, inputs: {}, css, en };
+const inputs = {
+  async "home-bday"(el, ev, ctx) {
+    if (ev.type !== "change" || !ctx.isParent) return;
+    const v = el.value;
+    if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    const fam = ctx.members().map(({ has_pin: _h, ...m }) => JSON.parse(JSON.stringify(m)));
+    const m = fam.find((x) => x.id === el.dataset.id);
+    if (!m) return;
+    if (v) m.birthday = v;
+    else delete m.birthday;
+    if (await ctx.save("family", fam)) ctx.toast(ctx.t("Fødselsdagen er gemt"));
+    ctx.render();
+  },
+};
+
+export default { id: "home", views, acts, inputs, css, en, init: (ctx) => (CTX = ctx) };

@@ -7,6 +7,8 @@
        items: [{ type, id, name, x, y, ent, ... }] }
    1 metre is 60 units on the drawing. Live states come from each item's entities; nothing here is made up. */
 import { esc, hashStr, prng } from "./hv-core.js";
+import { activeDecor } from "./hv-decor.js";
+import * as Appl from "./hv-appliances.js";
 import { P, svg } from "./hv-icons.js";
 
 let C = null;
@@ -264,6 +266,17 @@ function liveOf(it) {
       L.soc = bat ? num(bat.state) : null;
       const plug = g(it.plug);
       L.cable = plug ? cableOf(plug.state) : it.plug ? "none" : null;
+      // A car EV Planner knows (same name): its charge level and status, when the drawing has none of its own.
+      const ev = !it.battery || !it.plug ? evCar(it) : null;
+      if (ev) {
+        if (L.soc == null && ev.attributes.soc != null) L.soc = num(ev.attributes.soc);
+        if (L.cable == null) L.cable = ev.attributes.connected === false || ev.state === "unplugged" ? "none" : cableOf(ev.state === "connected" ? "connected" : ev.state);
+        L.ev = ev.entity_id;
+      }
+      if (it.lock) {
+        L.lockState = g(it.lock)?.state;
+        L.locked = L.lockState === "locked";
+      }
       break;
     }
     case "solar":
@@ -282,9 +295,47 @@ function liveOf(it) {
     L.text = s ? (C.hass.formatEntityState ? C.hass.formatEntityState(s) : v) : "";
     if (dom === "vacuum") L.run = ["cleaning", "returning"].includes(v);
     else if (dom === "lawn_mower") L.run = v === "mowing" || v === "returning";
-    else L.run = !!v && !IDLE.test(v) && (RUN.test(v) || (num(v) != null && num(v) > 5));
+    else L.run = !!v && !IDLE.test(v) && (RUN.test(v) || (num(v) != null && num(v) > 5)) && (!/^on$/i.test(v) || it.type === "coffee");
+    L.temp = applTemp(appl, ent);
+    // The Apparater page's own reading of the appliance (its status and facts), when it shares it.
+    if (appl && typeof Appl.status === "function") {
+      try {
+        const st = Appl.status(C, appl);
+        L.text = st.txt;
+        L.run = st.key === "run";
+        if (typeof Appl.details === "function") {
+          const x = Appl.details(C, appl);
+          L.facts = [...(L.run && x.left != null ? [[t("Tid"), `${Math.round(x.left)} min`]] : []), ...(x.facts || [])];
+        }
+      } catch (err) {
+        /* the plan still shows the raw state */
+      }
+    }
   }
   return L;
+}
+/* The status sensor of a car in EV Planner with the same name as the drawn car. */
+function evCar(it) {
+  const ents = C?.hass?.entities || {};
+  const want = String(it.name || "").toLowerCase().replace(/[^a-z0-9æøå]+/g, "");
+  if (!want) return null;
+  for (const [id, e] of Object.entries(ents)) {
+    if (e.platform !== "ev_planner" || !/^sensor\..+_status$/.test(id) || id.startsWith("sensor.guest")) continue;
+    const s = C.st(id);
+    const dev = e.device_id && C.hass.devices?.[e.device_id];
+    const name = String(dev?.name_by_user || dev?.name || s?.attributes?.friendly_name || "").toLowerCase().replace(/\s*status$/, "").replace(/[^a-z0-9æøå]+/g, "");
+    if (s && name && (name === want || name.includes(want) || want.includes(name))) return s;
+  }
+  return null;
+}
+/* A fridge's or oven's temperature: a temperature sensor among the appliance's linked entities. */
+function applTemp(appl, ent) {
+  const ids = [...(appl?.controls || []), ent];
+  for (const id of ids) {
+    const s = id && C.hass.states[id];
+    if (s && (s.attributes.device_class === "temperature" || id.startsWith("climate.")) && num(s.attributes.current_temperature ?? s.state) != null) return num(s.attributes.current_temperature ?? s.state);
+  }
+  return null;
 }
 const sunUp = () => (C?.hass?.states?.["sun.sun"]?.attributes?.elevation ?? 10) > 0;
 function lastText(s) {
@@ -655,6 +706,51 @@ function robotPath(it, H) {
   return { d: "M" + pts.map((q) => q.map(f1).join(",")).join(" L"), dur: Math.max(45, len / 18), poly };
 }
 
+/* The prototype's small appliance drawings (apArt), used on the plan. */
+function planArt(kind, L) {
+  const run = !!L.run;
+  switch (kind) {
+    case "washer":
+    case "dryer":
+      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="16" y="8" width="88" height="106" rx="8" fill="#FBFBFA" stroke="#E2E0DC"/><rect x="24" y="13" width="34" height="10" rx="3" fill="#1D2027"/><circle cx="88" cy="18" r="5" fill="#E6E4E0" stroke="#C9C6C0"/><circle cx="60" cy="68" r="34" fill="#E9E8E5"/><circle cx="60" cy="68" r="29" fill="#C9CDD3" stroke="#AEB3BA" stroke-width="3"/><circle cx="60" cy="68" r="25" fill="#3A4150"/><g fill-opacity=".9"${run ? ` class="ap-drum" style="transform-origin:60px 68px"` : ""}><circle cx="50" cy="62" r="7" fill="#E5484D"/><circle cx="68" cy="74" r="8" fill="#F2B01E"/><circle cx="64" cy="58" r="6" fill="#6C8CFF"/></g><path d="M44,56 a20,20 0 0 1 12,-10" stroke="rgba(255,255,255,.6)" stroke-width="2" fill="none"/></svg>`;
+    case "dish":
+      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="10" y="6" width="100" height="10" fill="#C9A77C"/><rect x="12" y="16" width="96" height="88" rx="2" fill="#F4F2EE" stroke="#E2DED7"/><rect x="40" y="22" width="40" height="3" rx="1.5" fill="#B9B4AC"/><rect x="12" y="104" width="96" height="6" fill="#D8D3CB"/><ellipse cx="60" cy="116" rx="12" ry="2.6" fill="${run ? "#3B82F6" : "transparent"}" class="${run ? "ap-pulse" : ""}"/></svg>`;
+    case "oven":
+      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="10" y="12" width="100" height="96" rx="4" fill="#1C1E24"/><rect x="10" y="12" width="100" height="16" fill="#26292F"/><rect x="20" y="36" width="80" height="58" rx="5" fill="${run ? "#3A1E10" : "#0D0F13"}"/><line x1="26" y1="70" x2="94" y2="70" stroke="#5B5F68" stroke-width="1.6"/><rect x="22" y="98" width="76" height="4" rx="2" fill="#4A4E57"/></svg>`;
+    case "hob":
+      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="8" y="18" width="104" height="84" rx="6" fill="#16181D"/>${[[34, 44, 15], [86, 44, 13], [34, 78, 13], [86, 78, 15]].map(([x, y, r], i) => `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${run && i === 0 ? "#E5484D" : "#3A3E47"}" stroke-width="1.2"/>`).join("")}</svg>`;
+    case "coffee":
+      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="10" y="10" width="100" height="100" rx="4" fill="#1C1E24"/><rect x="18" y="16" width="84" height="12" rx="3" fill="${run ? "#2E4A3A" : "#2A2D34"}"/><circle cx="96" cy="22" r="2.6" fill="${run ? "#3CCB83" : "#555"}"/><rect x="40" y="34" width="40" height="70" rx="3" fill="#101216"/><rect x="52" y="34" width="16" height="10" rx="2" fill="#5B5F68"/><path d="M48,78 h24 l-3,20 h-18z" fill="#F4F1EC"/><path d="M72,82 q8,2 0,10" stroke="#F4F1EC" stroke-width="3" fill="none"/>${run ? `<g class="ap-steam"><path d="M56,74 q-3,-5 0,-9" stroke="#fff" stroke-width="1.4" fill="none"/><path d="M64,74 q3,-5 0,-9" stroke="#fff" stroke-width="1.4" fill="none"/></g>` : ""}<rect x="38" y="100" width="44" height="4" rx="1" fill="#3A3E47"/></svg>`;
+    case "fridge":
+    case "freezer": {
+      const fz = kind === "freezer";
+      const tmp = L.temp != null ? `${Math.round(L.temp)}°` : fz ? "−18°" : "4°";
+      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="28" y="4" width="64" height="112" rx="3" fill="#F4F2EE" stroke="#E2DED7"/><rect x="82" y="40" width="3" height="34" rx="1.5" fill="#B9B4AC"/><rect x="38" y="14" width="30" height="16" rx="4" fill="#1D2027"/><text x="53" y="25" font-size="8" fill="${fz ? "#7FC4FF" : "#7FE0B0"}" text-anchor="middle" font-family="Figtree" font-weight="800">${tmp}</text>${fz ? `<path d="M60,58 v20 M51,63 l18,10 M51,73 l18,-10" stroke="#9CC9F2" stroke-width="1.6" stroke-linecap="round"/>` : `<g fill="#BFE6D2"><circle cx="52" cy="66" r="5"/><circle cx="62" cy="70" r="4"/></g>`}</svg>`;
+    }
+    case "vent":
+      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="10" y="18" width="100" height="84" rx="8" fill="#F3F2EF" stroke="#E0DDD6"/>${[38, 82].map((x) => `<circle cx="${x}" cy="60" r="18" fill="#E2E0DA"/><g class="ap-fan" style="transform-origin:${x}px 60px">${[0, 72, 144, 216, 288].map((r) => `<path d="M${x},60 q10,-14 2,-17 q-6,4 -2,17" fill="#9AA3AE" transform="rotate(${r} ${x} 60)"/>`).join("")}</g><circle cx="${x}" cy="60" r="3" fill="#6B7380"/>`).join("")}</svg>`;
+  }
+  return "";
+}
+
+/* The prototype's camera pictures (camScene): shown while a camera has no picture of its own. */
+export function camScene(ctx, c, big = false) {
+  const night = (ctx?.hass?.states?.["sun.sun"]?.attributes?.elevation ?? 10) < -3;
+  const sky = night ? "#20242C" : "#B9CBD8", grass = night ? "#3A4038" : "#7FA36A", wall = night ? "#5A5E66" : "#E7E2DA";
+  const scene = c.scene || "garden";
+  let s = `<rect width="320" height="180" fill="${sky}"/>`;
+  if (scene === "drive")
+    s += `<rect y="96" width="320" height="84" fill="${night ? "#474A4F" : "#A3A19C"}"/><rect x="0" y="20" width="120" height="90" fill="${wall}"/><rect x="14" y="44" width="92" height="66" fill="${night ? "#6B6F77" : "#CFCAC1"}"/>${[0, 1, 2, 3].map((i) => `<line x1="14" y1="${54 + i * 15}" x2="106" y2="${54 + i * 15}" stroke="rgba(0,0,0,.12)"/>`).join("")}<rect y="70" x="120" width="200" height="30" fill="${night ? "#2C3A2A" : "#4E7A3F"}"/><path d="M0,180 L130,96 L190,96 L320,180z" fill="${night ? "#55585E" : "#B8B5AF"}"/><g class="cam-car"><rect x="128" y="104" width="70" height="30" rx="8" fill="${night ? "#8C9097" : "#2B2E35"}"/><rect x="140" y="96" width="46" height="16" rx="6" fill="${night ? "#9DA1A8" : "#3A3E47"}"/><circle cx="142" cy="136" r="6" fill="#111"/><circle cx="186" cy="136" r="6" fill="#111"/></g>`;
+  else if (scene === "side")
+    s += `<rect y="90" width="320" height="90" fill="${grass}"/><path d="M0,0 L120,40 L120,140 L0,180z" fill="${wall}"/>${[0, 1].map((i) => `<rect x="${30 + i * 50}" y="${60 + i * 8}" width="26" height="40" fill="${night ? "#1E222A" : "#6E8090"}" transform="skewY(18)"/>`).join("")}<path d="M120,140 L320,120 L320,180 L0,180z" fill="${night ? "#555" : "#A9A7A2"}" opacity=".5"/><rect x="200" y="60" width="120" height="44" rx="10" fill="${night ? "#2F3A2E" : "#5E8C4E"}"/>`;
+  else if (scene === "doorbell") {
+    const hw = ctx?.on?.("decor") && activeDecor(new Date(), ctx.data?.settings, ctx.data?.family).some((d) => d.key === "halloween");
+    s += `<rect width="320" height="180" fill="${night ? "#3D4047" : "#D6D0C6"}"/><ellipse cx="160" cy="210" rx="220" ry="120" fill="${night ? "#4C4F55" : "#B9B3A8"}"/><rect x="118" y="132" width="84" height="34" rx="4" fill="${night ? "#3B3530" : "#7B5B3E"}"/><text x="160" y="154" font-size="11" text-anchor="middle" fill="rgba(255,255,255,.6)" font-family="Figtree" font-weight="800">VELKOMMEN</text>${hw ? `<circle cx="70" cy="140" r="16" fill="#E8711C"/><circle cx="252" cy="146" r="12" fill="#E8711C"/>` : ""}`;
+  } else
+    s += `<rect y="84" width="320" height="96" fill="${grass}"/>${[[40, 70, 28], [92, 62, 34], [270, 66, 30]].map(([x, y, r]) => `<rect x="${x - 3}" y="${y}" width="6" height="30" fill="#5B4632"/><circle cx="${x}" cy="${y - 6}" r="${r}" fill="${night ? "#2F3A2E" : "#C9772E"}" opacity=".95"/>`).join("")}<rect x="150" y="96" width="90" height="14" fill="${night ? "#5B5146" : "#A0794F"}"/><g class="cam-cat"><ellipse cx="0" cy="0" rx="9" ry="5" fill="#2A2420"/><circle cx="9" cy="-4" r="4" fill="#2A2420"/><path d="M-9,-1 q-8,-6 -6,-12" stroke="#2A2420" stroke-width="2.4" fill="none"/></g>`;
+  return `<svg class="cam-svg${night ? " ir" : ""}${big ? " big" : ""}" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice">${s}</svg>`;
+}
+
 function hAppl(it, o, txt, cls, fx) {
   const x = it.x, y = it.y, plan = o.mode === "plan", col = HT[it.type][2], L = lv(it);
   let s = fx;
@@ -675,7 +771,8 @@ function hAppl(it, o, txt, cls, fx) {
       }
     }
   } else {
-    s += `${cls === "play" ? `<circle class="hm-runring" cx="${x}" cy="${y}" r="26"/>` : ""}<g class="hm-body" style="transform-origin:${x}px ${y}px"><rect x="${x - 21}" y="${y - 21}" width="42" height="42" rx="12" class="hm-tile"/><g class="hm-ic" transform="translate(${x - 10.5},${y - 10.5}) scale(.875)" style="color:${col}">${P[HT[it.type][1]] || ""}</g></g>${plan && L.off ? `<circle class="hm-offdot" cx="${x + 17}" cy="${y - 17}" r="5"/>` : ""}`;
+    const art = planArt(it.type, plan ? L : {}).replace('<svg viewBox="0 0 120 120" class="ap-svg">', `<svg x="${x - 17}" y="${y - 17}" width="34" height="34" viewBox="0 0 120 120" class="ap-svg">`);
+    s += `${cls === "play" ? `<circle class="hm-runring" cx="${x}" cy="${y}" r="26"/>` : ""}<g class="hm-body" style="transform-origin:${x}px ${y}px"><rect x="${x - 21}" y="${y - 21}" width="42" height="42" rx="12" class="hm-tile"/>${art}</g>${plan && (L.off || L.missing) ? `<circle class="hm-offdot" cx="${x + 17}" cy="${y - 17}" r="5"/>` : ""}`;
   }
   const tw = Math.max(70, it.name.length * 8.6 + 26);
   const tip = plan ? `<g class="hm-tip"><rect x="${x - tw / 2}" y="${y - 62}" width="${tw}" height="28" rx="14"/><text x="${x}" y="${y - 43}" text-anchor="middle">${esc(it.name)}</text></g>` : "";
@@ -693,7 +790,7 @@ function hMarker(it, o) {
     }`;
   }
   if (plan) {
-    if (it.type === "motion" && L.live) fx += `<g class="hm-radar" style="transform-origin:${x}px ${y}px"><path d="M${x},${y} L${x + 46},${y} A46,46 0 0 0 ${f1(x + 46 * Math.cos(-0.7))},${f1(y + 46 * Math.sin(-0.7))}Z"/></g><circle class="hm-rip" cx="${x}" cy="${y}" r="20"/><circle class="hm-rip r2" cx="${x}" cy="${y}" r="20"/>`;
+    if (it.type === "motion") fx += `<g class="hm-radar" style="transform-origin:${x}px ${y}px"><path d="M${x},${y} L${x + 46},${y} A46,46 0 0 0 ${f1(x + 46 * Math.cos(-0.7))},${f1(y + 46 * Math.sin(-0.7))}Z"/></g><circle class="hm-rip" cx="${x}" cy="${y}" r="20"/><circle class="hm-rip r2" cx="${x}" cy="${y}" r="20"/>`;
     if (it.type === "speaker" && L.play)
       fx += `<g class="hm-waves">${[0, 1].map((i) => `<circle cx="${x}" cy="${y}" r="20" style="animation-delay:${i * 1.8}s"/>`).join("")}</g><g class="hm-notes">${["♪", "♫", "♩", "♬"].map((n, i) => `<text x="${x + (i % 2 ? 8 : -12)}" y="${y - 14}" style="animation-delay:${i * 1.3}s;--dx:${[-26, 22, -8, 30][i]}px">${n}</text>`).join("")}</g>`;
     if (it.type === "ap") fx += `<g class="hm-wifi">${[0, 1, 2].map((i) => `<circle cx="${x}" cy="${y}" r="18" style="animation-delay:${i * 1.2}s"/>`).join("")}</g>`;
@@ -752,7 +849,7 @@ function houseSvg(H, o) {
   const lbls = H.rooms
     .map((r) => {
       const [cx, cy] = centroid(r.pts);
-      return `<text x="${f1(cx)}" y="${f1(cy + 7)}" class="sec-lbl${litRooms.has(r.id) ? " lit" : ""}" text-anchor="middle" pointer-events="none">${esc(r.name)}</text>`;
+      return `<text x="${f1(cx)}" y="${f1(cy + 7)}" class="sec-lbl rlbl${litRooms.has(r.id) ? " lit" : ""}${r.pts.length > 4 && r.pts.length > 6 ? " sm" : ""}" text-anchor="middle" pointer-events="none">${esc(r.name)}</text>`;
     })
     .join("");
   const vis = (it) => !plan || !Ls || HT[it.type][4] === "ude" || Ls.has(HT[it.type][4]);
@@ -778,6 +875,57 @@ function houseSvg(H, o) {
 /* ------------------------------------------------------------------ the live plan */
 let popId = null;
 
+/* Show an item's card on the plan (an event in Sikkerhed, "Seneste døgn"). */
+export function openPop(id) {
+  popId = id;
+}
+export const itemForEntity = (ctx, ent) => houseModel(ctx).items.find((i) => i.ent === ent || i.lock === ent);
+
+/* ---- for the room pages (the prototype's pRoomPage): the room on the drawing, and what stands in it */
+const roomOfId = (H, id) => (H.rooms || []).find((r) => r.id === id);
+/* The light sources placed in the room in Husbyggeren, in drawing order. */
+export function roomLightItems(ctx, roomId) {
+  const H = houseModel(ctx), r = roomOfId(H, roomId);
+  if (!r || !r.pts) return [];
+  return H.items.filter((i) => (i.type === "light" || i.type === "lamp") && roomAt(H, i.x, i.y) === r);
+}
+/* The little drawing of the room ("På tegningen") and how many pieces of furniture are in it. */
+export function roomPlan(ctx, roomId) {
+  C = ctx;
+  const H = houseModel(ctx), r = roomOfId(H, roomId);
+  if (!r || !r.pts) return null;
+  LV = {};
+  H.items.forEach((it) => (LV[it.id] = liveOf(it)));
+  const xs = r.pts.map((p) => p[0]), ys = r.pts.map((p) => p[1]), pad = 50;
+  const vb = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + pad * 2, Math.max(...ys) - Math.min(...ys) + pad * 2];
+  const furn = H.items.filter((i) => i.type === "furn" && roomAt(H, i.x, i.y) === r).length;
+  const inner = houseSvg(H, { mode: "mini", layers: new Set(["sikkerhed", "lys", "medier", "netvaerk", "klima", "apparater", "indretning", "energi"]) })
+    .replace(/\sdata-(h[eir]|act|go|id|k)="[^"]*"/g, "")
+    .replace(/\s(role|tabindex)="[^"]*"/g, "");
+  return { furn, svg: `<svg viewBox="${vb.map(f1).join(" ")}" class="rp-plan" aria-hidden="true">${inner}<polygon points="${r.pts.map((p) => p.join(",")).join(" ")}" class="rp-focus"/></svg>` };
+}
+/* What stands in the room ("I rummet"): one row per device, like the prototype's rows, with its control. */
+export function roomThings(ctx, roomId) {
+  C = ctx;
+  const H = houseModel(ctx), r = roomOfId(H, roomId);
+  if (!r || !r.pts) return [];
+  LV = {};
+  H.items.forEach((it) => (LV[it.id] = liveOf(it)));
+  const its = H.items.filter((i) => i.type !== "light" && i.type !== "lamp" && roomAt(H, i.x, i.y) === r && !["furn", "tree", "bush"].includes(i.type));
+  return its.map((it) => {
+    const [, ic, col] = HT[it.type] || ["", "plug", "#64748B"];
+    const [txt, cls] = hState(it);
+    const L = lv(it), id_ = esc(it.id);
+    let ctl = "";
+    if (it.type === "speaker" && L.ent && L.s && L.s.state !== "off" && L.s.state !== "unavailable") ctl = `<button class="rp-b" data-act="house-media" data-id="${id_}" aria-label="${esc(L.play ? t("Pause") : t("Afspil"))}">${svg(L.play ? "pause" : "play")}</button>`;
+    else if (it.type === "tv" && L.ent) ctl = `<button class="rp-tg${L.on ? " on" : ""}" data-act="house-power" data-id="${id_}" aria-pressed="${!!L.on}" aria-label="${esc(t("Tænd eller sluk {name}", { name: it.name }))}"><i></i></button>`;
+    else if (it.type === "port" && L.ent && L.ent.startsWith("cover.")) ctl = `<button class="rp-b" data-act="house-cover" data-id="${id_}">${esc(L.open ? t("Luk") : t("Åbn"))}</button>`;
+    else if (it.type === "camera" && L.ent) ctl = `<button class="rp-b" data-act="${C.acts["sec-cam"] ? "sec-cam" : "house-cam"}" data-id="${esc(C.acts["sec-cam"] ? L.ent : it.id)}" aria-label="${esc(t("Åbn kamera ›"))}">${svg("camera")}</button>`;
+    const icon = APK.has(it.type) ? `<span class="hz-apic">${planArt(it.type, L)}</span>` : svg(ic);
+    return `<div class="rp-row st-${cls || "none"}" style="--hc:${col}"><span class="rp-ic">${icon}</span><div><b>${esc(it.name)}</b><small>${esc(txt)}</small></div>${ctl}</div>`;
+  });
+}
+
 export function housePlan(ctx, opts = {}) {
   C = ctx;
   const H = houseModel(ctx);
@@ -796,6 +944,14 @@ export function housePlan(ctx, opts = {}) {
   return `<div class="hp-plan sec-scroll${opts.compact ? " compact" : ""}"><div class="sx-stage hp-stage"><svg class="sec-plan" viewBox="${vb.map(f1).join(" ")}" role="img" aria-label="${esc(t("Grundplan for {name}", { name: H.name || t("huset") }))}"${style}><rect x="${vb[0]}" y="${vb[1]}" width="${vb[2]}" height="${vb[3]}" rx="24" class="sec-ground" data-act="house-pop-close"/>${houseSvg(H, { mode: "plan", layers })}</svg>${pop}</div></div>`;
 }
 
+/* A sensor of a device class on the same device, e.g. the smoke alarm's battery. */
+function sibling(ent, dc) {
+  const dev = ent && C.hass.entities?.[ent]?.device_id;
+  if (!dev) return null;
+  const id = Object.keys(C.hass.entities).find((e) => e !== ent && C.hass.entities[e].device_id === dev && C.hass.states[e]?.attributes?.device_class === dc);
+  return id ? C.hass.states[id] : null;
+}
+
 function hPop(H, id, vb) {
   const it = H.items.find((i) => i.id === id);
   if (!it) return "";
@@ -808,14 +964,15 @@ function hPop(H, id, vb) {
   let body = "";
   const T = it.type;
   if (T === "door" || T === "window") {
-    body = L.s ? row(t("Sidst ændret"), lastText(L.s)) : "";
+    body = L.s ? row(L.open ? t("Åbnet") : t("Sidst ændret"), lastText(L.s)) : "";
     if (it.lockOn && it.lock) body += big(L.locked, "lock", L.locked ? t("Låst") : t("Ulåst"), L.locked ? t("Tryk for at låse op") : t("Tryk for at låse"), "house-lock", !L.locked);
+    else body += `<div class="hp-row"><span>${esc(t("Lås"))}</span><b class="t-sub">${esc(T === "door" ? t("Ingen lås på døren") : t("Ingen lås på vinduet"))}</b></div>`;
   } else if (T === "port") {
     body = L.ent?.startsWith("cover.") ? big(!L.open, "garage", L.open ? t("Åben") : t("Lukket"), L.open ? t("Tryk for at lukke") : t("Tryk for at åbne"), "house-cover", L.open) : "";
     if (L.moving) body += `<button class="btn soft sm" data-act="house-cover-stop" data-id="${id_}">${svg("pause")}${esc(t("Stop"))}</button>`;
   } else if (T === "camera") {
     const pic = L.s?.attributes?.entity_picture;
-    body = pic ? `<button class="hp-cam" data-act="house-cam" data-id="${id_}"><img src="${esc(pic)}" alt="" loading="lazy"><span class="cam-live"><i></i>LIVE</span><span class="hp-open">${esc(t("Åbn kamera ›"))}</span></button>` : "";
+    body = `<button class="hp-cam" data-act="${C.acts["sec-cam"] && L.ent ? "sec-cam" : "house-cam"}" data-id="${esc(C.acts["sec-cam"] && L.ent ? L.ent : it.id)}">${camScene(C, it)}${pic && L.s.state !== "unavailable" ? `<img src="${esc(pic)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<span class="cam-live"><i></i>LIVE</span><span class="hp-open">${esc(t("Åbn kamera ›"))}</span></button>`;
   } else if (T === "speaker" || T === "tv") {
     if (L.ent) {
       body = L.title
@@ -827,26 +984,37 @@ function hPop(H, id, vb) {
     } else body = `<p class="t-sub" style="margin:0">${esc(t("Ikke koblet til en entitet endnu. Det gøres i Husbyggeren."))}</p>`;
   } else if (T === "lamp" || T === "light") {
     if (L.ent) {
-      body = big(L.on, "bulb", L.on ? t("Tændt") : t("Slukket"), L.on ? t("Tryk for at slukke") : t("Tryk for at tænde"), "house-light");
-      if (L.dim && L.ent.startsWith("light.")) body += `<label class="hp-vol">${svg("sun")}<input type="range" min="1" max="100" value="${L.on ? L.bri : 80}" data-in="house-bri" data-id="${id_}" aria-label="${esc(t("Lysstyrke"))}"><b class="num">${L.on ? L.bri : 0}</b></label>`;
-      if (L.rgb) body += `<div class="hp-cols">${LCOLS.map((c) => `<button data-act="house-lcol" data-id="${id_}" data-c="${c}" style="--c:${c}" aria-pressed="${L.color?.toUpperCase() === c}" aria-label="${esc(t("Farve"))}"></button>`).join("")}</div>`;
+      body = big(L.on, "bulb", L.on ? t("Tændt") : t("Slukket"), t(LIGHTK[it.lk] ? LIGHTK[it.lk][0] : "Lyskilde"), "house-light");
+      if (L.dim && L.ent.startsWith("light.")) body += `<label class="hp-vol">${svg("sun")}<input type="range" min="1" max="100" value="${L.on ? L.bri : 80}" data-in="house-bri" data-id="${id_}" aria-label="${esc(t("Lysstyrke"))}"><b class="num">${L.on ? L.bri : 80}</b></label>`;
+      const fxList = (L.s?.attributes?.effect_list || []).filter((x) => !/^(none|off|solid)$/i.test(x));
+      if (L.rgb) body += `<div class="hp-cols">${LCOLS.map((c) => `<button data-act="house-lcol" data-id="${id_}" data-c="${c}" style="--c:${c}" aria-pressed="${L.color?.toUpperCase() === c}" aria-label="${esc(t("Farve"))}"></button>`).join("")}${fxList.length ? `<button class="hp-fx${L.fx ? " on" : ""}" data-act="house-lfx" data-id="${id_}">${esc(t("Farveskift"))}</button>` : ""}</div>`;
     } else body = `<p class="t-sub" style="margin:0">${esc(t("Ikke koblet til en entitet endnu. Det gøres i Husbyggeren."))}</p>`;
   } else if (T === "motion") body = L.s ? row(t("Sidste bevægelse"), L.live ? t("lige nu") : lastText(L.s)) : "";
-  else if (T === "smoke" || T === "leak" || T === "temp" || T === "ap") body = L.s ? row(t("Sidst ændret"), lastText(L.s)) : "";
+  else if (T === "smoke" || T === "leak") {
+    const bat = sibling(L.ent, "battery");
+    body = (bat ? row(t("Batteri"), C.hass.formatEntityState ? C.hass.formatEntityState(bat) : `${bat.state} %`) : "") + (L.s ? row(t("Sidst ændret"), lastText(L.s)) : "");
+  } else if (T === "temp" || T === "ap") body = L.s ? row(t("Sidst ændret"), lastText(L.s)) : "";
   else if (T === "car") {
     body = L.soc != null ? `<div class="hp-soc"><span><i style="width:${Math.max(0, Math.min(100, L.soc))}%"></i></span><b class="num">${Math.round(L.soc)} %</b></div>` : "";
     if (L.cable) body += row(t("Ladning"), t(CABLE[L.cable][0]));
-    if (!it.presence && !it.battery && !it.plug) body += `<p class="t-sub" style="margin:0">${esc(t("Vælg bilens entiteter i Husbyggeren."))}</p>`;
+    const sum = L.ev && Object.keys(C.hass.entities || {}).find((e) => e.endsWith("_summary") && C.hass.entities[e].device_id === C.hass.entities[L.ev]?.device_id);
+    if (sum && C.hass.states[sum]) body += row("EV Planner", C.hass.states[sum].state);
+    if (it.lock) body += big(L.locked, "lock", L.locked ? t("Låst") : t("Ulåst"), L.locked ? t("Tryk for at låse op") : t("Tryk for at låse"), "house-lock", !L.locked);
+    if (L.ev) body += `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"><button class="lnk" data-act="en-car" data-id="${esc(L.ev)}">${esc(t("Åbn i EV Planner ›"))}</button></div>`;
+    else if (!it.presence && !it.battery && !it.plug) body += `<p class="t-sub" style="margin:0">${esc(t("Vælg bilens entiteter i Husbyggeren."))}</p>`;
   } else if (T === "charger") {
     const cars = CUR.items.filter((i) => i.type === "car" && i.chg === it.id);
     body = cars.length ? cars.map((c) => row(c.name, lv(c).home ? t(CABLE[cableState(c, true)][0]) : t("Ude"))).join("") : `<p class="t-sub" style="margin:0">${esc(t("Ingen biler koblet til laderen."))}</p>`;
   } else if (T === "solar" || T === "battery") body = L.s ? row(t("Sidst ændret"), lastText(L.s)) : "";
   else if (APK.has(T)) {
-    if (ROBOT.has(T) && L.ent && /^(vacuum|lawn_mower)\./.test(L.ent)) body = big(L.run, HT[T][1], L.run ? t("Kører") : t("Holder pause"), L.run ? t("Tryk for at sende den hjem") : t("Tryk for at starte"), "house-robot");
-    if (L.s) body += row(t("Sidst ændret"), lastText(L.s));
+    if (ROBOT.has(T) && L.ent && /^(vacuum|lawn_mower)\./.test(L.ent)) body = big(L.run, HT[T][1], L.run ? t("Kører") : t("I ladestation"), L.run ? t("Tryk for at sende den hjem") : t("Tryk for at starte"), "house-robot");
+    if (L.facts?.length) body += L.facts.slice(0, 4).map(([k, v]) => row(k, v)).join("");
+    else if (L.s) body += row(t("I Home Assistant nu"), L.text || L.s.state);
+    const bat = ROBOT.has(T) && (L.s?.attributes?.battery_level != null ? { state: L.s.attributes.battery_level } : sibling(L.ent, "battery"));
+    if (bat) body += row(t("Batteri"), `${Math.round(num(bat.state))} %`);
     if (C.on("appliances") && C.views.apparater) body += `<button class="lnk" data-go="apparater">${esc(t("Åbn i Apparater ›"))}</button>`;
   }
-  return `<div class="hm-pop${below ? " below" : ""}${edge}" style="${pos};--hc:${col}" role="dialog" aria-label="${esc(it.name)}"><div class="hp-h"><span class="hp-ic">${svg(ic)}</span><div><b>${esc(it.name)}</b><small>${esc(t(it.type === "furn" && FURN[it.fk] ? FURN[it.fk][0] : it.type === "light" && LIGHTK[it.lk] ? LIGHTK[it.lk][0] : n))}${rm ? ` · ${esc(rm.name)}` : ""}</small></div><button class="hp-x" data-act="house-pop-close" aria-label="${esc(t("Luk"))}">${svg("x")}</button></div>
+  return `<div class="hm-pop${below ? " below" : ""}${edge}" style="${pos};--hc:${col}" role="dialog" aria-label="${esc(it.name)}"><div class="hp-h"><span class="hp-ic">${svg(ic)}</span><div><b>${esc(it.name)}</b><small>${esc(t(it.type === "furn" && FURN[it.fk] ? FURN[it.fk][0] : n))}${rm ? ` · ${esc(rm.name)}` : ""}</small></div><button class="hp-x" data-act="house-pop-close" aria-label="${esc(t("Luk"))}">${svg("x")}</button></div>
     ${txt ? `<div class="hp-st st-${cls || "none"}"><i></i>${esc(txt)}</div>` : ""}${body}<div class="hp-ent">${esc(L.ent || t("Ingen entitet"))}${C.isParent && C.on("house") ? ` · <button class="lnk" data-act="house-edit" data-id="${id_}">${esc(t("Redigér"))}</button>` : ""}</div></div>`;
 }
 
@@ -937,7 +1105,7 @@ function pHouse() {
   return `<div class="hz">
   <section class="hz-top"><div><span class="eyebrow">${esc(t("Husbygger"))}${D.name ? ` · ${esc(D.name)}` : ""}</span><h2 class="h2">${esc(t("Byg huset"))}</h2><span class="hz-sync">${svg("users")}${esc(t("Gemmes i Home Assistant, så hele familien ser den samme tegning"))}</span></div>
     <div class="hz-acts">${HZ.dirty ? `<span class="hz-dirty">${esc(t("Ikke gemt"))}</span>` : ""}<button class="iconbtn" data-hz="undo" aria-label="${esc(t("Fortryd"))}" ${HZ.hist.length ? "" : "disabled"}>${svg("undo")}</button><button class="iconbtn" data-hz="redo" aria-label="${esc(t("Gentag"))}" ${HZ.fut.length ? "" : "disabled"}>${svg("redo")}</button>
-      ${C.on("security") && C.views.sikkerhed ? `<button class="btn soft" data-hz="leave">${esc(t("Til huset"))}</button>` : ""}<button class="btn" data-hz="save" ${HZ.dirty ? "" : "disabled"}>${svg("check")}${esc(t("Gem huset"))}</button></div></section>
+      ${C.on("security") && C.views.sikkerhed ? `<button class="btn soft" data-hz="leave">${esc(t("Til Sikkerhed"))}</button>` : ""}<button class="btn" data-hz="save" ${HZ.dirty ? "" : "disabled"}>${svg("check")}${esc(t("Gem huset"))}</button></div></section>
   <div class="hz-body">
     ${hzPalette()}
     <div class="hz-canvas"><svg id="hz-svg" viewBox="${HZ.view.join(" ")}" aria-label="${esc(t("Tegning af huset"))}"></svg>
@@ -985,7 +1153,9 @@ function suggestions() {
     else if (dom === "lawn_mower") type = "mower";
     if (type) out.push([type, id, s.attributes.friendly_name || id, C.area(id)]);
   }
-  return out.sort((a, b) => a[2].localeCompare(b[2])).slice(0, 40);
+  // Like the prototype: the sensors of the doors and windows first, then motion, then the other devices.
+  const ORDER = ["window", "door", "port", "motion", "smoke", "leak", "camera", "speaker", "tv", "vacuum", "mower"];
+  return out.sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]) || a[2].localeCompare(b[2])).slice(0, 40);
 }
 
 function hbProps() {
@@ -1039,13 +1209,14 @@ function hbProps() {
     if (o.type === "furn") top += fld(t("Møbel"), sel("fk", Object.entries(FURN).map(([a, v]) => [a, t(v[0])]), o.fk));
     if (o.type === "light") {
       top += fld(t("Slags"), sel("lk", Object.entries(LIGHTK).map(([a, v]) => [a, t(v[0])]), o.lk));
-      bot += `<div class="hz-lock"><label class="hz-chk"><input type="checkbox" data-hf="rgb" ${o.rgb ? "checked" : ""}><span><b>${esc(t("Farver (RGBWW)"))}</b><small>${esc(t("Planen viser lampens farve fra Home Assistant."))}</small></span></label></div>`;
+      bot += `<div class="hz-lock"><label class="hz-chk"><input type="checkbox" data-hf="rgb" ${o.rgb ? "checked" : ""}><span><b>${esc(t("Farver (RGBWW)"))}</b><small>${esc(t("Lyskilden kan skifte farve og køre farveskift."))}</small></span></label></div>`;
     }
     if (o.type === "car") {
       top +=
         entFld("presence", o.presence, "device_tracker,person,binary_sensor", t("Hjemme (device tracker)")) +
         entFld("battery", o.battery, "sensor", t("Batteri i %")) +
         entFld("plug", o.plug, "sensor,binary_sensor,switch", t("Ladestatus")) +
+        entFld("lock", o.lock, "lock", t("Bilens lås")) +
         fld(t("Ladestik på bilen"), sel("port", Object.entries(PORTS).map(([a, v]) => [a, t(v[0])]), o.port || "bl")) +
         fld(t("Lader"), sel("chg", [["", t("Ingen")], ...HZ.d.items.filter((i) => i.type === "charger").map((c) => [c.id, c.name])], o.chg || ""), `<span class="t-sub" style="font-size:11.5px">${esc(t("Ledningen tegnes fra stikket på bilen til laderen, når bilen er sat til. Bilen vises kun, når den er hjemme."))}</span>`);
       bot += `<div class="hz-f"><span>${esc(t("Farve"))}</span><div class="hz-cols">${CARCOLS.map((c) => `<button data-hz="carcol" data-id="${c}" style="--c:${c}" aria-pressed="${o.col === c}" aria-label="${esc(t("Farve"))}"></button>`).join("")}</div></div>`;
@@ -1071,7 +1242,7 @@ function hbProps() {
       (o.type === "door"
         ? `<div class="hz-f"><span>${esc(t("Dørblad"))}</span><div class="seg">${[["l", t("Hængsel venstre")], ["r", t("Hængsel højre")], ["dbl", t("Dobbeltdør")]].map(([v, x]) => `<button data-hz="hinge" data-id="${v}" aria-pressed="${v === "dbl" ? !!o.dbl : !o.dbl && (o.hinge || "l") === v}">${esc(x)}</button>`).join("")}</div></div>`
         : "") +
-      (o.type !== "port" ? `<div class="hz-f"><span>${esc(t("Åbner mod"))}</span><div class="seg"><button data-hz="side" data-id="1" aria-pressed="${(o.side || 1) === 1}">${esc(o.dir === "h" ? t("Ned") : t("Højre"))}</button><button data-hz="side" data-id="-1" aria-pressed="${o.side === -1}">${esc(o.dir === "h" ? t("Op") : t("Venstre"))}</button></div></div>` : "");
+      (o.type !== "port" ? `<div class="hz-f"><span>${esc(t("Åbner mod"))}</span><div class="seg"><button data-hz="side" data-id="1" aria-pressed="${(o.side || 1) === 1}">${esc(o.dir === "h" ? t("Syd") : t("Øst"))}</button><button data-hz="side" data-id="-1" aria-pressed="${o.side === -1}">${esc(o.dir === "h" ? t("Nord") : t("Vest"))}</button></div></div>` : "");
   if (o.type === "door" || o.type === "window")
     ex += `<div class="hz-lock"><label class="hz-chk"><input type="checkbox" data-hf="lockOn" ${o.lockOn ? "checked" : ""}><span><b>${esc(t("Har lås i Home Assistant"))}</b><small>${esc(o.type === "door" ? t("Så kan I se og styre, om døren er låst.") : t("Så kan I se og styre, om vinduet er låst."))}</small></span></label>${o.lockOn ? entFld("lock", o.lock, "lock", t("Lås")) : ""}</div>`;
   if (o.type === "camera") ex += fld(t("Retning"), `<input type="range" min="0" max="359" value="${o.a ?? 270}" data-hf="a">`) + fld(t("Synsvinkel"), `<input type="range" min="15" max="160" value="${o.s ?? 60}" data-hf="s">`) + fld(t("Rækkevidde"), `<input type="range" min="60" max="420" value="${o.r || 240}" data-hf="r">`);
@@ -1079,7 +1250,7 @@ function hbProps() {
   const r = roomAt(HZ.d, o.x, o.y);
   const showEnt = o.type !== "furn" && o.type !== "tree" && o.type !== "bush" && o.type !== "car";
   return `<div class="hz-pp"><div class="hz-ph"><span class="hz-pi" style="--hc:${col}">${svg(ic)}</span><div><b>${esc(t(title))}</b><small>${esc(r ? r.name : t("Udenfor"))}</small></div></div>
-    ${fld(t("Navn"), `<input data-hf="name" value="${esc(o.name)}">`)}${showEnt ? entFld("ent", o.ent, dom, o.type === "door" || o.type === "window" ? t("Kontaktsensor") : o.type === "port" ? t("Port i Home Assistant") : t("Entitet")) : ""}${ex}<div class="hz-row2">${del}</div></div>`;
+    ${fld(t("Navn"), `<input data-hf="name" value="${esc(o.name)}">`)}${showEnt ? entFld("ent", o.ent, dom, o.type === "door" || o.type === "window" ? t("Kontaktsensor") : o.type === "port" ? t("Port i HA") : t("Entitet")) : ""}${ex}<div class="hz-row2">${del}</div></div>`;
 }
 const roomArea = (r) => {
   const [x0, y0, x1, y1] = bbox(r.pts);
@@ -1993,6 +2164,16 @@ const acts = {
     popId = null;
     ctx.render(true);
   },
+  "house-redit"(el, e, ctx) {
+    C = ctx;
+    popId = null;
+    hbInit(ctx);
+    if (HZ.d.rooms.some((r) => r.id === el.dataset.id)) {
+      HZ.sel = "room:" + el.dataset.id;
+      HZ.tool = "vaelg";
+    }
+    ctx.go("husbygger");
+  },
   "house-edit"(el, e, ctx) {
     C = ctx;
     popId = null;
@@ -2010,6 +2191,14 @@ const acts = {
   "house-lcol"(el, e, ctx) {
     const it = planItem(el), c = el.dataset.c;
     if (it?.ent && c) ctx.call("light", "turn_on", { entity_id: it.ent, rgb_color: [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)) });
+  },
+  "house-lfx"(el, e, ctx) {
+    const it = planItem(el);
+    const s = it?.ent && ctx.hass.states[it.ent];
+    if (!s) return;
+    const list = (s.attributes.effect_list || []).filter((x) => !/^(none|off|solid)$/i.test(x));
+    const on = !!s.attributes.effect && !/^(none|off|solid)$/i.test(s.attributes.effect);
+    ctx.call("light", "turn_on", { entity_id: it.ent, effect: on ? (s.attributes.effect_list || []).find((x) => /^(none|off|solid)$/i.test(x)) || "none" : list.find((x) => /colorloop|loop|rainbow|cycle/i.test(x)) || list[0] });
   },
   "house-lock"(el, e, ctx) {
     const it = planItem(el);
@@ -2083,7 +2272,8 @@ const css = `
 .hp-empty .ic.big { width: 44px; height: 44px; color: var(--violet); }
 .hp-empty h3 { margin: 0; font: 800 19px var(--font-display); }
 .hp-empty p { max-width: 420px; margin: 0 0 6px; }
-.hm-pop .hp-cam img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 14px; background: #1f2430; }
+.hm-pop .hp-cam img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.hm-pop .hp-cam > svg { display: block; width: 100%; height: 100%; }
 .hm-pop .hp-art { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; flex: none; display: grid; place-items: center; background: var(--surface-2); color: var(--violet); }
 .hm-pop .hp-art .ic { width: 20px; height: 20px; }
 .hp-camview { position: relative; border-radius: 18px; overflow: hidden; background: #111; }
@@ -2099,6 +2289,9 @@ const css = `
 `;
 
 const en = {
+  "Tænd eller sluk {name}": "Turn {name} on or off",
+  Tid: "Time", Åbnet: "Opened", "Ingen lås på døren": "No lock on the door", "Ingen lås på vinduet": "No lock on the window", Farveskift: "Colour effect",
+  "Åbn i EV Planner ›": "Open in EV Planner ›", "I ladestation": "Docked", "I Home Assistant nu": "In Home Assistant now",
   "Dør": "Door", "Vindue": "Window", "Garageport": "Garage door", "Kamera": "Camera", "Bevægelse": "Motion", "Røgalarm": "Smoke alarm", "Vandføler": "Leak sensor",
   "Højttaler": "Speaker", "TV": "TV", "Lampe": "Lamp", "Termometer": "Thermometer", "Accesspoint": "Access point", "Vaskemaskine": "Washing machine", "Tørretumbler": "Tumble dryer",
   "Opvasker": "Dishwasher", "Ovn": "Oven", "Induktion": "Hob", "Kaffemaskine": "Coffee machine", "Køleskab": "Fridge", "Fryser": "Freezer", "Ventilation": "Ventilation",
@@ -2142,7 +2335,7 @@ const en = {
   "Tryk for næste hjørne. Dobbelttryk, Esc eller Færdig for at stoppe.": "Tap for the next corner. Double-tap, Esc or Done to stop.", "Tryk der, hvor væggen starter.": "Tap where the wall starts.",
   "Træk i ting for at flytte dem. Træk i en tom flade for at panorere. Rul eller knib for at zoome.": "Drag things to move them. Drag an empty spot to pan. Scroll or pinch to zoom.",
   "Færdig": "Done", "Annullér": "Cancel", "Husbygger": "House builder", "Byg huset": "Build the house", "Gemmes i Home Assistant, så hele familien ser den samme tegning": "Saved in Home Assistant, so the whole family sees the same drawing",
-  "Ikke gemt": "Not saved", "Fortryd": "Undo", "Gentag": "Redo", "Til huset": "To the house", "Gem huset": "Save the house", "Tegning af huset": "Drawing of the house",
+  "Ikke gemt": "Not saved", "Fortryd": "Undo", "Gentag": "Redo", "Til Sikkerhed": "To Security", "Gem huset": "Save the house", "Tegning af huset": "Drawing of the house",
   "Zoom ind": "Zoom in", "Zoom ud": "Zoom out", "Vis hele huset": "Show the whole house", "Fastgør til gitter": "Snap to grid",
   "Ikke koblet til en entitet": "Not linked to an entity", "Fundet i Home Assistant · {name}": "Found in Home Assistant · {name}", "Skal være en {domain}-entitet": "Must be a {domain} entity",
   "Entitet": "Entity", "Huset": "The house", "Navn": "Name", "Fx Hjemme": "E.g. Home", "rum": "rooms", "vægge": "walls", "døre": "doors", "vinduer": "windows", "enheder": "devices",
@@ -2159,14 +2352,14 @@ const en = {
   "Træk i hjørnerne for at ændre formen. Træk i rummet for at flytte det.": "Drag the corners to change the shape. Drag the room to move it.", "{m} m på tegningen": "{m} m on the drawing",
   "Slags": "Kind", "Ydervæg": "Outer wall", "Indervæg": "Inner wall", "Åben side": "Open side", "Træk i enderne for at flytte dem. De klikker fast på andre vægges ender.": "Drag the ends to move them. They snap to the ends of other walls.",
   "Udeareal": "Outdoor area", "Tekst": "Text", "Træk i hjørnerne for at give arealet form. Et nyt knæk kommer midt på den længste side, eller efter det hjørne, du har valgt.": "Drag the corners to shape the area. A new bend goes in the middle of the longest side, or after the corner you've chosen.",
-  "Farver (RGBWW)": "Colours (RGBWW)", "Planen viser lampens farve fra Home Assistant.": "The plan shows the light's colour from Home Assistant.",
-  "Hjemme (device tracker)": "Home (device tracker)", "Batteri i %": "Battery in %", "Ladestatus": "Charging status", "Ladestik på bilen": "Charge port on the car", "Ingen": "None",
+  "Farver (RGBWW)": "Colours (RGBWW)", "Lyskilden kan skifte farve og køre farveskift.": "The light can change colour and run colour effects.",
+  "Hjemme (device tracker)": "Home (device tracker)", "Batteri i %": "Battery in %", "Ladestatus": "Charging status", "Bilens lås": "The car's lock", "Ladestik på bilen": "Charge port on the car", "Ingen": "None",
   "Ledningen tegnes fra stikket på bilen til laderen, når bilen er sat til. Bilen vises kun, når den er hjemme.": "The cable is drawn from the car's charge port to the charger when the car is plugged in. The car only shows when it's home.",
   "Bredde": "Width", "Dybde": "Depth", "Drejning": "Rotation", "Dublér": "Duplicate", "Apparat i Hverdagsro": "Appliance in Hverdagsro", "Klipper i": "Mows in", "Støvsuger i": "Vacuums in",
   "Der, hvor den står": "Where it stands", "Ladestationen er der, hvor markøren står.": "The dock is where the marker stands.", "Dørblad": "Door leaf", "Hængsel venstre": "Hinge left", "Hængsel højre": "Hinge right",
-  "Dobbeltdør": "Double door", "Åbner mod": "Opens towards", "Ned": "Down", "Op": "Up", "Højre": "Right", "Venstre": "Left", "Har lås i Home Assistant": "Has a lock in Home Assistant",
+  "Dobbeltdør": "Double door", "Åbner mod": "Opens towards", "Syd": "South", "Nord": "North", "Øst": "East", "Vest": "West", "Har lås i Home Assistant": "Has a lock in Home Assistant",
   "Så kan I se og styre, om døren er låst.": "Then you can see and control whether the door is locked.", "Så kan I se og styre, om vinduet er låst.": "Then you can see and control whether the window is locked.",
-  "Lås": "Lock", "Retning": "Direction", "Synsvinkel": "Field of view", "Rækkevidde": "Range", "Udenfor": "Outside", "Kontaktsensor": "Contact sensor", "Port i Home Assistant": "Garage door in Home Assistant",
+  "Lås": "Lock", "Retning": "Direction", "Synsvinkel": "Field of view", "Rækkevidde": "Range", "Udenfor": "Outside", "Kontaktsensor": "Contact sensor", "Port i HA": "Garage door in HA",
   "Der var ingen væg tæt på. Træk den hen på en væg.": "There was no wall nearby. Drag it onto a wall.",
   "{room} er møbleret med {n} ting. Flyt og drej dem, så de passer.": "{room} is furnished with {n} things. Move and rotate them to fit.",
   "Tegningen er for stor til at blive gemt ({kb} kB). Brug mindre billeder af rummene.": "The drawing is too large to save ({kb} kB). Use smaller pictures of the rooms.",

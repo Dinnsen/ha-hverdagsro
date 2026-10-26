@@ -142,12 +142,22 @@ export function createCtx(host) {
     ctx.isParent = manage && (!as || as.role === "parent");
     ctx.isKid = !!ctx.me && ctx.me.role === "child" && !ctx.isParent;
   };
-  ctx.on = (module) => ctx.data?.modules?.[module] !== false;
+  ctx.on = (module) => ctx.data?.modules?.[module] !== false && (module !== "shop" || ctx.data?.modules?.points !== false);
+  /* A child's module (Moduler pr. barn), like the prototype's MODS: on for the family and for the child. */
+  const KID_DEFAULTS = { room: true, board: false, missions: true, points: true, shop: true, pet: true, read: false, skema: true, wish: true };
+  ctx.feature = (m, f) => {
+    const member = typeof m === "string" ? ctx.member(m) : m;
+    if (!member || !ctx.on(f === "room" ? "rooms" : f)) return false;
+    if (f === "shop" && !ctx.feature(member, "points")) return false;
+    if (f === "skema" && member.institution !== "skole") return false;
+    if (member.role !== "child") return true;
+    return { ...KID_DEFAULTS, ...(member.features || {}) }[f] !== false;
+  };
   ctx.color = (id) => ctx.member(id)?.color || "#6E4AFF";
   ctx.initials = (m) => (m?.name || "?").trim().charAt(0).toUpperCase();
   ctx.avatar = (id, cls = "") => {
     const m = ctx.member(id);
-    const pic = m?.person && ctx.hass?.states?.[m.person]?.attributes?.entity_picture;
+    const pic = m?.photo || (m?.person && ctx.hass?.states?.[m.person]?.attributes?.entity_picture);
     return `<span class="av ${cls}" style="--pc:${m?.color || "#6E4AFF"};background:${m?.color || "#6E4AFF"}">${
       pic ? `<img src="${esc(pic)}" alt="">` : esc(ctx.initials(m))
     }</span>`;

@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const args = process.argv.slice(2);
-const opt = { view: "", user: "anna", out: "", width: 1280, height: 900, wait: 900, clicks: [], setup: "1", lang: "da", as: "", evals: [] };
+const opt = { view: "", user: "", mock: "", out: "", width: 1280, height: 900, wait: 900, clicks: [], setup: "1", lang: "da", as: "", evals: [] };
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === "--narrow") opt.narrow = true;
@@ -39,7 +39,7 @@ const page = await browser.newPage({ viewport: { width: +opt.width, height: +opt
 const errors = [];
 page.on("console", (m) => (m.type() === "error" || m.type() === "warning") && !/camera_proxy|favicon|Failed to load resource/.test(m.text()) && errors.push(`${m.type()}: ${m.text()}`));
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}\n${e.stack || ""}`));
-const q = new URLSearchParams({ user: opt.user, setup: opt.setup, lang: opt.lang, view: opt.view, as: opt.as, narrow: opt.narrow ? "1" : "0", dark: opt.dark ? "1" : "0" });
+const q = new URLSearchParams({ mock: opt.mock, user: opt.user, setup: opt.setup, lang: opt.lang, view: opt.view, as: opt.as, narrow: opt.narrow ? "1" : "0", dark: opt.dark ? "1" : "0" });
 await page.goto(`http://localhost:${port}/tests/frontend/harness.html?${q}`);
 await page.waitForTimeout(+opt.wait);
 for (const sel of opt.clicks) {
@@ -58,6 +58,7 @@ for (const code of opt.evals) {
     errors.push(`eval failed: ${e.message}`);
   }
 }
+if (opt.full) await page.evaluate(() => Object.assign(window.__panel.style, { height: "auto", overflow: "visible" }));
 if (opt.out) await page.screenshot({ path: opt.out, fullPage: !!opt.full });
 const view = await page.evaluate(() => window.__panel?.ctx?.view);
 console.log(`view=${view}`);

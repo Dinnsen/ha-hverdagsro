@@ -12,3 +12,4 @@ package-lock.json
 .ruff_cache/
 .coverage
 coverage.xml
+tests/frontend/private/

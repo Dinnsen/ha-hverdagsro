@@ -1,60 +1,84 @@
-/* Hverdagsro – the family's calendar, meal plan and to-do lists.
-   Everything comes from Home Assistant: calendar.* entities (the family's and each member's own),
-   the meal-plan calendar, and todo.* lists. Nothing is stored by Hverdagsro itself. */
-import { addDays, esc, hashStr, startOfDay } from "./hv-core.js";
+/* Hverdagsro – Kalender, Madplan and Lister, ported 1:1 from the prototype (pCal, pMeals, pLists, listCard, onskeCard,
+   openEvent, newEvent, newList). Everything comes from Home Assistant: the family's calendar.* entities, the meal-plan
+   calendar, the todo.* lists and the wish lists from Ønskeskyen (data.osky). */
+import { addDays, esc, startOfDay } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 import { weatherKind } from "./hv-sky.js";
+import * as KIDS from "./hv-kids.js";
 
-/* Calendar entity features (homeassistant.components.calendar.CalendarEntityFeature) */
-const CAL_CREATE = 1, CAL_DELETE = 2, CAL_UPDATE = 4;
-/* To-do list features (homeassistant.components.todo.TodoListEntityFeature) */
-const TODO_DUE_DATE = 16, TODO_DUE_DATETIME = 32, TODO_DESCRIPTION = 64;
-const SHARED = "_";
-const VIOLET = "#6E4AFF";
-const LIST_COLORS = ["#6E4AFF", "#1FA36A", "#3B6BF5", "#E4568C", "#11A39A", "#C2703D"];
-const WX_ICON = { rain: "rain", snow: "snow", cloudy: "cloudy", partly: "partly", sun: "sun" };
-const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>`;
+const CAL_CREATE = 1;
+const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>`;
+const STAR = svg("pstar", "ic star");
+const FAM_COLOR = "#11A39A";
+const LIST_COLORS = ["#6E4AFF", "#E8742A", "#1FA36A", "#3B6BF5", "#E4568C", "#11A39A"];
+const WXNAME = { rain: "Regn", cloudy: "Skyet", sun: "Sol", snow: "Sne", partly: "Delvis skyet" };
+const MONTHS = ["januar", "februar", "marts", "april", "maj", "juni", "juli", "august", "september", "oktober", "november", "december"];
 
-/* Local UI state */
-const cal = { week: 0, sel: null, mode: null, filters: {} };
-const meal = { week: 0 };
-const lst = { id: null, showDone: false, seen: {}, pending: {} };
-let shownEvents = [];
-let shownMeals = [];
-let lastMeals = [];
+/* Module state, like the prototype's globals. */
+const filters = {};
+let listId = null;
+let listConfirm = null;
+let wishAdd = null;
+const seen = {};
 
-/* ---------------------------------------------------------------- helpers */
 const pad = (n) => String(n).padStart(2, "0");
-const monday = (d) => {
-  const x = startOfDay(d);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return x;
-};
 const isoDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const fromIso = (s) => new Date(`${s}T00:00:00`);
-const hm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const haDateTime = (day, time) => `${day} ${time}:00`;
+const hm = (d) => `${pad(d.getHours())}.${pad(d.getMinutes())}`;
+const deg = (v) => `${Math.round(v)}°`;
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-const features = (ctx, id) => {
-  const f = ctx.hass?.states?.[id]?.attributes?.supported_features;
-  return f == null ? CAL_CREATE | CAL_DELETE | CAL_UPDATE : Number(f);
-};
-function isoWeek(d) {
-  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = x.getUTCDay() || 7;
-  x.setUTCDate(x.getUTCDate() + 4 - day);
-  const y0 = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
-  return Math.ceil(((x - y0) / 864e5 + 1) / 7);
-}
-const covers = (e, day) => {
-  const s = startOfDay(day), n = addDays(s, 1);
-  return e.start < n && (e.end > s || +e.start === +s);
-};
-const skeleton = (n = 3) => `<div class="ls-skel">${Array.from({ length: n }, (_, i) => `<i style="animation-delay:${i * 120}ms"></i>`).join("")}</div>`;
+const sameDay = (a, b) => isoDay(a) === isoDay(b);
+const DAY_SHORT = ["Søn", "Man", "Tir", "Ons", "Tor", "Fre", "Lør"];
+const dayShort = (ctx, d) => (ctx.lang() === "da" ? DAY_SHORT[d.getDay()] : ctx.fmt.short(d));
 
-/* Events with their uid, so they can be changed or deleted. Cached under "ev:" so ctx.drop("ev:") clears them. */
+/* ---------------------------------------------------------------- confetti (the prototype's burst) */
+function burst(ctx, x, y, color, n = 26) {
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  let cv = ctx.root.getElementById("ls-confetti");
+  if (!cv) {
+    cv = document.createElement("canvas");
+    cv.id = "ls-confetti";
+    cv.className = "ls-confetti";
+    ctx.root.appendChild(cv);
+  }
+  const DPR = window.devicePixelRatio || 1;
+  cv.width = innerWidth * DPR;
+  cv.height = innerHeight * DPR;
+  const g = cv.getContext("2d");
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const cols = [color || "#6E4AFF", "#FFB020", "#19B6A5", "#FF7A59", "#6E4AFF"];
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    const a = rnd(0, Math.PI * 2), v = rnd(140, 360);
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 160, r: rnd(3, 6), c: cols[i % cols.length], life: 1, rot: rnd(0, 6) });
+  }
+  let t0 = performance.now();
+  requestAnimationFrame(function step(t) {
+    const dt = Math.min(0.04, (t - t0) / 1000);
+    t0 = t;
+    g.clearRect(0, 0, innerWidth, innerHeight);
+    for (const p of parts) {
+      p.vy += 620 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt * 1.1;
+      p.rot += dt * 8;
+      g.save();
+      g.translate(p.x, p.y);
+      g.rotate(p.rot);
+      g.globalAlpha = Math.max(0, p.life);
+      g.fillStyle = p.c;
+      g.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
+      g.restore();
+    }
+    if (parts.some((p) => p.life > 0)) requestAnimationFrame(step);
+    else g.clearRect(0, 0, innerWidth, innerHeight);
+  });
+}
+
+/* ---------------------------------------------------------------- calendar data */
 function loadEvents(ctx, cals, start, end) {
-  const list = [...new Set((cals || []).filter(Boolean))];
+  const list = [...new Set((cals || []).filter((c) => c && ctx.hass.states[c]))];
   if (!list.length) return [];
   for (const c of list) ctx.st(c);
   const key = `ev:lists:${list.join(",")}:${isoDay(start)}:${isoDay(end)}`;
@@ -81,9 +105,6 @@ function loadEvents(ctx, cals, start, end) {
             calendar: e.calendar,
             location: e.location || "",
             description: e.description || "",
-            uid: e.uid || null,
-            recurrence_id: e.recurrence_id || null,
-            rrule: e.rrule || null,
           };
         })
         .sort((a, b) => a.start - b.start || a.title.localeCompare(b.title));
@@ -93,817 +114,813 @@ function loadEvents(ctx, cals, start, end) {
   return value === undefined ? null : value;
 }
 
-/* ================================================================ Calendar */
-function owners(ctx) {
-  const map = {};
-  for (const m of ctx.members()) if (m.calendar) map[m.calendar] = m;
-  return map;
-}
-function calendars(ctx) {
+const PEOPLE = (ctx) => ctx.members();
+const famAv = (cls = "") => `<span class="av ${cls}" style="background:${FAM_COLOR}">F</span>`;
+const pcolor = (ctx, id) => (id === "familie" ? FAM_COLOR : ctx.color(id));
+const pname = (ctx, id) => (id === "familie" ? ctx.t("Familien") : ctx.member(id)?.name || id);
+const av = (ctx, id, cls = "") => (id === "familie" ? famAv(cls) : ctx.avatar(id, cls));
+
+/* The calendars of the week: the shared ones, each member's own and the children's school schedule. */
+function calSources(ctx) {
   const meals = ctx.data.settings.meals_calendar;
-  const list = [...(ctx.data.settings.calendars || []), ...ctx.members().map((m) => m.calendar)].filter((c) => c && c !== meals && ctx.hass.states[c]);
-  return [...new Set(list)];
-}
-const groupOf = (own, e) => own[e.calendar]?.id || SHARED;
-const colorOf = (own, e) => own[e.calendar]?.color || VIOLET;
-
-function filterChips(ctx, own, cals) {
-  const groups = [];
-  const seen = new Set();
-  for (const c of cals) {
-    const m = own[c];
-    const g = m ? m.id : SHARED;
-    if (seen.has(g)) continue;
-    seen.add(g);
-    groups.push(m ? { id: m.id, name: m.name, color: m.color, av: ctx.avatar(m.id) } : { id: SHARED, name: ctx.t("Fælles"), color: VIOLET, av: `<span class="av" style="background:${VIOLET}">${svg("users")}</span>` });
+  const own = {}, skema = {};
+  for (const m of PEOPLE(ctx)) {
+    if (m.calendar) own[m.calendar] = m;
+    if (m.skema && ctx.feature(m, "skema")) skema[m.skema] = m;
   }
-  if (groups.length < 2) return "";
-  return `<div class="filters">${groups
-    .map((g) => `<button class="fchip" data-act="lists-filter" data-id="${esc(g.id)}" aria-pressed="${cal.filters[g.id] !== false}" style="--fc:${g.color}">${g.av}${esc(g.name)}</button>`)
-    .join("")}</div>`;
+  const shared = (ctx.data.settings.calendars || []).filter((c) => c !== meals && !own[c] && !skema[c]);
+  return { own, skema, shared, all: [...new Set([...shared, ...Object.keys(own), ...Object.keys(skema)])].filter((c) => c !== meals) };
 }
 
-function dinnerFor(ctx, meals, day) {
-  if (!meals) return "";
-  const list = meals.filter((e) => covers(e, day));
-  return list.map((e) => e.title).join(", ");
-}
-function wasteFor(ctx, day) {
-  if (!ctx.on("waste")) return [];
-  try {
-    return (ctx.waste?.() || []).filter((w) => isoDay(w.date) === isoDay(day));
-  } catch (err) {
-    return [];
-  }
-}
-function weatherFor(ctx, day) {
-  const f = (ctx.forecast?.daily || []).find((d) => isoDay(new Date(d.datetime)) === isoDay(day));
-  if (!f) return "";
-  return `${svg(WX_ICON[weatherKind(f.condition)])}${Math.round(f.temperature)}°`;
-}
-const timeText = (ctx, e) => {
-  if (e.allDay) {
-    const days = Math.round((startOfDay(e.end) - startOfDay(e.start)) / 864e5);
-    return days > 1 ? ctx.t("Hele dagen · {n} dage", { n: days }) : ctx.t("Hele dagen");
-  }
-  return `${ctx.fmt.time(e.start)}–${ctx.fmt.time(e.end)}`;
-};
-
-function renderCalendar(ctx) {
-  const own = owners(ctx);
-  const cals = calendars(ctx);
-  if (!cals.length) {
-    return `<section class="card hv-empty ls-empty">${svg("cal", "ic big")}<h2>${esc(ctx.t("Ingen kalendere endnu"))}</h2>
-      <p class="t-sub">${esc(ctx.t("Vælg familiens kalendere, så samles alle aftaler her."))}</p>
-      ${ctx.isParent ? `<button class="btn" data-go="indstillinger:hjemmet">${svg("gear")}${esc(ctx.t("Vælg kalendere"))}</button>` : ""}</section>`;
-  }
-  const today = startOfDay(new Date());
-  const start = addDays(monday(today), cal.week * 7);
-  const end = addDays(start, 7);
-  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  if (!cal.sel || fromIso(cal.sel) < start || fromIso(cal.sel) >= end) cal.sel = isoDay(cal.week === 0 ? today : start);
-  const mode = cal.mode || (ctx.host.clientWidth && ctx.host.clientWidth < 760 ? "dag" : "uge");
-  const all = loadEvents(ctx, cals, start, end);
-  const mealCal = ctx.on("meals") && ctx.data.settings.meals_calendar;
-  const meals = mealCal ? loadEvents(ctx, [mealCal], start, end) : null;
-  const evs = (all || []).filter((e) => cal.filters[groupOf(own, e)] !== false);
-  shownEvents = evs;
-  lastMeals = meals || [];
-  const canCreate = ctx.isParent && cals.some((c) => features(ctx, c) & CAL_CREATE);
-  const label = `${ctx.t("Uge {n}", { n: isoWeek(start) })} · ${ctx.fmt.date(start, { day: "numeric", month: "short" })} – ${ctx.fmt.date(addDays(end, -1), { day: "numeric", month: "short" })}`;
-
-  const tools = `<div class="cal-tools">${filterChips(ctx, own, cals) || "<span></span>"}
-    <div class="ls-tools-r"><div class="seg ls-mode" role="group" aria-label="${esc(ctx.t("Visning"))}">
-      <button data-act="lists-mode" data-mode="dag" aria-pressed="${mode === "dag"}">${esc(ctx.t("Dag"))}</button><button data-act="lists-mode" data-mode="uge" aria-pressed="${mode === "uge"}">${esc(ctx.t("Uge"))}</button></div>
-      ${canCreate ? `<button class="btn" data-act="lists-newev">${svg("plus")}${esc(ctx.t("Ny begivenhed"))}</button>` : ""}</div></div>`;
-  const nav = `<div class="ls-weeknav"><button class="iconbtn" data-act="lists-week" data-d="-1" aria-label="${esc(ctx.t("Forrige uge"))}">${svg("back")}</button>
-    <b class="num">${esc(label)}</b><button class="iconbtn" data-act="lists-week" data-d="1" aria-label="${esc(ctx.t("Næste uge"))}">${svg("go")}</button>
-    ${cal.week !== 0 ? `<button class="btn soft sm" data-act="lists-week" data-d="0">${esc(ctx.t("I dag"))}</button>` : ""}</div>`;
-
-  const dayEvents = (d) => evs.filter((e) => covers(e, d));
-  const strip = `<div class="ls-strip" role="tablist">${days
-    .map((d) => {
-      const id = isoDay(d);
-      const list = dayEvents(d);
-      const dots = [...new Set(list.map((e) => colorOf(own, e)))].slice(0, 4);
-      return `<button class="ls-sd${+d === +today ? " today" : ""}${d < today ? " past" : ""}" role="tab" data-act="lists-day" data-d="${id}" aria-selected="${id === cal.sel}" aria-pressed="${id === cal.sel}">
-        <span>${esc(ctx.fmt.short(d))}</span><b class="num">${d.getDate()}</b><i>${dots.map((c) => `<em style="background:${c}"></em>`).join("")}</i></button>`;
-    })
-    .join("")}</div>`;
-
-  let body;
-  if (all === null) body = skeleton(4);
-  else if (mode === "dag") {
-    const d = fromIso(cal.sel);
-    const list = dayEvents(d);
-    const allDay = list.filter((e) => e.allDay);
-    const timed = list.filter((e) => !e.allDay);
-    const dinner = dinnerFor(ctx, meals, d);
-    const bins = wasteFor(ctx, d);
-    const wx = weatherFor(ctx, d);
-    const nowLine = +d === +today;
-    let nowPlaced = false;
-    const now = new Date();
-    const rows = timed
-      .map((e) => {
-        let line = "";
-        if (nowLine && !nowPlaced && e.start > now) {
-          nowPlaced = true;
-          line = `<div class="ls-nowline"><span class="num">${ctx.fmt.time(now)}</span></div>`;
-        }
-        const idx = evs.indexOf(e);
-        const m = own[e.calendar];
-        return `${line}<button class="ls-ag${e.end < now ? " past" : ""}" data-act="lists-ev" data-i="${idx}" style="--ec:${colorOf(own, e)};animation-delay:${Math.min(idx, 10) * 45}ms">
-          <span class="ls-ag-t num"><b>${ctx.fmt.time(e.start)}</b><small>${ctx.fmt.time(e.end)}</small></span>
-          <span class="ls-ag-b"><b>${esc(e.title)}</b>${e.location ? `<small>${esc(e.location)}</small>` : ""}</span>
-          ${m ? ctx.avatar(m.id, "sm") : ""}</button>`;
-      })
-      .join("");
-    body = `<section class="card ls-day">
-      <div class="card-head"><div><div class="eyebrow">${esc(cap(ctx.fmt.rel(d)))}</div><h2>${esc(cap(ctx.fmt.day(d)))} ${esc(ctx.fmt.date(d))}</h2></div>${wx ? `<span class="ls-wx">${wx}</span>` : ""}</div>
-      ${allDay.length || bins.length ? `<div class="ls-allday">${allDay
-        .map((e) => `<button class="ev" data-act="lists-ev" data-i="${evs.indexOf(e)}" style="--ec:${colorOf(own, e)}"><b>${esc(e.title)}</b><small>${esc(timeText(ctx, e))}</small></button>`)
-        .join("")}${bins.map((w) => `<div class="ev ls-bin" style="--ec:${w.color}">${svg("trash2")}<b>${esc(w.name)}</b><small>${esc(ctx.t("Tømning"))}</small></div>`).join("")}</div>` : ""}
-      <div class="ls-agenda">${rows}${nowLine && !nowPlaced && timed.length ? `<div class="ls-nowline"><span class="num">${ctx.fmt.time(now)}</span></div>` : ""}
-      ${!timed.length && !allDay.length ? `<div class="ls-free">${svg("sun")}<span>${esc(ctx.t("Ingen aftaler. En rolig dag."))}</span></div>` : ""}</div>
-      ${dinner ? `<div class="ev-dinner ls-dinner">${svg("food")}<span><b>${esc(ctx.t("Aftensmad"))}</b> ${esc(dinner)}</span></div>` : ""}</section>`;
-  } else {
-    body = `<div class="week ls-week">${days
-      .map((d, i) => {
-        const list = dayEvents(d);
-        const dinner = dinnerFor(ctx, meals, d);
-        const bins = wasteFor(ctx, d);
-        const wx = weatherFor(ctx, d);
-        return `<div class="wday${+d === +today ? " today" : ""}${d < today ? " ls-past" : ""}">
-          <button class="wday-h ls-wh" data-act="lists-day" data-d="${isoDay(d)}" data-mode="dag" aria-label="${esc(cap(ctx.fmt.day(d)))} ${esc(ctx.fmt.date(d))}"><span>${esc(ctx.fmt.short(d))}</span><b>${d.getDate()}</b><em>${wx}</em></button>
-          ${bins.map((w) => `<div class="ev ls-bin" style="--ec:${w.color}">${svg("trash2")}<b>${esc(w.name)}</b><small>${esc(ctx.t("Tømning"))}</small></div>`).join("")}
-          ${list
-            .map((e, k) => `<button class="ev" data-act="lists-ev" data-i="${evs.indexOf(e)}" style="--ec:${colorOf(own, e)};animation-delay:${i * 40 + k * 50}ms"><b>${esc(e.title)}</b><small class="num">${esc(e.allDay ? ctx.t("Hele dagen") : `${ctx.fmt.time(e.start)}–${ctx.fmt.time(e.end)}`)}</small></button>`)
-            .join("") || `<div class="t-sub ls-none">${esc(ctx.t("Intet i kalenderen"))}</div>`}
-          ${dinner ? `<div class="ev-dinner">${svg("food")}<span>${esc(dinner)}</span></div>` : ""}</div>`;
-      })
-      .join("")}</div>`;
-  }
-  const error = all !== null && !all.length && Object.entries(ctx.cache).find(([k, v]) => k.startsWith("ev:lists:") && v.error)?.[1].error;
-  return `${tools}${nav}${mode === "dag" ? strip : ""}${body}${error ? `<p class="t-sub">${esc(ctx.t("Kalenderen kunne ikke hentes: {error}", { error }))}</p>` : ""}`;
+/* Who an event is for: the owner of the calendar, the members named in the title, or the family. */
+function whoOf(ctx, src, e) {
+  if (src.own[e.calendar]) return [src.own[e.calendar].id];
+  if (src.skema[e.calendar]) return [src.skema[e.calendar].id];
+  const named = PEOPLE(ctx).filter((m) => new RegExp(`(^|[^\\p{L}])${m.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^\\p{L}]|$)`, "iu").test(e.title));
+  return named.length ? named.map((m) => m.id) : ["familie"];
 }
 
-function eventSheet(ctx, e) {
-  const own = owners(ctx);
-  const m = own[e.calendar];
-  const d = e.start;
-  const canDelete = ctx.isParent && e.uid && features(ctx, e.calendar) & CAL_DELETE;
-  const mealCal = ctx.on("meals") && ctx.data.settings.meals_calendar;
-  const s = ctx.sheet(`<div class="eyebrow">${esc(cap(ctx.fmt.day(d)))} ${esc(ctx.fmt.date(d))}</div><h2>${esc(e.title)}</h2>
-    <dl class="kv"><dt>${esc(ctx.t("Tid"))}</dt><dd class="num">${esc(timeText(ctx, e))}</dd>
-    <dt>${esc(ctx.t("Kalender"))}</dt><dd>${m ? `<span class="chip"><i style="background:${m.color}"></i>${esc(m.name)}</span>` : `<span class="chip"><i style="background:${VIOLET}"></i>${esc(ctx.name(e.calendar))}</span>`}</dd>
-    ${e.location ? `<dt>${esc(ctx.t("Sted"))}</dt><dd>${esc(e.location)}</dd>` : ""}
-    ${e.description ? `<dt>${esc(ctx.t("Noter"))}</dt><dd class="ls-desc">${esc(e.description)}</dd>` : ""}
-    ${e.rrule ? `<dt>${esc(ctx.t("Gentages"))}</dt><dd>${esc(ctx.t("Ja"))}</dd>` : ""}
-    ${mealCal && shownMealsFor(d) ? `<dt>${esc(ctx.t("Aftensmad"))}</dt><dd>${esc(shownMealsFor(d))}</dd>` : ""}</dl>
-    <div class="sheet-actions">${canDelete ? `<button class="btn danger" data-del>${svg("trash")}${esc(ctx.t("Slet"))}</button>` : ""}<button class="btn soft" data-close>${esc(ctx.t("Luk"))}</button></div>`);
-  s.el.querySelector("[data-del]")?.addEventListener("click", () => {
-    s.close();
-    ctx.confirm(ctx.t("Slet aftalen?"), ctx.t("»{title}« slettes fra kalenderen.", { title: e.title }), ctx.t("Slet"), async () => {
-      try {
-        await ctx.hass.callWS({ type: "calendar/event/delete", entity_id: e.calendar, uid: e.uid, ...(e.recurrence_id ? { recurrence_id: e.recurrence_id } : {}) });
-        ctx.toast(ctx.t("Aftalen er slettet"));
-      } catch (err) {
-        ctx.toast(ctx.t("Kunne ikke slette: {error}", { error: err?.message || err }));
-      }
-      ctx.drop("ev:");
-      ctx.render();
-    });
-  });
-}
-const shownMealsFor = (d) => lastMeals.filter((e) => covers(e, d)).map((e) => e.title).join(", ");
-
-function newEventSheet(ctx) {
-  const own = owners(ctx);
-  const cals = calendars(ctx).filter((c) => features(ctx, c) & CAL_CREATE);
-  const mine = cals.find((c) => own[c]?.id === ctx.me?.id) || cals.find((c) => !own[c]) || cals[0];
-  const day = cal.sel || isoDay(new Date());
-  const nextHour = Math.min(22, new Date().getHours() + 1);
-  let allDay = false;
-  const s = ctx.sheet(`<h2>${esc(ctx.t("Ny begivenhed"))}</h2><form class="ls-form">
-    <div class="field"><label for="ls-t">${esc(ctx.t("Hvad"))}</label><input id="ls-t" required maxlength="120" placeholder="${esc(ctx.t("Fx fødselsdag hos mormor"))}" autocomplete="off"></div>
-    <div class="field"><span class="lbl">${esc(ctx.t("Kalender"))}</span><div class="filters ls-cals">${cals
-      .map((c) => {
-        const m = own[c];
-        return `<button type="button" class="fchip" data-c="${esc(c)}" aria-pressed="${c === mine}" style="--fc:${m?.color || VIOLET}">${m ? ctx.avatar(m.id) : `<span class="av" style="background:${VIOLET}">${svg("users")}</span>`}${esc(m ? m.name : ctx.name(c))}</button>`;
-      })
-      .join("")}</div></div>
-    <div class="row"><div class="field"><label for="ls-d">${esc(ctx.t("Dag"))}</label><input id="ls-d" type="date" value="${day}" required></div>
-      <div class="field ls-time"><label for="ls-s">${esc(ctx.t("Fra"))}</label><input id="ls-s" type="time" value="${pad(nextHour)}:00"></div>
-      <div class="field ls-time"><label for="ls-e">${esc(ctx.t("Til"))}</label><input id="ls-e" type="time" value="${pad(Math.min(23, nextHour + 1))}:00"></div></div>
-    <label class="ls-switch"><input type="checkbox" id="ls-all"><span></span>${esc(ctx.t("Hele dagen"))}</label>
-    <div class="field"><label for="ls-l">${esc(ctx.t("Sted (valgfrit)"))}</label><input id="ls-l" maxlength="120" autocomplete="off"></div>
-    <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" type="submit">${esc(ctx.t("Gem"))}</button></div></form>`);
-  const el = s.el;
-  let chosen = mine;
-  el.querySelector(".ls-cals").addEventListener("click", (ev) => {
-    const b = ev.target.closest("[data-c]");
-    if (!b) return;
-    chosen = b.dataset.c;
-    el.querySelectorAll(".ls-cals [data-c]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-  });
-  el.querySelector("#ls-all").addEventListener("change", (ev) => {
-    allDay = ev.target.checked;
-    el.querySelectorAll(".ls-time").forEach((x) => (x.hidden = allDay));
-  });
-  setTimeout(() => el.querySelector("#ls-t")?.focus(), 50);
-  el.querySelector("form").addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const title = el.querySelector("#ls-t").value.trim();
-    const d = el.querySelector("#ls-d").value;
-    if (!title || !d || !chosen) return;
-    const data = { entity_id: chosen, summary: title };
-    const loc = el.querySelector("#ls-l").value.trim();
-    if (loc) data.location = loc;
-    if (allDay) Object.assign(data, { start_date: d, end_date: isoDay(addDays(fromIso(d), 1)) });
-    else {
-      const st = el.querySelector("#ls-s").value || "12:00";
-      let en = el.querySelector("#ls-e").value || st;
-      let endDay = d;
-      if (en <= st) {
-        const x = new Date(`${d}T${st}:00`);
-        x.setHours(x.getHours() + 1);
-        en = hm(x);
-        endDay = isoDay(x);
-      }
-      Object.assign(data, { start_date_time: haDateTime(d, st), end_date_time: haDateTime(endDay, en) });
+function weekEvents(ctx) {
+  const src = calSources(ctx);
+  const t0 = startOfDay(new Date());
+  const raw = loadEvents(ctx, src.all, t0, addDays(t0, 7));
+  if (raw === null) return null;
+  const out = [];
+  // The school schedule (Aula) is shown as one block per day: "Skole · dansk og matematik".
+  const school = {};
+  for (const e of raw) {
+    const who = whoOf(ctx, src, e);
+    if (src.skema[e.calendar] && !e.allDay) {
+      const k = `${e.calendar}|${isoDay(e.start)}`;
+      (school[k] ||= { e: [], who }).e.push(e);
+      continue;
     }
-    const btn = el.querySelector("[type=submit]");
-    btn.disabled = true;
-    const ok = await ctx.call("calendar", "create_event", data);
-    btn.disabled = false;
+    out.push({ ...e, who, src: ctx.name(e.calendar) });
+  }
+  for (const { e, who } of Object.values(school)) {
+    e.sort((a, b) => a.start - b.start);
+    const subj = [...new Set(e.map((x) => x.title.split(/[(,]/)[0].trim().toLowerCase()).filter((x) => x && !/^skole\b/.test(x)))].slice(0, 2);
+    const own = e.length === 1 && /^skole\b/i.test(e[0].title) ? e[0].title : null;
+    out.push({ title: own || `${ctx.t("Skole")}${subj.length ? ` · ${subj.join(` ${ctx.t("og")} `)}` : ""}`, start: e[0].start, end: e[e.length - 1].end, allDay: false, calendar: e[0].calendar, who, src: ctx.name(e[0].calendar), school: true });
+  }
+  // Hent og bring: who picks up the children (routines.pickups).
+  const pk = ctx.data.routines?.pickups || {};
+  // Only today and tomorrow, like the prototype: the whole week's plan is under Hent og bring.
+  for (let i = 0; i < 2; i++) {
+    const d = addDays(t0, i);
+    const wd = String(((d.getDay() + 6) % 7) + 1);
+    for (const [kid, plan] of Object.entries(pk)) {
+      const step = plan?.[wd]?.hent;
+      const kidM = ctx.member(kid);
+      if (!step?.who || !kidM) continue;
+      const by = ctx.member(step.who) || (ctx.data.routines?.helpers || []).find((h) => h.id === step.who);
+      if (!by) continue;
+      const [h, m] = String(step.at || "15:00").split(/[:.]/).map(Number);
+      const s = new Date(d);
+      s.setHours(h || 0, m || 0, 0, 0);
+      out.push({ title: ctx.t("{who} henter {kid}", { who: by.name, kid: kidM.name }), start: s, end: s, allDay: false, who: [kid], by: step.who, byName: by.name, src: ctx.t("Hent og bring"), pick: true, point: true });
+    }
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
+
+function mealsFor(ctx, days = 7) {
+  const id = ctx.data.settings.meals_calendar;
+  if (!id || !ctx.on("meals") || !ctx.hass.states[id]) return [];
+  const t0 = startOfDay(new Date());
+  return loadEvents(ctx, [id], t0, addDays(t0, days)) || [];
+}
+const dinnerOn = (meals, d) => meals.find((e) => (e.allDay ? e.start <= d && e.end > d : sameDay(e.start, d)));
+const forecastOn = (ctx, d) => (ctx.forecast?.daily || []).find((f) => sameDay(new Date(f.datetime), d));
+const wasteOn = (ctx, d) => (ctx.on("waste") ? (ctx.waste?.() || []).filter((w) => sameDay(w.date, d)) : []);
+
+function timeLabel(ctx, e) {
+  if (e.allDay) return ctx.t("Hele dagen");
+  if (e.point || +e.end === +e.start) return hm(e.start);
+  const end = sameDay(e.start, e.end) ? hm(e.end) : `${dayShort(ctx, e.end).toLowerCase()} ${hm(e.end)}`;
+  return `${hm(e.start)}–${end}`;
+}
+
+/* ---------------------------------------------------------------- Kalender (pCal) */
+function pCal(ctx) {
+  const evs = weekEvents(ctx);
+  const meals = mealsFor(ctx);
+  const t0 = startOfDay(new Date());
+  const ids = [...PEOPLE(ctx).map((p) => p.id), "familie"];
+  for (const id of ids) if (filters[id] === undefined) filters[id] = true;
+  const shown = (ev) => ev.who.some((w) => filters[w] !== false);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(t0, i));
+  const dayCol = (d, i) => {
+    const list = (evs || []).filter((e) => (e.allDay ? e.start <= d && e.end > d : sameDay(e.start, d)) && shown(e));
+    const f = forecastOn(ctx, d);
+    const bins = wasteOn(ctx, d);
+    const dinner = dinnerOn(meals, d);
+    return `<div class="wday${i === 0 ? " today" : ""}"><div class="wday-h"><span>${esc(dayShort(ctx, d))}</span><b>${d.getDate()}</b><em>${f ? svg(weatherKind(f.condition)) + deg(f.temperature) : ""}</em></div>${
+      bins.length ? `<button class="ev wev" data-act="lists-waste" style="--ec:${esc(bins[0].color)}">${svg("trash2")}<b>${esc(bins.map((w) => w.name).join(` ${ctx.t("og")} `))}</b><small>${esc(ctx.t("Tømning"))}</small></button>` : ""
+    }
+      ${
+        evs === null
+          ? `<div class="ls-skel"><i></i><i></i></div>`
+          : list.map((e, k) => `<button class="ev${e.pick ? " pick" : ""}" data-act="lists-ev" data-i="${evs.indexOf(e)}" style="--ec:${pcolor(ctx, e.who[0])};animation-delay:${i * 40 + k * 50}ms"><b>${esc(e.title)}</b><small>${esc(timeLabel(ctx, e))}</small></button>`).join("") || `<div class="t-sub" style="padding:6px 4px">${esc(ctx.t("Intet i kalenderen"))}</div>`
+      }
+      ${ctx.on("meals") && ctx.data.settings.meals_calendar ? `<div class="ev-dinner">${svg("food")}<span>${esc(dinner?.title || ctx.t("Ikke planlagt"))}</span></div>` : ""}</div>`;
+  };
+  const src = calSources(ctx);
+  const names = src.all.map((c) => ctx.name(c));
+  const range = `${days[0].getDate()}.${days[0].getMonth() !== days[6].getMonth() ? ` ${MONTHS[days[0].getMonth()]}` : ""}–${days[6].getDate()}. ${MONTHS[days[6].getMonth()]}`;
+  const firstSchool = (evs || []).find((e) => e.school);
+  const foot = names.length
+    ? `${ctx.t("Aftaler fra {names} for {range}.", { names: joinNames(ctx, names), range })}${firstSchool ? ` ${ctx.t("Skemaet står samlet som »Skole til kl. {t}«; det fulde skema ligger på barnets side.", { t: hm(firstSchool.end).replace(/\.00$/, "") })}` : ""}`
+    : ctx.t("Vælg familiens kalendere under Familieindstillinger › Hjemmet.");
+  return `<div class="cal-tools"><div class="filters">${ids
+    .map((id) => `<button class="fchip" data-act="lists-filter" data-id="${esc(id)}" aria-pressed="${filters[id] !== false}" style="--fc:${pcolor(ctx, id)}">${av(ctx, id)}${esc(pname(ctx, id))}</button>`)
+    .join("")}</div>${ctx.isParent ? `<button class="btn" data-act="lists-newev">${svg("plus")}${esc(ctx.t("Ny aftale"))}</button>` : ""}</div>
+  <div class="week">${days.map(dayCol).join("")}</div>
+  <p class="foot">${esc(foot)}</p>`;
+}
+const joinNames = (ctx, list) => (list.length < 2 ? list.join("") : `${list.slice(0, -1).join(", ")} ${ctx.t("og")} ${list[list.length - 1]}`);
+
+function openEvent(ctx, e) {
+  const d = startOfDay(e.start);
+  const f = forecastOn(ctx, d);
+  const dinner = dinnerOn(mealsFor(ctx), d);
+  const henter = e.byName || (e.description || "").match(/Henter:\s*([^\n]+)/i)?.[1];
+  const kind = f ? weatherKind(f.condition) : null;
+  ctx.sheet(`<div class="eyebrow">${esc(ctx.fmt.day(d))} ${d.getDate()}. ${esc(ctx.lang() === "da" ? MONTHS[d.getMonth()] : ctx.fmt.date(d, { month: "long" }))}</div><h2>${esc(e.title)}</h2>
+    <dl class="kv"><dt>${esc(ctx.t("Tid"))}</dt><dd class="num">${esc(timeLabel(ctx, e).replace("–", " – "))}</dd><dt>${esc(ctx.t("Hvem"))}</dt><dd style="display:flex;gap:6px;flex-wrap:wrap">${e.who.map((x) => `<span class="chip"><i style="background:${pcolor(ctx, x)}"></i>${esc(pname(ctx, x))}</span>`).join("")}</dd>
+    ${henter ? `<dt>${esc(ctx.t("Henter"))}</dt><dd>${esc(henter)}</dd>` : ""}${e.location ? `<dt>${esc(ctx.t("Sted"))}</dt><dd>${esc(e.location)}</dd>` : ""}<dt>${esc(ctx.t("{_}Fra", { _: "" }))}</dt><dd>${esc(e.src || "")}</dd><dt>${esc(ctx.t("Vejr"))}</dt><dd>${f ? `${esc(ctx.t(WXNAME[kind]))}, ${deg(f.templow ?? f.temperature)} ${esc(ctx.t("til"))} ${deg(f.temperature)}` : esc(ctx.t("Ingen prognose endnu"))}</dd>${ctx.on("meals") && ctx.data.settings.meals_calendar ? `<dt>${esc(ctx.t("Aftensmad"))}</dt><dd>${esc(dinner?.title || ctx.t("Ikke planlagt"))}</dd>` : ""}</dl>
+    <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Luk"))}</button></div>`);
+}
+
+function writableCalendar(ctx, id) {
+  const s = ctx.hass.states[id];
+  return !!s && ((s.attributes.supported_features || 0) & CAL_CREATE) !== 0;
+}
+
+function newEvent(ctx) {
+  const people = PEOPLE(ctx);
+  const t0 = startOfDay(new Date());
+  const kid = ctx.children()[0]?.id;
+  const bg = ctx.sheet(`<h2>${esc(ctx.t("Ny aftale"))}</h2><form id="nf"><div class="field"><label for="nf-t">${esc(ctx.t("Hvad"))}</label><input id="nf-t" required placeholder="${esc(ctx.t("Fx Elvin til fødselsdag hos Alma"))}"></div>
+    <div class="field"><span class="lbl">${esc(ctx.t("For hvem"))}</span><div class="filters" id="nf-who">${people.map((p) => `<button type="button" class="fchip" data-w="${esc(p.id)}" aria-pressed="${p.id === kid}" style="--fc:${pcolor(ctx, p.id)}">${ctx.avatar(p.id)}${esc(p.name)}</button>`).join("")}</div></div>
+    <div class="row"><div class="field"><label for="nf-d">${esc(ctx.t("Dag"))}</label><select id="nf-d">${Array.from({ length: 7 }, (_, i) => addDays(t0, i))
+      .map((d, i) => `<option value="${i}">${esc(cap(dayShort(ctx, d)))} ${d.getDate()}. ${esc(MONTHS[d.getMonth()].slice(0, 3))}.</option>`)
+      .join("")}</select></div><div class="field"><label for="nf-s">${esc(ctx.t("{_}Fra", { _: "" }))}</label><input id="nf-s" type="time" value="15:00"></div><div class="field"><label for="nf-e">${esc(ctx.t("Til"))}</label><input id="nf-e" type="time" value="17:00"></div></div>
+    <div class="field"><label for="nf-b">${esc(ctx.t("Hvem henter"))}</label><select id="nf-b"><option value="">${esc(ctx.t("{_}Ingen", { _: "" }))}</option>${ctx.parents().map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select></div>
+    <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button><button class="btn" type="submit">${esc(ctx.t("Gem aftale"))}</button></div></form>`);
+  const el = bg.el;
+  el.querySelector("#nf-who").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-w]");
+    if (b) b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+  });
+  el.querySelector("#nf").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const who = [...el.querySelectorAll("#nf-who [aria-pressed=true]")].map((b) => b.dataset.w);
+    const by = el.querySelector("#nf-b").value;
+    const title = el.querySelector("#nf-t").value.trim();
+    const d = addDays(t0, +el.querySelector("#nf-d").value);
+    const s = el.querySelector("#nf-s").value || "15:00", en = el.querySelector("#nf-e").value || s;
+    // The member's own calendar when the appointment is theirs alone; otherwise the family's calendar.
+    const own = who.length === 1 ? ctx.member(who[0])?.calendar : null;
+    const shared = (ctx.data.settings.calendars || []).filter((c) => c !== ctx.data.settings.meals_calendar);
+    const target = [own, ...shared, ...PEOPLE(ctx).map((m) => m.calendar)].find((c) => c && writableCalendar(ctx, c));
+    if (!target) return ctx.toast(ctx.t("Ingen af kalenderne kan få nye aftaler fra Home Assistant"));
+    const desc = [who.length && !own ? `${ctx.t("For")}: ${who.map((w) => pname(ctx, w)).join(", ")}` : "", by ? `${ctx.t("Henter")}: ${ctx.member(by)?.name}` : ""].filter(Boolean).join("\n");
+    const day = isoDay(d);
+    const ok = await ctx.call("calendar", "create_event", { entity_id: target, summary: title, start_date_time: `${day} ${s}:00`, end_date_time: `${day} ${en < s ? s : en}:00`, ...(desc ? { description: desc } : {}) });
     if (!ok) return;
-    s.close();
-    cal.sel = d;
-    const diff = Math.floor((monday(fromIso(d)) - monday(new Date())) / (7 * 864e5));
-    cal.week = Math.round(diff);
+    bg.close();
     ctx.drop("ev:");
     ctx.render();
-    ctx.toast(ctx.t("»{title}« er lagt i kalenderen", { title }));
+    ctx.toast(by ? ctx.t("Gemt. {name} står som den, der henter.", { name: ctx.member(by)?.name }) : ctx.t("Aftalen er gemt"));
   });
 }
 
-/* ================================================================ Meal plan */
-function renderMeals(ctx) {
-  const mc = ctx.data.settings.meals_calendar;
-  if (!mc || !ctx.hass.states[mc]) {
-    return `<section class="card hv-empty ls-empty">${svg("food", "ic big")}<h2>${esc(ctx.t("Ingen madplan endnu"))}</h2>
-      <p class="t-sub">${esc(ctx.t("Vælg den kalender, jeres aftensmad står i. Hver dag er en begivenhed med retten som titel."))}</p>
-      ${ctx.isParent ? `<button class="btn" data-go="indstillinger:hjemmet">${svg("gear")}${esc(ctx.t("Vælg madplanens kalender"))}</button>` : ""}</section>`;
-  }
-  const today = startOfDay(new Date());
-  const start = addDays(monday(today), meal.week * 7);
-  const end = addDays(start, 7);
-  const evs = loadEvents(ctx, [mc], start, end);
-  lastMeals = evs || [];
-  const canEdit = ctx.isParent && features(ctx, mc) & (CAL_CREATE | CAL_UPDATE);
-  const label = `${ctx.t("Uge {n}", { n: isoWeek(start) })} · ${ctx.fmt.date(start, { day: "numeric", month: "short" })} – ${ctx.fmt.date(addDays(end, -1), { day: "numeric", month: "short" })}`;
-  const nav = `<div class="ls-weeknav"><button class="iconbtn" data-act="lists-mweek" data-d="-1" aria-label="${esc(ctx.t("Forrige uge"))}">${svg("back")}</button>
-    <b class="num">${esc(label)}</b><button class="iconbtn" data-act="lists-mweek" data-d="1" aria-label="${esc(ctx.t("Næste uge"))}">${svg("go")}</button>
-    ${meal.week !== 0 ? `<button class="btn soft sm" data-act="lists-mweek" data-d="0">${esc(ctx.t("I dag"))}</button>` : ""}<span class="grow"></span>
-    ${ctx.on("lists") && (ctx.data.settings.todo || []).length ? `<button class="btn soft sm" data-go="lister">${svg("cart")}${esc(ctx.t("Indkøbslisten"))}</button>` : ""}</div>`;
-  if (evs === null) return nav + skeleton(3);
-  shownMeals = [];
-  const cards = Array.from({ length: 7 }, (_, i) => {
-    const d = addDays(start, i);
-    const list = evs.filter((e) => covers(e, d));
-    shownMeals[i] = list;
-    const tonight = +d === +today;
-    const past = d < today;
-    const eyebrow = tonight ? ctx.t("I aften") : +d === +addDays(today, 1) ? ctx.t("I morgen") : cap(ctx.fmt.day(d));
-    const timed = list.find((e) => !e.allDay);
-    const sub = timed ? ctx.t("Kl. {time}", { time: ctx.fmt.time(timed.start) }) : list[0]?.description ? list[0].description.split("\n")[0] : "";
-    const inner = `<div class="eyebrow">${esc(eyebrow)} · ${esc(ctx.fmt.date(d, { day: "numeric", month: "short" }))}</div>
-      <h3>${list.length ? esc(list.map((e) => e.title).join(" · ")) : `<span class="ls-nodish">${esc(ctx.t("Ingen ret endnu"))}</span>`}</h3>
-      ${sub ? `<div class="m-sub">${esc(sub)}</div>` : ""}${canEdit ? `<span class="ls-medit">${svg(list.length ? "edit" : "plus")}</span>` : ""}`;
-    const cls = `meal ls-meal${tonight ? " tonight" : ""}${!list.length ? " rest" : ""}${past ? " ls-past" : ""}`;
-    const style = `animation:pop .5s ${i * 60}ms both`;
-    return canEdit
-      ? `<button class="${cls}" data-act="lists-meal" data-i="${i}" style="${style}">${inner}</button>`
-      : `<article class="${cls}" style="${style}">${inner}</article>`;
-  }).join("");
-  return `${nav}<div class="meals ls-meals">${cards}</div>
-    <p class="foot">${esc(ctx.t("Madplanen kommer fra kalenderen »{name}«. Retten er begivenhedens titel.", { name: ctx.name(mc) }))}</p>`;
+/* ---------------------------------------------------------------- Madplan (pMeals) */
+function budget(ctx) {
+  const cal = ctx.data.settings.meals_calendar;
+  const platform = cal && ctx.hass.entities?.[cal]?.platform;
+  const ents = ctx.hass.entities || {};
+  const ids = Object.keys(ctx.hass.states).filter((e) => e.startsWith("sensor.") && /budget/i.test(e) && (!platform || ents[e]?.platform === platform || /middagsro/.test(e)));
+  // Middagsro's "food budget left this week" has the week's money as "available".
+  const id = ids.find((e) => ctx.hass.states[e].attributes.available != null) || ids.find((e) => /week|uge/i.test(e));
+  const s = id && ctx.st(id);
+  if (!s || Number.isNaN(Number(s.state))) return null;
+  const total = Number(s.attributes.available ?? s.attributes.budget ?? s.attributes.total ?? s.attributes.limit);
+  return { left: Number(s.state), unit: s.attributes.unit_of_measurement || "kr", frac: total > 0 ? Math.max(0, Math.min(1, Number(s.state) / total)) : null };
+}
+const isMiddagsro = (ctx, id) => !!id && (ctx.hass.entities?.[id]?.platform === "middagsro" || /middagsro/i.test(id));
+const panelUrl = (ctx, re) => Object.keys(ctx.hass.panels || {}).find((p) => re.test(p));
+
+function pMeals(ctx) {
+  const id = ctx.data.settings.meals_calendar;
+  if (!id || !ctx.hass.states[id])
+    return `<section class="card hv-empty">${svg("food", "ic big")}<h2>${esc(ctx.t("Ingen madplan endnu"))}</h2><p class="t-sub">${esc(ctx.t("Vælg den kalender, der har aftensmaden, fx Middagsros madplan."))}</p>${ctx.isParent ? `<button class="btn" data-go="indstillinger:hjemmet">${svg("gear")}${esc(ctx.t("Vælg kalender"))}</button>` : ""}</section>`;
+  const meals = loadEvents(ctx, [id], startOfDay(new Date()), addDays(startOfDay(new Date()), 7));
+  const mid = isMiddagsro(ctx, id);
+  const b = budget(ctx);
+  const t0 = startOfDay(new Date());
+  const days = Array.from({ length: 7 }, (_, i) => addDays(t0, i));
+  const cards = days
+    .map((d, i) => {
+      const m = meals && dinnerOn(meals, d);
+      const title = m?.title || ctx.t("Ikke planlagt");
+      const min = (m?.description || "").match(/(\d+)\s*min/i)?.[1];
+      const rest = /^rest/i.test(title) || /\b(rest|leftover)/i.test((m?.description || "").split("\n")[0]) || !m;
+      const sub = rest && m ? ctx.t("Restedag") : i === 0 && m ? ((m.description || "").split("\n").find((l) => /kl\./.test(l)) || "") : "";
+      return `<article class="meal${i === 0 ? " tonight" : ""}${rest ? " rest" : ""}" style="animation:pop .5s ${i * 60}ms both"${ctx.isParent && !mid ? ` data-act="lists-meal" data-i="${i}" role="button" tabindex="0"` : ""}><div class="eyebrow">${esc(i === 0 ? ctx.t("I aften") : cap(ctx.fmt.day(d)))}${min ? ` · ${min} min` : ""}</div><h3>${esc(title)}</h3><div class="m-sub">${esc(sub)}</div></article>`;
+    })
+    .join("");
+  const shop = (ctx.data.settings.todo || []).find((l) => isShopping(ctx, l));
+  const mPanel = panelUrl(ctx, /middagsro/);
+  return `<section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${esc(ctx.t("Ugens madplan"))}</h2><span class="meta">${esc(mid ? ctx.t("Fra Middagsro") : ctx.name(id))}</span></div>${
+    b ? `<div class="budget"><span class="num" style="font-weight:700">${ctx.fmt.num(b.left, 2)} ${esc(b.unit)}</span>${b.frac != null ? `<div class="bar"><i style="width:${Math.round(b.frac * 100)}%"></i></div>` : `<div class="bar"></div>`}<span class="t-sub">${esc(ctx.t("tilbage i ugen"))}</span></div>` : ""
+  }</section>
+  <div class="meals">${meals === null ? `<div class="ls-skel"><i></i><i></i><i></i></div>` : cards}</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">${shop ? `<button class="btn" data-act="lists-openlist" data-id="${esc(shop)}">${svg("cart")}${esc(ctx.t("Indkøbslisten"))}</button>` : ""}${mPanel ? `<button class="btn soft" data-act="lists-panel" data-id="${esc(mPanel)}">${esc(ctx.t("Åbn i Middagsro"))}</button>` : ""}</div>
+  <p class="foot">${esc(mid ? ctx.t("Fanen viser Middagsros madplan direkte. Skift ret, bedøm og lav ny plan sker i Middagsro, så de to apps aldrig er uenige.") : ctx.t("Madplanen er kalenderen {name}. Tryk på en dag for at sætte aftensmaden.", { name: ctx.name(id) }))}</p>`;
 }
 
 function mealSheet(ctx, i) {
-  const mc = ctx.data.settings.meals_calendar;
-  const today = startOfDay(new Date());
-  const start = addDays(monday(today), meal.week * 7);
-  const d = addDays(start, i);
-  const list = shownMeals[i] || [];
-  const cur = list[0];
-  const f = features(ctx, mc);
-  const canUpdate = cur?.uid && f & CAL_UPDATE;
-  const canDelete = cur?.uid && f & CAL_DELETE;
-  // Suggestions: dishes from the last weeks.
-  const back = loadEvents(ctx, [mc], addDays(start, -28), start) || [];
-  const sugg = [...new Set([...back, ...lastMeals].map((e) => e.title.trim()).filter(Boolean))].filter((t) => t !== cur?.title).slice(-10).reverse();
-  const s = ctx.sheet(`<div class="eyebrow">${esc(cap(ctx.fmt.day(d)))} ${esc(ctx.fmt.date(d))}</div><h2>${esc(ctx.t("Aftensmad"))}</h2>
-    <form class="ls-form"><div class="field"><label for="ls-m">${esc(ctx.t("Ret"))}</label><input id="ls-m" required maxlength="120" value="${esc(cur?.title || "")}" placeholder="${esc(ctx.t("Fx lasagne"))}" autocomplete="off"></div>
-    ${sugg.length ? `<div class="field"><span class="lbl">${esc(ctx.t("Forslag fra de sidste uger"))}</span><div class="ls-sugg">${sugg.map((t) => `<button type="button" class="chip" data-s="${esc(t)}">${esc(t)}</button>`).join("")}</div></div>` : ""}
-    ${list.length > 1 ? `<p class="t-sub">${esc(ctx.t("Der står {n} retter denne dag. Kun den første ændres.", { n: list.length }))}</p>` : ""}
-    <div class="sheet-actions">${canDelete ? `<button type="button" class="btn danger" data-del>${svg("trash")}${esc(ctx.t("Fjern"))}</button>` : ""}<button type="button" class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" type="submit">${esc(ctx.t("Gem"))}</button></div></form>`);
-  const el = s.el;
-  const input = el.querySelector("#ls-m");
-  setTimeout(() => input.focus(), 50);
-  el.querySelector(".ls-sugg")?.addEventListener("click", (ev) => {
-    const b = ev.target.closest("[data-s]");
-    if (b) input.value = b.dataset.s;
-  });
-  const done = (msg) => {
-    s.close();
+  const id = ctx.data.settings.meals_calendar;
+  const d = addDays(startOfDay(new Date()), i);
+  const cur = dinnerOn(mealsFor(ctx), d);
+  const bg = ctx.sheet(`<div class="eyebrow">${esc(cap(ctx.fmt.day(d)))} ${d.getDate()}. ${esc(MONTHS[d.getMonth()])}</div><h2>${esc(ctx.t("Aftensmad"))}</h2>
+    <form id="mf"><div class="field"><label for="mf-t">${esc(ctx.t("{_}Ret", { _: "" }))}</label><input id="mf-t" required value="${esc(cur?.title || "")}" placeholder="${esc(ctx.t("Fx Lasagne"))}"></div>
+    <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button><button class="btn" type="submit">${esc(ctx.t("Gem"))}</button></div></form>`);
+  bg.el.querySelector("#mf").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = bg.el.querySelector("#mf-t").value.trim();
+    if (!title) return;
+    const ok = await ctx.call("calendar", "create_event", { entity_id: id, summary: title, start_date: isoDay(d), end_date: isoDay(addDays(d, 1)) });
+    if (!ok) return;
+    bg.close();
     ctx.drop("ev:");
     ctx.render();
-    if (msg) ctx.toast(msg);
-  };
-  el.querySelector("[data-del]")?.addEventListener("click", async () => {
-    try {
-      await ctx.hass.callWS({ type: "calendar/event/delete", entity_id: mc, uid: cur.uid, ...(cur.recurrence_id ? { recurrence_id: cur.recurrence_id } : {}) });
-      done(ctx.t("Retten er fjernet"));
-    } catch (err) {
-      ctx.toast(ctx.t("Kunne ikke slette: {error}", { error: err?.message || err }));
-    }
+    ctx.toast(ctx.t("{name} er sat på madplanen", { name: title }));
   });
-  el.querySelector("form").addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const title = input.value.trim();
-    if (!title) return;
-    const day = isoDay(d), next = isoDay(addDays(d, 1));
-    if (canUpdate) {
-      try {
-        const event = cur.allDay ? { summary: title, dtstart: day, dtend: next } : { summary: title, dtstart: cur.start.toISOString(), dtend: cur.end.toISOString() };
-        await ctx.hass.callWS({ type: "calendar/event/update", entity_id: mc, uid: cur.uid, ...(cur.recurrence_id ? { recurrence_id: cur.recurrence_id } : {}), event });
-        done(ctx.t("Aftensmaden er gemt"));
-      } catch (err) {
-        ctx.toast(ctx.t("Kunne ikke gemme: {error}", { error: err?.message || err }));
+}
+
+/* ---------------------------------------------------------------- Lister (pLists) */
+const isShopping = (ctx, id) => /indk|shop|handle|grocer/i.test(`${id} ${ctx.name(id)}`) || isMiddagsro(ctx, id);
+function listMeta(ctx, id) {
+  const n = `${id} ${ctx.name(id)}`.toLowerCase();
+  if (isShopping(ctx, id)) return { color: "#6E4AFF", icon: "cart", locked: isMiddagsro(ctx, id) };
+  const icon = /apotek|medicin|pharm/.test(n) ? "plus" : /weekend|fast|hver|repeat/.test(n) ? "repeat" : /halloween|fest|party|jul|pynt/.test(n) ? "star" : "lists";
+  // The colours go round in the prototype's order: orange, green, blue, pink, petrol.
+  const others = (ctx.data.settings.todo || []).filter((x) => ctx.hass.states[x] && !isShopping(ctx, x));
+  const i = Math.max(0, others.indexOf(id));
+  return { color: LIST_COLORS[1 + (i % (LIST_COLORS.length - 1))], icon, locked: false };
+}
+function todoItems(ctx, id) {
+  const state = ctx.st(id)?.state;
+  const key = "todo:" + id;
+  if (seen[id] !== undefined && seen[id] !== state && ctx.cache[key]) ctx.drop(key);
+  seen[id] = state;
+  const value = ctx.load(key, () => ctx.hass.callWS({ type: "todo/item/list", entity_id: id }).then((r) => r?.items || []), 30000);
+  return value === undefined ? null : value;
+}
+const refreshSoon = (ctx, id) =>
+  setTimeout(() => {
+    ctx.drop("todo:" + id);
+    ctx.render();
+  }, 700);
+
+/* The wish lists from Ønskeskyen that are shown under Lister. */
+function oskyLists(ctx) {
+  if (!ctx.on("wish")) return [];
+  const to = ctx.data.settings.osky_to || {};
+  return (ctx.data.osky?.lists || []).filter((l) => (to[l.id] || "andre") !== "skjul").map((l) => ({ ...l, to: to[l.id] || "andre" }));
+}
+function allLists(ctx) {
+  const todos = (ctx.data.settings.todo || []).filter((id) => ctx.hass.states[id]).map((id) => ({ id, kind: "todo", name: ctx.name(id), ...listMeta(ctx, id) }));
+  const wishes = oskyLists(ctx).map((l) => ({ id: `o-${l.id}`, kind: "onske", name: l.title, color: "#2F80ED", icon: "cloudy", osky: l }));
+  return [...todos, ...wishes];
+}
+
+function listCard(ctx, L) {
+  if (L.kind === "onske") return onskeCard(ctx, L);
+  const items = todoItems(ctx, L.id);
+  const list = items || [];
+  const done = list.filter((i) => i.status === "completed").length;
+  const kid = !ctx.isParent;
+  return `${listConfirm === L.id ? `<div class="confirm"><span>${esc(ctx.t("Slet listen »{name}« med {n} punkter?", { name: L.name, n: list.length }))}</span><button class="btn danger sm" data-act="lists-dellist-yes">${esc(ctx.t("Slet listen"))}</button><button class="btn soft sm" data-act="lists-dellist-no">${esc(ctx.t("Behold"))}</button></div>` : ""}
+  <section class="card">
+    <div class="card-head"><h2>${esc(L.name)}</h2><div style="display:flex;gap:6px;align-items:center"><span class="meta num">${esc(ctx.t("{done} af {n} klaret", { done, n: list.length }))}</span>${L.locked ? `<span class="lock" title="${esc(ctx.t("Indkøbslisten ejes af Middagsro"))}">${svg("lock")}Middagsro</span>` : kid ? "" : `<button class="iconbtn" data-act="lists-dellist" aria-label="${esc(ctx.t("Slet listen {name}", { name: L.name }))}">${svg("trash")}</button>`}</div></div>
+    ${L.locked ? `<div class="t-sub" style="margin-top:-8px">${esc(ctx.t("Fra Middagsros madplan"))}</div>` : ""}
+    <div class="progress"><i style="width:${list.length ? (done / list.length) * 100 : 0}%;background:${L.color}"></i></div>
+    <div class="items">${
+      items === null
+        ? `<div class="ls-skel"><i></i><i></i><i></i></div>`
+        : list
+            .map(
+              (it, i) => `<div class="item${it.status === "completed" ? " done" : ""}" data-item="${i}"><button class="check" data-act="lists-item" data-uid="${esc(it.uid)}" aria-label="${esc(it.summary)}" aria-pressed="${it.status === "completed"}" style="${it.status === "completed" ? `background:${L.color};border-color:transparent` : ""}">${CHECK}</button><span class="t-ttl">${esc(it.summary)}</span><span class="t-sub num">${esc(it.description || (it.due ? cap(ctx.fmt.rel(new Date(it.due))) : ""))}</span><button class="iconbtn" data-act="lists-delitem" data-uid="${esc(it.uid)}" aria-label="${esc(ctx.t("Fjern {name}", { name: it.summary }))}">${svg("x")}</button></div>`
+            )
+            .join("") || `<div class="t-sub">${esc(ctx.t("Listen er tom. Tilføj det første punkt herunder."))}</div>`
+    }</div>
+    <form class="add" id="ls-add" data-list="${esc(L.id)}"><input id="ls-add-t" placeholder="${esc(ctx.t("Tilføj til {name}", { name: L.name.toLowerCase() }))}" autocomplete="off"><button class="btn" type="submit">${svg("plus")}${esc(ctx.t("Tilføj"))}</button></form>
+  </section>`;
+}
+
+/* ---------------------------------------------------------------- Ønskeskyen */
+/* The prototype's wishEm: a picture for a wish from its title. */
+const WISH_EM = [
+  [["paw patrol"], "🐶"], [["hot wheels", "bil"], "🚗"], [["brio", "jernbane"], "🚂"], [["bog", "børnebøger"], "📖"], [["hjelm"], "🚲"], [["dino"], "🦕"], [["puslespil"], "🧩"], [["legehus"], "🏠"],
+  [["glas"], "🍺"], [["strik", "shirt"], "👕"], [["hue", "light", "pære"], "💡"], [["camera"], "📷"], [["sand"], "🏖️"], [["spil"], "🎲"], [["bad"], "🛁"], [["tilskud"], "💝"],
+];
+const wishEm = (t) => {
+  const s = String(t).toLowerCase();
+  return (WISH_EM.find(([words]) => words.some((w) => s.includes(w))) || [null, "🎁"])[1];
+};
+const priceText = (w) => (w.price != null ? `${String(w.price).replace(".", ",")} ${w.currency === "DKK" || !w.currency ? "kr" : w.currency}` : "");
+const kidOf = (ctx, l) => ctx.children().find((k) => k.id === l.to)?.id;
+function canAddWish(ctx, l) {
+  if (!ctx.isParent) return l.to === ctx.me?.id;
+  return l.to === ctx.me?.id || l.to === "begge" || !!kidOf(ctx, l);
+}
+function syncedText(ctx, l) {
+  const acc = ctx.data.osky?.accounts?.[l.via?.[0]];
+  if (!acc?.at) return ctx.t("lige nu");
+  const at = new Date(acc.at);
+  const min = Math.round((Date.now() - at) / 60000);
+  return min < 1 ? ctx.t("lige nu") : min < 60 ? ctx.t("for {n} min. siden", { n: min }) : `${ctx.fmt.rel(at)} ${ctx.fmt.time(at)}`;
+}
+function wishForm(ctx, l) {
+  const kid = !ctx.isParent, forKid = !!kidOf(ctx, l) && !kid;
+  return `<form class="wish-add" id="wish-f" data-l="${esc(l.id)}" autocomplete="off">
+    <div class="wa-h"><b>${esc(kid ? ctx.t("Hvad ønsker du dig?") : forKid ? ctx.t("Nyt ønske til {name}", { name: ctx.member(l.to).name }) : ctx.t("Nyt ønske"))}</b><button type="button" class="iconbtn" data-act="lists-wishadd" data-id="${esc(l.id)}" aria-label="${esc(ctx.t("Luk"))}">${svg("x")}</button></div>
+    <label class="field"><span class="lbl">${esc(kid ? ctx.t("Mit ønske") : ctx.t("Ønske"))}</span><input id="wa-t" required maxlength="90" placeholder="${esc(kid ? ctx.t("Fx en dinosaur-bog") : ctx.t("Fx LEGO Technic 42151"))}"></label>
+    ${kid ? "" : `<div class="wa-2"><label class="field"><span class="lbl">${esc(ctx.t("Pris"))}</span><input id="wa-p" inputmode="decimal" placeholder="${esc(ctx.t("Valgfri"))}"></label><label class="field"><span class="lbl">${esc(ctx.t("Link"))}</span><input id="wa-s" placeholder="${esc(ctx.t("Fx https://br.dk/…"))}"></label></div>`}
+    <div class="wa-f"><span></span><button class="btn" type="submit">${svg("plus")}${esc(kid ? ctx.t("Sæt på min ønskeseddel") : ctx.t("Tilføj ønske"))}</button></div>
+    <small class="t-sub">${esc(kid ? ctx.t("Far eller mor kan se det med det samme.") : ctx.t("Ønsket lægges også i Ønskeskyen."))}</small></form>`;
+}
+/* The Ønskeskyen card is the kids module's (the same card as the children's Ønsker page). On Lister it also gets
+   the prototype's "Fjern forbindelsen" (trash + confirm). Falls back to the local port if hv-kids lacks it. */
+function onskeCard(ctx, L) {
+  if (typeof KIDS.onskeCard === "function") {
+    let html = KIDS.onskeCard(ctx, L.osky);
+    if (ctx.isParent)
+      html = html.replace(
+        /(data-act="kids-oshare"[^>]*>[\s\S]*?<\/button>)/,
+        `$1<button class="iconbtn" data-act="lists-dellist" aria-label="${esc(ctx.t("Fjern forbindelsen til {name}", { name: L.name }))}">${svg("trash")}</button>`
+      );
+    const confirm = listConfirm === L.id ? `<div class="confirm"><span>${esc(ctx.t("Fjern forbindelsen til »{name}«? Listen i Ønskeskyen bliver ikke slettet.", { name: L.name }))}</span><button class="btn danger sm" data-act="lists-dellist-yes">${esc(ctx.t("Fjern forbindelsen"))}</button><button class="btn soft sm" data-act="lists-dellist-no">${esc(ctx.t("Behold"))}</button></div>` : "";
+    return confirm + html;
+  }
+  return onskeCardLocal(ctx, L);
+}
+function onskeCardLocal(ctx, L) {
+  const l = L.osky;
+  const kid = !ctx.isParent;
+  const res = l.wishes.filter((w) => w.reserved).length;
+  const can = canAddWish(ctx, l);
+  const kidId = kidOf(ctx, l);
+  return `${listConfirm === L.id ? `<div class="confirm"><span>${esc(ctx.t("Fjern forbindelsen til »{name}«? Listen i Ønskeskyen bliver ikke slettet.", { name: L.name }))}</span><button class="btn danger sm" data-act="lists-dellist-yes">${esc(ctx.t("Fjern forbindelsen"))}</button><button class="btn soft sm" data-act="lists-dellist-no">${esc(ctx.t("Behold"))}</button></div>` : ""}
+  <section class="card">
+    <div class="card-head"><h2>${esc(L.name)}</h2><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="osky">${svg("cloudy")}Ønskeskyen</span><button class="iconbtn" data-act="lists-sync" aria-label="${esc(ctx.t("Hent igen fra Ønskeskyen"))}">${svg("repeat")}</button>${kid ? "" : `<button class="btn soft sm" data-act="lists-share" data-id="${esc(l.id)}">${svg("share")}${esc(ctx.t("Del"))}</button><button class="iconbtn" data-act="lists-dellist" aria-label="${esc(ctx.t("Fjern forbindelsen til {name}", { name: L.name }))}">${svg("trash")}</button>`}</div></div>
+    <div class="t-sub" style="margin:-8px 0 12px">${esc(ctx.t("Hentet fra Ønskeskyen {when}", { when: syncedText(ctx, l) }))}${kid ? "" : ` · ${esc(ctx.t("{n} ønsker · {r} reserveret", { n: l.count || l.wishes.length, r: res }))}`}</div>
+    ${can ? (wishAdd === l.id ? wishForm(ctx, l) : `<button class="wish-new${kid ? " kid" : ""}" data-act="lists-wishadd" data-id="${esc(l.id)}"><span>${svg("plus")}</span><b>${esc(kid ? ctx.t("Ønsk dig noget") : kidId ? ctx.t("Tilføj et ønske til {name}", { name: ctx.member(kidId).name }) : ctx.t("Tilføj et ønske"))}</b></button>`) : ""}
+    <div class="wishes">${l.wishes.map((w, i) => wishCard(ctx, l, w, i)).join("") || `<div class="t-sub">${esc(ctx.t("Ingen ønsker endnu."))}</div>`}</div>
+    <div class="osky-foot"><span>${esc(can ? (kid ? ctx.t("Dine ønsker kommer også på din børneprofil i Ønskeskyen.") : ctx.t("Ønsker du tilføjer her, lægges i Ønskeskyen. Reservationer laves i Ønskeskyen.")) : ctx.t("Ønskesedlen ejes af en anden. Nye ønsker og reservationer laves i Ønskeskyen."))}</span><button class="btn sm" data-act="lists-oskyopen" data-id="${esc(l.id)}">${esc(kid ? ctx.t("Åbn min børneprofil") : ctx.t("Åbn i Ønskeskyen"))} ›</button></div>
+  </section>`;
+}
+function wishCard(ctx, l, w, i) {
+  const kid = !ctx.isParent;
+  const kidId = kidOf(ctx, l);
+  const inShop = (ctx.data.rewards || []).some((r) => r.title === w.title.slice(0, 60) && r.member === kidId);
+  const thumb = w.photo ? `<span class="thumb"><img src="${esc(w.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer"></span>` : `<span class="thumb">${wishEm(w.title)}</span>`;
+  const p = priceText(w);
+  return `<div class="wish" style="animation-delay:${i * 60}ms">${thumb}<div style="min-width:0"><div class="t-ttl">${esc(w.title)}</div><div class="t-sub">${esc(w.shop || "")}<span class="num">${p ? (w.shop ? " · " : "") + esc(p) : ""}</span></div>${!kid && w.reserved ? `<span class="res">${svg("lock")}${esc(ctx.t("Reserveret"))}</span>` : ""}</div>
+    <div class="wish-b">${kid || !kidId || !ctx.on("shop") ? "" : `<button class="btn soft sm" data-act="lists-wish2shop" data-l="${esc(l.id)}" data-i="${i}" ${inShop ? "disabled" : ""}>${inShop ? esc(ctx.t("Er et mål i shoppen")) : `${STAR}${esc(ctx.t("Gør til mål"))}`}</button>`}${w.url ? `<a class="iconbtn" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(ctx.t("Åbn {name}", { name: w.title }))}">${svg("go")}</a>` : ""}</div></div>`;
+}
+
+function pLists(ctx) {
+  const LS = allLists(ctx);
+  let L = LS.find((l) => l.id === listId) || LS[0];
+  const chips = `<div class="lists">${LS.map((l) => {
+    const n = l.kind === "onske" ? l.osky.wishes.length || l.osky.count : (() => {
+      const v = Number(ctx.hass.states[l.id]?.state);
+      return Number.isFinite(v) ? v : "";
+    })();
+    return `<button class="lchip" data-act="lists-list" data-id="${esc(l.id)}" aria-pressed="${L && l.id === L.id}"><span class="dot" style="background:${l.color}">${svg(l.icon)}</span>${esc(l.name)}<small>${n}</small></button>`;
+  }).join("")}${ctx.isParent ? `<button class="lchip new" data-act="lists-newlist">${svg("plus")}${esc(ctx.t("Ny liste"))}</button>` : ""}</div>`;
+  if (!L) return chips + `<section class="card"><h2>${esc(ctx.t("Ingen lister"))}</h2><p class="t-sub">${esc(ctx.isParent ? ctx.t("Opret den første liste med knappen ovenfor.") : ctx.t("Bed far eller mor om at lave en liste."))}</p></section>`;
+  listId = L.id;
+  const mid = LS.some((l) => l.locked);
+  return chips + listCard(ctx, L) + `<p class="foot">${esc(mid ? ctx.t("Indkøbslisten bygges af Middagsros madplan. Alle andre lister er hver en to-do-liste i Home Assistant. Ønskesedler hentes fra Ønskeskyen. Kun forældre kan oprette og slette lister.") : ctx.t("Hver liste er en to-do-liste i Home Assistant. Ønskesedler hentes fra Ønskeskyen. Kun forældre kan oprette og slette lister."))}</p>`;
+}
+
+/* Ny liste: a new to-do list in Home Assistant (the Local To-do integration), or a wish list from Ønskeskyen. */
+function newList(ctx) {
+  let col = LIST_COLORS[4], kind = "list";
+  const lists = (ctx.data.osky?.lists || []).filter((l) => (ctx.data.settings.osky_to || {})[l.id] === "skjul" || !(l.id in (ctx.data.settings.osky_to || {})));
+  const logged = Object.keys(ctx.data.osky?.accounts || {}).length > 0;
+  const people = [...PEOPLE(ctx).map((p) => [p.id, p.name]), ["begge", ctx.t("Far og mor")], ["andre", ctx.t("Venner og familie")]];
+  const bg = ctx.sheet(`<h2>${esc(ctx.t("Ny liste"))}</h2><form id="nl"><div class="field"><label for="nl-t">${esc(ctx.t("Navn"))}</label><input id="nl-t" placeholder="${esc(ctx.t("Fx Elmers fødselsdag"))}"></div>
+    <div class="field"><span class="lbl">${esc(ctx.t("Slags"))}</span><div class="seg" id="nl-k"><button type="button" data-k="list" aria-pressed="true">${esc(ctx.t("Liste"))}</button>${ctx.on("wish") ? `<button type="button" data-k="onske" aria-pressed="false">Ønskeskyen</button>` : ""}</div></div>
+    <div class="field" id="nl-l-f" hidden>${
+      logged
+        ? `<label for="nl-l">${esc(ctx.t("Ønskeseddel"))}</label><select id="nl-l">${lists.map((l) => `<option value="${esc(l.id)}">${esc(l.title)} · ${esc(l.owner)}</option>`).join("") || `<option value="">${esc(ctx.t("Alle ønskesedler vises allerede"))}</option>`}</select><input id="nl-link" style="margin-top:8px" placeholder="${esc(ctx.t("Eller link fra Ønskeskyen: Del › Kopiér link"))}" autocomplete="off">`
+        : `<p class="t-sub">${esc(ctx.t("Log ind i Ønskeskyen under Familieindstillinger først."))} <button type="button" class="lnk" data-go="indstillinger:osky">${esc(ctx.t("Åbn"))}</button></p>`
+    }</div>
+    <div class="field" id="nl-kid-f" hidden><label for="nl-kid">${esc(ctx.t("Hvis ønsker"))}</label><select id="nl-kid">${people.map(([id, n]) => `<option value="${esc(id)}">${esc(n)}</option>`).join("")}</select></div>
+    <div class="field" id="nl-c-f"><span class="lbl">${esc(ctx.t("Farve"))}</span><div class="swatches" id="nl-c">${LIST_COLORS.map((c) => `<button type="button" class="sw" data-c="${c}" aria-pressed="${c === col}" style="background:${c}" aria-label="${esc(ctx.t("Farve"))}"></button>`).join("")}</div></div>
+    <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button><button class="btn" type="submit">${esc(ctx.t("Opret liste"))}</button></div></form>`);
+  const el = bg.el;
+  el.querySelector("#nl-c").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-c]");
+    if (!b) return;
+    col = b.dataset.c;
+    el.querySelectorAll("#nl-c .sw").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  });
+  el.querySelector("#nl-k").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-k]");
+    if (!b) return;
+    kind = b.dataset.k;
+    el.querySelectorAll("#nl-k button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    el.querySelector("#nl-kid-f").hidden = kind !== "onske";
+    el.querySelector("#nl-l-f").hidden = kind !== "onske";
+    el.querySelector("#nl-c-f").hidden = kind === "onske";
+  });
+  el.querySelector("#nl").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (kind === "onske") {
+      const link = el.querySelector("#nl-link")?.value.trim() || "";
+      const fromLink = link.match(/wishlists\/([A-Za-z0-9]+)/)?.[1];
+      const id = fromLink || el.querySelector("#nl-l")?.value;
+      if (!id) return;
+      if (!(ctx.data.osky?.lists || []).some((l) => l.id === id)) return ctx.toast(ctx.t("Ønskesedlen er ikke delt med jer i Ønskeskyen"));
+      const to = el.querySelector("#nl-kid").value;
+      bg.close();
+      if (await ctx.save("settings", { ...ctx.data.settings, osky_to: { ...(ctx.data.settings.osky_to || {}), [id]: to } })) {
+        listId = `o-${id}`;
+        ctx.go("lister");
+        ctx.toast(ctx.t("Ønskesedlen vises nu under Lister"));
       }
       return;
     }
-    const ok = await ctx.call("calendar", "create_event", { entity_id: mc, summary: title, start_date: day, end_date: next });
-    if (ok) done(ctx.t("Aftensmaden er gemt"));
-  });
-}
-
-/* ================================================================ To-do lists */
-function todoLists(ctx) {
-  return (ctx.data.settings.todo || []).filter((id) => ctx.hass.states[id]);
-}
-const isShopping = (ctx, id) => /indk|shop|handle|grocer|indkøb/i.test(`${id} ${ctx.name(id)}`);
-const listColor = (ctx, id) => (isShopping(ctx, id) ? "#E8742A" : LIST_COLORS[hashStr(id) % LIST_COLORS.length]);
-
-function items(ctx, id) {
-  const state = ctx.st(id)?.state;
-  const key = "todo:" + id;
-  // A new state means the list changed somewhere else: fetch it again.
-  if (lst.seen[id] !== undefined && lst.seen[id] !== state && ctx.cache[key]) ctx.drop(key);
-  lst.seen[id] = state;
-  const value = ctx.load(key, () => ctx.hass.callWS({ type: "todo/item/list", entity_id: id }).then((r) => r?.items || []), 30000);
-  if (value === undefined) return null;
-  return value;
-}
-const openCount = (ctx, id) => {
-  const n = Number(ctx.hass.states[id]?.state);
-  if (Number.isFinite(n)) return n;
-  const v = ctx.cache["todo:" + id]?.value;
-  return v ? v.filter((i) => i.status !== "completed").length : "";
-};
-function dueText(ctx, due) {
-  if (!due) return null;
-  const hasTime = /T|\s\d/.test(due);
-  const d = hasTime ? new Date(due) : fromIso(due.slice(0, 10));
-  const over = hasTime ? d < new Date() : d < startOfDay(new Date());
-  return { text: cap(ctx.fmt.rel(d)) + (hasTime ? ` ${ctx.fmt.time(d)}` : ""), over, today: isoDay(d) === isoDay(new Date()) };
-}
-
-function itemRow(ctx, id, it, color) {
-  const done = it.status === "completed";
-  const due = dueText(ctx, it.due);
-  return `<div class="item ls-item${done ? " done" : ""}">
-    <button class="check" data-act="lists-check" data-list="${esc(id)}" data-uid="${esc(it.uid)}" aria-label="${esc(it.summary)}" aria-pressed="${done}" style="${done ? `background:${color};border-color:transparent` : ""}">${CHECK}</button>
-    <button class="ls-it" data-act="lists-edit" data-list="${esc(id)}" data-uid="${esc(it.uid)}"><span class="t-ttl">${esc(it.summary)}</span>${it.description ? `<small>${esc(it.description)}</small>` : ""}</button>
-    ${due ? `<span class="ls-due${due.over && !done ? " over" : due.today ? " today" : ""}">${svg("clock")}${esc(due.text)}</span>` : "<span></span>"}
-    <button class="iconbtn" data-act="lists-del" data-list="${esc(id)}" data-uid="${esc(it.uid)}" aria-label="${esc(ctx.t("Fjern {name}", { name: it.summary }))}">${svg("x")}</button></div>`;
-}
-
-function renderLists(ctx) {
-  const lists = todoLists(ctx);
-  if (!lists.length) {
-    return `<section class="card hv-empty ls-empty">${svg("lists", "ic big")}<h2>${esc(ctx.t("Ingen lister endnu"))}</h2>
-      <p class="t-sub">${esc(ctx.isParent ? ctx.t("Vælg de to-do-lister fra Home Assistant, familien skal bruge – fx indkøb og huskeliste.") : ctx.t("Bed en voksen om at vælge familiens lister."))}</p>
-      ${ctx.isParent ? `<button class="btn" data-act="lists-pick">${svg("plus")}${esc(ctx.t("Vælg lister"))}</button>` : ""}</section>`;
-  }
-  if (!lists.includes(lst.id)) lst.id = lists[0];
-  const id = lst.id;
-  const color = listColor(ctx, id);
-  const chips = `<div class="lists">${lists
-    .map((l, i) => `<button class="lchip" data-act="lists-list" data-id="${esc(l)}" aria-pressed="${l === id}" style="animation-delay:${i * 50}ms"><span class="dot" style="background:${listColor(ctx, l)}">${svg(isShopping(ctx, l) ? "cart" : "lists")}</span>${esc(ctx.name(l))}<small>${openCount(ctx, l)}</small></button>`)
-    .join("")}${ctx.isParent ? `<button class="lchip new" data-act="lists-pick">${svg("plus")}${esc(ctx.t("Lister"))}</button>` : ""}</div>`;
-  const all = items(ctx, id);
-  const f = Number(ctx.hass.states[id]?.attributes?.supported_features || 0);
-  const dueOk = f & (TODO_DUE_DATE | TODO_DUE_DATETIME);
-  let body;
-  if (all === null) body = skeleton(4);
-  else {
-    const list = all.filter((it) => !lst.pending[`${id}:${it.uid}`]?.gone);
-    const open = list.filter((it) => it.status !== "completed");
-    const closed = list.filter((it) => it.status === "completed");
-    const err = ctx.cache["todo:" + id]?.error;
-    body = `${err && !all.length ? `<p class="t-sub">${esc(ctx.t("Listen kunne ikke hentes: {error}", { error: err }))}</p>` : ""}
-      <div class="items">${open.map((it) => itemRow(ctx, id, it, color)).join("") || `<div class="ls-free">${svg("check")}<span>${esc(closed.length ? ctx.t("Alt er klaret!") : ctx.t("Listen er tom. Tilføj det første punkt herunder."))}</span></div>`}</div>
-      <form class="add ls-add" data-list="${esc(id)}"><input name="t" placeholder="${esc(ctx.t("Tilføj til {name}", { name: ctx.name(id).toLowerCase() }))}" autocomplete="off" maxlength="200" enterkeyhint="done">
-        ${dueOk ? `<input name="d" type="date" class="ls-adddate" aria-label="${esc(ctx.t("Dato"))}">` : ""}<button class="btn" type="submit">${svg("plus")}${esc(ctx.t("Tilføj"))}</button></form>
-      ${closed.length ? `<div class="ls-donehead"><button class="ls-toggle" data-act="lists-showdone" aria-expanded="${lst.showDone}">${svg(lst.showDone ? "up" : "down")}${esc(ctx.t("Klaret ({n})", { n: closed.length }))}</button>
-        <button class="btn soft sm" data-act="lists-clear" data-list="${esc(id)}">${svg("trash")}${esc(ctx.t("Ryd klarede"))}</button></div>
-        ${lst.showDone ? `<div class="items ls-closed">${closed.map((it) => itemRow(ctx, id, it, color)).join("")}</div>` : ""}` : ""}`;
-    const total = list.length;
-    body = `<div class="progress"><i style="width:${total ? (closed.length / total) * 100 : 0}%;background:${color}"></i></div>${body}`;
-    body = `<div class="card-head"><h2>${esc(ctx.name(id))}</h2><span class="meta num">${esc(ctx.t("{done} af {total} klaret", { done: closed.length, total }))}</span></div>${body}`;
-    return `${chips}<section class="card ls-list" style="--lc:${color}">${body}</section>`;
-  }
-  return `${chips}<section class="card ls-list"><div class="card-head"><h2>${esc(ctx.name(id))}</h2></div>${body}</section>`;
-}
-
-function findItem(ctx, list, uid) {
-  return (ctx.cache["todo:" + list]?.value || []).find((i) => i.uid === uid);
-}
-async function refreshSoon(ctx, list) {
-  setTimeout(() => {
-    ctx.drop("todo:" + list);
-    ctx.render();
-  }, 700);
-}
-
-function editItemSheet(ctx, list, uid) {
-  const it = findItem(ctx, list, uid);
-  if (!it) return;
-  const f = Number(ctx.hass.states[list]?.attributes?.supported_features || 0);
-  const dueOk = f & TODO_DUE_DATE, dueTimeOk = f & TODO_DUE_DATETIME, descOk = f & TODO_DESCRIPTION;
-  const due = it.due || "";
-  const s = ctx.sheet(`<div class="eyebrow">${esc(ctx.name(list))}</div><h2>${esc(ctx.t("Ret punkt"))}</h2><form class="ls-form">
-    <div class="field"><label for="ls-it">${esc(ctx.t("Tekst"))}</label><input id="ls-it" required maxlength="200" value="${esc(it.summary)}" autocomplete="off"></div>
-    ${dueOk || dueTimeOk ? `<div class="row"><div class="field"><label for="ls-du">${esc(ctx.t("Dato"))}</label><input id="ls-du" type="date" value="${esc(due.slice(0, 10))}"></div>
-      ${dueTimeOk ? `<div class="field"><label for="ls-dt">${esc(ctx.t("Tid"))}</label><input id="ls-dt" type="time" value="${/T|\s/.test(due) ? hm(new Date(due)) : ""}"></div>` : ""}</div>` : ""}
-    ${descOk ? `<div class="field"><label for="ls-de">${esc(ctx.t("Noter"))}</label><textarea id="ls-de" rows="3" maxlength="1000">${esc(it.description || "")}</textarea></div>` : ""}
-    <div class="sheet-actions"><button type="button" class="btn danger" data-del>${svg("trash")}${esc(ctx.t("Slet"))}</button><button type="button" class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" type="submit">${esc(ctx.t("Gem"))}</button></div></form>`);
-  const el = s.el;
-  el.querySelector("[data-del]").addEventListener("click", () => {
-    s.close();
-    removeItem(ctx, list, uid);
-  });
-  el.querySelector("form").addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const text = el.querySelector("#ls-it").value.trim();
-    if (!text) return;
-    const data = { entity_id: list, item: uid };
-    if (text !== it.summary) data.rename = text;
-    const d = el.querySelector("#ls-du")?.value || "";
-    const t = el.querySelector("#ls-dt")?.value || "";
-    const newDue = d ? (t ? `${d} ${t}:00` : d) : "";
-    const oldDue = due ? (/T|\s/.test(due) ? `${due.slice(0, 10)} ${hm(new Date(due))}:00` : due.slice(0, 10)) : "";
-    if (newDue !== oldDue) {
-      if (!newDue) data.due_date = null;
-      else if (t) data.due_datetime = newDue;
-      else data.due_date = d;
+    const name = el.querySelector("#nl-t").value.trim();
+    if (!name) return el.querySelector("#nl-t").focus();
+    bg.close();
+    const entity = await createTodoList(ctx, name);
+    if (!entity) return;
+    const todo = [...new Set([...(ctx.data.settings.todo || []), entity])];
+    if (await ctx.save("settings", { ...ctx.data.settings, todo })) {
+      listId = entity;
+      ctx.go("lister");
+      ctx.toast(ctx.t("Listen »{name}« er oprettet", { name }));
     }
-    const desc = el.querySelector("#ls-de");
-    if (desc && desc.value.trim() !== (it.description || "")) data.description = desc.value.trim();
-    s.close();
-    if (Object.keys(data).length === 2) return;
-    Object.assign(it, { summary: text, ...(desc ? { description: desc.value.trim() } : {}) });
-    if (newDue !== oldDue) it.due = newDue ? newDue.replace(" ", "T") : undefined;
-    ctx.render();
-    if (await ctx.call("todo", "update_item", data)) refreshSoon(ctx, list);
   });
 }
 
-async function removeItem(ctx, list, uid) {
-  const key = `${list}:${uid}`;
-  lst.pending[key] = { gone: true };
-  ctx.render();
-  const ok = await ctx.call("todo", "remove_item", { entity_id: list, item: [uid] });
-  delete lst.pending[key];
-  if (ok) {
-    const v = ctx.cache["todo:" + list]?.value;
-    if (v) ctx.cache["todo:" + list].value = v.filter((i) => i.uid !== uid);
-    refreshSoon(ctx, list);
+async function createTodoList(ctx, name) {
+  try {
+    const flow = await ctx.hass.callApi("POST", "config/config_entries/flow", { handler: "local_todo", show_advanced_options: false });
+    const res = await ctx.hass.callApi("POST", `config/config_entries/flow/${flow.flow_id}`, { todo_list_name: name });
+    if (res?.type !== "create_entry") throw new Error(res?.errors ? Object.values(res.errors).join(", ") : ctx.t("Home Assistant oprettede ikke listen"));
+    // The new list's entity: todo.<name>, found once Home Assistant has it.
+    for (let i = 0; i < 20; i++) {
+      const id = Object.keys(ctx.hass.states).find((e) => e.startsWith("todo.") && ctx.name(e).toLowerCase() === name.toLowerCase() && !(ctx.data.settings.todo || []).includes(e));
+      if (id) return id;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    throw new Error(ctx.t("Listen blev oprettet, men kunne ikke findes"));
+  } catch (err) {
+    ctx.toast(ctx.t("Listen kunne ikke oprettes: {error}", { error: err?.message || err?.body?.message || err }));
+    return null;
   }
-  ctx.render();
 }
 
-function pickListsSheet(ctx) {
-  const all = ctx.entities("todo");
-  const cur = new Set(ctx.data.settings.todo || []);
-  const s = ctx.sheet(`<h2>${esc(ctx.t("Familiens lister"))}</h2><p class="t-sub">${esc(ctx.t("Vælg hvilke to-do-lister fra Home Assistant, familien ser. Nye lister laves i Home Assistant, fx med Lokal to-do-integrationen."))}</p>
-    <div class="ls-pick">${all.length ? all
-      .map((id) => `<label class="ls-pickrow"><input type="checkbox" value="${esc(id)}"${cur.has(id) ? " checked" : ""}><span class="dot" style="background:${listColor(ctx, id)}">${svg(isShopping(ctx, id) ? "cart" : "lists")}</span><b>${esc(ctx.name(id))}</b><small>${esc(id)}</small></label>`)
-      .join("") : `<p class="t-sub">${esc(ctx.t("Home Assistant har ingen to-do-lister endnu."))}</p>`}</div>
-    <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" data-save>${esc(ctx.t("Gem"))}</button></div>`);
-  s.el.querySelector("[data-save]").addEventListener("click", async () => {
-    const chosen = [...s.el.querySelectorAll("input:checked")].map((x) => x.value);
-    // Keep the order the family already had; add new lists at the end.
-    const order = [...(ctx.data.settings.todo || []).filter((x) => chosen.includes(x)), ...chosen.filter((x) => !cur.has(x))];
-    s.close();
-    if (await ctx.save("settings", { ...ctx.data.settings, todo: order })) ctx.toast(ctx.t("Listerne er gemt"));
+async function deleteList(ctx) {
+  const L = allLists(ctx).find((l) => l.id === listId);
+  listConfirm = null;
+  if (!L) return;
+  if (L.kind === "onske") {
+    await ctx.save("settings", { ...ctx.data.settings, osky_to: { ...(ctx.data.settings.osky_to || {}), [L.osky.id]: "skjul" } });
+    listId = null;
     ctx.render();
-  });
+    return ctx.toast(ctx.t("Forbindelsen til Ønskeskyen er fjernet"));
+  }
+  // A Local To-do list is deleted in Home Assistant; other lists are only taken off Hverdagsro.
+  if (ctx.hass.entities?.[L.id]?.platform === "local_todo" && ctx.hass.user?.is_admin) {
+    try {
+      const reg = await ctx.hass.callWS({ type: "config/entity_registry/get", entity_id: L.id });
+      if (reg?.config_entry_id) await ctx.hass.callApi("DELETE", `config/config_entries/entry/${reg.config_entry_id}`);
+    } catch (err) {
+      ctx.toast(ctx.t("Listen kunne ikke slettes: {error}", { error: err?.message || err }));
+      return;
+    }
+  }
+  await ctx.save("settings", { ...ctx.data.settings, todo: (ctx.data.settings.todo || []).filter((x) => x !== L.id) });
+  listId = null;
+  ctx.render();
+  ctx.toast(ctx.t("Listen »{name}« er slettet", { name: L.name }));
 }
 
-/* ================================================================ module */
+/* ---------------------------------------------------------------- acts */
+const acts = {
+  "lists-filter": (el, e, ctx) => {
+    filters[el.dataset.id] = filters[el.dataset.id] === false;
+    ctx.render(true);
+  },
+  "lists-newev": (el, e, ctx) => newEvent(ctx),
+  "lists-ev": (el, e, ctx) => {
+    const ev = weekEvents(ctx)?.[+el.dataset.i];
+    if (ev) openEvent(ctx, ev);
+  },
+  "lists-waste": (el, e, ctx) => ctx.wasteSheet?.(),
+  "lists-meal": (el, e, ctx) => mealSheet(ctx, +el.dataset.i),
+  "lists-openlist": (el, e, ctx) => {
+    listId = el.dataset.id;
+    ctx.go("lister");
+  },
+  "lists-panel": (el) => {
+    history.pushState(null, "", `/${el.dataset.id}`);
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+  },
+  "lists-list": (el, e, ctx) => {
+    listId = el.dataset.id;
+    listConfirm = null;
+    wishAdd = null;
+    ctx.render(true);
+  },
+  "lists-newlist": (el, e, ctx) => (ctx.isParent ? newList(ctx) : ctx.toast(ctx.t("Det må kun far eller mor"))),
+  "lists-dellist": (el, e, ctx) => {
+    if (!ctx.isParent) return ctx.toast(ctx.t("Det må kun far eller mor"));
+    listConfirm = listId;
+    ctx.render(true);
+  },
+  "lists-dellist-no": (el, e, ctx) => {
+    listConfirm = null;
+    ctx.render(true);
+  },
+  "lists-dellist-yes": (el, e, ctx) => deleteList(ctx),
+  "lists-item": async (el, e, ctx) => {
+    const id = listId;
+    const it = (ctx.cache["todo:" + id]?.value || []).find((x) => x.uid === el.dataset.uid);
+    if (!it) return;
+    const next = it.status === "completed" ? "needs_action" : "completed";
+    it.status = next;
+    if (next === "completed") {
+      const r = el.getBoundingClientRect();
+      burst(ctx, r.left + 14, r.top + 14, listMeta(ctx, id).color, 14);
+    }
+    ctx.render(true);
+    if (await ctx.call("todo", "update_item", { entity_id: id, item: it.uid, status: next })) refreshSoon(ctx, id);
+  },
+  "lists-delitem": async (el, e, ctx) => {
+    const id = listId;
+    el.closest("[data-item]")?.classList.add("gone");
+    setTimeout(async () => {
+      const v = ctx.cache["todo:" + id]?.value;
+      const it = v?.find((x) => x.uid === el.dataset.uid);
+      if (v && it) v.splice(v.indexOf(it), 1);
+      ctx.render(true);
+      if (await ctx.call("todo", "remove_item", { entity_id: id, item: el.dataset.uid })) refreshSoon(ctx, id);
+    }, 250);
+  },
+  "lists-sync": async (el, e, ctx) => {
+    el.classList.add("spin");
+    try {
+      await ctx.ws("osky/refresh");
+      ctx.toast(ctx.t("Opdateret fra Ønskeskyen"));
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
+    el.classList.remove("spin");
+  },
+  "lists-share": async (el, e, ctx) => {
+    const url = `https://onskeskyen.dk/da/wishlists/${el.dataset.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      ctx.toast(ctx.t("Ønskeskyen-linket er kopieret"));
+    } catch (err) {
+      ctx.toast(url);
+    }
+  },
+  "lists-oskyopen": (el) => window.open(`https://onskeskyen.dk/da/wishlists/${el.dataset.id}`, "_blank", "noopener"),
+  "lists-wishadd": (el, e, ctx) => {
+    wishAdd = wishAdd === el.dataset.id ? null : el.dataset.id;
+    ctx.render(true);
+    setTimeout(() => ctx.$("wa-t")?.focus({ preventScroll: true }), 30);
+  },
+  "lists-wish2shop": async (el, e, ctx) => {
+    const l = (ctx.data.osky?.lists || []).find((x) => x.id === el.dataset.l);
+    const w = l?.wishes[+el.dataset.i];
+    const kid = l && kidOf(ctx, { ...l, to: (ctx.data.settings.osky_to || {})[l.id] });
+    if (!w || !kid) return;
+    const cost = Math.max(1, Math.round(Number(w.price) || 200));
+    const id = `w${Date.now().toString(36)}`;
+    const rewards = [...(ctx.data.rewards || []), { id, title: w.title.slice(0, 60), member: kid, cost, emoji: wishEm(w.title) }];
+    if (await ctx.save("rewards", rewards)) ctx.toast(ctx.t("{name} er et mål i {kid}s shop", { name: w.title, kid: ctx.member(kid).name }));
+  },
+};
+
+/* ---------------------------------------------------------------- forms */
+function after(ctx) {
+  const add = ctx.$("ls-add");
+  if (add)
+    add.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = ctx.$("ls-add-t");
+      const text = input.value.trim();
+      if (!text) return;
+      const id = add.dataset.list;
+      const v = ctx.cache["todo:" + id]?.value;
+      if (v) v.unshift({ uid: `new-${Date.now()}`, summary: text, status: "needs_action" });
+      ctx.render(true);
+      ctx.$("ls-add-t")?.focus();
+      if (await ctx.call("todo", "add_item", { entity_id: id, item: text })) refreshSoon(ctx, id);
+    });
+  const wf = ctx.$("wish-f");
+  if (wf)
+    wf.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = ctx.$("wa-t").value.trim();
+      if (!title) return;
+      const p = ctx.$("wa-p")?.value.trim().replace(/\s*kr\.?$/i, "").replace(",", ".");
+      let url = ctx.$("wa-s")?.value.trim() || "";
+      if (url && !/^https?:\/\//.test(url)) url = `https://${url}`;
+      const btn = wf.querySelector("button[type=submit]");
+      btn.disabled = true;
+      try {
+        await ctx.ws("osky/wish", { list: wf.dataset.l, title, ...(p && !Number.isNaN(Number(p)) ? { price: Number(p) } : {}), ...(url ? { url } : {}) });
+        wishAdd = null;
+        if (!ctx.isParent) {
+          const r = wf.getBoundingClientRect();
+          burst(ctx, r.left + 40, r.top + 30, ctx.color(ctx.me?.id));
+        }
+        ctx.toast(!ctx.isParent ? ctx.t("Dit ønske er sat på ønskesedlen") : ctx.t("{name} er tilføjet", { name: title }));
+        ctx.render(true);
+      } catch (err) {
+        btn.disabled = false;
+        ctx.toast(String(err?.message || err));
+      }
+    });
+}
+
+const css = `
+.ls-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 90; }
+.ls-skel { display: grid; gap: 8px; padding: 4px; }
+.ls-skel i { display: block; height: 34px; border-radius: 10px; background: linear-gradient(90deg, var(--surface-2), var(--line), var(--surface-2)); background-size: 200% 100%; animation: lsshine 1.2s linear infinite; }
+@keyframes lsshine { to { background-position: -200% 0; } }
+.meal[data-act] { cursor: pointer; }
+.wish .thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.wish-b a.iconbtn { display: inline-grid; place-items: center; color: inherit; }
+`;
+
+const en = {
+  Familien: "The family",
+  "Ny aftale": "New appointment",
+  "Intet i kalenderen": "Nothing in the calendar",
+  "Ikke planlagt": "Not planned",
+  Tømning: "Collection",
+  og: "and",
+  Skole: "School",
+  "Hent og bring": "Drop-off and pick-up",
+  "{who} henter {kid}": "{who} picks up {kid}",
+  "Hele dagen": "All day",
+  "Aftaler fra {names} for {range}.": "Appointments from {names} for {range}.",
+  "Skemaet står samlet som »Skole til kl. {t}«; det fulde skema ligger på barnets side.": "The timetable is shown as one block, “School until {t}”; the full timetable is on the child's page.",
+  "Vælg familiens kalendere under Familieindstillinger › Hjemmet.": "Choose the family's calendars under Family settings › Home.",
+  Tid: "Time",
+  Hvem: "Who",
+  Henter: "Picks up",
+  Sted: "Place",
+  "{_}Fra": "{_}From",
+  Vejr: "Weather",
+  til: "to",
+  "Ingen prognose endnu": "No forecast yet",
+  Aftensmad: "Dinner",
+  Luk: "Close",
+  Regn: "Rain",
+  Skyet: "Cloudy",
+  Sol: "Sun",
+  Sne: "Snow",
+  "Delvis skyet": "Partly cloudy",
+  Hvad: "What",
+  "Fx Elvin til fødselsdag hos Alma": "E.g. birthday party at Alma's",
+  "For hvem": "For whom",
+  Dag: "Day",
+  Til: "To",
+  "Hvem henter": "Who picks up",
+  "{_}Ingen": "{_}Nobody",
+  Annuller: "Cancel",
+  "Gem aftale": "Save appointment",
+  For: "For",
+  "Ingen af kalenderne kan få nye aftaler fra Home Assistant": "None of the calendars accept new appointments from Home Assistant",
+  "Gemt. {name} står som den, der henter.": "Saved. {name} is down as picking up.",
+  "Aftalen er gemt": "The appointment is saved",
+  "Ingen madplan endnu": "No meal plan yet",
+  "Vælg den kalender, der har aftensmaden, fx Middagsros madplan.": "Choose the calendar with the dinners, e.g. Middagsro's meal plan.",
+  "Vælg kalender": "Choose calendar",
+  "I aften": "Tonight",
+  Restedag: "Leftovers day",
+  "Ugens madplan": "This week's meals",
+  "Fra Middagsro": "From Middagsro",
+  "tilbage i ugen": "left this week",
+  Indkøbslisten: "Shopping list",
+  "Åbn i Middagsro": "Open in Middagsro",
+  "Fanen viser Middagsros madplan direkte. Skift ret, bedøm og lav ny plan sker i Middagsro, så de to apps aldrig er uenige.": "This tab shows Middagsro's meal plan directly. Changing dishes, rating and making a new plan happen in Middagsro, so the two apps never disagree.",
+  "Madplanen er kalenderen {name}. Tryk på en dag for at sætte aftensmaden.": "The meal plan is the calendar {name}. Tap a day to set the dinner.",
+  "{_}Ret": "{_}Dish",
+  "Fx Lasagne": "E.g. Lasagne",
+  Gem: "Save",
+  "{name} er sat på madplanen": "{name} is on the meal plan",
+  "Slet listen »{name}« med {n} punkter?": "Delete the list “{name}” with {n} items?",
+  "Slet listen": "Delete list",
+  Behold: "Keep",
+  "{done} af {n} klaret": "{done} of {n} done",
+  "Indkøbslisten ejes af Middagsro": "The shopping list belongs to Middagsro",
+  "Slet listen {name}": "Delete the list {name}",
+  "Fra Middagsros madplan": "From Middagsro's meal plan",
+  "Fjern {name}": "Remove {name}",
+  "Listen er tom. Tilføj det første punkt herunder.": "The list is empty. Add the first item below.",
+  "Tilføj til {name}": "Add to {name}",
+  Tilføj: "Add",
+  "lige nu": "just now",
+  "for {n} min. siden": "{n} min. ago",
+  "Hvad ønsker du dig?": "What do you wish for?",
+  "Nyt ønske til {name}": "New wish for {name}",
+  "Nyt ønske": "New wish",
+  "Mit ønske": "My wish",
+  Ønske: "Wish",
+  "Fx en dinosaur-bog": "E.g. a dinosaur book",
+  "Fx LEGO Technic 42151": "E.g. LEGO Technic 42151",
+  Pris: "Price",
+  Valgfri: "Optional",
+  Link: "Link",
+  "Fx https://br.dk/…": "E.g. https://shop.com/…",
+  "Sæt på min ønskeseddel": "Put it on my wish list",
+  "Tilføj ønske": "Add wish",
+  "Far eller mor kan se det med det samme.": "Mum or dad can see it straight away.",
+  "Ønsket lægges også i Ønskeskyen.": "The wish is also added in Ønskeskyen.",
+  "Fjern forbindelsen til »{name}«? Listen i Ønskeskyen bliver ikke slettet.": "Remove the link to “{name}”? The list in Ønskeskyen isn't deleted.",
+  "Fjern forbindelsen": "Remove the link",
+  "Hent igen fra Ønskeskyen": "Fetch again from Ønskeskyen",
+  Del: "Share",
+  "Fjern forbindelsen til {name}": "Remove the link to {name}",
+  "Hentet fra Ønskeskyen {when}": "Fetched from Ønskeskyen {when}",
+  "{n} ønsker · {r} reserveret": "{n} wishes · {r} reserved",
+  "Ønsk dig noget": "Wish for something",
+  "Tilføj et ønske til {name}": "Add a wish for {name}",
+  "Tilføj et ønske": "Add a wish",
+  "Ingen ønsker endnu.": "No wishes yet.",
+  "Dine ønsker kommer også på din børneprofil i Ønskeskyen.": "Your wishes also go on your child profile in Ønskeskyen.",
+  "Ønsker du tilføjer her, lægges i Ønskeskyen. Reservationer laves i Ønskeskyen.": "Wishes you add here go into Ønskeskyen. Reservations are made in Ønskeskyen.",
+  "Ønskesedlen ejes af en anden. Nye ønsker og reservationer laves i Ønskeskyen.": "Someone else owns this wish list. New wishes and reservations are made in Ønskeskyen.",
+  "Åbn min børneprofil": "Open my child profile",
+  "Åbn i Ønskeskyen": "Open in Ønskeskyen",
+  Reserveret: "Reserved",
+  "Er et mål i shoppen": "Is a goal in the shop",
+  "Gør til mål": "Make it a goal",
+  "Åbn {name}": "Open {name}",
+  "Ny liste": "New list",
+  "Ingen lister": "No lists",
+  "Opret den første liste med knappen ovenfor.": "Create the first list with the button above.",
+  "Bed far eller mor om at lave en liste.": "Ask mum or dad to make a list.",
+  "Hver liste er en to-do-liste i Home Assistant. Ønskesedler hentes fra Ønskeskyen. Kun forældre kan oprette og slette lister.": "Each list is a to-do list in Home Assistant. Wish lists come from Ønskeskyen. Only parents can create and delete lists.",
+  "Far og mor": "Mum and dad",
+  "Indkøbslisten bygges af Middagsros madplan. Alle andre lister er hver en to-do-liste i Home Assistant. Ønskesedler hentes fra Ønskeskyen. Kun forældre kan oprette og slette lister.": "The shopping list is built from Middagsro's meal plan. All other lists are each a to-do list in Home Assistant. Wish lists come from Ønskeskyen. Only parents can create and delete lists.",
+  "Venner og familie": "Friends and family",
+  Navn: "Name",
+  "Fx Elmers fødselsdag": "E.g. Tom's birthday",
+  Slags: "Kind",
+  Liste: "List",
+  Ønskeseddel: "Wish list",
+  "Alle ønskesedler vises allerede": "All wish lists are shown already",
+  "Eller link fra Ønskeskyen: Del › Kopiér link": "Or a link from Ønskeskyen: Share › Copy link",
+  "Log ind i Ønskeskyen under Familieindstillinger først.": "Log in to Ønskeskyen under Family settings first.",
+  Åbn: "Open",
+  "Hvis ønsker": "Whose wishes",
+  Farve: "Colour",
+  "Opret liste": "Create list",
+  "Ønskesedlen er ikke delt med jer i Ønskeskyen": "That wish list isn't shared with you in Ønskeskyen",
+  "Ønskesedlen vises nu under Lister": "The wish list is now shown under Lists",
+  "Listen »{name}« er oprettet": "The list “{name}” is created",
+  "Home Assistant oprettede ikke listen": "Home Assistant didn't create the list",
+  "Listen blev oprettet, men kunne ikke findes": "The list was created but couldn't be found",
+  "Listen kunne ikke oprettes: {error}": "The list couldn't be created: {error}",
+  "Forbindelsen til Ønskeskyen er fjernet": "The link to Ønskeskyen is removed",
+  "Listen kunne ikke slettes: {error}": "The list couldn't be deleted: {error}",
+  "Listen »{name}« er slettet": "The list “{name}” is deleted",
+  "Det må kun far eller mor": "Only mum or dad can do that",
+  "Opdateret fra Ønskeskyen": "Updated from Ønskeskyen",
+  "Ønskeskyen-linket er kopieret": "The Ønskeskyen link is copied",
+  "{name} er et mål i {kid}s shop": "{name} is a goal in {kid}'s shop",
+  "Dit ønske er sat på ønskesedlen": "Your wish is on the wish list",
+  "{name} er tilføjet": "{name} is added",
+};
+
 export default {
   id: "lists",
   views: {
-    kalender: { module: "calendar", title: (ctx) => ctx.t("Kalender"), render: renderCalendar },
-    madplan: { module: "meals", title: (ctx) => ctx.t("Madplan"), render: renderMeals },
-    lister: {
-      module: "lists",
-      title: (ctx) => ctx.t("Lister"),
-      render: renderLists,
-      after(ctx) {
-        const form = ctx.q(".ls-add");
-        if (!form) return;
-        form.addEventListener("submit", async (ev) => {
-          ev.preventDefault();
-          const list = form.dataset.list;
-          const input = form.querySelector("[name=t]");
-          const text = input.value.trim();
-          if (!text) return;
-          const date = form.querySelector("[name=d]")?.value;
-          const v = ctx.cache["todo:" + list]?.value;
-          if (v) v.push({ uid: `new-${Date.now()}`, summary: text, status: "needs_action", ...(date ? { due: date } : {}) });
-          input.value = "";
-          lst.keepFocus = true;
-          ctx.render(true);
-          const ok = await ctx.call("todo", "add_item", { entity_id: list, item: text, ...(date ? { due_date: date } : {}) });
-          if (ok) refreshSoon(ctx, list);
-        });
-        if (lst.keepFocus) {
-          lst.keepFocus = false;
-          form.querySelector("[name=t]")?.focus();
-        }
-      },
-    },
+    kalender: { module: "calendar", parentOnly: true, title: (ctx) => ctx.t("Kalender"), render: pCal },
+    madplan: { module: "meals", parentOnly: true, title: (ctx) => ctx.t("Madplan"), render: pMeals },
+    lister: { module: "lists", title: (ctx) => ctx.t("Lister"), render: pLists, after },
   },
-  acts: {
-    /* calendar */
-    "lists-filter": (el, ev, ctx) => {
-      const id = el.dataset.id;
-      cal.filters[id] = cal.filters[id] === false;
-      ctx.render(true);
-    },
-    "lists-mode": (el, ev, ctx) => {
-      cal.mode = el.dataset.mode;
-      ctx.render(true);
-    },
-    "lists-week": (el, ev, ctx) => {
-      const d = Number(el.dataset.d);
-      cal.week = d === 0 ? 0 : cal.week + d;
-      cal.sel = null;
-      ctx.render(true);
-    },
-    "lists-day": (el, ev, ctx) => {
-      cal.sel = el.dataset.d;
-      if (el.dataset.mode) cal.mode = el.dataset.mode;
-      ctx.render(true);
-    },
-    "lists-ev": (el, ev, ctx) => {
-      const e = shownEvents[Number(el.dataset.i)];
-      if (e) eventSheet(ctx, e);
-    },
-    "lists-newev": (el, ev, ctx) => newEventSheet(ctx),
-    /* meals */
-    "lists-mweek": (el, ev, ctx) => {
-      const d = Number(el.dataset.d);
-      meal.week = d === 0 ? 0 : meal.week + d;
-      ctx.render(true);
-    },
-    "lists-meal": (el, ev, ctx) => mealSheet(ctx, Number(el.dataset.i)),
-    /* lists */
-    "lists-list": (el, ev, ctx) => {
-      lst.id = el.dataset.id;
-      ctx.render(true);
-    },
-    "lists-pick": (el, ev, ctx) => pickListsSheet(ctx),
-    "lists-check": async (el, ev, ctx) => {
-      const { list, uid } = el.dataset;
-      const it = findItem(ctx, list, uid);
-      if (!it) return;
-      const next = it.status === "completed" ? "needs_action" : "completed";
-      it.status = next;
-      el.setAttribute("aria-pressed", String(next === "completed"));
-      el.closest(".item")?.classList.toggle("done", next === "completed");
-      setTimeout(() => ctx.render(true), next === "completed" ? 420 : 0);
-      if (await ctx.call("todo", "update_item", { entity_id: list, item: uid, status: next })) refreshSoon(ctx, list);
-    },
-    "lists-edit": (el, ev, ctx) => editItemSheet(ctx, el.dataset.list, el.dataset.uid),
-    "lists-del": (el, ev, ctx) => {
-      el.closest(".item")?.classList.add("gone");
-      setTimeout(() => removeItem(ctx, el.dataset.list, el.dataset.uid), 250);
-    },
-    "lists-showdone": (el, ev, ctx) => {
-      lst.showDone = !lst.showDone;
-      ctx.render(true);
-    },
-    "lists-clear": (el, ev, ctx) => {
-      const list = el.dataset.list;
-      ctx.confirm(ctx.t("Ryd klarede punkter?"), ctx.t("Alle afkrydsede punkter fjernes fra »{name}«.", { name: ctx.name(list) }), ctx.t("Ryd"), async () => {
-        const v = ctx.cache["todo:" + list]?.value;
-        if (v) ctx.cache["todo:" + list].value = v.filter((i) => i.status !== "completed");
-        ctx.render(true);
-        if (await ctx.call("todo", "remove_completed_items", { entity_id: list })) refreshSoon(ctx, list);
-      });
-    },
-  },
+  acts,
   inputs: {},
-  css: `
-.ls-tools-r { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-wrap: wrap; }
-.ls-mode { padding: 3px; }
-.ls-mode button { padding: 6px 14px; }
-.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-.ls-weeknav { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; flex-wrap: wrap; }
-.ls-weeknav b { font-family: var(--font-display); font-size: 16px; padding: 0 4px; }
-.ls-weeknav .grow { flex: 1; }
-.ls-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; position: relative; z-index: 1; }
-.ls-sd { border: 0; background: var(--surface); box-shadow: var(--shadow); border-radius: 14px; padding: 8px 2px 7px; display: grid; justify-items: center; gap: 2px; color: var(--ink); min-width: 0; transition: transform .2s, background .2s; touch-action: manipulation; }
-.ls-sd span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
-.ls-sd b { font: 800 19px/1.1 var(--font-display); }
-.ls-sd i { display: flex; gap: 3px; height: 6px; }
-.ls-sd i em { width: 6px; height: 6px; border-radius: 50%; }
-.ls-sd.today { outline: 2px solid var(--petrol); outline-offset: -2px; }
-.ls-sd.past { opacity: .6; }
-.ls-sd[aria-pressed="true"] { background: var(--ink); color: var(--bg); transform: translateY(-2px); opacity: 1; }
-.ls-sd[aria-pressed="true"] span { color: inherit; opacity: .75; }
-.ls-sd:active { transform: scale(.96); }
-.ls-day .card-head { align-items: flex-start; }
-.ls-wx { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--muted); }
-.ls-wx .ic { width: 20px; height: 20px; }
-.ls-allday { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.ls-allday .ev { flex: 1 1 180px; }
-.ls-bin { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.ls-bin .ic { width: 15px; height: 15px; color: var(--ec); }
-.ls-bin b { display: inline !important; }
-.ls-agenda { display: grid; gap: 6px; }
-.ls-ag { border: 0; text-align: left; display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--ec) 10%, var(--surface)); color: var(--ink); position: relative; overflow: hidden; animation: pop .45s cubic-bezier(.2,.9,.3,1.2) both; }
-.ls-ag::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--ec); }
-.ls-ag.past { opacity: .55; }
-.ls-ag-t { display: grid; line-height: 1.15; }
-.ls-ag-t b { font-weight: 800; }
-.ls-ag-t small, .ls-ag-b small { color: var(--muted); font-size: 12px; }
-.ls-ag-b { display: grid; min-width: 0; }
-.ls-ag-b b { font-weight: 700; overflow-wrap: anywhere; }
-.ls-nowline { position: relative; height: 14px; margin: 2px 0; }
-.ls-nowline::before { content: ""; position: absolute; left: 50px; right: 0; top: 50%; height: 2px; background: var(--bad); border-radius: 2px; }
-.ls-nowline span { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 800; color: #fff; background: var(--bad); border-radius: 999px; padding: 1px 7px; }
-.ls-free { display: flex; align-items: center; gap: 10px; padding: 18px 12px; border-radius: 14px; background: var(--surface-2); color: var(--muted); font-weight: 600; }
-.ls-free .ic { width: 22px; height: 22px; color: var(--gold); }
-.ls-dinner { margin-top: 12px; padding-top: 10px; font-size: 13px; }
-.ls-wh { border: 0; background: none; color: inherit; width: 100%; text-align: left; border-bottom: 1px solid var(--line); border-radius: 8px 8px 0 0; cursor: pointer; }
-.ls-wh:hover b { color: var(--violet); }
-.ls-past { opacity: .72; }
-.ls-none { padding: 6px 4px; }
-.ls-week .ev { cursor: pointer; color: var(--ink); }
-.ls-meal { min-height: 104px; border: 0; text-align: left; color: inherit; position: relative; cursor: pointer; transition: transform .2s; }
-.ls-meal:hover { transform: translateY(-2px); }
-.ls-meal.ls-past { opacity: .6; }
-.ls-medit { position: absolute; right: 10px; top: 10px; width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); opacity: 0; transition: opacity .2s; }
-.ls-medit .ic { width: 15px; height: 15px; }
-.ls-meal:hover .ls-medit, .ls-meal:focus-visible .ls-medit, .ls-meal.rest .ls-medit { opacity: 1; }
-.meal.tonight .ls-medit { background: rgba(255,255,255,.22); color: #fff; }
-.ls-nodish { color: var(--muted); font-weight: 600; font-size: 15px; }
-.ls-sugg { display: flex; flex-wrap: wrap; gap: 6px; }
-.ls-sugg .chip { border: 0; cursor: pointer; }
-.ls-sugg .chip:hover { background: color-mix(in srgb, var(--violet) 14%, var(--surface-2)); }
-.ls-form textarea { border: 1.5px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; font: inherit; color: inherit; resize: vertical; }
-.ls-form .field[hidden] { display: none; }
-.ls-cals .av .ic, .cal-tools .av .ic { width: 12px; height: 12px; color: #fff; }
-.ls-switch { display: inline-flex; align-items: center; gap: 10px; margin-top: 14px; font-weight: 700; cursor: pointer; }
-.ls-switch input { position: absolute; opacity: 0; pointer-events: none; }
-.ls-switch span { width: 40px; height: 24px; border-radius: 999px; background: var(--line); position: relative; transition: background .2s; }
-.ls-switch span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-.ls-switch input:checked + span { background: var(--violet); }
-.ls-switch input:checked + span::after { transform: translateX(16px); }
-.ls-switch input:focus-visible + span { outline: 2px solid var(--violet); outline-offset: 2px; }
-.ls-item .ls-it { border: 0; background: none; text-align: left; padding: 0; display: grid; min-width: 0; color: inherit; cursor: text; }
-.ls-item .ls-it small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.ls-item .check { cursor: pointer; }
-.ls-item:not(.done) .check:hover { border-color: var(--lc, var(--violet)); }
-.ls-due { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
-.ls-due .ic { width: 13px; height: 13px; }
-.ls-due.today { color: var(--warn); }
-.ls-due.over { color: var(--bad); }
-.ls-add .ls-adddate { flex: 0 1 150px; min-width: 130px; }
-.ls-donehead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 18px; }
-.ls-toggle { border: 0; background: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--muted); padding: 6px 4px; }
-.ls-toggle .ic { width: 16px; height: 16px; }
-.ls-closed { margin-top: 8px; }
-.ls-pick { display: grid; gap: 6px; margin-top: 14px; max-height: 50vh; overflow: auto; }
-.ls-pickrow { display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); cursor: pointer; }
-.ls-pickrow input { grid-row: span 2; width: 18px; height: 18px; accent-color: var(--violet); }
-.ls-pickrow .dot { grid-row: span 2; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: #fff; }
-.ls-pickrow .dot .ic { width: 17px; height: 17px; }
-.ls-pickrow small { color: var(--muted); font-size: 11.5px; }
-.ls-skel { display: grid; gap: 10px; }
-.ls-skel i { display: block; height: 58px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2)); background-size: 200% 100%; animation: lsShimmer 1.4s ease-in-out infinite; }
-@keyframes lsShimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-@media (min-width: 1360px) { .ls-meals { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
-@media (max-width: 520px) {
-  .ls-strip { gap: 4px; }
-  .ls-sd b { font-size: 17px; }
-  .ls-ag { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 10px; }
-  .ls-nowline::before { left: 44px; }
-  .ls-item { grid-template-columns: 30px minmax(0, 1fr) auto; }
-  .ls-item .ls-due { grid-column: 2; grid-row: 2; }
-  .ls-item > span:empty { display: none; }
-  .ls-item > .iconbtn { grid-column: 3; grid-row: 1; }
-  .ls-tools-r { margin-left: 0; width: 100%; justify-content: space-between; }
-}
-`,
-  en: {
-    "Fælles": "Shared",
-    "Ingen kalendere endnu": "No calendars yet",
-    "Vælg familiens kalendere, så samles alle aftaler her.": "Choose the family's calendars and every event is gathered here.",
-    "Vælg kalendere": "Choose calendars",
-    "Uge {n}": "Week {n}",
-    "Visning": "View",
-    "Dag": "Day",
-    "Uge": "Week",
-    "Ny begivenhed": "New event",
-    "Forrige uge": "Previous week",
-    "Næste uge": "Next week",
-    "I dag": "Today",
-    "Hele dagen · {n} dage": "All day · {n} days",
-    "Hele dagen": "All day",
-    "Tømning": "Collection",
-    "Ingen aftaler. En rolig dag.": "Nothing planned. A calm day.",
-    "Aftensmad": "Dinner",
-    "Intet i kalenderen": "Nothing planned",
-    "Tid": "Time",
-    "Kalender": "Calendar",
-    "Sted": "Place",
-    "Noter": "Notes",
-    "Gentages": "Repeats",
-    "Ja": "Yes",
-    "Slet": "Delete",
-    "Luk": "Close",
-    "Slet aftalen?": "Delete the event?",
-    "»{title}« slettes fra kalenderen.": "“{title}” will be removed from the calendar.",
-    "Aftalen er slettet": "The event was deleted",
-    "Kunne ikke slette: {error}": "Couldn't delete: {error}",
-    "Hvad": "What",
-    "Fx fødselsdag hos mormor": "E.g. birthday at grandma's",
-    "Fra": "From",
-    "Til": "To",
-    "Sted (valgfrit)": "Place (optional)",
-    "Annullér": "Cancel",
-    "Gem": "Save",
-    "»{title}« er lagt i kalenderen": "“{title}” was added to the calendar",
-    "Ingen madplan endnu": "No meal plan yet",
-    "Vælg den kalender, jeres aftensmad står i. Hver dag er en begivenhed med retten som titel.": "Choose the calendar that holds your dinners. Each day is an event with the dish as its title.",
-    "Vælg madplanens kalender": "Choose the meal plan calendar",
-    "Indkøbslisten": "Shopping list",
-    "I aften": "Tonight",
-    "I morgen": "Tomorrow",
-    "Kl. {time}": "At {time}",
-    "Ingen ret endnu": "Nothing planned yet",
-    "Madplanen kommer fra kalenderen »{name}«. Retten er begivenhedens titel.": "The meal plan comes from the calendar “{name}”. The dish is the event's title.",
-    "Ret": "Dish",
-    "Fx lasagne": "E.g. lasagne",
-    "Forslag fra de sidste uger": "Ideas from the last weeks",
-    "Der står {n} retter denne dag. Kun den første ændres.": "There are {n} dishes this day. Only the first one is changed.",
-    "Fjern": "Remove",
-    "Retten er fjernet": "The dish was removed",
-    "Aftensmaden er gemt": "Dinner is saved",
-    "Kunne ikke gemme: {error}": "Couldn't save: {error}",
-    "Fjern {name}": "Remove {name}",
-    "Ingen lister endnu": "No lists yet",
-    "Vælg de to-do-lister fra Home Assistant, familien skal bruge – fx indkøb og huskeliste.": "Choose the Home Assistant to-do lists the family uses – e.g. shopping and reminders.",
-    "Bed en voksen om at vælge familiens lister.": "Ask a grown-up to choose the family's lists.",
-    "Vælg lister": "Choose lists",
-    "Lister": "Lists",
-    "Listen kunne ikke hentes: {error}": "The list couldn't be loaded: {error}",
-    "Alt er klaret!": "All done!",
-    "Listen er tom. Tilføj det første punkt herunder.": "The list is empty. Add the first item below.",
-    "Tilføj til {name}": "Add to {name}",
-    "Dato": "Date",
-    "Tilføj": "Add",
-    "Klaret ({n})": "Done ({n})",
-    "Ryd klarede": "Clear done",
-    "{done} af {total} klaret": "{done} of {total} done",
-    "Ret punkt": "Edit item",
-    "Tekst": "Text",
-    "Familiens lister": "The family's lists",
-    "Vælg hvilke to-do-lister fra Home Assistant, familien ser. Nye lister laves i Home Assistant, fx med Lokal to-do-integrationen.": "Choose which Home Assistant to-do lists the family sees. New lists are made in Home Assistant, e.g. with the Local To-do integration.",
-    "Home Assistant har ingen to-do-lister endnu.": "Home Assistant has no to-do lists yet.",
-    "Listerne er gemt": "The lists are saved",
-    "Ryd klarede punkter?": "Clear done items?",
-    "Alle afkrydsede punkter fjernes fra »{name}«.": "All checked items are removed from “{name}”.",
-    "Ryd": "Clear",
-    "Madplan": "Meal plan",
-    "Kalenderen kunne ikke hentes: {error}": "The calendar couldn't be loaded: {error}",
-  },
+  css,
+  en,
 };

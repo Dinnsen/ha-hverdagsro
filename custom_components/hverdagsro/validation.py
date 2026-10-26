@@ -10,13 +10,19 @@ from typing import Any
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    BOARD_SLOTS,
     EVERYONE,
     INSTITUTIONS,
+    KID_FEATURES,
     MAX_HOUSE_BYTES,
     MAX_MEMBERS,
     MAX_MISSIONS,
+    MAX_QUICK,
     MAX_REWARDS,
+    MAX_ROUTINES_BYTES,
     MODULES,
+    PET_KINDS,
+    QUICK_THEN,
     ROLES,
     SKIN_MODES,
     SKINS,
@@ -26,6 +32,8 @@ from .schema import vol
 _ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,47}$")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 _HHMM = re.compile(r"^([01]\d|2[0-3])[:.][0-5]\d$")
+_NOTIFY = re.compile(r"^notify\.[a-z0-9_]+$")
+_PIN = re.compile(r"^\d{4,6}$")
 
 
 def ident(value: Any) -> str:
@@ -76,6 +84,46 @@ def entity_list(value: Any) -> list[str]:
     return [cv.entity_id(item) for item in cv.ensure_list(value)][:40]
 
 
+def notify_service(value: Any) -> str | None:
+    """A notify action like notify.mobile_app_iphone."""
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not _NOTIFY.match(text):
+        raise vol.Invalid("expected a notify action like notify.mobile_app_phone")
+    return text
+
+
+def pin_code(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not _PIN.match(text):
+        raise vol.Invalid("a PIN is 4 to 6 digits")
+    return text
+
+
+def image_url(value: Any) -> str | None:
+    """A picture Home Assistant serves (an uploaded image) or a data URL from the panel."""
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not text.startswith(("/api/image/serve/", "data:image/")) or len(text) > 400_000:
+        raise vol.Invalid("expected an uploaded image")
+    return text
+
+
+def id_list(value: Any) -> list[str]:
+    return [ident(item) for item in cv.ensure_list(value)][:60]
+
+
+def text_list(max_items: int, max_len: int) -> Any:
+    return vol.All(cv.ensure_list, [text(max_len)], vol.Length(max=max_items))
+
+
+PET = vol.Schema({vol.Required("name"): text(20, 1), vol.Optional("kind", default="hund"): vol.In(PET_KINDS)})
+
+
 MEMBER = vol.Schema(
     {
         vol.Required("id"): ident,
@@ -89,6 +137,19 @@ MEMBER = vol.Schema(
         vol.Optional("mode", default="auto"): vol.In(SKIN_MODES),
         vol.Optional("calendar", default=None): optional_entity,
         vol.Optional("device_tracker", default=None): optional_entity,
+        vol.Optional("title", default=""): text(20),
+        vol.Optional("features", default={}): {vol.In(KID_FEATURES): cv.boolean},
+        vol.Optional("pet", default=None): vol.Any(None, PET),
+        vol.Optional("notify", default=None): notify_service,
+        vol.Optional("skema", default=None): optional_entity,
+        vol.Optional("speaker", default=None): optional_entity,
+        vol.Optional("wishlist", default=None): optional_entity,
+        vol.Optional("photo", default=None): image_url,
+        vol.Optional("pin", default=None): pin_code,
+        vol.Optional("quick_order", default=[]): id_list,
+        vol.Optional("quick_hide", default=[]): id_list,
+        vol.Optional("msg_off", default=[]): text_list(20, 40),
+        vol.Optional("goal", default=None): vol.Any(None, ident),
     }
 )
 
@@ -144,6 +205,23 @@ SETTINGS = vol.Schema(
         vol.Optional("mission_reset", default="00:00"): hhmm,
         vol.Optional("language", default="auto"): vol.In(("auto", "da", "en")),
         vol.Optional("home_name", default=""): text(40),
+        vol.Optional("alarm_rights", default={}): {
+            vol.Optional("code_arm", default=False): cv.boolean,
+            vol.Optional("kids_arm", default=True): cv.boolean,
+            vol.Optional("kids_disarm", default=False): cv.boolean,
+            vol.Optional("modes", default=[]): vol.All(cv.ensure_list, [cv.string], vol.Length(max=8)),
+        },
+        vol.Optional("osky_to", default={}): {vol.Coerce(str): text(40)},
+        vol.Optional("pickup_reminder", default=True): cv.boolean,
+        # How each to-do list looks under Lister: a shopping list or a fixed list, its colour, icon and note.
+        vol.Optional("lists", default={}): {
+            cv.entity_id: {
+                vol.Optional("kind", default="list"): vol.In(("list", "fixed")),
+                vol.Optional("color", default="#6E4AFF"): hex_color,
+                vol.Optional("icon", default="lists"): text(20),
+                vol.Optional("note", default=""): text(120),
+            }
+        },
     }
 )
 
@@ -169,8 +247,73 @@ APPLIANCE = vol.Schema(
             )
         ),
         vol.Optional("controls", default=[]): entity_list,
+        vol.Optional("hidden", default=False): cv.boolean,
     }
 )
+
+
+QUICK = vol.Schema(
+    {
+        vol.Required("id"): ident,
+        vol.Required("label"): text(30, 1),
+        vol.Required("entity"): cv.entity_id,
+        vol.Optional("icon", default="star"): text(20),
+        vol.Optional("color", default="#11A39A"): hex_color,
+        vol.Optional("desc", default=""): text(200),
+        vol.Optional("cond", default={}): {
+            vol.Optional("kind", default="always"): vol.In(("always", "time", "entity")),
+            vol.Optional("entity", default=None): optional_entity,
+            vol.Optional("from", default=6): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+            vol.Optional("to", default=10): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+        },
+        vol.Optional("who", default=[]): id_list,
+        vol.Optional("option", default=None): vol.Any(
+            None,
+            {
+                vol.Required("label"): text(40, 1),
+                vol.Required("variable"): vol.All(cv.string, vol.Match(r"^[a-z0-9_]{1,40}$")),
+            },
+        ),
+        vol.Optional("countdown", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=3600)),
+        vol.Optional("then", default=""): vol.In(QUICK_THEN),
+    }
+)
+
+
+def _routines(value: Any) -> dict[str, Any]:
+    """Hent og bring, the routine boards and their own cards. Checked loosely, with a size limit."""
+    if not isinstance(value, dict):
+        raise vol.Invalid("expected an object")
+    helpers = vol.Schema(
+        vol.All(
+            cv.ensure_list,
+            [
+                {
+                    vol.Required("id"): ident,
+                    vol.Required("name"): text(30, 1),
+                    vol.Optional("color", default="#EC4899"): hex_color,
+                }
+            ],
+            vol.Length(max=20),
+        )
+    )(value.get("helpers", []))
+    pickups = value.get("pickups", {})
+    boards = value.get("boards", {})
+    cards = value.get("cards", [])
+    if not isinstance(pickups, dict) or not isinstance(boards, dict) or not isinstance(cards, list):
+        raise vol.Invalid("pickups and boards must be objects, cards a list")
+    for board in boards.values():
+        if not isinstance(board, dict) or any(
+            key not in BOARD_SLOTS or not isinstance(v, list) for key, v in board.items()
+        ):
+            raise vol.Invalid("a board has morgen, eftermiddag and aften lists")
+    clean = {"helpers": helpers, "pickups": pickups, "boards": boards, "cards": cards}
+    if len(json.dumps(clean, separators=(",", ":"))) > MAX_ROUTINES_BYTES:
+        raise vol.Invalid("too much")
+    return clean
+
+
+PINS = vol.Schema({ident: {vol.Required("text"): text(140, 1), vol.Optional("until", default=None): iso_date}})
 
 
 def _unique_ids(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -207,6 +350,9 @@ SECTION_SCHEMAS: dict[str, Any] = {
     "rewards": vol.All(cv.ensure_list, [REWARD], vol.Length(max=MAX_REWARDS), _unique_ids),
     "house": _house,
     "appliances": vol.All(cv.ensure_list, [APPLIANCE], vol.Length(max=80), _unique_ids),
+    "quick": vol.All(cv.ensure_list, [QUICK], vol.Length(max=MAX_QUICK), _unique_ids),
+    "routines": _routines,
+    "pins": PINS,
 }
 
 
