@@ -1,0 +1,15 @@
+{
+  "domain": "hverdagsro",
+  "name": "Hverdagsro",
+  "after_dependencies": ["calendar", "person", "todo", "weather"],
+  "codeowners": ["@Dinnsen"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http", "image_upload", "panel_custom", "websocket_api"],
+  "documentation": "https://github.com/Dinnsen/ha-hverdagsro",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/Dinnsen/ha-hverdagsro/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

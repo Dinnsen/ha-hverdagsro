@@ -1,0 +1,16 @@
+name: Translation
+description: Help translate Hverdagsro into your language.
+labels: [translation]
+body:
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: Svenska
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: The panel's texts are Danish in the code and translated in custom_components/hverdagsro/frontend (the `en` maps). Say which parts you want to translate, or open a pull request.

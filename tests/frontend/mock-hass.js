@@ -1,0 +1,396 @@
+/* A fake Home Assistant for trying the panel in a browser without Home Assistant.
+   It implements the hverdagsro/* websocket commands in memory, the way the integration does,
+   and a small, made-up home: the Hansen family (two parents, two children). */
+
+const now = new Date();
+const iso = (d) => d.toISOString();
+const day = (n, h = 0, m = 0) => {
+  const d = new Date(now);
+  d.setDate(d.getDate() + n);
+  d.setHours(h, m, 0, 0);
+  return d;
+};
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+function st(entity_id, state, attributes = {}) {
+  return { entity_id, state, attributes, last_changed: iso(day(0, 7, 12)), last_updated: iso(day(0, 7, 12)), context: { id: "x" } };
+}
+
+export function demoStates() {
+  const S = {};
+  const add = (s) => (S[s.entity_id] = s);
+  add(st("sun.sun", "above_horizon", { next_rising: iso(day(1, 7, 31)), next_setting: iso(day(0, 16, 42)), elevation: 14 }));
+  add(st("person.anna", "home", { friendly_name: "Anna", user_id: "u-anna" }));
+  add(st("person.mads", "not_home", { friendly_name: "Mads", user_id: "u-mads" }));
+  add(st("person.ida", "home", { friendly_name: "Ida", user_id: "u-ida" }));
+  add(st("person.oskar", "home", { friendly_name: "Oskar" }));
+  add(st("weather.forecast_home", "rainy", { friendly_name: "Hjemme", temperature: 9.4, humidity: 88, wind_speed: 6.1, temperature_unit: "°C" }));
+  for (const [id, name, on, extra] of [
+    ["stue", "Stue", true, { brightness: 180, color_mode: "color_temp", color_temp_kelvin: 2700, supported_color_modes: ["color_temp"] }],
+    ["kokken", "Køkken", true, { brightness: 230, color_mode: "color_temp", color_temp_kelvin: 3200, supported_color_modes: ["color_temp"] }],
+    ["ida", "Idas værelse", true, { brightness: 120, color_mode: "rgbww", rgb_color: [255, 120, 200], supported_color_modes: ["rgbww"] }],
+    ["oskar", "Oskars værelse", false, { supported_color_modes: ["brightness"] }],
+    ["sovevaerelse", "Soveværelse", false, { supported_color_modes: ["color_temp"] }],
+    ["bad", "Badeværelse", false, { supported_color_modes: ["brightness"] }],
+    ["have", "Haven", false, { supported_color_modes: ["onoff"] }],
+  ])
+    add(st(`light.${id}`, on ? "on" : "off", { friendly_name: name, ...extra }));
+  add(st("media_player.stue", "playing", { friendly_name: "Stue", volume_level: 0.32, is_volume_muted: false, media_title: "Solskin", media_artist: "Familiebåndet", media_album_name: "Hverdag", media_duration: 214, media_position: 63, media_position_updated_at: iso(now), supported_features: 4127295, group_members: ["media_player.stue", "media_player.kokken"], source_list: ["Spotify", "Radio"], source: "Spotify" }));
+  add(st("media_player.kokken", "playing", { friendly_name: "Køkken", volume_level: 0.25, is_volume_muted: false, media_title: "Solskin", media_artist: "Familiebåndet", supported_features: 4127295, group_members: ["media_player.stue", "media_player.kokken"] }));
+  add(st("media_player.ida", "paused", { friendly_name: "Idas højttaler", volume_level: 0.18, media_title: "Godnathistorie", media_artist: "Radio", supported_features: 4127295 }));
+  add(st("media_player.tv_stue", "off", { friendly_name: "TV i stuen", supported_features: 21437 }));
+  add(st("alarm_control_panel.huset", "disarmed", { friendly_name: "Huset", code_arm_required: false, supported_features: 63, code_format: null }));
+  add(st("binary_sensor.hoveddor", "off", { friendly_name: "Hoveddør", device_class: "door" }));
+  add(st("binary_sensor.terrassedor", "on", { friendly_name: "Terrassedør", device_class: "door" }));
+  add(st("binary_sensor.vindue_ida", "off", { friendly_name: "Vindue Ida", device_class: "window" }));
+  add(st("binary_sensor.bevaegelse_stue", "on", { friendly_name: "Bevægelse stue", device_class: "motion" }));
+  add(st("binary_sensor.rog_gang", "off", { friendly_name: "Røgalarm gang", device_class: "smoke" }));
+  add(st("lock.hoveddor", "locked", { friendly_name: "Lås hoveddør" }));
+  add(st("cover.garageport", "closed", { friendly_name: "Garageport", device_class: "garage" }));
+  add(st("camera.indkorsel", "idle", { friendly_name: "Indkørsel", entity_picture: "/api/camera_proxy/camera.indkorsel?token=x" }));
+  add(st("todo.indkob", "3", { friendly_name: "Indkøb", supported_features: 15 }));
+  add(st("todo.huskeliste", "1", { friendly_name: "Huskeliste", supported_features: 15 }));
+  add(st("calendar.familie", "off", { friendly_name: "Familie", message: "Svømning" }));
+  add(st("calendar.ida", "off", { friendly_name: "Ida" }));
+  add(st("calendar.madplan", "off", { friendly_name: "Madplan", message: "Lasagne" }));
+  add(st("calendar.affald", "off", { friendly_name: "Affald" }));
+  add(st("sensor.restaffald", ymd(day(1)), { friendly_name: "Restaffald", device_class: "date" }));
+  add(st("sensor.papir", ymd(day(6)), { friendly_name: "Papir og pap", device_class: "date" }));
+  const prices = Array.from({ length: 24 }, (_, h) => ({ hour: iso(day(0, h)), price: +(1.2 + Math.sin((h - 6) / 3.5) * 0.9 + (h >= 17 && h <= 20 ? 1.4 : 0)).toFixed(2) }));
+  add(st("sensor.elpris", "2.31", { friendly_name: "Elpris", unit_of_measurement: "kr/kWh", raw_today: prices }));
+  add(st("sensor.vaskemaskine_status", "running", { friendly_name: "Vaskemaskine" }));
+  add(st("sensor.vaskemaskine_tid_tilbage", "38", { friendly_name: "Vaskemaskine tid tilbage", unit_of_measurement: "min" }));
+  add(st("sensor.opvasker_status", "off", { friendly_name: "Opvasker" }));
+  add(st("vacuum.robotstovsuger", "cleaning", { friendly_name: "Robotstøvsuger", battery_level: 64 }));
+  add(st("lawn_mower.plaeneklipper", "docked", { friendly_name: "Plæneklipper" }));
+  add(st("sensor.tesla_battery", "68", { friendly_name: "Tesla batteri", unit_of_measurement: "%", device_class: "battery" }));
+  add(st("sensor.lader_status", "charging", { friendly_name: "Lader status" }));
+  add(st("sensor.stue_temperatur", "21.4", { friendly_name: "Stue temperatur", unit_of_measurement: "°C", device_class: "temperature" }));
+  add(st("script.godnat", "off", { friendly_name: "Godnat" }));
+  add(st("scene.film", "2026-01-01T00:00:00", { friendly_name: "Filmaften" }));
+  return S;
+}
+
+export function demoRegistry(states) {
+  const areas = {
+    stue: { area_id: "stue", name: "Stue", floor_id: null },
+    kokken: { area_id: "kokken", name: "Køkken", floor_id: null },
+    ida: { area_id: "ida", name: "Idas værelse", floor_id: null },
+    oskar: { area_id: "oskar", name: "Oskars værelse", floor_id: null },
+    sovevaerelse: { area_id: "sovevaerelse", name: "Soveværelse", floor_id: null },
+    bad: { area_id: "bad", name: "Badeværelse", floor_id: null },
+    bryggers: { area_id: "bryggers", name: "Bryggers", floor_id: null },
+    kontor: { area_id: "kontor", name: "Kontor", floor_id: null },
+    have: { area_id: "have", name: "Have", floor_id: null },
+  };
+  const areaOf = { "light.stue": "stue", "light.kokken": "kokken", "light.ida": "ida", "light.oskar": "oskar", "light.sovevaerelse": "sovevaerelse", "light.bad": "bad", "light.have": "have", "media_player.stue": "stue", "media_player.kokken": "kokken", "media_player.ida": "ida", "media_player.tv_stue": "stue", "binary_sensor.vindue_ida": "ida", "binary_sensor.terrassedor": "stue", "binary_sensor.bevaegelse_stue": "stue", "sensor.vaskemaskine_status": "bryggers", "sensor.stue_temperatur": "stue" };
+  const entities = {};
+  for (const id of Object.keys(states)) entities[id] = { entity_id: id, area_id: areaOf[id] || null, device_id: null, platform: id.split(".")[0] === "media_player" ? "sonos" : "demo" };
+  return { areas, entities, devices: {} };
+}
+
+export function demoData(setupDone = true) {
+  const family = [
+    { id: "anna", name: "Anna", role: "parent", person: "person.anna", color: "#EE5E52", birthday: "1988-03-14", institution: "none", skin: "standard", mode: "auto", calendar: "calendar.familie", device_tracker: null },
+    { id: "mads", name: "Mads", role: "parent", person: "person.mads", color: "#3B6BF5", birthday: "1986-11-02", institution: "none", skin: "standard", mode: "auto", calendar: null, device_tracker: null },
+    { id: "ida", name: "Ida", role: "child", person: "person.ida", color: "#8B5CF6", birthday: "2017-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(Math.min(28, now.getDate() + 3)).padStart(2, "0"), institution: "skole", skin: "rosa", mode: "auto", calendar: "calendar.ida", device_tracker: null },
+    { id: "oskar", name: "Oskar", role: "child", person: "person.oskar", color: "#1FA36A", birthday: "2021-06-20", institution: "bornehave", skin: "skov", mode: "auto", calendar: null, device_tracker: null },
+  ];
+  const all = [0, 1, 2, 3, 4, 5, 6];
+  const missions = [
+    { id: "tandboerst", title: "Børst tænder", member: "all", points: 5, days: all, time: "07:15", emoji: "🪥", part: "morning" },
+    { id: "seng", title: "Red seng", member: "ida", points: 5, days: [0, 1, 2, 3, 4], time: null, emoji: "🛏️", part: "morning" },
+    { id: "taske", title: "Pak skoletaske", member: "ida", points: 10, days: [0, 1, 2, 3, 4], time: "19:00", emoji: "🎒", part: "evening" },
+    { id: "opvask", title: "Tøm opvaskeren", member: "ida", points: 15, days: [1, 3, 5], time: null, emoji: "🍽️", part: "afternoon" },
+    { id: "legetoj", title: "Ryd legetøj op", member: "oskar", points: 10, days: all, time: "18:30", emoji: "🧸", part: "evening" },
+    { id: "pyjamas", title: "Tag nattøj på", member: "oskar", points: 5, days: all, time: "19:00", emoji: "🌙", part: "evening" },
+  ];
+  const rewards = [
+    { id: "film", title: "Vælg aftenens film", member: "all", cost: 40, emoji: "🎬" },
+    { id: "is", title: "Is efter aftensmad", member: "all", cost: 25, emoji: "🍦" },
+    { id: "lego", title: "Nyt LEGO-sæt", member: "ida", cost: 300, emoji: "🧱" },
+    { id: "skaerm", title: "30 min. ekstra skærmtid", member: "all", cost: 60, emoji: "📱" },
+  ];
+  const t = ymd(now);
+  return {
+    setup_done: setupDone,
+    family: setupDone ? family : [],
+    modules: { missions: true, points: true, shop: true, lists: true, calendar: true, meals: true, music: true, appliances: true, security: true, house: true, decor: true, energy: true, waste: true },
+    settings: {
+      weather: "weather.forecast_home",
+      calendars: ["calendar.familie", "calendar.ida"],
+      todo: ["todo.indkob", "todo.huskeliste"],
+      meals_calendar: "calendar.madplan",
+      alarm: "alarm_control_panel.huset",
+      media: ["media_player.stue", "media_player.kokken", "media_player.ida", "media_player.tv_stue"],
+      cameras: ["camera.indkorsel"],
+      price: "sensor.elpris",
+      waste: [{ entity: "sensor.restaffald", name: "Restaffald", color: "#2F7D4F" }, { entity: "sensor.papir", name: "Papir og pap", color: "#2F6FED" }],
+      decor: {},
+      decor_days: {},
+      anniversaries: { together: "2009-05-16", wedding: "2014-08-09" },
+      mission_reset: "00:00",
+      language: "auto",
+      home_name: "Hjemme hos Hansen",
+    },
+    missions: setupDone ? missions : [],
+    rewards: setupDone ? rewards : [],
+    house: setupDone ? demoHouse() : { name: "", rooms: [], walls: [], areas: [], items: [] },
+    appliances: setupDone
+      ? [
+          { id: "vask", entity: "sensor.vaskemaskine_status", name: "Vaskemaskine", kind: "washer", controls: ["sensor.vaskemaskine_tid_tilbage"] },
+          { id: "opvask", entity: "sensor.opvasker_status", name: "Opvasker", kind: "dish", controls: [] },
+          { id: "robot", entity: "vacuum.robotstovsuger", name: "Robotstøvsuger", kind: "vacuum", controls: [] },
+          { id: "klipper", entity: "lawn_mower.plaeneklipper", name: "Plæneklipper", kind: "mower", controls: [] },
+        ]
+      : [],
+    points: { ida: 135, oskar: 48 },
+    requests: [{ id: "r1", member: "ida", reward: "film", at: iso(day(0, 8, 2)), status: "pending" }],
+    ledger: [{ at: iso(day(0, 7, 20)), member: "ida", delta: 5, reason: "Børst tænder", by: null }],
+    done_today: { "tandboerst:ida": { at: iso(day(0, 7, 20)), by: null } },
+    done_week: { [t]: { "tandboerst:ida": { at: iso(day(0, 7, 20)), by: null } } },
+    me: null,
+    can_manage: false,
+    is_admin: false,
+    today: t,
+  };
+}
+
+/* A simple bungalow: 1 m = 60 units. Rooms are polygons; walls are segments; items sit on walls or in rooms. */
+export function demoHouse() {
+  const R = (id, name, rtype, pts, extra = {}) => ({ id, name, rtype, area: extra.area ?? id, light: extra.light || "", pts, ...extra });
+  const W = (a, b, k = "int") => ({ id: `w${a.join("_")}_${b.join("_")}`, a, b, k });
+  const I = (type, id, name, x, y, ex = {}) => ({ type, id, name, x, y, ent: "", ...ex });
+  return {
+    name: "Hjemme hos Hansen",
+    rooms: [
+      R("kokken", "Køkken", "kitchen", [[100, 100], [460, 100], [460, 400], [100, 400]], { light: "light.kokken" }),
+      R("stue", "Stue", "living", [[460, 100], [900, 100], [900, 400], [460, 400]], { light: "light.stue" }),
+      R("ida", "Idas værelse", "kid", [[100, 400], [340, 400], [340, 640], [100, 640]], { light: "light.ida", kid: "ida", age: "bigchild", style: "pige" }),
+      R("oskar", "Oskars værelse", "kid", [[340, 400], [580, 400], [580, 640], [340, 640]], { light: "light.oskar", kid: "oskar", age: "child", style: "dreng" }),
+      R("bad", "Badeværelse", "bath", [[580, 400], [720, 400], [720, 640], [580, 640]], { light: "light.bad" }),
+      R("sovevaerelse", "Soveværelse", "bed", [[720, 400], [900, 400], [900, 640], [720, 640]], { light: "light.sovevaerelse" }),
+    ],
+    walls: [
+      W([100, 100], [900, 100], "ext"), W([900, 100], [900, 640], "ext"), W([900, 640], [100, 640], "ext"), W([100, 640], [100, 100], "ext"),
+      W([460, 100], [460, 400]), W([100, 400], [900, 400]), W([340, 400], [340, 640]), W([580, 400], [580, 640]), W([720, 400], [720, 640]),
+    ],
+    areas: [
+      { id: "have", kind: "lawn", name: "Haven", pts: [[100, 700], [900, 700], [900, 960], [100, 960]] },
+      { id: "terr", kind: "deck", name: "Terrasse", pts: [[560, 650], [900, 650], [900, 700], [560, 700]] },
+      { id: "indk", kind: "drive", name: "Indkørsel", pts: [[100, -60], [400, -60], [400, 90], [100, 90]] },
+    ],
+    items: [
+      I("door", "hoveddor", "Hoveddør", 300, 100, { ent: "binary_sensor.hoveddor", lock: "lock.hoveddor", dir: "h", w: 54, side: 1, hinge: "l" }),
+      I("door", "terrasse", "Terrassedør", 700, 400, { ent: "binary_sensor.terrassedor", dir: "h", w: 70, side: -1, hinge: "l" }),
+      I("window", "vindue_ida", "Vindue Ida", 100, 520, { ent: "binary_sensor.vindue_ida", dir: "v", w: 90, side: -1 }),
+      I("motion", "bev_stue", "Bevægelse stue", 860, 140, { ent: "binary_sensor.bevaegelse_stue" }),
+      I("smoke", "rog", "Røgalarm", 520, 380, { ent: "binary_sensor.rog_gang" }),
+      I("camera", "cam", "Indkørsel", 120, 80, { ent: "camera.indkorsel", a: 270, s: 50, r: 200 }),
+      I("speaker", "spk_stue", "Stue", 860, 360, { ent: "media_player.stue" }),
+      I("speaker", "spk_kok", "Køkken", 140, 360, { ent: "media_player.kokken" }),
+      I("tv", "tv", "TV", 680, 120, { ent: "media_player.tv_stue" }),
+      I("vacuum", "robot", "Robotstøvsuger", 700, 300, { ent: "vacuum.robotstovsuger", appl: "robot" }),
+      I("mower", "klipper", "Plæneklipper", 200, 900, { ent: "lawn_mower.plaeneklipper", appl: "klipper" }),
+      I("washer", "vask", "Vaskemaskine", 130, 130, { ent: "sensor.vaskemaskine_status", appl: "vask" }),
+    ],
+  };
+}
+
+const USERS = {
+  anna: { id: "u-anna", name: "Anna", is_admin: true, is_owner: true },
+  mads: { id: "u-mads", name: "Mads", is_admin: false },
+  ida: { id: "u-ida", name: "Ida", is_admin: false },
+  tablet: { id: "u-tablet", name: "Køkkenskærm", is_admin: false },
+  admin: { id: "u-admin", name: "Administrator", is_admin: true },
+};
+
+export function createMockHass({ user = "anna", setup = true, lang = "da", dark = false } = {}) {
+  let states = demoStates();
+  const reg = demoRegistry(states);
+  const store = demoData(setup);
+  const calls = [];
+  const listeners = new Set();
+  const u = USERS[user] || USERS.anna;
+  const todoItems = {
+    "todo.indkob": [
+      { uid: "1", summary: "Mælk", status: "needs_action" },
+      { uid: "2", summary: "Rugbrød", status: "needs_action" },
+      { uid: "3", summary: "Bananer", status: "needs_action" },
+      { uid: "4", summary: "Kaffe", status: "completed" },
+    ],
+    "todo.huskeliste": [{ uid: "5", summary: "Madpakke fredag", status: "needs_action", due: ymd(day(4)) }],
+  };
+
+  const memberForUser = () => store.family.find((m) => m.person && states[m.person]?.attributes?.user_id === u.id) || null;
+  const canManage = () => {
+    const m = memberForUser();
+    return m ? m.role === "parent" : !!u.is_admin;
+  };
+  const panelState = () => {
+    const me = memberForUser();
+    return JSON.parse(JSON.stringify({ ...store, me: me ? me.id : null, can_manage: canManage(), is_admin: !!u.is_admin }));
+  };
+  const push = () => listeners.forEach((cb) => cb(panelState()));
+  const check = (memberId) => {
+    if (canManage()) return;
+    const me = memberForUser();
+    const target = store.family.find((m) => m.id === memberId);
+    if (target && ((!me && target.role === "child") || (me && me.id === target.id))) return;
+    throw { code: "not_allowed", message: "Ikke tilladt" };
+  };
+
+  const ws = async (msg) => {
+    calls.push(msg);
+    const t = msg.type;
+    if (t === "hverdagsro/state") return panelState();
+    if (t === "hverdagsro/save") {
+      if (!canManage()) throw { code: "not_allowed", message: "Ikke tilladt" };
+      store[msg.section] = msg.section === "modules" ? { ...store.modules, ...msg.value } : msg.value;
+      setTimeout(push, 10);
+      return { value: store[msg.section] };
+    }
+    if (t === "hverdagsro/setup_done") {
+      store.setup_done = true;
+      setTimeout(push, 10);
+      return null;
+    }
+    if (t === "hverdagsro/mission") {
+      check(msg.member);
+      const key = `${msg.mission}:${msg.member}`;
+      const m = store.missions.find((x) => x.id === msg.mission);
+      const had = key in store.done_today;
+      if (msg.done !== had) {
+        if (msg.done) store.done_today[key] = { at: iso(new Date()), by: memberForUser()?.id || null };
+        else delete store.done_today[key];
+        store.done_week[store.today] = store.done_today;
+        store.points[msg.member] = Math.max(0, (store.points[msg.member] || 0) + (msg.done ? m.points : -m.points));
+      }
+      setTimeout(push, 10);
+      return { done: msg.done, points: store.points[msg.member] || 0 };
+    }
+    if (t === "hverdagsro/points") {
+      if (!canManage()) throw { code: "not_allowed", message: "Ikke tilladt" };
+      store.points[msg.member] = Math.max(0, (store.points[msg.member] || 0) + msg.delta);
+      setTimeout(push, 10);
+      return { points: store.points[msg.member] };
+    }
+    if (t === "hverdagsro/reward/request") {
+      check(msg.member);
+      const r = { id: Math.random().toString(36).slice(2, 8), member: msg.member, reward: msg.reward, at: iso(new Date()), status: "pending" };
+      store.requests.push(r);
+      if (canManage()) {
+        r.status = "approved";
+        store.points[msg.member] -= store.rewards.find((x) => x.id === msg.reward).cost;
+      }
+      setTimeout(push, 10);
+      return r;
+    }
+    if (t === "hverdagsro/reward/decide") {
+      const r = store.requests.find((x) => x.id === msg.request);
+      r.status = msg.approve ? "approved" : "declined";
+      if (msg.approve) store.points[r.member] -= store.rewards.find((x) => x.id === r.reward).cost;
+      setTimeout(push, 10);
+      return null;
+    }
+    if (t === "hverdagsro/theme") {
+      check(msg.member);
+      const m = store.family.find((x) => x.id === msg.member);
+      Object.assign(m, { skin: msg.skin, mode: msg.mode });
+      setTimeout(push, 10);
+      return null;
+    }
+    if (t === "todo/item/list") return { items: todoItems[msg.entity_id] || [] };
+    if (t === "config/area_registry/list") return Object.values(reg.areas);
+    if (t === "media_player/browse_media") return { title: "Bibliotek", children: [{ title: "Favoritter", media_content_id: "fav", media_content_type: "favorites", can_expand: true, thumbnail: null }] };
+    if (t === "logbook/get_events") return [];
+    if (t === "history/history_during_period") return {};
+    if (t === "image/list") return [];
+    if (t === "search/related") return {};
+    return null;
+  };
+
+  const hass = {
+    states,
+    entities: reg.entities,
+    devices: reg.devices,
+    areas: reg.areas,
+    floors: {},
+    user: u,
+    language: lang,
+    locale: { language: lang, number_format: "language", time_format: "24" },
+    themes: { darkMode: dark },
+    selectedTheme: null,
+    panelUrl: "hverdagsro",
+    hassUrl: (p = "") => p,
+    formatEntityState: (s) => s?.state,
+    formatEntityAttributeValue: (s, a) => s?.attributes?.[a],
+    callWS: ws,
+    callService: async (domain, service, data) => {
+      calls.push({ type: "call_service", domain, service, data });
+      const ids = [].concat(data?.entity_id || []);
+      // Like Home Assistant: a new states object, so the panel sees what changed.
+      states = { ...states };
+      for (const id of ids) {
+        const s = states[id];
+        if (!s) continue;
+        let next = s.state;
+        if (service === "turn_on") next = "on";
+        else if (service === "turn_off") next = "off";
+        else if (service === "toggle") next = s.state === "on" ? "off" : "on";
+        else if (service === "media_play") next = "playing";
+        else if (service === "media_pause") next = "paused";
+        else if (service.startsWith("alarm_arm_")) next = "armed_" + service.slice(10);
+        else if (service === "alarm_disarm") next = "disarmed";
+        else if (service === "lock") next = "locked";
+        else if (service === "unlock") next = "unlocked";
+        const attrs = { ...s.attributes };
+        if (service === "volume_set") attrs.volume_level = data.volume_level;
+        if (data?.brightness != null) attrs.brightness = data.brightness;
+        if (data?.brightness_pct != null) attrs.brightness = Math.round((data.brightness_pct / 100) * 255);
+        states[id] = { ...s, state: next, attributes: attrs, last_changed: iso(new Date()) };
+      }
+      hass.states = { ...states };
+      window.__panel && (window.__panel.hass = { ...hass });
+    },
+    callApi: async (method, path) => {
+      calls.push({ type: "api", method, path });
+      if (path.startsWith("calendars/")) {
+        const cal = path.split("?")[0].split("/")[1];
+        const qs = new URLSearchParams(path.split("?")[1] || "");
+        const from = new Date(qs.get("start") || 0), to = new Date(qs.get("end") || "2100-01-01");
+        const inRange = (list) => list.filter((e) => new Date(e.start.dateTime || e.start.date + "T00:00:00") < to && new Date(e.end.dateTime || e.end.date + "T00:00:00") > from);
+        const ev = (title, d, h, m, dur = 60, extra = {}) => ({ summary: title, start: { dateTime: iso(day(d, h, m)) }, end: { dateTime: iso(new Date(+day(d, h, m) + dur * 60000)) }, ...extra });
+        const allday = (title, d) => ({ summary: title, start: { date: ymd(day(d)) }, end: { date: ymd(day(d + 1)) } });
+        if (cal === "calendar.familie") return inRange([ev("Svømning", 0, 16, 30, 60), ev("Forældremøde", 0, 19, 0, 90), ev("Fodbold", 1, 17, 0), ev("Mormor på besøg", 2, 15, 0, 180), allday("Skolefri", 4)]);
+        if (cal === "calendar.ida") return inRange([ev("Spejder", 0, 18, 0, 90), ev("Klaver", 2, 15, 30, 45)]);
+        if (cal === "calendar.madplan") return inRange([0, 1, 2, 3, 4, 5, 6].map((d, i) => allday(["Lasagne", "Fiskefrikadeller", "Kylling i karry", "Pasta med kødsovs", "Tarteletter", "Pizza", "Suppe"][i], d)));
+        return [];
+      }
+      return null;
+    },
+    connection: {
+      subscribeMessage: async (cb, msg) => {
+        calls.push(msg);
+        if (msg.type === "hverdagsro/subscribe") {
+          listeners.add(cb);
+          setTimeout(() => cb(panelState()), 30);
+          return () => listeners.delete(cb);
+        }
+        if (msg.type === "weather/subscribe_forecast") {
+          const f =
+            msg.forecast_type === "daily"
+              ? Array.from({ length: 7 }, (_, i) => ({ datetime: iso(day(i, 12)), condition: ["rainy", "partlycloudy", "sunny", "cloudy", "rainy", "sunny", "partlycloudy"][i], temperature: 9 + i, templow: 3 + (i % 3), precipitation: i % 2 ? 0 : 2.4 }))
+              : Array.from({ length: 30 }, (_, i) => ({ datetime: iso(new Date(+day(0, now.getHours()) + i * 3600000)), condition: i < 4 ? "rainy" : i < 10 ? "cloudy" : "partlycloudy", temperature: 8 + Math.sin(i / 4) * 3, precipitation: i < 4 ? 0.8 : 0 }));
+          setTimeout(() => cb({ type: msg.forecast_type, forecast: f }), 40);
+          return () => {};
+        }
+        return () => {};
+      },
+      sendMessagePromise: ws,
+    },
+    __calls: calls,
+    __store: store,
+  };
+  return hass;
+}

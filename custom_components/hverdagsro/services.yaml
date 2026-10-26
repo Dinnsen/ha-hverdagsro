@@ -1,0 +1,42 @@
+add_points:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: hverdagsro
+    member:
+      required: true
+      example: Ida
+      selector:
+        text:
+    points:
+      required: true
+      example: 10
+      selector:
+        number:
+          min: -1000
+          max: 1000
+          mode: box
+    reason:
+      example: Hjalp med opvasken
+      selector:
+        text:
+complete_mission:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: hverdagsro
+    mission:
+      required: true
+      example: Børst tænder
+      selector:
+        text:
+    member:
+      required: true
+      example: Oskar
+      selector:
+        text:
+    date:
+      selector:
+        date:

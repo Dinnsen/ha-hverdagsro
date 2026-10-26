@@ -1,0 +1,72 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+
+      - name: Install test dependencies
+        run: pip install -r requirements_test.txt
+
+      - name: Run tests
+        id: pytest
+        run: |
+          set -o pipefail
+          pytest --cov --cov-report=term-missing --cov-fail-under=90 -rfE --tb=short 2>&1 | tee pytest.txt
+
+      - name: Strict typing
+        id: mypy
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          mypy 2>&1 | tee mypy.txt
+
+      - name: Report typing errors
+        if: ${{ !cancelled() && steps.mypy.outcome == 'failure' }}
+        run: |
+          grep -E "error:" mypy.txt | head -50 | while IFS= read -r line; do echo "::error title=Mypy::${line//%/%25}"; done
+
+      - name: Report failures and coverage
+        if: ${{ !cancelled() }}
+        env:
+          PYTEST_OUTCOME: ${{ steps.pytest.outcome }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, re
+          path = pathlib.Path("pytest.txt")
+          text = path.read_text() if path.exists() else ""
+          total = re.search(r"^TOTAL.*?(\d+%)$", text, re.M)
+          if total:
+              print(f"::notice title=Coverage::{total.group(1)}")
+          if "coverage:" in text and total:
+              table = text[text.find("coverage:"):total.end()]
+              print("::notice title=Coverage report::" + table[-4000:].replace("%", "%25").replace("\n", "%0A"))
+          summary = text[text.find("short test summary"):] if "short test summary" in text else ""
+          marker = next((m for m in ("= ERRORS =", "= FAILURES =") if m in text), None)
+          failures = text[text.find(marker):] if marker else ""
+          failed = os.environ.get("PYTEST_OUTCOME") == "failure"
+          if not failed:
+              failures = summary = ""
+          tail = text[-4000:] if failed and not (failures or summary) else ""
+          for title, body in (("Failures", failures), ("Summary", summary), ("Output", tail)):
+              for i in range(0, min(len(body), 24000), 4000):
+                  chunk = body[i:i + 4000].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+                  print(f"::error title={title}::{chunk}")
+          PY

@@ -1,0 +1,79 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hverdagsro",
+        "description": "Hverdagsro adds a family panel to the sidebar: the day, missions and points for the children, lists, the house, music and more. After this step, open Hverdagsro in the sidebar and the guide sets up the family."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Hverdagsro is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hverdagsro",
+        "data": {
+          "panel_title": "Name in the sidebar",
+          "panel_icon": "Icon in the sidebar",
+          "require_admin": "Only administrators can open Hverdagsro"
+        },
+        "data_description": {
+          "require_admin": "Leave it off so children with their own user can open their page."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "points": {
+        "name": "Points",
+        "state_attributes": {
+          "goal": { "name": "Goal" },
+          "goal_cost": { "name": "Goal price" },
+          "missions_today": { "name": "Missions today" },
+          "missions_done": { "name": "Missions done" },
+          "pending_requests": { "name": "Awaiting approval" }
+        }
+      }
+    },
+    "todo": {
+      "missions": {
+        "name": "Missions"
+      }
+    }
+  },
+  "exceptions": {
+    "member_not_found": { "message": "There is no family member called {member}." },
+    "mission_not_found": { "message": "There is no mission called {mission}." },
+    "reward_not_found": { "message": "That reward is not in the shop." },
+    "request_not_found": { "message": "That purchase has already been decided." },
+    "not_enough_points": { "message": "There are not enough points." },
+    "already_requested": { "message": "The reward is already waiting for approval." },
+    "not_allowed": { "message": "Only a parent can do that." },
+    "unknown_section": { "message": "Unknown section." }
+  },
+  "services": {
+    "add_points": {
+      "name": "Give points",
+      "description": "Gives a child points, or takes them away with a negative number.",
+      "fields": {
+        "config_entry_id": { "name": "Hverdagsro", "description": "Only needed if there is more than one." },
+        "member": { "name": "Child", "description": "The child's name or id." },
+        "points": { "name": "Points", "description": "Points to give. A negative number takes points away." },
+        "reason": { "name": "Reason", "description": "Shown in the history." }
+      }
+    },
+    "complete_mission": {
+      "name": "Complete a mission",
+      "description": "Marks a child's mission as done and gives its points.",
+      "fields": {
+        "config_entry_id": { "name": "Hverdagsro", "description": "Only needed if there is more than one." },
+        "mission": { "name": "Mission", "description": "The mission's title or id." },
+        "member": { "name": "Child", "description": "The child's name or id." },
+        "date": { "name": "Date", "description": "Today if empty." }
+      }
+    }
+  }
+}

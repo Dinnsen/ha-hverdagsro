@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in Hverdagsro does not work as expected.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Screenshots of the panel help a lot.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Hverdagsro version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.10.0"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Device and browser
+      placeholder: iPad, Home Assistant app / Chrome on Windows
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Settings → Devices & services → Hverdagsro → ⋮ → Download diagnostics. Names and birthdays are removed automatically.
+      render: json
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant lines from the Home Assistant log, and from the browser console (F12) if the panel misbehaves.
+      render: text

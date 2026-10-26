@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an idea for Hverdagsro.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the situation in your family and what is missing today.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: How could Hverdagsro help?
+  - type: input
+    id: integrations
+    attributes:
+      label: Integrations involved
+      placeholder: Sonos, Ønskeskyen, Home Connect …

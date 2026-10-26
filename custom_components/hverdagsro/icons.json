@@ -1,0 +1,22 @@
+{
+  "entity": {
+    "sensor": {
+      "points": {
+        "default": "mdi:star-circle"
+      }
+    },
+    "todo": {
+      "missions": {
+        "default": "mdi:rocket-launch"
+      }
+    }
+  },
+  "services": {
+    "add_points": {
+      "service": "mdi:star-plus"
+    },
+    "complete_mission": {
+      "service": "mdi:check-decagram"
+    }
+  }
+}

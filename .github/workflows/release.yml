@@ -1,0 +1,67 @@
+name: Release
+
+# A new version in manifest.json on main is released: the workflow creates
+# the tag v<version>, builds hverdagsro.zip and publishes the GitHub release
+# with that version's section of the changelog. Pushing a tag works too.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - custom_components/hverdagsro/manifest.json
+      - .github/workflows/release.yml
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(python3 -c "import json; print(json.load(open('custom_components/hverdagsro/manifest.json'))['version'])")
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::manifest.json version $version does not match tag $GITHUB_REF_NAME"
+            exit 1
+          fi
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "Release v$version exists already."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Release notes from the changelog
+        if: env.SKIP != '1'
+        run: |
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || echo "Hverdagsro $VERSION" > notes.md
+
+      - name: Build zip
+        if: env.SKIP != '1'
+        run: |
+          cd custom_components/hverdagsro
+          zip -r "$GITHUB_WORKSPACE/hverdagsro.zip" . -x "__pycache__/*"
+
+      - name: Publish the release
+        if: env.SKIP != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" hverdagsro.zip \
+            --target "$GITHUB_SHA" --title "Hverdagsro $VERSION" --notes-file notes.md

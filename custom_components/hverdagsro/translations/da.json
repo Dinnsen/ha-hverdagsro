@@ -1,0 +1,79 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hverdagsro",
+        "description": "Hverdagsro giver familien sit eget panel i sidebjælken: dagen, missioner og point til børnene, lister, huset, musik og meget mere. Åbn Hverdagsro i sidebjælken bagefter, så sætter guiden familien op."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Hverdagsro er allerede sat op."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hverdagsro",
+        "data": {
+          "panel_title": "Navn i sidebjælken",
+          "panel_icon": "Ikon i sidebjælken",
+          "require_admin": "Kun administratorer kan åbne Hverdagsro"
+        },
+        "data_description": {
+          "require_admin": "Lad den være slået fra, så børn med deres egen bruger kan åbne deres side."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "points": {
+        "name": "Point",
+        "state_attributes": {
+          "goal": { "name": "Mål" },
+          "goal_cost": { "name": "Målets pris" },
+          "missions_today": { "name": "Missioner i dag" },
+          "missions_done": { "name": "Missioner klaret" },
+          "pending_requests": { "name": "Venter på godkendelse" }
+        }
+      }
+    },
+    "todo": {
+      "missions": {
+        "name": "Missioner"
+      }
+    }
+  },
+  "exceptions": {
+    "member_not_found": { "message": "Der er ikke noget familiemedlem, der hedder {member}." },
+    "mission_not_found": { "message": "Der er ikke nogen mission, der hedder {mission}." },
+    "reward_not_found": { "message": "Belønningen findes ikke i shoppen." },
+    "request_not_found": { "message": "Købet er allerede afgjort." },
+    "not_enough_points": { "message": "Der er ikke point nok." },
+    "already_requested": { "message": "Belønningen venter allerede på godkendelse." },
+    "not_allowed": { "message": "Det kan kun en forælder." },
+    "unknown_section": { "message": "Ukendt afsnit." }
+  },
+  "services": {
+    "add_points": {
+      "name": "Giv point",
+      "description": "Giver et barn point, eller trækker point fra med et negativt tal.",
+      "fields": {
+        "config_entry_id": { "name": "Hverdagsro", "description": "Kun nødvendig, hvis der er mere end én." },
+        "member": { "name": "Barn", "description": "Barnets navn eller id." },
+        "points": { "name": "Point", "description": "Point, der gives. Et negativt tal trækker point fra." },
+        "reason": { "name": "Begrundelse", "description": "Vises i historikken." }
+      }
+    },
+    "complete_mission": {
+      "name": "Klar en mission",
+      "description": "Markerer et barns mission som klaret og giver missionens point.",
+      "fields": {
+        "config_entry_id": { "name": "Hverdagsro", "description": "Kun nødvendig, hvis der er mere end én." },
+        "mission": { "name": "Mission", "description": "Missionens titel eller id." },
+        "member": { "name": "Barn", "description": "Barnets navn eller id." },
+        "date": { "name": "Dato", "description": "I dag, hvis feltet er tomt." }
+      }
+    }
+  }
+}

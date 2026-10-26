@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hverdagsro test</title>
+<style>html, body { margin: 0; height: 100%; background: #F2F4F6; } hverdagsro-panel { height: 100vh; }</style>
+</head>
+<body>
+<script type="module">
+  import { createMockHass } from "./mock-hass.js";
+  const q = new URLSearchParams(location.search);
+  try {
+    sessionStorage.clear();
+    localStorage.removeItem("hverdagsro-as");
+    if (q.get("view")) sessionStorage.setItem("hverdagsro-view", q.get("view"));
+    if (q.get("as")) localStorage.setItem("hverdagsro-as", q.get("as"));
+  } catch (e) {}
+  await import("../../custom_components/hverdagsro/frontend/hverdagsro-panel.js");
+  const hass = createMockHass({ user: q.get("user") || "anna", setup: q.get("setup") !== "0", lang: q.get("lang") || "da", dark: q.get("dark") === "1" });
+  window.__hass = hass;
+  const el = document.createElement("hverdagsro-panel");
+  window.__panel = el;
+  el.panel = { config: { static_url: "/custom_components/hverdagsro/frontend", version: "test" } };
+  el.narrow = q.get("narrow") === "1";
+  document.body.appendChild(el);
+  el.hass = hass;
+</script>
+</body>
+</html>

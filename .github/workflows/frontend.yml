@@ -1,0 +1,32 @@
+name: Panel
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Syntax
+        run: for f in custom_components/hverdagsro/frontend/*.js; do node --check "$f" || exit 1; done
+
+      - name: Open every page with a fake Home Assistant
+        run: node tests/frontend/smoke.mjs
