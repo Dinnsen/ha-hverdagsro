@@ -862,6 +862,14 @@ const css = `
 `;
 
 const en = {
+  Loftlampe: "Ceiling light", "Scenerne er Hverdagsros egne, og lyskilderne er dem, der står i rummet i Husbyggeren.": "The scenes are Hverdagsro's own, and the light sources are the ones placed in the room in the House builder.",
+  "Scenerne er Hverdagsros egne, og lyset er rummets lys i Home Assistant.": "The scenes are Hverdagsro's own, and the lights are the room's lights in Home Assistant.", "Scenerne i Home Assistant ligger til sidst.": "The scenes from Home Assistant come last.",
+  "{names} er utilgængelig i HA i dag.": "{names} is unavailable in HA today.", " og ": " and ", "Ingen entitet": "No entity",
+  "Der er ikke koblet lys til rummet. Sæt lyskilder i rummet i Husbyggeren, eller vælg rummets område i Home Assistant.": "No lights are linked to the room. Place light sources in the room in the House builder, or choose the room's area in Home Assistant.",
+  "Til Huset": "To the House", "område {name}": "area {name}", "Redigér rummet": "Edit the room", "På tegningen": "On the drawing", "{n} møbler": "{n} pieces of furniture",
+  "Der er ikke sat enheder i rummet endnu. Det gøres i Husbyggeren.": "No devices have been placed in the room yet. That's done in the House builder.", "Billedet er jeres eget.": "The picture is your own.",
+  "Billedet er tegnet ud fra rumtypen, alder og stil.": "The picture is drawn from the room type, age and style.", "Billedet er tegnet ud fra rumtypen.": "The picture is drawn from the room type.",
+  "Lamperne i billedet er lyskilderne, I har sat i rummet i Husbyggeren.": "The lamps in the picture are the light sources you placed in the room in the House builder.", "Værelset er slået fra": "The room is turned off", "Far eller mor kan slå det til.": "Dad or Mum can turn it on.",
   Børneværelse: "Child's room", Soveværelse: "Bedroom", Gæsteværelse: "Guest room", Kontor: "Office", Stue: "Living room", Køkken: "Kitchen", Badeværelse: "Bathroom", "Lille bad": "Small bathroom", Toilet: "Toilet", Bryggers: "Utility room", "Entré og gang": "Hall", "Walk-in": "Walk-in closet", Garage: "Garage", "Andet rum": "Other room", Rum: "Room",
   Baby: "Baby", Tumling: "Toddler", Barn: "Child", "Stort barn": "Big child", Preteen: "Preteen", Teenager: "Teenager", Ung: "Young adult", "0–1 år": "0–1 years", "1–3 år": "1–3 years", "4–7 år": "4–7 years", "8–10 år": "8–10 years", "11–12 år": "11–12 years", "13–16 år": "13–16 years", "17+ år": "17+ years",
   Neutral: "Neutral", Pige: "Girl", Dreng: "Boy",

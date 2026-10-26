@@ -290,7 +290,7 @@ function render(ctx) {
     if (has(S, F.PAUSE) || has(S, F.PLAY)) ctl.push(`<button class="mu-play" data-act="mu-play" aria-label="${esc(playing ? ctx.t("Pause") : ctx.t("Afspil"))}">${svg(playing ? "pause" : "play")}</button>`);
     else if (has(S, F.STOP) && playing) ctl.push(`<button class="mu-play" data-act="mu-stop" aria-label="${esc(ctx.t("Stop"))}">${svg("x")}</button>`);
     if (has(S, F.NEXT)) ctl.push(`<button class="mu-b" data-act="mu-next" aria-label="${esc(ctx.t("Næste"))}">${svg("next")}</button>`);
-    if (has(S, F.REPEAT)) ctl.push(`<button class="mu-b${a.repeat && a.repeat !== "off" ? " on" : ""}" data-act="mu-repeat" aria-label="${esc(ctx.t("Gentag"))}">${svg("repeat")}${a.repeat === "one" ? "<small>1</small>" : ""}</button>`);
+    if (has(S, F.REPEAT)) ctl.push(`<button class="mu-b${a.repeat && a.repeat !== "off" ? " on" : ""}" data-act="mu-repeat" aria-label="${esc(ctx.t("{_}Gentag", { _: "" }))}">${svg("repeat")}${a.repeat === "one" ? "<small>1</small>" : ""}</button>`);
     const tools = [];
     if (Q) tools.push(`<button class="mu-tool${mQueue ? " on" : ""}" data-act="mu-queue">${svg("queue")}${esc(ctx.t("Kø"))}${Q.items && Q.items.length ? ` <b class="num">${Q.items.length}</b>` : ""}</button>`);
     if (ctx.platform(lead) === "sonos") {
@@ -885,7 +885,7 @@ const en = {
   Afspil: "Play",
   Stop: "Stop",
   Næste: "Next",
-  Gentag: "Repeat",
+  "{_}Gentag": "{_}Repeat",
   Position: "Position",
   Direkte: "Live",
   Tænd: "Turn on",

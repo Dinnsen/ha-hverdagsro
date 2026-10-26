@@ -181,12 +181,9 @@ function streak(ctx, m) {
 function rewardsOf(ctx, id) {
   return (ctx.data.rewards || []).filter((r) => r.member === id || r.member === "all").sort((a, b) => a.cost - b.cost);
 }
+let CTX = null;
 function chosenGoal(id) {
-  try {
-    return localStorage.getItem(`hverdagsro-goal:${id}`);
-  } catch (e) {
-    return null;
-  }
+  return CTX?.member(id)?.goal || null;
 }
 /* The prototype's goalOf: the chosen goal, else the cheapest reward not yet afforded. */
 function goalOf(ctx, k) {
@@ -1231,14 +1228,16 @@ const acts = {
       ctx.toast(String(err?.message || err));
     }
   },
-  "home-setgoal"(el, ev, ctx) {
-    try {
-      localStorage.setItem(`hverdagsro-goal:${el.dataset.member}`, el.dataset.id);
-    } catch (e) {
-      /* private mode */
-    }
+  async "home-setgoal"(el, ev, ctx) {
+    const m = ctx.member(el.dataset.member);
+    if (m) m.goal = el.dataset.id;
     ctx.render();
-    ctx.toast(ctx.t("Nyt mål!"));
+    try {
+      await ctx.ws("prefs", { member: el.dataset.member, prefs: { goal: el.dataset.id } });
+      ctx.toast(ctx.t("Nyt mål!"));
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
   },
   "home-kday"(el, ev, ctx) {
     kidDay = +el.dataset.i || 0;
@@ -1737,4 +1736,4 @@ const inputs = {
   },
 };
 
-export default { id: "home", views, acts, inputs, css, en };
+export default { id: "home", views, acts, inputs, css, en, init: (ctx) => (CTX = ctx) };

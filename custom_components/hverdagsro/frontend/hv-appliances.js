@@ -61,7 +61,7 @@ function status(ctx, a) {
   if (DOCK.test(v)) return { txt: ctx.t("I ladestation"), cls: "ok", key: "docked" };
   if (BACK.test(v)) return { txt: ctx.t("Kører hjem"), cls: "run", key: "run" };
   if (ERR.test(v)) return { txt: ctx.t("Kræver opmærksomhed"), cls: "bad", key: "error" };
-  if (READY.test(v)) return { txt: ctx.t("Klar"), cls: "ok", key: "ready" };
+  if (READY.test(v)) return { txt: ctx.t("{_}Klar", { _: "" }), cls: "ok", key: "ready" };
   if (v === "on" || v === "true" || v === "heat" || v === "cool" || v === "auto") {
     const always = ["fridge", "freezer", "vent"].includes(a.kind);
     return { txt: ctx.t("Kører"), cls: always || a.kind === "coffee" ? "ok" : "run", key: always ? "on" : "run" };
@@ -833,7 +833,7 @@ const en = {
   "I ladestation": "Docked",
   "Kører hjem": "Returning",
   "Kræver opmærksomhed": "Needs attention",
-  Klar: "Ready",
+  "{_}Klar": "{_}Ready",
   Tændt: "On",
   Styrke: "Power",
   Åben: "Open",

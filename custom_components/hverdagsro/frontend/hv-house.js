@@ -2289,6 +2289,7 @@ const css = `
 `;
 
 const en = {
+  "Tænd eller sluk {name}": "Turn {name} on or off",
   Tid: "Time", Åbnet: "Opened", "Ingen lås på døren": "No lock on the door", "Ingen lås på vinduet": "No lock on the window", Farveskift: "Colour effect",
   "Åbn i EV Planner ›": "Open in EV Planner ›", "I ladestation": "Docked", "I Home Assistant nu": "In Home Assistant now",
   "Dør": "Door", "Vindue": "Window", "Garageport": "Garage door", "Kamera": "Camera", "Bevægelse": "Motion", "Røgalarm": "Smoke alarm", "Vandføler": "Leak sensor",

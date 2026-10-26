@@ -333,7 +333,7 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
       check(msg.member);
       if ("msg_off" in msg.prefs && !canManage()) throw { code: "not_allowed", message: "Ikke tilladt" };
       const m = store.family.find((x) => x.id === msg.member);
-      for (const k of ["quick_order", "quick_hide", "msg_off", "photo", "skin", "mode"]) if (k in msg.prefs) m[k] = msg.prefs[k];
+      for (const k of ["quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal"]) if (k in msg.prefs) m[k] = msg.prefs[k];
       setTimeout(push, 10);
       return null;
     }

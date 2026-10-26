@@ -248,7 +248,7 @@ function openEvent(ctx, e) {
   const kind = f ? weatherKind(f.condition) : null;
   ctx.sheet(`<div class="eyebrow">${esc(ctx.fmt.day(d))} ${d.getDate()}. ${esc(ctx.lang() === "da" ? MONTHS[d.getMonth()] : ctx.fmt.date(d, { month: "long" }))}</div><h2>${esc(e.title)}</h2>
     <dl class="kv"><dt>${esc(ctx.t("Tid"))}</dt><dd class="num">${esc(timeLabel(ctx, e).replace("–", " – "))}</dd><dt>${esc(ctx.t("Hvem"))}</dt><dd style="display:flex;gap:6px;flex-wrap:wrap">${e.who.map((x) => `<span class="chip"><i style="background:${pcolor(ctx, x)}"></i>${esc(pname(ctx, x))}</span>`).join("")}</dd>
-    ${henter ? `<dt>${esc(ctx.t("Henter"))}</dt><dd>${esc(henter)}</dd>` : ""}${e.location ? `<dt>${esc(ctx.t("Sted"))}</dt><dd>${esc(e.location)}</dd>` : ""}<dt>${esc(ctx.t("Fra"))}</dt><dd>${esc(e.src || "")}</dd><dt>${esc(ctx.t("Vejr"))}</dt><dd>${f ? `${esc(ctx.t(WXNAME[kind]))}, ${deg(f.templow ?? f.temperature)} ${esc(ctx.t("til"))} ${deg(f.temperature)}` : esc(ctx.t("Ingen prognose endnu"))}</dd>${ctx.on("meals") && ctx.data.settings.meals_calendar ? `<dt>${esc(ctx.t("Aftensmad"))}</dt><dd>${esc(dinner?.title || ctx.t("Ikke planlagt"))}</dd>` : ""}</dl>
+    ${henter ? `<dt>${esc(ctx.t("Henter"))}</dt><dd>${esc(henter)}</dd>` : ""}${e.location ? `<dt>${esc(ctx.t("Sted"))}</dt><dd>${esc(e.location)}</dd>` : ""}<dt>${esc(ctx.t("{_}Fra", { _: "" }))}</dt><dd>${esc(e.src || "")}</dd><dt>${esc(ctx.t("Vejr"))}</dt><dd>${f ? `${esc(ctx.t(WXNAME[kind]))}, ${deg(f.templow ?? f.temperature)} ${esc(ctx.t("til"))} ${deg(f.temperature)}` : esc(ctx.t("Ingen prognose endnu"))}</dd>${ctx.on("meals") && ctx.data.settings.meals_calendar ? `<dt>${esc(ctx.t("Aftensmad"))}</dt><dd>${esc(dinner?.title || ctx.t("Ikke planlagt"))}</dd>` : ""}</dl>
     <div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Luk"))}</button></div>`);
 }
 
@@ -265,8 +265,8 @@ function newEvent(ctx) {
     <div class="field"><span class="lbl">${esc(ctx.t("For hvem"))}</span><div class="filters" id="nf-who">${people.map((p) => `<button type="button" class="fchip" data-w="${esc(p.id)}" aria-pressed="${p.id === kid}" style="--fc:${pcolor(ctx, p.id)}">${ctx.avatar(p.id)}${esc(p.name)}</button>`).join("")}</div></div>
     <div class="row"><div class="field"><label for="nf-d">${esc(ctx.t("Dag"))}</label><select id="nf-d">${Array.from({ length: 7 }, (_, i) => addDays(t0, i))
       .map((d, i) => `<option value="${i}">${esc(cap(dayShort(ctx, d)))} ${d.getDate()}. ${esc(MONTHS[d.getMonth()].slice(0, 3))}.</option>`)
-      .join("")}</select></div><div class="field"><label for="nf-s">${esc(ctx.t("Fra"))}</label><input id="nf-s" type="time" value="15:00"></div><div class="field"><label for="nf-e">${esc(ctx.t("Til"))}</label><input id="nf-e" type="time" value="17:00"></div></div>
-    <div class="field"><label for="nf-b">${esc(ctx.t("Hvem henter"))}</label><select id="nf-b"><option value="">${esc(ctx.t("Ingen"))}</option>${ctx.parents().map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select></div>
+      .join("")}</select></div><div class="field"><label for="nf-s">${esc(ctx.t("{_}Fra", { _: "" }))}</label><input id="nf-s" type="time" value="15:00"></div><div class="field"><label for="nf-e">${esc(ctx.t("Til"))}</label><input id="nf-e" type="time" value="17:00"></div></div>
+    <div class="field"><label for="nf-b">${esc(ctx.t("Hvem henter"))}</label><select id="nf-b"><option value="">${esc(ctx.t("{_}Ingen", { _: "" }))}</option>${ctx.parents().map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select></div>
     <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button><button class="btn" type="submit">${esc(ctx.t("Gem aftale"))}</button></div></form>`);
   const el = bg.el;
   el.querySelector("#nf-who").addEventListener("click", (e) => {
@@ -346,7 +346,7 @@ function mealSheet(ctx, i) {
   const d = addDays(startOfDay(new Date()), i);
   const cur = dinnerOn(mealsFor(ctx), d);
   const bg = ctx.sheet(`<div class="eyebrow">${esc(cap(ctx.fmt.day(d)))} ${d.getDate()}. ${esc(MONTHS[d.getMonth()])}</div><h2>${esc(ctx.t("Aftensmad"))}</h2>
-    <form id="mf"><div class="field"><label for="mf-t">${esc(ctx.t("Ret"))}</label><input id="mf-t" required value="${esc(cur?.title || "")}" placeholder="${esc(ctx.t("Fx Lasagne"))}"></div>
+    <form id="mf"><div class="field"><label for="mf-t">${esc(ctx.t("{_}Ret", { _: "" }))}</label><input id="mf-t" required value="${esc(cur?.title || "")}" placeholder="${esc(ctx.t("Fx Lasagne"))}"></div>
     <div class="sheet-actions"><button type="button" class="btn soft" data-close>${esc(ctx.t("Annuller"))}</button><button class="btn" type="submit">${esc(ctx.t("Gem"))}</button></div></form>`);
   bg.el.querySelector("#mf").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -787,7 +787,7 @@ const en = {
   Hvem: "Who",
   Henter: "Picks up",
   Sted: "Place",
-  Fra: "From",
+  "{_}Fra": "{_}From",
   Vejr: "Weather",
   til: "to",
   "Ingen prognose endnu": "No forecast yet",
@@ -804,7 +804,7 @@ const en = {
   Dag: "Day",
   Til: "To",
   "Hvem henter": "Who picks up",
-  Ingen: "Nobody",
+  "{_}Ingen": "{_}Nobody",
   Annuller: "Cancel",
   "Gem aftale": "Save appointment",
   For: "For",
@@ -823,7 +823,7 @@ const en = {
   "Åbn i Middagsro": "Open in Middagsro",
   "Fanen viser Middagsros madplan direkte. Skift ret, bedøm og lav ny plan sker i Middagsro, så de to apps aldrig er uenige.": "This tab shows Middagsro's meal plan directly. Changing dishes, rating and making a new plan happen in Middagsro, so the two apps never disagree.",
   "Madplanen er kalenderen {name}. Tryk på en dag for at sætte aftensmaden.": "The meal plan is the calendar {name}. Tap a day to set the dinner.",
-  Ret: "Dish",
+  "{_}Ret": "{_}Dish",
   "Fx Lasagne": "E.g. Lasagne",
   Gem: "Save",
   "{name} er sat på madplanen": "{name} is on the meal plan",
