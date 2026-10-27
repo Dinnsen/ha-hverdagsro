@@ -171,7 +171,7 @@ export function demoData(setupDone = true) {
         ]
       : [],
     points: { ida: 135, oskar: 48 },
-    game: { ida: { coins: 140, xp: 520, owned: ["fyrtaarn", "brandbil", "p:poter"], daily: "" } },
+    game: { ida: { coins: 140, xp: 520, owned: ["fyrtaarn", "brandbil", "p:poter", "place:by-hospital", "place:by-villa", "place:by-uni", "place:by-indkob", "place:by-familiehus"], daily: "" } },
     fun: {
       day: { date: t, kind: "wave", need: 5, count: 2, keys: [], who: ["oskar"], paid: false },
       tasks: [
@@ -371,7 +371,11 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
     if (t === "hverdagsro/fun") {
       const f = store.fun, a = msg.action;
       if (!["task_add", "task_approve", "task_remove", "hunt_stop", "hide_stop"].includes(a)) check(msg.member);
-      if (["task_add", "task_approve", "task_remove"].includes(a) && !canManage()) throw { code: "not_allowed", message: "Kun en voksen kan det." };
+      if (["task_add", "task_approve", "task_remove"].includes(a) && !canManage()) {
+        check(msg.approver);
+        const task = f.tasks.find((x) => x.id === msg.task);
+        if (a !== "task_add" && (!task?.kid || task.by !== msg.approver)) throw { code: "not_allowed", message: "Kun en voksen kan det." };
+      }
       const coin = (id, n) => {
         const g = (store.game[id] ||= { coins: 0, xp: 0, owned: [] });
         g.coins += n;
@@ -385,7 +389,7 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
           f.day.who.forEach((id) => coin(id, 8));
           f.party = { id: "p" + Date.now(), at: iso(new Date()), reason: "day", who: f.day.who };
         }
-      } else if (a === "task_add") f.tasks.push({ id: "t" + Date.now(), title: msg.title, emoji: msg.emoji || "⭐", for: msg.for || [], coins: msg.coins || 5, real: msg.real !== false, by: memberForUser()?.id || "", at: iso(new Date()), done: {} });
+      } else if (a === "task_add") f.tasks.push({ id: "t" + Date.now(), title: msg.title, emoji: msg.emoji || "⭐", for: msg.for || [], coins: msg.coins ?? 5, real: msg.real !== false, by: canManage() ? memberForUser()?.id || "" : msg.approver, kid: !canManage(), at: iso(new Date()), done: {} });
       else if (a === "task_done") f.tasks.find((x) => x.id === msg.task).done[msg.member] = "wait";
       else if (a === "task_approve") {
         f.tasks.find((x) => x.id === msg.task).done[msg.member] = "ok";

@@ -14,7 +14,10 @@ import { THINGS2, PACKS2, PACKS2_EN } from "./hv-packs2.js";
 import { THINGS3, PACKS3, PACKS3_EN } from "./hv-packs3.js";
 import * as Sound from "./hv-sound.js";
 import * as Fun from "./hv-fun.js";
+import * as Toys from "./hv-toys.js";
 import { HOME_THINGS, HOME_ACT, HOME_EN } from "./hv-homethings.js";
+import { CITY_THINGS, CITY_PACKS, CITY_EN } from "./hv-citythings.js";
+import { citySvg, CITY_MAP_EN, placePrice } from "./hv-city.js";
 import { OL, S, shade, THINGS, PATTERNS_X, FLOORS_X, EXTRAS_X, PACKS, SPACES, FEST_WALL, LEVELS, LEVEL_GIFTS, LEVEL_THINGS, levelOf, SEASON_DAYS } from "./hv-playcat.js";
 
 const W = 1000, H = 620, FLOOR = 440;
@@ -61,6 +64,14 @@ const HAIRC = ["#2B1D14", "#5B3A21", "#A8642A", "#E9C46A", "#E76F51", "#9B5DE5",
 const EXTRAS = { ingen: "Ingen", briller: "Briller", solbriller: "Solbriller", kasket: "Kasket", hue: "Hue", solhat: "Solhat", harebaand: "Hårbånd", sloife: "Sløjfe", krone: "Krone", horn: "Enhjørning" };
 /* On the face (with a hat on top as well), and something to carry. */
 export const FACES = { ingen: "Ingen", briller: "Briller", solbriller: "Solbriller", stjernebriller: "Stjernebriller", hjertebriller: "Hjertebriller", maske: "Heltemaske" };
+/* Style packs: clothes and looks bought in the shop ("o:<slot>:<kind>"). [name, price] */
+export const STYLE = {
+  "top:cardigan": ["Strikket cardigan", 25], "bot:ternet": ["Ternet nederdel", 20], "face:bogbriller": ["Store runde briller", 20], "acc:bogtaske": ["Taske med bøger", 20],
+  "top:gallakjole": ["Gallakjole", 35], "bot:tyl": ["Tylskørt", 25], "face:fjermaske": ["Fjermaske", 25], "acc:vifte": ["Vifte", 20],
+  "top:traeningsdragt": ["Træningsdragt", 25], "bot:jeans": ["Jeans", 20], "shoe:lysende": ["Lysende sneakers", 25], "shoe:rulleskoejter": ["Rulleskøjter", 30],
+  "top:regnfrakke": ["Regnfrakke", 25], "acc:paraply": ["Paraply", 20], "shoe:ballerina": ["Ballerinasko", 20], "top:glimmerjakke": ["Glimmerjakke", 30],
+};
+const styleOwned = (owned, slot) => Object.fromEntries(Object.entries(STYLE).filter(([k]) => k.startsWith(slot + ":") && owned.has("o:" + k)).map(([k, v]) => [k.split(":")[1], v[0]]));
 export const ACCS = { ingen: "Ingen", taske: "Taske", rygsaek: "Rygsæk", halskaede: "Halskæde", medalje: "Medalje", bamse: "Bamse i armen" };
 
 function defaults(m) {
@@ -97,6 +108,7 @@ export const MOUTHS = { smil: "Smil", grin: "Stort grin", tunge: "Tunge", o: "Å
 export function avatarSvg(me, mood = "", pose = "") {
   const sk = me.skin || SKINS[1], hc = me.hairc || HAIRC[1], top = me.top || "#FF6B6B", bot = me.bottom || "#4D96FF", shoe = me.shoec || "#3A3A55", eye = me.eyec || OL;
   const tk = me.topk || "tshirt", bk = me.botk || "bukser", shk = me.shoek || "sneakers";
+  const dress = tk === "kjole" || tk === "gallakjole";
   const hairBack = {
     lang: `<path d="M-62 -196 C-70 -120 -60 -96 -40 -92 L40 -92 C60 -96 70 -120 62 -196 Z" fill="${hc}" ${S()}/>`,
     hale: `<path d="M50 -230 C96 -230 100 -170 74 -140 C70 -170 60 -190 40 -200 Z" fill="${hc}" ${S()}/>`,
@@ -133,6 +145,8 @@ export function avatarSvg(me, mood = "", pose = "") {
     solbriller: `<path d="M-40 -186 h32 q2 18 -14 20 q-16 -2 -18 -20z M8 -186 h32 q-2 18 -18 20 q-16 -2 -14 -20z" fill="#1B1530" ${S("stroke-width=\"3\"")}/><path d="M-8 -184 h16" ${S("stroke-width=\"3\"")}/>`,
     stjernebriller: `<g fill="#FFD93D" ${S("stroke-width=\"3\"")}><path d="M-22 -194 l5 10 11 1 -8 8 2 11 -10 -5 -10 5 2 -11 -8 -8 11 -1z"/><path d="M22 -194 l5 10 11 1 -8 8 2 11 -10 -5 -10 5 2 -11 -8 -8 11 -1z"/></g><path d="M-8 -180 h16" ${S("stroke-width=\"3\"")}/>`,
     hjertebriller: `<g fill="#F15BB5" fill-opacity=".85" ${S("stroke-width=\"3\"")}><path d="M-22 -166 c-20 -12 -16 -28 -6 -28 c4 0 6 3 6 5 c0 -2 2 -5 6 -5 c10 0 14 16 -6 28z"/><path d="M22 -166 c-20 -12 -16 -28 -6 -28 c4 0 6 3 6 5 c0 -2 2 -5 6 -5 c10 0 14 16 -6 28z"/></g><path d="M-8 -180 h16" ${S("stroke-width=\"3\"")}/>`,
+    bogbriller: `<g fill="#fff" fill-opacity=".25" ${S("stroke-width=\"6\"")}><circle cx="-24" cy="-178" r="19"/><circle cx="24" cy="-178" r="19"/></g><path d="M-5 -180 h10" ${S("stroke-width=\"5\"")}/>`,
+    fjermaske: `<path d="M-52 -192 Q-28 -204 0 -188 Q28 -204 52 -192 Q50 -166 24 -164 Q8 -168 0 -178 Q-8 -168 -24 -164 Q-50 -166 -52 -192Z" fill="#9B5DE5" ${S("stroke-width=\"3\"")}/><ellipse cx="-22" cy="-180" rx="8" ry="6" fill="#fff"/><ellipse cx="22" cy="-180" rx="8" ry="6" fill="#fff"/><path d="M44 -196 q24 -40 10 -70 q-6 30 -20 60z" fill="#F15BB5" ${S("stroke-width=\"3\"")}/>${[-36, -10, 14, 38].map((x) => `<circle cx="${x}" cy="-194" r="2.5" fill="#FFD93D"/>`).join("")}`,
     maske: `<path d="M-50 -190 Q-30 -200 0 -186 Q30 -200 50 -190 Q48 -168 24 -166 Q10 -168 0 -178 Q-10 -168 -24 -166 Q-48 -168 -50 -190Z" fill="${me.capec || "#E5484D"}" ${S("stroke-width=\"3\"")}/><ellipse cx="-22" cy="-180" rx="8" ry="6" fill="#fff"/><ellipse cx="22" cy="-180" rx="8" ry="6" fill="#fff"/>`,
   }[me.face] || "";
   const accBack = me.acc === "rygsaek" ? `<rect x="-58" y="-136" width="30" height="64" rx="12" fill="#6BCB77" ${S()}/>` : "";
@@ -141,6 +155,9 @@ export function avatarSvg(me, mood = "", pose = "") {
     rygsaek: `<path d="M-34 -128 v40 M34 -128 v40" stroke="#3E8E4E" stroke-width="7"/>`,
     halskaede: `<path d="M-24 -128 Q0 -100 24 -128" fill="none" stroke="#FFD93D" stroke-width="4"/><circle cx="0" cy="-110" r="6" fill="#4D96FF" ${S("stroke-width=\"2\"")}/>`,
     medalje: `<path d="M-14 -128 L0 -104 L14 -128" fill="none" stroke="#E5484D" stroke-width="6"/><circle cx="0" cy="-98" r="11" fill="#E9C46A" ${S("stroke-width=\"3\"")}/>`,
+    bogtaske: `<path d="M-40 -128 L36 -70" stroke="#8B5A3C" stroke-width="6"/><rect x="22" y="-82" width="40" height="32" rx="6" fill="#C98B55" ${S("stroke-width=\"3\"")}/><rect x="28" y="-92" width="10" height="16" fill="#E5484D" ${S("stroke-width=\"2\"")}/><rect x="40" y="-94" width="10" height="18" fill="#4D96FF" ${S("stroke-width=\"2\"")}/>`,
+    vifte: `<g transform="translate(76 -82)"><path d="M0 0 L-34 -40 A52 52 0 0 1 34 -40Z" fill="#F15BB5" ${S("stroke-width=\"3\"")}/>${[-24, -8, 8, 24].map((x) => `<path d="M0 0 L${x} -48" stroke="#fff" stroke-width="2"/>`).join("")}</g>`,
+    paraply: `<g transform="translate(76 -78)"><path d="M0 0 V-150" stroke="${OL}" stroke-width="4"/><path d="M-70 -140 Q0 -210 70 -140 Q52 -150 35 -140 Q18 -150 0 -140 Q-18 -150 -35 -140 Q-52 -150 -70 -140Z" fill="#4D96FF" ${S()}/><path d="M0 0 q0 12 10 10" fill="none" stroke="${OL}" stroke-width="4"/></g>`,
     bamse: `<g transform="translate(46 -86)"><circle cx="-10" cy="-26" r="8" fill="#C98B55" ${S("stroke-width=\"3\"")}/><circle cx="10" cy="-26" r="8" fill="#C98B55" ${S("stroke-width=\"3\"")}/><circle cx="0" cy="-14" r="16" fill="#C98B55" ${S("stroke-width=\"3\"")}/><ellipse cx="0" cy="8" rx="16" ry="14" fill="#C98B55" ${S("stroke-width=\"3\"")}/><circle cx="-5" cy="-16" r="2" fill="${OL}"/><circle cx="5" cy="-16" r="2" fill="${OL}"/></g>`,
   }[me.acc] || "";
   const mk = me.mouth || "smil";
@@ -153,24 +170,39 @@ export function avatarSvg(me, mood = "", pose = "") {
   const legsFill = bk === "leggings" ? shade(bot, 0.9) : bot;
   const legs = bk === "shorts"
     ? `<path d="M-30 -70 v${L - 30} h22 v${-(L - 30)}z M8 -70 v${L - 30} h22 v${-(L - 30)}z" fill="${bot}" ${S()}/><path d="M-26 ${-70 + L - 30} v30 h14 v-30z M12 ${-70 + L - 30} v30 h14 v-30z" fill="${sk}" ${S("stroke-width=\"3\"")}/>`
-    : bk === "nederdel" || tk === "kjole"
-      ? `<path d="M-24 -70 v${L} h14 v${-L}z M10 -70 v${L} h14 v${-L}z" fill="${sk}" ${S("stroke-width=\"3\"")}/>${tk === "kjole" ? "" : `<path d="M-40 -72 h80 l12 ${sit ? 26 : 40} h-104z" fill="${bot}" ${S()}/>`}`
-      : `<path d="M-30 -70 v${L} h22 v${-L}z M8 -70 v${L} h22 v${-L}z" fill="${legsFill}" ${S()}/>`;
+    : bk === "tyl" && !dress
+      ? `<path d="M-24 -70 v${L} h14 v${-L}z M10 -70 v${L} h14 v${-L}z" fill="${sk}" ${S("stroke-width=\"3\"")}/><path d="M-40 -74 h80 q40 ${sit ? 20 : 30} 10 ${sit ? 30 : 44} q-50 10 -100 0 q-30 -14 10 -${sit ? 30 : 44}z" fill="${bot}" fill-opacity=".85" ${S()}/>${[-40, -16, 8, 32].map((x) => `<circle cx="${x}" cy="${-52 + (sit ? 0 : 6)}" r="3" fill="#fff" opacity=".8"/>`).join("")}`
+      : bk === "ternet" && !dress
+        ? `<path d="M-24 -70 v${L} h14 v${-L}z M10 -70 v${L} h14 v${-L}z" fill="${sk}" ${S("stroke-width=\"3\"")}/><path d="M-40 -72 h80 l12 ${sit ? 26 : 40} h-104z" fill="${bot}" ${S()}/><path d="M-30 -72 l-6 ${sit ? 26 : 40} M-6 -72 v${sit ? 26 : 40} M18 -72 l4 ${sit ? 26 : 40} M-44 ${sit ? -58 : -52} h88" stroke="${shade(bot, 0.7)}" stroke-width="4"/><path d="M-18 -72 l-2 ${sit ? 26 : 40} M30 -72 l8 ${sit ? 26 : 40}" stroke="#fff" stroke-width="2" opacity=".7"/>`
+        : bk === "nederdel" || dress
+      ? `<path d="M-24 -70 v${L} h14 v${-L}z M10 -70 v${L} h14 v${-L}z" fill="${sk}" ${S("stroke-width=\"3\"")}/>${dress ? "" : `<path d="M-40 -72 h80 l12 ${sit ? 26 : 40} h-104z" fill="${bot}" ${S()}/>`}`
+      : `<path d="M-30 -70 v${L} h22 v${-L}z M8 -70 v${L} h22 v${-L}z" fill="${legsFill}" ${S()}/>${bk === "jeans" ? `<path d="M-19 -66 v${L - 8} M19 -66 v${L - 8}" stroke="${shade(bot, 1.25)}" stroke-width="2" stroke-dasharray="4 3"/><path d="M-30 ${-70 + L - 8} h22 M8 ${-70 + L - 8} h22" stroke="${shade(bot, 0.75)}" stroke-width="5"/>` : ""}`;
   const fy = -70 + L;
-  const shoes = shk === "stovler" || shk === "gummistovler"
+  const shoes = shk === "lysende"
+    ? `<path d="M-36 ${fy - 12} h30 v12 h-34 q-4 0 -4 -6z M6 ${fy - 12} h30 q4 0 4 6 v6 h-34z" fill="${shoe}" ${S()}/>${[-28, -18, 14, 24].map((x, i) => `<circle cx="${x}" cy="${fy - 3}" r="3" fill="${["#FF6B6B", "#FFD93D", "#4D96FF", "#6BCB77"][i]}" class="pl-twinkle"/>`).join("")}`
+    : shk === "rulleskoejter"
+      ? `<path d="M-36 ${fy - 26} h26 v18 h-30 q-4 0 -4 -6z M6 ${fy - 26} h26 q4 0 4 6 v12 h-30z" fill="${shoe}" ${S()}/>${[-30, -14, 12, 28].map((x) => `<circle cx="${x}" cy="${fy - 3}" r="6" fill="#FFD93D" ${S("stroke-width=\"2\"")}/>`).join("")}`
+      : shk === "ballerina"
+        ? `<path d="M-34 ${fy - 7} q14 -6 28 0 v7 h-30 q-4 0 -4 -4z M6 ${fy - 7} q14 -6 28 0 q4 2 4 5 v2 h-32z" fill="${shoe}" ${S("stroke-width=\"3\"")}/><circle cx="-20" cy="${fy - 7}" r="3" fill="#F15BB5"/><circle cx="20" cy="${fy - 7}" r="3" fill="#F15BB5"/>`
+        : shk === "stovler" || shk === "gummistovler"
     ? `<path d="M-34 ${fy - 22} h28 v22 h-32 q-4 0 -4 -6z M6 ${fy - 22} h28 q4 0 4 6 v16 h-32z" fill="${shk === "gummistovler" ? "#FFD93D" : shoe}" ${S()}/>`
     : shk === "sandaler"
       ? `<path d="M-36 ${fy - 6} h30 v6 h-34 q-4 0 -4 -3z M6 ${fy - 6} h30 q4 0 4 3 v3 h-34z" fill="${shoe}" ${S("stroke-width=\"3\"")}/>`
       : `<path d="M-36 ${fy - 12} h30 v12 h-34 q-4 0 -4 -6z M6 ${fy - 12} h30 q4 0 4 6 v6 h-34z" fill="${shoe}" ${S()}/><path d="M-30 ${fy - 2} h22 M12 ${fy - 2} h22" stroke="#fff" stroke-width="3"/>`;
   // The top: its shape, on the body and the arms.
-  const sleeve = tk === "tshirt" || tk === "kjole" || tk === "sport" ? sk : top;
+  const sleeve = tk === "tshirt" || dress || tk === "sport" ? sk : top;
   let body = `<path d="M-44 -134 h88 l6 70 h-100z" fill="${top}" ${S()}/>`;
-  if (tk === "kjole") body = `<path d="M-40 -134 h80 l26 ${sit ? 80 : 100} h-132z" fill="${top}" ${S()}/><path d="M-40 -96 h80" stroke="${shade(top, 0.8)}" stroke-width="5"/>`;
+  if (dress) body = `<path d="M-40 -134 h80 l26 ${sit ? 80 : 100} h-132z" fill="${top}" ${S()}/><path d="M-40 -96 h80" stroke="${shade(top, 0.8)}" stroke-width="5"/>`;
   if (tk === "hoodie") body += `<path d="M-30 -134 q30 22 60 0" fill="none" ${S()}/><rect x="-22" y="-98" width="44" height="22" rx="8" fill="${shade(top, 0.88)}" ${S("stroke-width=\"3\"")}/>`;
   if (tk === "stribet") body += `<path d="M-46 -118 h92 M-47 -100 h94 M-48 -82 h96" stroke="#fff" stroke-width="7" opacity=".8"/>`;
   if (tk === "skjorte") body += `<path d="M-16 -134 L0 -112 L16 -134 M0 -112 V-66" fill="none" ${S("stroke-width=\"3\"")}/><circle cx="0" cy="-96" r="3" fill="${OL}"/><circle cx="0" cy="-80" r="3" fill="${OL}"/>`;
   if (tk === "jakke") body += `<path d="M-6 -134 V-66 M6 -134 V-66" ${S("stroke-width=\"3\"")}/><path d="M-44 -134 L-14 -120 L-6 -134 M44 -134 L14 -120 L6 -134" fill="${shade(top, 0.85)}" ${S("stroke-width=\"3\"")}/>`;
   if (tk === "overalls") body = `<path d="M-44 -134 h88 l6 70 h-100z" fill="#FFFFFF" ${S()}/><path d="M-34 -110 h68 l4 46 h-76z" fill="${top}" ${S()}/><path d="M-30 -110 L-36 -134 M30 -110 L36 -134" stroke="${top}" stroke-width="8"/><circle cx="-26" cy="-106" r="4" fill="#FFD93D"/><circle cx="26" cy="-106" r="4" fill="#FFD93D"/>`;
+  if (tk === "cardigan") body += `<path d="M-14 -134 L-8 -64 H8 L14 -134Z" fill="#FFFFFF" ${S("stroke-width=\"3\"")}/>${[-110, -94, -78].map((y) => `<circle cx="-18" cy="${y}" r="3.5" fill="${shade(top, 0.6)}"/>`).join("")}<path d="M-46 -72 h92" stroke="${shade(top, 0.8)}" stroke-width="6"/>`;
+  if (tk === "gallakjole") body += `${[[-20, -110], [16, -100], [-28, -70], [24, -60], [0, -40], [-12, -84]].map(([x, y]) => `<path d="M${x} ${y - 6} l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z" fill="#fff"/>`).join("")}<path d="M-40 -134 q40 18 80 0" fill="none" stroke="#FFD93D" stroke-width="5"/>`;
+  if (tk === "traeningsdragt") body += `<path d="M-40 -134 l-4 70 M40 -134 l4 70" stroke="#fff" stroke-width="7"/><path d="M0 -134 V-66" ${S("stroke-width=\"3\"")}/><circle cx="0" cy="-126" r="4" fill="#9AA4BA"/>`;
+  if (tk === "regnfrakke") body = `<path d="M-44 -134 h88 l10 ${sit ? 80 : 100} h-108z" fill="${top}" ${S()}/>${[-114, -94, -74, -54].map((y) => `<rect x="-6" y="${y}" width="12" height="6" rx="3" fill="${shade(top, 0.6)}"/>`).join("")}<path d="M-30 -134 q30 -30 60 0" fill="${top}" ${S("stroke-width=\"3\"")}/>`;
+  if (tk === "glimmerjakke") body += `${Array.from({ length: 14 }, (_, i) => `<circle cx="${-38 + (i % 5) * 19}" cy="${-126 + Math.floor(i / 5) * 22 + (i % 2) * 6}" r="3" fill="#fff" opacity=".85"/>`).join("")}<path d="M-6 -134 V-66 M6 -134 V-66" ${S("stroke-width=\"3\"")}/>`;
   if (tk === "helt") body += `<path d="M0 -126 l9 18 20 2 -15 13 4 20 -18 -10 -18 10 4 -20 -15 -13 20 -2z" fill="#FFD93D" ${S("stroke-width=\"3\"")}/>`;
   if (tk === "sport") body += `<text x="0" y="-84" text-anchor="middle" font-size="34" font-weight="900" fill="#fff" stroke="${OL}" stroke-width="2" font-family="system-ui, sans-serif">${esc(String(me.num || "10").slice(0, 2))}</text>`;
   const cape = tk === "helt" ? `<path d="M-40 -130 Q-76 -60 -66 ${sit ? -40 : -6} Q0 ${sit ? -54 : -20} 66 ${sit ? -40 : -6} Q76 -60 40 -130Z" fill="${me.capec || "#E5484D"}" ${S()}/>` : "";
@@ -289,7 +321,7 @@ function R() {
   }
   const all = (ST.d.spaces ||= {});
   const pl = placeOf(ST.ctx, id);
-  if (pl && !all[id]) all[id] = { items: (pl.decor || []).map(([k, x, y], i) => ({ id: `w${i}`, k, x, y })), npc: Object.fromEntries((pl.npcs || []).map(([n, x, y]) => [n, [x, y]])) };
+  if (pl && !all[id]) all[id] = { items: (pl.decor || []).map(([k, x, y], i) => ({ id: `w${i}`, k, x, y })), npc: Object.fromEntries((pl.npcs || []).filter(([n]) => !ST.d.moved?.[n]).map(([n, x, y]) => [n, [x, y]])) };
   // A new room comes with a few things from the start pack.
   const start = { hule: [["rug", 500, 600], ["beanbag", 250, 580], ["teddy", 330, 590], ["moon", 160, 300]], trae: [["rug", 520, 600], ["plant", 120, 590], ["wallshelf", 300, 250], ["ball", 760, 600]], rumstation: [["moon", 240, 320], ["blocks", 820, 600]], scene: [["guitar", 820, 600]] }[id] || [];
   const r = (all[id] ||= { items: start.map(([k, x, y], i) => ({ id: `${id}${i}`, k, x, y })) });
@@ -368,15 +400,23 @@ const BLANKET = new Set(["bed", "bunk", "dobbeltseng", "slotsseng", "muslingesen
 const blanket = (st) => (st && st[4] === "lie" && BLANKET.has(st[5].k) ? `<g class="pl-blanket" pointer-events="none"><rect x="${st[0] - 92}" y="${st[1] - 36}" width="${104}" height="${52}" rx="16" fill="${st[5].k === "sovepose" ? st[5].c || CAT.sovepose.c : st[5].c || "#4D96FF"}" stroke="${OL}" stroke-width="4"/><path d="M${st[0] - 80} ${st[1] - 20} h80" stroke="#fff" stroke-width="4" opacity=".6" stroke-linecap="round"/></g>` : "");
 /* The others in the place: its characters, the family at home, a sibling in their own room, and the siblings who
    are playing right now (live). Each is [y, svg] to sort with the things. */
+/* A character: one of the world's, or a figure the child made in the figure workshop ("fig:<id>"). */
+function npcOf(id) {
+  if (String(id).startsWith("fig:")) {
+    const f = (ST.d.figs || []).find((x) => "fig:" + x.id === id);
+    return f ? [f.n, "", "", { kind: "person", me: f.me, wear: [] }, ["Hej!", "Skal vi lege?", "Jeg er din figur!", "Hvor skal vi hen?"]] : null;
+  }
+  return World.NPCS[id];
+}
 function people(ctx, m, sid, room, pl) {
   const out = [];
   const npcAt = room.npc || {};
   for (const [id, pos] of Object.entries(npcAt)) {
-    const N = World.NPCS[id];
+    const N = npcOf(id);
     if (!N) continue;
     const st = pos[2] ? seated(room, pos[2]) : null;
     const tf = st ? (st[4] === "lie" ? `translate(${st[0]} ${st[1]}) rotate(-90) scale(.66)` : `translate(${st[0]} ${st[1]}) scale(.82)`) : `translate(${pos[0]} ${pos[1]}) scale(.82)`;
-    out.push([st ? st[2] : pos[1], `<g class="pl-npc${st ? " seated" : ""}" data-pl="npc" data-id="${esc(id)}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body" style="animation-delay:${-(id.length % 5) * 0.4}s">${charSvg(N[3], st?.[4] === "lie" ? "sleep" : ST.npcMood?.[id] || "", avatarSvg)}</g></g>${blanket(st)}`]);
+    out.push([st ? st[2] : pos[1], `<g class="pl-npc${st ? " seated" : ""}" data-pl="npc" data-id="${esc(id)}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body" style="animation-delay:${-(id.length % 5) * 0.4}s">${charSvg(N[3], st?.[4] === "lie" ? "sleep" : ST.npcMood?.[id] || "", avatarSvg)}</g>${id.startsWith("fig:") && !st ? `<text y="-262" text-anchor="middle" class="pl-petname">${esc(N[0])}</text>` : ""}</g>${blanket(st)}`]);
   }
   const key = presenceKey(sid), live = new Set();
   for (const [pid, pe] of Object.entries(ST.peers || {})) {
@@ -415,14 +455,18 @@ function stage(ctx, m) {
     }<path d="M675 84 v172 M574 170 h202" ${S()} fill="none"/><path d="M560 60 h230" stroke="#FF6B6B" stroke-width="16" stroke-linecap="round"/></g>`;
     // the light switch for the real lights
     if (lights.length) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset i dit værelse"))}"><rect x="500" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="510" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
-  } else if (pl) s += pl.bg(s0, s1, tod);
+  } else if (pl) {
+    World.BG.look = paintable(pl) ? room.look || {} : {};
+    s += pl.bg(s0, s1, tod) + Toys.seasonSvg(ctx, pl);
+    World.BG.look = {};
+  }
   else s += backdrop(sid, s0, s1, tod);
   // things, back to front
   const drawItem = (it) => {
     const T = CAT[it.k];
     if (!T) return "";
     const sc = it.s || 1, sel = ST.build && ST.sel === it.id;
-    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}" data-pl="item" data-id="${esc(it.id)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
+    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
   };
   const items = room.items || [];
   const isWall = (it) => wallK(it.k);
@@ -448,8 +492,8 @@ function stage(ctx, m) {
   const g = game(ctx, m);
   if (!ST.build && ctx.data.today && g.daily !== ctx.data.today)
     s += `<g class="pl-chest" data-pl="daily" role="button" aria-label="${esc(ctx.t("Dagens mønter"))}" transform="translate(${sid === "vaerelse" ? 420 : 880} ${H - 30})"><ellipse cx="0" cy="4" rx="54" ry="9" fill="rgba(0,0,0,.18)"/>${CAT.skattekiste ? CAT.skattekiste.d("#C98B55") : ""}<g class="pl-sparkle"><path d="M-40 -110 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z M44 -96 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#FFE066" stroke="${OL}" stroke-width="2"/></g></g>`;
-  // Familieleg: stars to find, a hidden thing
-  s += Fun.overlay(ctx);
+  // Familieleg: stars to find, a hidden thing. Secrets, the party lights and the pocket.
+  s += Fun.overlay(ctx) + Toys.secretsSvg(ctx) + Toys.partySvg() + Toys.pocketSvg(ctx);
   // the bubbles to tap
   const B = ST.build ? [] : bubbles(ctx, m);
   s += B.map((b, i) => {
@@ -466,8 +510,15 @@ const ITEMH = (k) => ({ bed: 150, bunk: 330, desk: 130, chair: 130, shelf: 240, 
 const CAT = {};
 for (const [k, v] of Object.entries(ITEMS)) CAT[k] = { n: v[0], cat: v[1], flat: v[2], c: v[3], w: ITEMW(k), h: ITEMH(k), d: v[4], price: 0, pack: "start" };
 /* All the packs: the first ones, part 2 and part 3. A thing that is in two packs belongs to the first. */
-const ALLPACKS = [...PACKS, ...PACKS2, ...PACKS3];
-const ALLTHINGS = { ...WORLD_THINGS, ...THINGS, ...THINGS2, ...THINGS3 };
+/* Style packs: looks to wear. */
+const STYLE_PACKS = [
+  { id: "bogorm", n: "Bogorm-looket", em: "📚", lvl: 1, d: "Strikket cardigan, ternet nederdel, store runde briller og en taske med bøger.", items: ["o:top:cardigan", "o:bot:ternet", "o:face:bogbriller", "o:acc:bogtaske"] },
+  { id: "maskebal", n: "Maskeballet", em: "🎭", lvl: 2, d: "Gallakjole, tylskørt, fjermaske og vifte.", items: ["o:top:gallakjole", "o:bot:tyl", "o:face:fjermaske", "o:acc:vifte"] },
+  { id: "sporty", n: "Sporty", em: "🛼", lvl: 1, d: "Træningsdragt, jeans, lysende sneakers og rulleskøjter.", items: ["o:top:traeningsdragt", "o:bot:jeans", "o:shoe:lysende", "o:shoe:rulleskoejter"] },
+  { id: "regnvejr", n: "Regnvejr og glimmer", em: "☔", lvl: 2, d: "Regnfrakke, paraply, ballerinasko og en glimmerjakke.", items: ["o:top:regnfrakke", "o:acc:paraply", "o:shoe:ballerina", "o:top:glimmerjakke"] },
+];
+const ALLPACKS = [...PACKS, ...PACKS2, ...PACKS3, ...CITY_PACKS, ...STYLE_PACKS];
+const ALLTHINGS = { ...WORLD_THINGS, ...CITY_THINGS, ...THINGS, ...THINGS2, ...THINGS3 };
 for (const pk of ALLPACKS) for (const k of pk.items) if (ALLTHINGS[k] && !CAT[k]) {
   const v = ALLTHINGS[k];
   CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: v[6] || 20, flat: v[7] || 0, pack: pk.id };
@@ -480,6 +531,7 @@ const LOOKS = { p: [PATTERNS_X, 25], f: [FLOORS_X, 20], x: [EXTRAS_X, 30] };
 function info(id) {
   if (CAT[id]) return { n: CAT[id].n, price: CAT[id].price };
   const [t, k] = String(id).split(":"), L = LOOKS[t];
+  if (t === "o" && STYLE[id.slice(2)]) return { n: STYLE[id.slice(2)][0], price: STYLE[id.slice(2)][1] };
   return L && L[0][k] ? { n: L[0][k][0], price: L[1] } : { n: id, price: 0 };
 }
 const packOf = (id) => ALLPACKS.find((pk) => pk.items.includes(id));
@@ -521,11 +573,43 @@ function thumb(id, me) {
   }
   if (t === "f") return `<svg viewBox="0 0 120 90" aria-hidden="true"><path d="M4 40 L30 14 H90 L116 40 V80 Q116 86 110 86 H10 Q4 86 4 80Z" fill="${FLOORS_X[k][1]}" ${S()}/></svg>`;
   if (t === "x") return `<svg viewBox="-110 -340 220 220" aria-hidden="true">${avatarSvg({ ...(me || {}), extra: k })}</svg>`;
+  if (t === "o") {
+    const [, slot, kind] = String(id).split(":"), key = { top: "topk", bot: "botk", face: "face", acc: "acc", shoe: "shoek" }[slot];
+    const box = { top: "-110 -230 220 200", bot: "-110 -110 220 120", shoe: "-90 -60 180 70", face: "-90 -250 180 140", acc: "-120 -230 240 220" }[slot];
+    return `<svg viewBox="${box}" aria-hidden="true">${avatarSvg({ ...(me || {}), [key]: kind })}</svg>`;
+  }
   return "";
 }
 const wallK = (k) => !!CAT[k] && (CAT[k].cat === "væg" || FEST_WALL.has(k));
 const COIN = `<svg viewBox="0 0 24 24" class="pl-coin" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#FFD93D" stroke="#2B2340" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="none" stroke="#E0A800" stroke-width="2"/></svg>`;
 
+/* Rooms the family can paint: the house's rooms and the indoor places. */
+const paintable = (pl) => !!pl && ((pl.area === "hjem" && pl.id !== "have") || !!pl.inside);
+/* Who is being dressed in the wardrobe: the child's own avatar, or one of their figures. */
+function dressTarget() {
+  const f = ST.dress && ST.dress !== "me" ? (ST.d.figs || []).find((x) => x.id === ST.dress) : null;
+  return f ? f.me : ST.d.me;
+}
+/* A small picture of what is in the pocket. */
+function pocketDraw(p) {
+  if (p.t === "npc") {
+    const N = npcOf(p.id);
+    return N ? charSvg(N[3], "", avatarSvg) : "";
+  }
+  const T = CAT[p.it?.k];
+  if (!T) return "";
+  const sc = Math.min(1.6, 240 / Math.max(T.w, T.h));
+  return `<g transform="translate(0 -10) scale(${sc})">${T.d(p.it.c || T.c)}</g>`;
+}
+/* ------------------------------------------------------------------ Centrum: places to open with coins, the Friday gift */
+const placeOpen = (ctx, id) => !placePrice(id) || ownedSet(ctx, ctx.me).has(`place:${id}`);
+/* This week (Monday's date), for the post office gift: Friday to Sunday, once a week. */
+function weekKey(d = new Date()) {
+  const m = new Date(d);
+  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
+  return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(m.getDate()).padStart(2, "0")}`;
+}
+const postGift = () => [5, 6, 0].includes(new Date().getDay()) && ST.d.post !== weekKey();
 /* ------------------------------------------------------------------ the page */
 function render(ctx) {
   const m = ctx.me;
@@ -535,6 +619,7 @@ function render(ctx) {
     ST = { kid: m.id, d: JSON.parse(JSON.stringify(m.playroom || defaults(m))), sel: null, build: false, shop: false, tab: "mob", peers: {} };
     // Back where the child left off: the map, or the place they were in, with their own sound choice.
     ST.map = !!ST.d.onMap;
+    ST.mapPage = ST.d.mapPage || "town";
     if (ST.d.sound) for (const k of ["music", "sfx"]) if (k in ST.d.sound) Sound.setSound(k, ST.d.sound[k]);
   }
   ST.ctx = ctx;
@@ -553,11 +638,11 @@ function render(ctx) {
   if (ST.map) {
     const peers = Object.entries(ST.peers || {}).filter(([id, pe]) => id !== m.id && Date.now() - (pe.seen || 0) < 45000).map(([id, pe]) => ({ ...pe, color: ctx.member(id)?.color }));
     const sibs = ctx.children().filter((k) => k.id !== m.id);
-    return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox pl-mapbox"><svg id="pl-stage" class="pl-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Kort"))}">${townSvg(ctx, lv, sid, peers, t, { gift: !!ctx.data.today && g.daily !== ctx.data.today, seen: ST.d.seen || [] })}</svg></div>
-      <div class="pl-mine"><b>${esc(t("Mine rum"))}</b>${[["vaerelse", "🛏️", t("Mit værelse"), 1], ...SPACES.filter((x) => x.id !== "vaerelse").map((x) => [x.id, x.em, t(x.n), x.lvl])].map(([id, em, n, l]) => `<button data-pl="go" data-k="${id}" aria-pressed="${sid === id}"${lv < l ? ` class="locked"` : ""}><span>${em}</span>${esc(n)}${lv < l ? `<small>🔒 ${l}</small>` : ""}</button>`).join("")}${sibs.map((k) => `<button data-pl="go" data-k="visit:${esc(k.id)}" aria-pressed="${sid === "visit:" + k.id}"><span>👋</span>${esc(t("Besøg {name}", { name: k.name }))}${Object.values(ST.peers || {}).some((pe) => pe.space === "room:" + k.id && Date.now() - (pe.seen || 0) < 45000) ? `<i class="pl-live"></i>` : ""}</button>`).join("")}</div></div>`;
+    return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox pl-mapbox"><div class="pl-maptabs"><button data-pl="town" aria-pressed="${ST.mapPage !== "city"}">🏘️ ${esc(t("Byen"))}</button><button data-pl="city" aria-pressed="${ST.mapPage === "city"}">🏙️ ${esc(t("Centrum"))}</button></div><svg id="pl-stage" class="pl-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Kort"))}">${ST.mapPage === "city" ? citySvg(ctx, sid, peers, t, { seen: ST.d.seen || [], open: (id) => placeOpen(ctx, id), gift: postGift() }) : townSvg(ctx, lv, sid, peers, t, { gift: !!ctx.data.today && g.daily !== ctx.data.today, seen: ST.d.seen || [] })}</svg></div>
+      <div class="pl-mine"><b>${esc(t("Mine rum"))}</b>${[["vaerelse", "🛏️", t("Mit værelse"), 1], ...SPACES.filter((x) => x.id !== "vaerelse").map((x) => [x.id, x.em, t(x.n), x.lvl])].map(([id, em, n, l]) => `<button data-pl="go" data-k="${id}" aria-pressed="${sid === id}"${lv < l ? ` class="locked"` : ""}><span>${em}</span>${esc(n)}${lv < l ? `<small>🔒 ${l}</small>` : ""}</button>`).join("")}${sibs.map((k) => `<button data-pl="go" data-k="visit:${esc(k.id)}" aria-pressed="${sid === "visit:" + k.id}"><span>👋</span>${esc(t("Besøg {name}", { name: k.name }))}${Object.values(ST.peers || {}).some((pe) => pe.space === "room:" + k.id && Date.now() - (pe.seen || 0) < 45000) ? `<i class="pl-live"></i>` : ""}</button>`).join("")}${Toys.secretRooms(ST).map(([id, r]) => `<button data-pl="go" data-k="${id}" aria-pressed="${sid === id}"><span>${r.em}</span>${esc(t(r.n))}</button>`).join("")}<span class="pl-secrets">🔍 ${esc(t("Hemmeligheder"))} ${Toys.secretCount(ST)}</span></div></div>`;
   }
   const glow = lit || sid !== "vaerelse";
-  return `<div class="pl${ST.full ? " full" : ""}" style="--pc:${esc(m.color)}">${ST.full && !ST.turnOk ? `<button class="pl-turn" data-pl="turnok"><i>📱</i>${esc(t("Vend skærmen, så er der mere plads til at lege"))}<small>${esc(t("Tryk for at spille på langs alligevel"))}</small></button>` : ""}${head}${ST.build ? "" : Fun.banner(ctx)}<div class="pl-stagebox${ST.build ? " build" : ""}"><svg id="pl-stage" class="${glow ? "on" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Dit værelse"))}">${stage(ctx, m)}</svg>${ST.build ? selTools(ctx) : ""}</div>${ST.build ? drawer(ctx, m) : ""}</div>`;
+  return `<div class="pl${ST.full ? " full" : ""}" style="--pc:${esc(m.color)}">${ST.full && !ST.turnOk ? `<button class="pl-turn" data-pl="turnok"><i>📱</i>${esc(t("Vend skærmen, så er der mere plads til at lege"))}<small>${esc(t("Tryk for at spille på langs alligevel"))}</small></button>` : ""}${head}${ST.build ? "" : Fun.banner(ctx)}<div class="pl-stagebox${ST.build ? " build" : ""}"><svg id="pl-stage" class="${glow ? "on" : ""}${Toys.partySong() ? " party" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Dit værelse"))}">${stage(ctx, m)}</svg>${ST.build ? selTools(ctx) : ""}</div>${Toys.pocketBar(ctx, pocketDraw)}${ST.build ? drawer(ctx, m) : ""}</div>`;
 }
 /* The name of where the child is. */
 function placeName(ctx, id) {
@@ -570,6 +655,7 @@ function placeName(ctx, id) {
 }
 /* Go somewhere: from the map or the room list. */
 function goTo(ctx, key) {
+  if (!placeOpen(ctx, key)) return askPlace(ctx, key);
   const lv = levelOf(game(ctx, ctx.me).xp), need = levelFor(key);
   if (lv < need) return ctx.toast(ctx.t("Det åbner på niveau {n}. Klar rutiner og opgaver for at komme dertil.", { n: need }));
   ST.d.space = key;
@@ -587,6 +673,23 @@ function goTo(ctx, key) {
   redraw(ctx);
   publish(ctx);
   Fun.event(ctx, "visit", presenceKey());
+}
+/* A place that opens with coins: ask, then buy it (it is the child's for good). */
+function askPlace(ctx, key) {
+  const pl = placeOf(ctx, key), price = placePrice(key), g = game(ctx, ctx.me), t = ctx.t;
+  ctx.sheet(`<div class="pl-pop-badge">${esc(pl?.em || "🔒")}</div><h2>${esc(t(pl?.n || ""))}</h2><p class="t-sub">${esc(t("Åbn stedet for {n} mønter. Så er det dit for altid.", { n: price }))}</p><p><b>${COIN} ${g.coins}</b></p><div class="pl-pop-b"><button class="btn soft" data-close>${esc(t("Ikke nu"))}</button><button class="btn" data-act="play-buy-place" data-k="${esc(key)}"${g.coins < price ? " disabled" : ""}>${esc(g.coins < price ? t("Du mangler {n} mønter", { n: price - g.coins }) : t("Åbn for {n}", { n: price }))}</button></div>`, { cls: "pl-pop" });
+}
+async function buyPlace(ctx, key) {
+  const m = ctx.me, price = placePrice(key);
+  try {
+    const res = await ctx.ws("game", { member: m.id, action: "unlock", items: [`place:${key}`], cost: price });
+    ctx.data.game = { ...(ctx.data.game || {}), [m.id]: res };
+    Sound.sfx("buy");
+    goTo(ctx, key);
+    confetti(ctx, W / 2, H / 3, m.color, true);
+  } catch (err) {
+    ctx.toast(String(err?.message || err));
+  }
 }
 /* The big moments: a new level, or a new thing bought. Shown once, as a sheet over the page. */
 function showPop(ctx) {
@@ -616,40 +719,48 @@ function selTools(ctx) {
 }
 function drawer(ctx, m) {
   const t = ctx.t, owned = ownedSet(ctx, m), sid = spaceId();
-  const tabs = [["mob", "Møbler"], ["leg", "Legetøj"], ["lys", "Lamper"], ["væg", "På væggen"], ["fest", "Fest"], ...(sid === "vaerelse" ? [["tapet", "Tapet og gulv"]] : []), ["mig", "Mig"]];
-  if (ST.tab === "tapet" && sid !== "vaerelse") ST.tab = "mob";
+  const plc = placeOf(ctx, sid), paint = sid === "vaerelse" || paintable(plc);
+  const tabs = [["mob", "Møbler"], ["leg", "Legetøj"], ["lys", "Lamper"], ["væg", "På væggen"], ["fest", "Fest"], ...(paint ? [["tapet", sid === "vaerelse" ? "Tapet og gulv" : "Væg og gulv"]] : []), ["mig", "Mig"]];
+  if (ST.tab === "tapet" && !paint) ST.tab = "mob";
   const more = `<button class="pl-th pl-more" data-pl="shop"><span class="pl-more-ic">${COIN}</span><span>${esc(t("Flere ting i butikken"))}</span></button>`;
   const th = (k) => `<button class="pl-th" data-pl="add" data-k="${k}">${thumb(k)}<span>${esc(t(CAT[k].n))}</span></button>`;
   let body = "";
-  if (ST.tab === "tapet") {
+  if (ST.tab === "tapet" && sid !== "vaerelse") {
+    // A room of the house or a place indoors: paint the wall, pick the floor.
+    const look = R().look || {};
+    const floorCols = [...Object.values(FLOORS), ...Object.values(FLOORS_X)].map((f) => f[1]);
+    body = `<div class="pl-row"><b>${esc(t("Væggen"))}</b>${[...Object.values(WALLS), "#FFFFFF", "#FFE9D6", "#3A3A55"].map((c) => `<button class="pl-sw" data-pl="rlook" data-f="wall" data-k="${c}" aria-pressed="${look.wall === c}" style="--c:${c}" aria-label="${esc(c)}"></button>`).join("")}<button class="pl-chip" data-pl="rlook" data-f="reset">↺ ${esc(t("Som før"))}</button></div>
+      <div class="pl-row"><b>${esc(t("Gulvet"))}</b>${[...new Set(floorCols)].map((c) => `<button class="pl-sw" data-pl="rlook" data-f="floor" data-k="${c}" aria-pressed="${look.floor === c}" style="--c:${c}" aria-label="${esc(c)}"></button>`).join("")}</div>`;
+  } else if (ST.tab === "tapet") {
     const pats = [...Object.entries(PATTERNS), ...Object.entries(PATTERNS_X).filter(([k]) => owned.has("p:" + k)).map(([k, v]) => [k, v[0]])];
     const floors = [...Object.entries(FLOORS), ...Object.entries(FLOORS_X).filter(([k]) => owned.has("f:" + k))];
     body = `<div class="pl-row"><b>${esc(t("Væggen"))}</b>${Object.entries(WALLS).map(([k, c]) => `<button class="pl-sw" data-pl="wall" data-k="${k}" aria-pressed="${ST.d.wall?.c === k}" style="--c:${c}" aria-label="${esc(k)}"></button>`).join("")}</div>
       <div class="pl-row">${pats.map(([k, n]) => `<button class="pl-chip" data-pl="pat" data-k="${k}" aria-pressed="${(ST.d.wall?.p || "ren") === k}">${esc(t(n))}</button>`).join("")}</div>
       <div class="pl-row"><b>${esc(t("Gulvet"))}</b>${floors.map(([k, [n, c]]) => `<button class="pl-chip" data-pl="floor" data-k="${k}" aria-pressed="${ST.d.floor === k}"><i style="background:${c}"></i>${esc(t(n))}</button>`).join("")}<button class="pl-chip" data-pl="shop">${COIN}${esc(t("Flere"))}</button></div>`;
   } else if (ST.tab === "mig") {
-    const me = ST.d.me;
+    const me = dressTarget(), fig = ST.dress && ST.dress !== "me" ? (ST.d.figs || []).find((x) => x.id === ST.dress) : null;
+    const who = `<div class="pl-row pl-dress"><b>${esc(t("Figurværkstedet"))}</b><button class="pl-chip" data-pl="dress" data-k="me" aria-pressed="${!fig}">🙂 ${esc(t("Mig"))}</button>${(ST.d.figs || []).map((f) => `<button class="pl-chip" data-pl="dress" data-k="${esc(f.id)}" aria-pressed="${fig?.id === f.id}">${esc(f.n)}</button>`).join("")}<button class="pl-chip" data-pl="fig-new">＋ ${esc(t("Ny figur"))}</button></div>`;
     const sw = (key, list) => list.map((c) => `<button class="pl-sw" data-pl="me" data-f="${key}" data-k="${c}" aria-pressed="${me[key] === c}" style="--c:${c}" aria-label="${esc(c)}"></button>`).join("");
     const chips = (key, map, def) => Object.entries(map).map(([k, n]) => `<button class="pl-chip" data-pl="me" data-f="${key}" data-k="${k}" aria-pressed="${(me[key] || def) === k}">${esc(t(n))}</button>`).join("");
     const extras = { ...EXTRAS, ...Object.fromEntries(Object.entries(EXTRAS_X).filter(([k]) => owned.has("x:" + k)).map(([k, v]) => [k, v[0]])) };
     const saved = ST.d.outfits || [];
-    body = `<div class="pl-wardrobe"><div class="pl-me-pv"><svg viewBox="-120 -330 240 350" aria-hidden="true">${avatarSvg(me, "")}</svg>
-        <div class="pl-out-b"><button class="pl-chip" data-pl="outfit-rand">🎲 ${esc(t("Tilfældigt"))}</button><button class="pl-chip" data-pl="outfit-save">💾 ${esc(t("Gem outfit"))}</button><button class="pl-chip" data-pl="outfit-reset">↺ ${esc(t("Nulstil"))}</button></div>
-        ${saved.length ? `<div class="pl-outfits">${saved.map((o, i) => `<span class="pl-out"><button data-pl="outfit-wear" data-k="${i}" aria-label="${esc(o.n)}"><svg viewBox="-110 -320 220 330" aria-hidden="true">${avatarSvg(o.me, "")}</svg><small>${esc(o.n)}</small></button><button class="pl-out-x" data-pl="outfit-del" data-k="${i}" aria-label="${esc(t("Fjern"))}">×</button><button class="pl-out-n" data-pl="outfit-name" data-k="${i}" aria-label="${esc(t("Giv det et navn"))}">✏️</button></span>`).join("")}</div>` : ""}</div>
+    body = `${who}<div class="pl-wardrobe"><div class="pl-me-pv"><svg viewBox="-120 -330 240 350" aria-hidden="true">${avatarSvg(me, "")}</svg>
+        ${fig ? `<div class="pl-out-b"><button class="pl-chip" data-pl="fig-place" data-k="${esc(fig.id)}">📍 ${esc(t("Sæt ind her"))}</button><button class="pl-chip" data-pl="fig-name" data-k="${esc(fig.id)}">✏️ ${esc(t("Navn"))}</button><button class="pl-chip" data-pl="fig-del" data-k="${esc(fig.id)}">🗑️ ${esc(t("Slet"))}</button></div>` : `<div class="pl-out-b"><button class="pl-chip" data-pl="outfit-rand">🎲 ${esc(t("Tilfældigt"))}</button><button class="pl-chip" data-pl="outfit-save">💾 ${esc(t("Gem outfit"))}</button><button class="pl-chip" data-pl="outfit-reset">↺ ${esc(t("Nulstil"))}</button></div>`}
+        ${!fig && saved.length ? `<div class="pl-outfits">${saved.map((o, i) => `<span class="pl-out"><button data-pl="outfit-wear" data-k="${i}" aria-label="${esc(o.n)}"><svg viewBox="-110 -320 220 330" aria-hidden="true">${avatarSvg(o.me, "")}</svg><small>${esc(o.n)}</small></button><button class="pl-out-x" data-pl="outfit-del" data-k="${i}" aria-label="${esc(t("Fjern"))}">×</button><button class="pl-out-n" data-pl="outfit-name" data-k="${i}" aria-label="${esc(t("Giv det et navn"))}">✏️</button></span>`).join("")}</div>` : ""}</div>
       <div class="pl-wd-rows">
       <div class="pl-row"><b>${esc(t("Hud"))}</b>${sw("skin", SKINS)}</div>
       <div class="pl-row"><b>${esc(t("Øjne"))}</b>${sw("eyec", EYES)}<button class="pl-chip" data-pl="me" data-f="brows" data-k="${me.brows ? "" : "1"}" aria-pressed="${!!me.brows}">${esc(t("Øjenbryn"))}</button></div>
       <div class="pl-row"><b>${esc(t("Mund"))}</b>${chips("mouth", MOUTHS, "smil")}</div>
       <div class="pl-row"><b>${esc(t("Hår"))}</b>${chips("hair", HAIRS, "kort")}</div>
       <div class="pl-row"><b>${esc(t("Hårfarve"))}</b>${sw("hairc", HAIRC)}</div>
-      <div class="pl-row"><b>${esc(t("Overdel"))}</b>${chips("topk", TOPS, "tshirt")}</div>
+      <div class="pl-row"><b>${esc(t("Overdel"))}</b>${chips("topk", { ...TOPS, ...styleOwned(owned, "top") }, "tshirt")}</div>
       <div class="pl-row"><b></b>${sw("top", PAL)}${me.topk === "helt" ? `<span class="pl-sub">${esc(t("Kappe"))}</span>${sw("capec", PAL)}` : ""}</div>
-      ${me.topk === "kjole" ? "" : `<div class="pl-row"><b>${esc(t("Underdel"))}</b>${chips("botk", BOTTOMS, "bukser")}</div><div class="pl-row"><b></b>${sw("bottom", PAL)}</div>`}
-      <div class="pl-row"><b>${esc(t("Sko"))}</b>${chips("shoek", SHOES, "sneakers")}</div>
+      ${me.topk === "kjole" || me.topk === "gallakjole" ? "" : `<div class="pl-row"><b>${esc(t("Underdel"))}</b>${chips("botk", { ...BOTTOMS, ...styleOwned(owned, "bot") }, "bukser")}</div><div class="pl-row"><b></b>${sw("bottom", PAL)}</div>`}
+      <div class="pl-row"><b>${esc(t("Sko"))}</b>${chips("shoek", { ...SHOES, ...styleOwned(owned, "shoe") }, "sneakers")}</div>
       <div class="pl-row"><b></b>${sw("shoec", PAL)}</div>
       <div class="pl-row"><b>${esc(t("På hovedet"))}</b>${chips("extra", extras, "ingen")}<button class="pl-chip" data-pl="shop">${COIN}${esc(t("Flere"))}</button></div>
-      <div class="pl-row"><b>${esc(t("I ansigtet"))}</b>${chips("face", FACES, "ingen")}</div>
-      <div class="pl-row"><b>${esc(t("Bærer"))}</b>${chips("acc", ACCS, "ingen")}</div></div></div>`;
+      <div class="pl-row"><b>${esc(t("I ansigtet"))}</b>${chips("face", { ...FACES, ...styleOwned(owned, "face") }, "ingen")}</div>
+      <div class="pl-row"><b>${esc(t("Bærer"))}</b>${chips("acc", { ...ACCS, ...styleOwned(owned, "acc") }, "ingen")}</div></div></div>`;
   } else {
     const keys = Object.keys(CAT).filter((k) => (CAT[k].cat === ST.tab || (ST.tab === "mob" && CAT[k].cat === "pynt")) && has(owned, k));
     body = `<div class="pl-ths">${keys.map(th).join("")}${more}</div>${ST.tab === "fest" && !keys.length ? `<p class="t-sub">${esc(t("Til jul, påske, halloween og fødselsdage kommer der festpakker i butikken."))}</p>` : ""}`;
@@ -812,7 +923,8 @@ async function tapBubble(ctx, el) {
 }
 /* The tune for where the child is: their own rooms, the house, or the part of town the place is in. */
 function themeFor(ctx) {
-  if (ST.map) return ["kort", 0];
+  if (ST.map) return [ST.mapPage === "city" ? "centrum" : "kort", 0];
+  if (Toys.partySong()) return [Toys.partySong(), 0];
   const sid = spaceId();
   if (sid === "vaerelse") return ["vaerelse", 0];
   if (visitKid(sid)) return ["vaerelse", 1];
@@ -868,6 +980,12 @@ function bindStage(ctx, svgEl) {
     const t = e.target.closest("[data-pl]"), p = toSvg(svgEl, e);
     if (t?.dataset.pl === "go") return goTo(ctx, t.dataset.k);
     if (ST.map) {
+      if (t?.dataset.pl === "town" || t?.dataset.pl === "city") {
+        ST.mapPage = ST.d.mapPage = t.dataset.pl;
+        Sound.sfx("whoosh");
+        save(ctx);
+        return redraw(ctx);
+      }
       if (t?.dataset.pl === "shop") {
         ST.map = false;
         ST.shop = true;
@@ -880,6 +998,12 @@ function bindStage(ctx, svgEl) {
       if (t?.dataset.pl !== "emo") ctx.$("pl-stage")?.querySelectorAll(".pl-emomenu").forEach((n) => n.remove());
       if (t?.dataset.pl === "emo") return doEmote(ctx, t);
       if (t?.dataset.pl === "star") return Fun.tapStar(ctx, t);
+      if (t?.dataset.pl === "pocket") {
+        ST.pocketOpen = !ST.pocketOpen;
+        Sound.sfx("tap");
+        return redraw(ctx);
+      }
+      if (Toys.tapSecret(ctx, p, e.target)) return;
       if (Fun.tapStage(ctx, p, e.target)) return;
       if (t?.dataset.pl === "npc") {
         const id = t.dataset.id, tr = (t.getAttribute("transform") || "").match(/translate\(([\d.]+) ([\d.]+)\)/);
@@ -921,6 +1045,10 @@ function bindStage(ctx, svgEl) {
       return;
     }
     // build mode: pick up a thing, or the avatar and the pet
+    if (t?.dataset.pl === "pocket") {
+      ST.pocketOpen = !ST.pocketOpen;
+      return redraw(ctx);
+    }
     if (t?.dataset.pl === "item") {
       ST.sel = t.dataset.id;
       const it = R().items.find((x) => x.id === ST.sel);
@@ -956,6 +1084,8 @@ function bindStage(ctx, svgEl) {
       drag.el.classList.add("held");
     } else if (drag.kind === "item") {
       const it = drag.it, wall = wallK(it.k);
+      drag.fx = p.x;
+      drag.fy = p.y;
       it.x = Math.round(Math.max(30, Math.min(W - 30, drag.ox + dx)));
       it.y = Math.round(wall ? Math.max(40, Math.min(FLOOR - 20, drag.oy + dy)) : Math.max(FLOOR + 10, Math.min(H - 4, drag.oy + dy)));
       drag.el.setAttribute("transform", `translate(${it.x} ${it.y}) scale(${it.f ? -(it.s || 1) : it.s || 1} ${it.s || 1})`);
@@ -979,6 +1109,7 @@ function bindStage(ctx, svgEl) {
     if (d.kind === "npc") {
       d.el.classList.remove("held");
       if (!d.moved) return d.id.startsWith("fam:") ? hello(ctx, d.el) : npcTap(ctx, d.el, d.id);
+      if (Toys.pocketHit(d.fx, d.fy - 50) && Toys.toPocket(ctx, "npc", d.id)) return;
       const room = R(), st = seatNear(room, d.fx, d.fy);
       (room.npc ||= {})[d.id] = st ? [d.x, d.y, { id: st.id, x: st.x, y: st.y }] : [d.x, d.y];
       save(ctx);
@@ -998,6 +1129,7 @@ function bindStage(ctx, svgEl) {
       publish(ctx);
       return redraw(ctx);
     }
+    if (d.kind === "item" && d.moved && Toys.pocketHit(d.fx, d.fy) && Toys.toPocket(ctx, "item", d.it.id)) return;
     if (d.moved || d.kind === "item") {
       save(ctx);
       redraw(ctx);
@@ -1031,6 +1163,11 @@ function bindButtons(ctx, box) {
     } else if (a === "go") return goTo(ctx, k);
     else if (a === "turnok") ST.turnOk = true;
     else if (a === "fun") return Fun.openSheet(ctx);
+    else if (a === "unpocket") return Toys.fromPocket(ctx, +k);
+    else if (a === "town" || a === "city") {
+      ST.mapPage = ST.d.mapPage = a;
+      Sound.playTheme(a === "city" ? "centrum" : "kort");
+    }
     else if (a === "story") return storySheet(ctx);
     else if (a === "sound") {
       soundNext(ctx);
@@ -1065,7 +1202,36 @@ function bindButtons(ctx, box) {
     } else if (a === "wall") (ST.d.wall ||= {}).c = k;
     else if (a === "pat") (ST.d.wall ||= {}).p = k;
     else if (a === "floor") ST.d.floor = k;
-    else if (a === "me") ST.d.me[b.dataset.f] = k;
+    else if (a === "me") dressTarget()[b.dataset.f] = k;
+    else if (a === "dress") ST.dress = k;
+    else if (a === "rlook") {
+      if (room.ro) return;
+      if (b.dataset.f === "reset") delete room.look;
+      else room.look = { ...(room.look || {}), [b.dataset.f]: k };
+    }
+    else if (a === "fig-new") {
+      const figs = (ST.d.figs ||= []);
+      if (figs.length >= 8) return ctx.toast(ctx.t("Du kan have 8 figurer. Slet en for at lave en ny."));
+      const id = Math.random().toString(36).slice(2, 7);
+      figs.push({ id, n: ctx.t("Figur {n}", { n: figs.length + 1 }), me: { ...ST.d.me, hair: "pjusk", hairc: HAIRC[(figs.length * 3) % HAIRC.length], top: PAL[(figs.length * 2 + 1) % PAL.length] } });
+      ST.dress = id;
+    } else if (a === "fig-place") {
+      const room = R();
+      if (room.ro) return;
+      (room.npc ||= {})["fig:" + k] = [420 + Math.round(Math.random() * 200), 590];
+      ST.build = false;
+      Sound.sfx("pop");
+    } else if (a === "fig-del") {
+      ST.d.figs = (ST.d.figs || []).filter((f) => f.id !== k);
+      for (const r of [ST.d, ...Object.values(ST.d.spaces || {})]) if (r.npc) delete r.npc["fig:" + k];
+      ST.d.pocket = (ST.d.pocket || []).filter((p) => p.id !== "fig:" + k);
+      ST.dress = "me";
+    } else if (a === "fig-name") {
+      const f = (ST.d.figs || []).find((x) => x.id === k);
+      if (!f) return;
+      ctx.sheet(`<h2>${esc(ctx.t("Giv figuren et navn"))}</h2><input class="input" data-outname maxlength="16" value="${esc(f.n)}"><div class="sheet-actions"><button class="btn soft" data-close>${esc(ctx.t("Annullér"))}</button><button class="btn" data-act="play-fig-name" data-k="${esc(k)}">${esc(ctx.t("Gem"))}</button></div>`);
+      return;
+    }
     else if (a === "outfit-save") {
       const list = (ST.d.outfits ||= []);
       if (list.length >= 8) list.shift();
@@ -1142,6 +1308,10 @@ function place(ctx, id) {
     ST.d.space = "vaerelse";
     ST.d.floor = k;
   } else if (t === "x") ST.d.me.extra = k;
+  else if (t === "o") {
+    const [, slot, kind] = id.split(":");
+    ST.d.me[{ top: "topk", bot: "botk", face: "face", acc: "acc", shoe: "shoek" }[slot]] = kind;
+  }
   save(ctx);
   redraw(ctx);
 }
@@ -1184,7 +1354,7 @@ function say(ctx, x, y, text) {
   setTimeout(() => g.remove(), 2600);
 }
 function npcTap(ctx, el, id) {
-  const N = World.NPCS[id], at = R().npc?.[id];
+  const N = npcOf(id), at = R().npc?.[id];
   if (!N || !at) return;
   const body = el.querySelector(".pl-body");
   body?.classList.add("jump");
@@ -1329,6 +1499,7 @@ function itemTap(ctx, el) {
   if (kind === "open") floatIcons(ctx, it.x, top, OPEN[k] || ["✨"]);
   if (kind === "yum") floatIcons(ctx, it.x, top, ["😋", "✨"]);
   if (kind === "bounce") floatIcons(ctx, it.x, top, ["💫"]);
+  Toys.special(ctx, it);
 }
 function floatIcons(ctx, x, y, list) {
   const svgEl = ctx.$("pl-stage");
@@ -1481,6 +1652,31 @@ async function toggleLight(ctx) {
 }
 
 let tick = null;
+/* What the toys (hv-toys) may use of the game. */
+Toys.init({
+  st: () => ST,
+  R: () => R(),
+  CAT,
+  save,
+  redraw,
+  say,
+  floatIcons,
+  confetti,
+  coinPop,
+  goTo,
+  spaceId: () => spaceId(),
+  presenceKey: () => presenceKey(),
+  owned: () => ownedSet(ST.ctx, ST.ctx.me),
+  unlock: async (items, cost) => {
+    const m = ST.ctx.me, res = await ST.ctx.ws("game", { member: m.id, action: "unlock", items, cost });
+    ST.ctx.data.game = { ...(ST.ctx.data.game || {}), [m.id]: res };
+  },
+  packs: () => ALLPACKS.filter((pk) => !pk.season),
+  seasonPacks: () => ALLPACKS.filter((pk) => pk.season && seasonOpen(ST.ctx, pk).open),
+  HAIRS,
+  HAIRC,
+  weekKey,
+});
 /* What Familieleg (hv-fun) may use of the game. */
 Fun.init({
   st: () => ST,
@@ -1532,6 +1728,13 @@ export default {
   },
   acts: {
     "play-place": (el, ev, ctx) => place(ctx, el.dataset.k),
+    "play-fig-name": (el, ev, ctx) => {
+      const sh = el.closest(".sheet-bg"), n = (sh?.querySelector("[data-outname]")?.value || "").trim().slice(0, 16), f = (ST?.d.figs || []).find((x) => x.id === el.dataset.k);
+      if (f && n) f.n = n;
+      sh?.close?.();
+      save(ctx);
+      redraw(ctx);
+    },
     "play-outfit-name": (el, ev, ctx) => {
       const sh = el.closest(".sheet-bg"), n = (sh?.querySelector("[data-outname]")?.value || "").trim().slice(0, 24), o = ST?.d.outfits?.[+el.dataset.k];
       if (o && n) o.n = n;
@@ -1541,6 +1744,11 @@ export default {
     },
     ...Fun.acts,
     ...storyActs,
+    ...Toys.acts,
+    "play-buy-place": (el, ev, ctx) => {
+      el.closest(".sheet-bg")?.close?.();
+      return buyPlace(ctx, el.dataset.k);
+    },
   },
   inputs: {},
   css: `
@@ -1606,6 +1814,10 @@ export default {
 .pl-stories li .btn, .pl-stories li .pl-chip { grid-row: 1 / span 2; }
 .pl-story-new { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .pl-story-new .input { flex: 1; min-width: 160px; }
+.pl-secrets { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; background: #FFF3B0; font-weight: 800; font-size: 14px; }
+.pl-maptabs { position: absolute; top: 10px; left: 10px; z-index: 2; display: flex; gap: 6px; }
+.pl-maptabs button { border: 2px solid #2B2340; background: #fff; color: #2B2340; border-radius: 999px; padding: 6px 12px; font: inherit; font-weight: 800; cursor: pointer; }
+.pl-maptabs button[aria-pressed="true"] { background: #2B2340; color: #fff; }
 .pl-out-n { position: absolute; top: -6px; left: -6px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: #fff; box-shadow: 0 0 0 2px #2B2340; font-size: 12px; cursor: pointer; padding: 0; }
 .pl-out-x { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--ink); color: var(--surface); font-weight: 900; cursor: pointer; }
 .pl-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-left: 8px; }
@@ -1791,7 +2003,7 @@ export default {
 @media (max-width: 640px) { .pl-hide-s { display: none; } .pl-lv { min-width: 80px; } .pl-buys { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pl-packs { grid-template-columns: minmax(0, 1fr); } .pl-packs.small { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .pl-tools { top: 8px; bottom: auto; gap: 4px; padding: 4px 6px 4px 12px; } .pl-tools button { width: 38px; height: 38px; font-size: 18px; } .pl-tools b { font-size: 12px; } .pl-stagebox { border-radius: 20px; } .pl-th svg { width: 60px; height: 52px; } }
 @media (prefers-reduced-motion: reduce) { .pl-me .pl-body, .pl-pet .pl-petb, .pl-bub, .pl-cloud, .pl-fish, .pl-twinkle, .pl-chest, .pl-sparkle, .pl-blink, .pl-beam, .pl-pop-c { animation: none !important; } }
-` + Fun.FUN_CSS,
+` + Fun.FUN_CSS + Toys.TOYS_CSS,
   en: {
     "Mit værelse": "My room", "Hej {name}!": "Hi {name}!", "Tryk på boblerne, når du har gjort det.": "Tap the bubbles when you have done it.", "Alt er klaret lige nu. Godt gået!": "All done for now. Well done!",
     "Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.": "Drag things where they should go. Tap something to change it.", "Byg dit værelse": "Build your room", "Lys og stemning": "Lights and mood", Færdig: "Done", "Dit værelse": "Your room", "Lyset i dit værelse": "The light in your room",
@@ -2027,6 +2239,9 @@ export default {
     ...WORLD_NAMES_EN,
     ...Fun.FUN_EN,
     ...HOME_EN,
+    ...Toys.TOYS_EN,
+    ...CITY_EN,
+    ...CITY_MAP_EN,
     NY: "NEW",
     "I ansigtet": "On the face",
     "Bærer": "Carrying",
@@ -2039,6 +2254,32 @@ export default {
     Medalje: "Medal",
     "Bamse i armen": "Teddy in arm",
     "Giv det et navn": "Give it a name",
+    "Bogorm-looket": "The bookworm look", "Strikket cardigan, ternet nederdel, store runde briller og en taske med bøger.": "Knitted cardigan, plaid skirt, big round glasses and a bag of books.",
+    Maskeballet: "The masquerade", "Gallakjole, tylskørt, fjermaske og vifte.": "Ball gown, tulle skirt, feather mask and fan.",
+    Sporty: "Sporty", "Træningsdragt, jeans, lysende sneakers og rulleskøjter.": "Tracksuit, jeans, light-up sneakers and roller skates.",
+    "Regnvejr og glimmer": "Rain and glitter", "Regnfrakke, paraply, ballerinasko og en glimmerjakke.": "Raincoat, umbrella, ballet flats and a glitter jacket.",
+    "Strikket cardigan": "Knitted cardigan", "Ternet nederdel": "Plaid skirt", "Store runde briller": "Big round glasses", "Taske med bøger": "Bag of books",
+    Gallakjole: "Ball gown", "Tylskørt": "Tulle skirt", Fjermaske: "Feather mask", Vifte: "Fan", "Træningsdragt": "Tracksuit", Jeans: "Jeans",
+    "Lysende sneakers": "Light-up sneakers", "Rulleskøjter": "Roller skates", Regnfrakke: "Raincoat", Paraply: "Umbrella", Ballerinasko: "Ballet flats", Glimmerjakke: "Glitter jacket",
+    "Væg og gulv": "Wall and floor",
+    "Som før": "As before",
+    "Figurværkstedet": "Figure workshop",
+    Mig: "Me",
+    "Ny figur": "New figure",
+    "Sæt ind her": "Put in here",
+    Navn: "Name",
+    Slet: "Delete",
+    "Giv figuren et navn": "Name the figure",
+    "Figur {n}": "Figure {n}",
+    "Du kan have 8 figurer. Slet en for at lave en ny.": "You can have 8 figures. Delete one to make a new one.",
+    "Skal vi lege?": "Shall we play?",
+    "Jeg er din figur!": "I'm your figure!",
+    "Hvor skal vi hen?": "Where shall we go?",
+    Byen: "The town",
+    "Åbn stedet for {n} mønter. Så er det dit for altid.": "Open the place for {n} coins. Then it is yours for good.",
+    "Ikke nu": "Not now",
+    "Du mangler {n} mønter": "You need {n} more coins",
+    "Åbn for {n}": "Open for {n}",
     "Mine historier": "My stories",
     "Alt gemmes af sig selv, og du fortsætter, hvor du slap. Her kan du også gemme en leg som en historie og lege den igen en anden dag.": "Everything saves by itself, and you carry on where you left off. Here you can also keep a game as a story and play it again another day.",
     "Kunne ikke gemme lige nu. Jeg prøver igen.": "Could not save just now. Trying again.",

@@ -2,6 +2,26 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.8.0] - 2026-10-27
+
+### Added
+- **Centrum, a whole new town to play in** (free from the start, on its own map: the bus at the town's bus stop goes there, the map has a tab for each town):
+  - The café, the hair salon, the post office, the apartments with a rooftop terrace, Somersault Park, the square and the campsite.
+  - Places to open with coins (yours for good): the hospital, the mall, the university, the pool villa and the big family house.
+  - 33 new characters of our own: a barista and the café cat, a hair stylist and her poodle, the postman and a parcel robot, a DJ, skaters, a scout, doctors and nurses, a professor owl, a lifeguard, grandparents and more.
+  - 43 new things for the town, in 12 new packs, among them café, post office, rooftop party, hospital, mall, university, pool villa, the big family, caravan, the cuddly bears, the neon rainbow apartment, and calm and care.
+- **Figure workshop:** make up to eight figures of your own with hair, face, clothes and things to carry, name them, and put them into any place.
+- **The pocket:** drag a character (or, in Build, a thing) onto the bag in the corner to take it with you, then take it out somewhere else. That's how stories move between places.
+- **Secrets:** 34 hidden things across the world. A little glint sometimes shows where. Five of them are doors to secret rooms: the mermaid grotto, mushroom land, the treasure vault, the secret attic and the secret library.
+- **A gift at the post office every Friday** (Friday to Sunday), with a season gift around the occasions.
+- **The hair salon:** sit in the chair, or tap it, for a new hairstyle and hair colour.
+- **Cooking:** tap the stove or the oven, pick up to three ingredients, and see what comes out (pizza, pancakes, cakes, smoothies, soup and a surprise dish).
+- **Rooftop parties:** the music player plays four party songs of our own, with disco lights, and everyone dances.
+- **Paint the rooms:** the walls and floors of the house's rooms and the indoor places can be painted in Build.
+- **Children make challenges for each other:** a child gives a challenge to a sibling (or everyone), pays the coins from their own, and approves it themselves.
+- **Style packs:** the bookworm look, the masquerade, sporty, and rain and glitter. 16 new things to wear, including a ball gown, a tulle skirt, a feather mask, light-up sneakers, roller skates and an umbrella.
+- **Season decorations in the whole world** around Halloween, Christmas and the other occasions.
+
 ## [0.7.0] - 2026-10-27
 
 ### Added

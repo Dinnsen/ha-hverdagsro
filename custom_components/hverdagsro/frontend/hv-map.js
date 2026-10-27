@@ -219,9 +219,12 @@ export function townSvg(ctx, lv, here, peers, t, opts = {}) {
   const zebra = [[13, 12], [27, 12], [13, 26], [27, 26]].map(([x, y]) => rep(4, (i) => flat([[x - 1 + i * 0.5, y + 2.3, 0.06], [x - 0.75 + i * 0.5, y + 2.3, 0.06], [x - 0.75 + i * 0.5, y + 3.5, 0.06], [x - 1 + i * 0.5, y + 3.5, 0.06]], "#fff"))).join("");
   const car = (x, y, c, along) => (along ? box(x, y, 1.8, 0.9, 0.7, c, 0.04) + box(x + 0.4, y, 1, 0.9, 0.55, "#CFE8FF", 0.74) : box(x, y, 0.9, 1.8, 0.7, c, 0.04) + box(x, y + 0.4, 0.9, 1, 0.55, "#CFE8FF", 0.74));
   const cars = `${car(12.3, 6, "#FF6B6B", false)}${car(4, 13.2, "#4D96FF", true)}${car(26.6, 33, "#FFD93D", false)}${car(32, 26.3, "#6BCB77", true)}`;
-  const stop = `${box(4.5, 26.4, 3, 0.5, 2.2, "#E8F6FF", 0.05)}${box(4.5, 26.2, 3, 0.9, 0.2, "#4D96FF", 2.25)}`;
+  // The bus stop: the bus goes to Centrum.
+  const [bsx, bsy] = P(6, 27, 3);
+  const stop = `<g class="tm-place" data-pl="city" role="button" aria-label="${t("Til Centrum")}">${box(4.5, 26.4, 3, 0.5, 2.2, "#E8F6FF", 0.05)}${box(4.5, 26.2, 3, 0.9, 0.2, "#4D96FF", 2.25)}</g>`;
+  const busLabel = `<g class="tm-place" data-pl="city" role="button" aria-label="${t("Til Centrum")}"><rect x="${bsx - 62}" y="${bsy - 34}" width="124" height="26" rx="13" fill="#FFD93D" stroke="${OL}" stroke-width="2"/><text x="${bsx}" y="${bsy - 16}" class="tm-area">🚌 ${t("Til Centrum")}</text></g>`;
   items.sort((a, b) => a[0] - b[0]);
-  return `<defs>${sky}</defs><rect width="${W}" height="${H}" fill="url(#tm-sky)"/>${skyline}${hills}${land}${river}${roads}${zebra}${plots}${cars}${stop}${deco}${home}${sign(20, 15.6, 2.2, "🏠", "tm-home")}${garden}${items.map((i) => i[1]).join("")}${shop}${fountain}${names}${gift}`;
+  return `<defs>${sky}</defs><rect width="${W}" height="${H}" fill="url(#tm-sky)"/>${skyline}${hills}${land}${river}${roads}${zebra}${plots}${cars}${stop}${deco}${home}${sign(20, 15.6, 2.2, "🏠", "tm-home")}${garden}${items.map((i) => i[1]).join("")}${shop}${fountain}${names}${busLabel}${gift}`;
 }
 
 export const MAP_EN = { BUTIKKEN: "SHOP", "Dagens gave": "Today's gift" };

@@ -32,6 +32,7 @@ COINS_HIDDEN = 5
 COINS_MISSION_DAY = 8
 MAX_TASKS = 30
 MAX_STARS = 12
+MAX_KID_COINS = 10
 FIND_RADIUS = 80
 
 # The missions of the day, one per day in turn: kind, how many, the words the panel shows (it translates them).
@@ -76,9 +77,24 @@ def _is_parent(family: Family, user: User | None) -> bool:
     return family.can_manage(user)
 
 
-def _require_parent(family: Family, user: User | None) -> None:
-    if not _is_parent(family, user):
+def _author(family: Family, user: User | None, msg: dict[str, Any]) -> str:
+    """Who gives the task: the grown-up's own member, or the child (who must be allowed to act as that child)."""
+    if _is_parent(family, user):
+        me = family.member_for_user(user)
+        return str(me["id"]) if me else str(msg.get("approver") or "")
+    approver = str(msg.get("approver") or "")
+    family.check_member_access(user, approver)
+    return str(family.require_member(approver)["id"])
+
+
+def _require_owner(family: Family, user: User | None, msg: dict[str, Any], task: dict[str, Any]) -> None:
+    """A grown-up, or the child who made the challenge."""
+    if _is_parent(family, user):
+        return
+    approver = str(msg.get("approver") or "")
+    if not task.get("kid") or approver != task["by"]:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
+    family.check_member_access(user, approver)
 
 
 def _bad(key: str) -> ServiceValidationError:
@@ -96,39 +112,47 @@ async def async_fun(family: Family, user: User | None, action: str, msg: dict[st
     if action == "event":
         _event(family, state, member_id, str(msg.get("kind") or ""), str(msg.get("key") or ""))
     elif action == "task_add":
-        _require_parent(family, user)
+        # A grown-up gives a task; a child makes a challenge for the others and pays the coins from their own.
+        by = _author(family, user, msg)
+        kid = not _is_parent(family, user)
         if len(state["tasks"]) >= MAX_TASKS:
             state["tasks"] = state["tasks"][1:]
-        me = family.member_for_user(user)
         state["tasks"].append(
             {
                 "id": uuid.uuid4().hex[:8],
                 "title": msg["title"],
                 "emoji": msg.get("emoji") or "⭐",
                 "for": [family.require_member(m)["id"] for m in msg.get("for") or []],
-                "coins": int(msg.get("coins") or 5),
-                "real": bool(msg.get("real", True)),
-                "by": me["id"] if me else "",
+                "coins": min(MAX_KID_COINS, int(msg.get("coins") or 0)) if kid else int(msg.get("coins") or 5),
+                "real": bool(msg.get("real", not kid)),
+                "by": by,
+                "kid": kid,
                 "at": dt_util.now().isoformat(),
                 "done": {},
             }
         )
     elif action == "task_done":
         task = _task(state, msg)
-        if task["for"] and member_id not in task["for"]:
+        if (task["for"] and member_id not in task["for"]) or (task.get("kid") and member_id == task["by"]):
             raise _bad("not_for_you")
         if task["done"].get(member_id) != "ok":
             task["done"][member_id] = "wait"
     elif action == "task_approve":
-        _require_parent(family, user)
         task = _task(state, msg)
+        _require_owner(family, user, msg, task)
         who = family.require_member(msg.get("member") or "")["id"]
         if task["done"].get(who) != "ok":
             task["done"][who] = "ok"
-            family.add_coins(who, int(task["coins"]))
+            coins = int(task["coins"])
+            if task.get("kid"):
+                # A child's challenge: the coins come from the child who made it, as far as they go.
+                giver = family.game(task["by"])
+                coins = min(coins, int(giver["coins"]))
+                giver["coins"] = int(giver["coins"]) - coins
+            family.add_coins(who, coins)
             _party(state, "task", [who])
     elif action == "task_remove":
-        _require_parent(family, user)
+        _require_owner(family, user, msg, _task(state, msg))
         state["tasks"] = [t for t in state["tasks"] if t["id"] != msg.get("task")]
     elif action == "hunt_start":
         spaces = [str(s)[:80] for s in msg.get("spaces") or [] if s][:40]

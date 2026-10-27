@@ -172,7 +172,9 @@ export function badge(ctx) {
   if (!A) return 0;
   const st = A.st(), f = funOf(ctx), me = ctx.member(st.kid);
   if (me?.role === "parent") return f.tasks.reduce((n, task) => n + Object.values(task.done || {}).filter((v) => v === "wait").length, 0);
-  return f.tasks.filter((task) => (!task.for.length || task.for.includes(st.kid)) && !task.done?.[st.kid]).length;
+  // A child: tasks and challenges waiting to be done, and the challenges they made that wait for their ok.
+  const todo = f.tasks.filter((task) => task.by !== st.kid && (!task.for.length || task.for.includes(st.kid)) && !task.done?.[st.kid]).length;
+  return todo + f.tasks.filter((task) => task.by === st.kid).reduce((n, task) => n + Object.values(task.done || {}).filter((v) => v === "wait").length, 0);
 }
 
 /* ------------------------------------------------------------------ the family sheet */
@@ -222,7 +224,7 @@ function body(ctx) {
   }
   h += `</div>`;
   // Fun tasks.
-  const mine = parent ? f.tasks : f.tasks.filter((task) => !task.for.length || task.for.includes(st.kid));
+  const mine = parent ? f.tasks : f.tasks.filter((task) => task.by === st.kid || !task.for.length || task.for.includes(st.kid));
   h += `<div class="fun-sec"><b>🎈 ${esc(t("Sjove opgaver"))}</b>`;
   h += mine.length
     ? `<ul class="fun-tasks">${mine
@@ -231,25 +233,26 @@ function body(ctx) {
         .map((task) => {
           const tag = task.real ? t("I virkeligheden") : t("I spillet"), forWho = task.for.length ? task.for.map((id) => nameOf(ctx, id)).join(", ") : t("Alle");
           let right = "";
-          if (parent) {
+          if (parent || task.by === st.kid) {
             const waits = Object.entries(task.done || {}).filter(([, v]) => v === "wait").map(([id]) => id);
             const oks = Object.entries(task.done || {}).filter(([, v]) => v === "ok").map(([id]) => nameOf(ctx, id));
             right = `${waits.map((id) => `<button class="btn" data-act="fun-approve" data-k="${esc(task.id)}" data-m="${esc(id)}">✓ ${esc(nameOf(ctx, id))}</button>`).join("")}${oks.length ? `<small>✓ ${esc(oks.join(", "))}</small>` : ""}<button class="pl-chip" data-act="fun-task-del" data-k="${esc(task.id)}" aria-label="${esc(t("Fjern"))}">×</button>`;
           } else {
             const s = task.done?.[st.kid];
-            right = s === "ok" ? `<b>✓ ${esc(t("Godkendt"))}</b>` : s === "wait" ? `<small>${esc(t("Venter på en voksen"))}</small>` : `<button class="btn" data-act="fun-done" data-k="${esc(task.id)}">${esc(t("Færdig!"))}</button>`;
+            right = s === "ok" ? `<b>✓ ${esc(t("Godkendt"))}</b>` : s === "wait" ? `<small>${esc(task.kid ? t("Venter på {name}", { name: nameOf(ctx, task.by) }) : t("Venter på en voksen"))}</small>` : `<button class="btn" data-act="fun-done" data-k="${esc(task.id)}">${esc(t("Færdig!"))}</button>`;
           }
-          return `<li><span class="fun-em">${esc(task.emoji || "⭐")}</span><div><div>${esc(task.title)}</div><small>${esc(tag)} · ${esc(forWho)} · 🪙 ${task.coins}</small></div><div class="fun-tr">${right}</div></li>`;
+          const from = task.kid ? ` · ${t("fra {name}", { name: nameOf(ctx, task.by) })}` : "";
+          return `<li><span class="fun-em">${esc(task.emoji || "⭐")}</span><div><div>${esc(task.title)}</div><small>${esc(tag)} · ${esc(forWho)} · 🪙 ${task.coins}${esc(from)}</small></div><div class="fun-tr">${right}</div></li>`;
         })
         .join("")}</ul>`
-    : `<p class="t-sub">${esc(parent ? t("Giv børnene en lille, sjov opgave. Den dukker op i spillet.") : t("Ingen opgaver lige nu."))}</p>`;
-  if (parent) {
-    const fw = st.funFor || new Set();
-    h += `<div class="fun-new"><input class="input" data-fun="title" maxlength="80" value="${esc(st.funTitle || "")}" placeholder="${esc(t("Fx: Find noget rødt i huset"))}">
+    : `<p class="t-sub">${esc(parent ? t("Giv børnene en lille, sjov opgave. Den dukker op i spillet.") : t("Ingen opgaver lige nu. Lav selv en udfordring til de andre!"))}</p>`;
+  {
+    const fw = st.funFor || new Set(), coinChoices = parent ? [3, 5, 10, 20] : [0, 1, 2, 3, 5], coins = st.funCoins ?? (parent ? 5 : 1), real = st.funReal ?? parent;
+    h += `<div class="fun-new">${parent ? "" : `<b>${esc(t("Lav en udfordring til de andre"))}</b><small class="t-sub">${esc(t("Mønterne kommer fra dine egne, når du godkender."))}</small>`}<input class="input" data-fun="title" maxlength="80" value="${esc(st.funTitle || "")}" placeholder="${esc(parent ? t("Fx: Find noget rødt i huset") : t("Fx: Find min bamse i haven"))}">
       <div class="fun-row">${["⭐", "🔴", "💃", "🧦", "🎨", "🧹", "🌳", "📚", "🤗", "🍎"].map((em, i) => `<button class="pl-chip" data-act="fun-em" data-k="${em}" aria-pressed="${(st.funEm || "⭐") === em}">${em}</button>`).join("")}</div>
-      <div class="fun-row"><span class="t-sub">${esc(t("Til"))}</span><button class="pl-chip" data-act="fun-for" data-k="" aria-pressed="${!fw.size}">${esc(t("Alle"))}</button>${ctx.children().map((k) => `<button class="pl-chip" data-act="fun-for" data-k="${esc(k.id)}" aria-pressed="${fw.has(k.id)}">${esc(k.name)}</button>`).join("")}</div>
-      <div class="fun-row"><span class="t-sub">🪙</span>${[3, 5, 10, 20].map((n) => `<button class="pl-chip" data-act="fun-coins" data-k="${n}" aria-pressed="${(st.funCoins || 5) === n}">${n}</button>`).join("")}<button class="pl-chip" data-act="fun-real" aria-pressed="${st.funReal !== false}">${esc(st.funReal === false ? t("I spillet") : t("I virkeligheden"))}</button></div>
-      <button class="btn" data-act="fun-task-add">${esc(t("Giv opgaven"))}</button></div>`;
+      <div class="fun-row"><span class="t-sub">${esc(t("Til"))}</span><button class="pl-chip" data-act="fun-for" data-k="" aria-pressed="${!fw.size}">${esc(t("Alle"))}</button>${ctx.members().filter((k) => k.id !== st.kid && (parent ? k.role === "child" : true)).map((k) => `<button class="pl-chip" data-act="fun-for" data-k="${esc(k.id)}" aria-pressed="${fw.has(k.id)}">${esc(k.name)}</button>`).join("")}</div>
+      <div class="fun-row"><span class="t-sub">🪙</span>${coinChoices.map((n) => `<button class="pl-chip" data-act="fun-coins" data-k="${n}" aria-pressed="${coins === n}">${n}</button>`).join("")}<button class="pl-chip" data-act="fun-real" aria-pressed="${!!real}">${esc(real ? t("I virkeligheden") : t("I spillet"))}</button></div>
+      <button class="btn" data-act="fun-task-add">${esc(parent ? t("Giv opgaven") : t("Send udfordringen"))}</button></div>`;
   }
   h += `</div><div class="sheet-actions"><button class="btn soft" data-close>${esc(t("Luk"))}</button></div>`;
   return h;
@@ -298,10 +301,10 @@ export const acts = {
     }
   },
   "fun-approve": async (el, ev, ctx) => {
-    if (await send(ctx, "task_approve", { member: el.dataset.m, task: el.dataset.k })) refresh(ctx);
+    if (await send(ctx, "task_approve", { member: el.dataset.m, task: el.dataset.k, approver: A.st().kid })) refresh(ctx);
   },
   "fun-task-del": async (el, ev, ctx) => {
-    if (await send(ctx, "task_remove", { task: el.dataset.k })) refresh(ctx);
+    if (await send(ctx, "task_remove", { task: el.dataset.k, approver: A.st().kid })) refresh(ctx);
   },
   "fun-em": (el, ev, ctx) => {
     keepTitle(el, ctx);
@@ -323,13 +326,15 @@ export const acts = {
   "fun-real": (el, ev, ctx) => {
     keepTitle(el, ctx);
     const st = A.st();
-    st.funReal = st.funReal === false;
+    const parent = ctx.member(st.kid)?.role === "parent" || ctx.isParent;
+    st.funReal = !(st.funReal ?? parent);
     refresh(ctx);
   },
   "fun-task-add": async (el, ev, ctx) => {
     const st = A.st(), input = el.closest(".sheet")?.querySelector('[data-fun="title"]'), title = (input?.value || "").trim();
     if (!title) return ctx.toast(ctx.t("Skriv, hvad opgaven er"));
-    const res = await send(ctx, "task_add", { title, emoji: st.funEm || "⭐", coins: st.funCoins || 5, real: st.funReal !== false, for: [...(st.funFor || [])] });
+    const parent = ctx.member(st.kid)?.role === "parent" || ctx.isParent;
+    const res = await send(ctx, "task_add", { title, emoji: st.funEm || "⭐", coins: st.funCoins ?? (parent ? 5 : 1), real: st.funReal ?? parent, for: [...(st.funFor || [])], approver: st.kid });
     if (!res) return;
     st.funTitle = "";
     refresh(ctx);
@@ -432,6 +437,13 @@ export const FUN_EN = {
   "Gemmelegen er slut. Godt fundet!": "Hide and seek is over. Well found!",
   "En opgave er godkendt!": "A task is approved!",
   "Fest!": "Party!",
+  "fra {name}": "from {name}",
+  "Venter på {name}": "Waiting for {name}",
+  "Ingen opgaver lige nu. Lav selv en udfordring til de andre!": "No tasks right now. Make a challenge for the others!",
+  "Lav en udfordring til de andre": "Make a challenge for the others",
+  "Mønterne kommer fra dine egne, når du godkender.": "The coins come from your own when you approve.",
+  "Fx: Find min bamse i haven": "E.g. Find my teddy in the garden",
+  "Send udfordringen": "Send the challenge",
   "Kram": "Hug",
   "High five": "High five",
   "Vink": "Wave",
