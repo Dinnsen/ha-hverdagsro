@@ -24,6 +24,7 @@ const runs = [
   ["--view", "indstillinger:familie"],
   ["--view", "indstillinger:moduler"],
   ["--view", "indstillinger:hjemmet"],
+  ["--view", "indstillinger:born", "--click", "[data-act=\"set-gate\"][data-id=\"earn\"]"],
   ["--view", "indstillinger:pynt"],
   ["--view", "indstillinger:avanceret"],
   ["--view", "guide", "--setup", "0"],

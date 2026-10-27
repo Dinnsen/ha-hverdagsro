@@ -328,9 +328,11 @@ class Family:
         if done and key not in mine:
             mine.append(key)
             self._add_coins(member["id"], COINS_CARD)
+            funplay.brick(self, member["id"], 1)
         elif not done and key in mine:
             mine.remove(key)
             self._add_coins(member["id"], -COINS_CARD)
+            funplay.brick(self, member["id"], -1)
         cards = self.data["routines"].get("boards", {}).get(member["id"], {}).get(slot, [])
         bonus = f"{slot}:bonus"
         if cards and bonus not in mine and all(f"{slot}:{i}" in mine for i in range(len(cards))):
@@ -392,11 +394,13 @@ class Family:
         if done:
             today[key] = {"at": dt_util.now().isoformat(), "by": by["id"] if by else None}
             self._add_coins(member["id"], coins)
+            funplay.brick(self, member["id"], 1)
             if not virtual:
                 self._emit("mission", {"member": member["id"], "mission": mission})
         else:
             today.pop(key, None)
             self._add_coins(member["id"], -coins)
+            funplay.brick(self, member["id"], -1)
         if self.data["modules"].get("points", True) and mission["points"]:
             delta = mission["points"] if done else -mission["points"]
             self._add_points(member["id"], delta, mission["title"], by["id"] if by else None)

@@ -369,13 +369,18 @@ _SHORT = vol.All(cv.string, vol.Length(max=80))
                 "hide",
                 "seek",
                 "hide_stop",
+                "help_ask",
+                "help_ok",
+                "vote",
+                "tick",
             )
         ),
         vol.Optional("member"): vol.All(cv.string, vol.Length(max=40)),
         vol.Optional("approver"): vol.All(cv.string, vol.Length(max=40)),
         vol.Optional("kind"): vol.In(("wave", "visit", "talk", "meet", "build", "hug", "star")),
         vol.Optional("key"): _SHORT,
-        vol.Optional("task"): vol.All(cv.string, vol.Length(max=12)),
+        vol.Optional("task"): vol.All(cv.string, vol.Length(max=120)),
+        vol.Optional("helped"): vol.All(cv.string, vol.Length(max=40)),
         vol.Optional("title"): vol.All(cv.string, vol.Strip, vol.Length(min=1, max=80)),
         vol.Optional("emoji"): vol.All(cv.string, vol.Length(max=8)),
         vol.Optional("for"): vol.All(cv.ensure_list, [vol.All(cv.string, vol.Length(max=40))], vol.Length(max=12)),
@@ -389,6 +394,8 @@ _SHORT = vol.All(cv.string, vol.Length(max=80))
         vol.Optional("x"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
         vol.Optional("y"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
         vol.Optional("thing"): vol.All(cv.string, vol.Length(max=40)),
+        vol.Optional("help"): vol.All(cv.string, vol.Length(max=12)),
+        vol.Optional("dish"): vol.All(cv.string, vol.Strip, vol.Length(min=1, max=40)),
     }
 )
 @websocket_api.async_response
