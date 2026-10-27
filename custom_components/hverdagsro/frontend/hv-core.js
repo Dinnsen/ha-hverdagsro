@@ -129,6 +129,30 @@ export function createCtx(host) {
   ctx.members = () => ctx.data?.family || [];
   ctx.member = (id) => ctx.members().find((m) => m.id === id);
   ctx.children = () => ctx.members().filter((m) => m.role === "child");
+  /* A child with two homes: are they here (sleeping here) on a day? Children with one home always are. */
+  ctx.atHome = (m, d = new Date()) => {
+    const c = m?.custody;
+    if (!c || !c.enabled || !c.start) return true;
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (c.except && iso in c.except) return !!c.except[iso];
+    const cyc = Array.isArray(c.cycle) && c.cycle.length ? c.cycle : [1];
+    const [y, mo, da] = String(c.start).split("-").map(Number);
+    const n = Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(y, mo - 1, da)) / 864e5);
+    if (isNaN(n)) return true;
+    return !!cyc[((n % cyc.length) + cyc.length) % cyc.length];
+  };
+  /* The missions a member has on a day (weekday, and which home a child is in). */
+  ctx.missionsOn = (m, d = new Date(), all = true) => {
+    if (!m) return [];
+    const wd = (d.getDay() + 6) % 7, kid = m.role === "child", here = ctx.atHome(m, d);
+    return (ctx.data?.missions || []).filter((x) => (x.member === m.id || (all && kid && x.member === "all")) && (x.days || []).includes(wd) && ((x.where || "here") === "always" || ((x.where || "here") === "away") !== here));
+  };
+  /* Where a child sleeps on a day, as a short label ("" for children with one home). */
+  ctx.homeLabel = (m, d = new Date()) => {
+    const c = m?.custody;
+    if (!c || !c.enabled || !c.start) return "";
+    return ctx.atHome(m, d) ? c.here || ctx.t("Hjemme hos os") : c.away || ctx.t("Hos den anden forælder");
+  };
   ctx.parents = () => ctx.members().filter((m) => m.role === "parent");
   ctx.me = null;
   ctx.viewAs = null;

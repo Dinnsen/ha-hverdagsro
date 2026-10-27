@@ -139,10 +139,8 @@ function whoName(ctx, id) {
 
 // ---------------------------------------------------------------- missions (the prototype's TASKS)
 function missionsFor(ctx, m, date = today0()) {
-  const wd = weekday(date);
-  const kid = m.role === "child";
-  return (ctx.data.missions || [])
-    .filter((x) => (x.member === m.id || (kid && x.member === "all")) && (x.days || []).includes(wd))
+  return ctx
+    .missionsOn(m, date)
     .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
 }
 function doneSet(ctx, iso) {
@@ -885,11 +883,28 @@ function pMe(ctx) {
     <div class="qal">${alarmRow ? meRow(ctx, p, { id: "alarm", label: ctx.t("Alarm"), icon: "shieldf", color: "#D9473B", entity: ctx.data.settings.alarm, cond: { kind: "always" } }, -1, 0) : ""}${ctx.on("quick") ? mine.map((q, i) => meRow(ctx, p, q, i, mine.length)).join("") : ""}</div>
     ${!mine.length ? `<p class="t-sub">${esc(ctx.t("Der er ingen knapper til dig endnu."))}${kid ? ` ${esc(ctx.t("Bed far eller mor om at give dig nogle."))}` : ""}</p>` : ""}
     ${kid ? "" : `<button class="btn soft sm" data-go="indstillinger:qa" style="margin-top:12px">${svg("shield")}${esc(ctx.t("Familieindstillinger"))}</button>`}</section>
+  ${navCard(ctx, p)}
   <section class="card s5"><div class="card-head"><h2>${esc(ctx.t("Beskeder til mig"))}</h2>${kid ? `<span class="meta">${svg("lock")}${esc(ctx.t("Far eller mor bestemmer"))}</span>` : ""}</div><div${kid && !ctx.data.can_manage ? ' inert class="kid-lock"' : ""}>
     ${p.notify ? "" : `<p class="t-sub" style="margin:-4px 0 10px">${esc(ctx.t("Vælg din telefon under Familieindstillinger › Familien for at få beskeder."))}</p>`}
     <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${msgs.map(([k, t]) => `<span>${esc(ctx.t(t))}</span><button class="toggle" data-act="home-msg" data-id="${k}" aria-pressed="${!off.includes(k)}" aria-label="${esc(ctx.t(t))}"></button>`).join("")}</div>
     ${kid ? `<div class="card-head" style="margin:18px 0 8px"><h2>${esc(ctx.t("Min PIN"))}</h2></div><p class="t-sub">${svg("lock")} ${esc(ctx.t("Din PIN skiftes af far eller mor."))}</p>` : ""}</div>
     <button class="btn soft" data-act="home-who" style="margin-top:16px">${svg("users")}${esc(ctx.t("Skift bruger"))}</button></section>${skinPicker(ctx, p)}${homeScreenCard(ctx)}</div>`;
+}
+
+/* Min menu: the member puts the tabs in their own order, and moves the ones they rarely use to "Mere". */
+function navCard(ctx, p) {
+  const N = ctx.panel?.navTabs;
+  if (!N || !N.all.length) return "";
+  const hide = p.nav?.hide || [];
+  const rows = N.all.map(([id, name, ic], i) => {
+    const off = hide.includes(id), slot = N.bar.findIndex((t) => t[0] === id);
+    return `<div class="nv-row${off ? " off" : ""}"><span class="nv-ic">${svg(ic)}</span><span class="nv-t"><b>${esc(name)}</b><small>${esc(off ? ctx.t("Under Mere") : slot === 0 ? ctx.t("Startsiden") : slot > 3 ? ctx.t("Under Mere på telefonen") : ctx.t("I menuen"))}</small></span>
+      <span class="ord"><button class="iconbtn" data-act="home-nav" data-do="up" data-id="${esc(id)}" aria-label="${esc(ctx.t("Flyt op"))}" ${i === 0 ? "disabled" : ""}>${svg("up")}</button><button class="iconbtn" data-act="home-nav" data-do="down" data-id="${esc(id)}" aria-label="${esc(ctx.t("Flyt ned"))}" ${i === N.all.length - 1 ? "disabled" : ""}>${svg("down")}</button></span>
+      <button class="toggle" data-act="home-nav" data-do="hide" data-id="${esc(id)}" aria-pressed="${!off}" aria-label="${esc(ctx.t("Vis {name} i menuen", { name }))}"></button></div>`;
+  }).join("");
+  return `<section class="card s7"><div class="card-head"><h2>${esc(ctx.t("Min menu"))}</h2>${p.nav ? `<button class="btn soft sm" data-act="home-nav" data-do="reset">${esc(ctx.t("Nulstil"))}</button>` : `<span class="meta">${esc(ctx.t("Kun for {name}", { name: p.name }))}</span>`}</div>
+    <p class="t-sub" style="margin:-6px 0 12px">${esc(ctx.t("Sæt fanerne i din egen rækkefølge. Den øverste er din startside. På telefonen står de fire første i bunden, resten under Mere. Slår du en fane fra, ligger den under Mere."))}</p>
+    <div class="nv">${rows}</div></section>`;
 }
 
 /* Hverdagsro as its own icon on the phone's home screen. */
@@ -1182,6 +1197,25 @@ async function setPrefs(ctx, m, prefs) {
 
 // ---------------------------------------------------------------- acts
 const acts = {
+  "home-nav": async (el, ev, ctx) => {
+    const p = ctx.me, N = ctx.panel?.navTabs;
+    if (!p || !N) return;
+    const id = el.dataset.id, d = el.dataset.do;
+    let order = N.all.map((t) => t[0]), hide = [...(p.nav?.hide || [])];
+    if (d === "up" || d === "down") {
+      const i = order.indexOf(id), j = d === "up" ? i - 1 : i + 1;
+      if (i < 0 || j < 0 || j >= order.length) return;
+      [order[i], order[j]] = [order[j], order[i]];
+    } else if (d === "hide") hide = hide.includes(id) ? hide.filter((x) => x !== id) : [...hide, id];
+    const nav = d === "reset" ? null : { order, hide };
+    p.nav = nav;
+    ctx.render(true);
+    try {
+      await ctx.ws("prefs", { member: p.id, prefs: { nav } });
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
+  },
   "home-install": async (el, e, ctx) => {
     if (!installEvt) return;
     installEvt.prompt();
@@ -1479,11 +1513,19 @@ const css = `
 .hh-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 98; }
 .home-fam .band-pick { margin-top: 12px; }
 .task .check[disabled] { opacity: .5; }
+.nv { display: grid; gap: 6px; }
+.nv-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto 64px; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 14px; background: var(--surface-2); }
+.nv-row.off { opacity: .6; }
+.nv-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface); }
+.nv-ic .ic { width: 20px; height: 20px; }
+.nv-t b { display: block; font-size: 14px; } .nv-t small { color: var(--muted); font-size: 12px; }
 .hh-room > .rm-mini { width: 100%; }
 .hh-room .rm-pic { max-height: 280px; overflow: hidden; }
 `;
 
 const en = {
+  "Min menu": "My menu", Nulstil: "Reset", "Under Mere": "Under More", Startsiden: "Start page", "Under Mere på telefonen": "Under More on the phone", "I menuen": "In the menu", "Vis {name} i menuen": "Show {name} in the menu",
+  "Sæt fanerne i din egen rækkefølge. Den øverste er din startside. På telefonen står de fire første i bunden, resten under Mere. Slår du en fane fra, ligger den under Mere.": "Put the tabs in your own order. The top one is your start page. On the phone the first four are at the bottom, the rest under More. A tab you turn off goes under More.",
   "Hverdagsro på hjemmeskærmen": "Hverdagsro on the home screen", "Hverdagsro er åbnet fra hjemmeskærmen.": "Hverdagsro is open from the home screen.",
   "Få Hverdagsro som sit eget ikon, der åbner lige ind i familiens hverdag.": "Get Hverdagsro as its own icon that opens straight into the family's day.", Installér: "Install",
   "Hjemmeskærmen kan ikke få et ikon fra Home Assistant-appen.": "The Home Assistant app can't put an icon on the home screen.",

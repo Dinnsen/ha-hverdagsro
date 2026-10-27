@@ -413,7 +413,7 @@ function listCard(ctx, L) {
         ? `<div class="ls-skel"><i></i><i></i><i></i></div>`
         : list
             .map(
-              (it, i) => `<div class="item${it.status === "completed" ? " done" : ""}" data-item="${i}"><button class="check" data-act="lists-item" data-uid="${esc(it.uid)}" aria-label="${esc(it.summary)}" aria-pressed="${it.status === "completed"}" style="${it.status === "completed" ? `background:${L.color};border-color:transparent` : ""}">${CHECK}</button><span class="t-ttl">${esc(it.summary)}</span><span class="t-sub num">${esc(it.description || (it.due ? cap(ctx.fmt.rel(new Date(it.due))) : ""))}</span><button class="iconbtn" data-act="lists-delitem" data-uid="${esc(it.uid)}" aria-label="${esc(ctx.t("Fjern {name}", { name: it.summary }))}">${svg("x")}</button></div>`
+              (it, i) => `<div class="item li${it.status === "completed" ? " done" : ""}" data-item="${i}"><button class="check" data-act="lists-item" data-uid="${esc(it.uid)}" aria-label="${esc(it.summary)}" aria-pressed="${it.status === "completed"}" style="${it.status === "completed" ? `background:${L.color};border-color:transparent` : ""}">${CHECK}</button><span class="li-txt"><span class="t-ttl">${esc(it.summary)}</span>${it.description || it.due ? `<span class="t-sub num">${esc(it.description || cap(ctx.fmt.rel(new Date(it.due))))}</span>` : ""}</span><button class="iconbtn" data-act="lists-delitem" data-uid="${esc(it.uid)}" aria-label="${esc(ctx.t("Fjern {name}", { name: it.summary }))}">${svg("x")}</button></div>`
             )
             .join("") || `<div class="t-sub">${esc(ctx.t("Listen er tom. Tilføj det første punkt herunder."))}</div>`
     }</div>

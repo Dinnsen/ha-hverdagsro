@@ -91,6 +91,35 @@ def test_appliances_and_modules() -> None:
         validate_section("appliances", [{"id": "a", "entity": "sensor.x"}, {"id": "a", "entity": "sensor.y"}])
 
 
+def test_custody() -> None:
+    member = {"id": "ida", "name": "Ida", "role": "child"}
+    plan = {"enabled": True, "start": "2026-10-26", "cycle": [1, 1, 0, 0, 1, 1, 1], "except": {"2026-12-24": 1}}
+    out = validate_section("family", [{**member, "custody": plan}])[0]["custody"]
+    assert out["cycle"] == [1, 1, 0, 0, 1, 1, 1]
+    assert out["except"] == {"2026-12-24": 1}
+    assert out["here"] == "" and out["switch"] is None
+    assert validate_section("family", [member])[0]["custody"] is None
+    for bad in ({"cycle": []}, {"cycle": [2]}, {"cycle": [1] * 29}, {"except": {"x": 1}}, {"start": "nope"}):
+        with pytest.raises(vol.Invalid):
+            validate_section("family", [{**member, "custody": bad}])
+    many = {f"2027-{m:02d}-{d:02d}": 1 for m in range(1, 13) for d in range(1, 20)}
+    with pytest.raises(vol.Invalid):
+        validate_section("family", [{**member, "custody": {"except": many}}])
+    mission = {"id": "bed", "title": "Bed", "member": "ida"}
+    assert validate_section("missions", [mission])[0]["where"] == "here"
+    with pytest.raises(vol.Invalid):
+        validate_section("missions", [{**mission, "where": "moon"}])
+
+
+def test_nav() -> None:
+    member = {"id": "ida", "name": "Ida", "role": "child"}
+    nav = {"order": ["dag", "vaerelse"], "hide": ["skema"]}
+    assert validate_section("family", [{**member, "nav": nav}])[0]["nav"] == nav
+    assert validate_section("family", [member])[0]["nav"] is None
+    with pytest.raises(vol.Invalid):
+        validate_section("family", [{**member, "nav": {"order": ["x" * 40]}}])
+
+
 def test_playroom() -> None:
     member = {"id": "ida", "name": "Ida", "role": "child"}
     room = {"wall": {"c": "rosa"}, "items": [{"id": "i1", "k": "bed", "x": 200, "y": 560}]}

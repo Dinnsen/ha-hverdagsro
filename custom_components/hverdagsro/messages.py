@@ -17,7 +17,7 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import ROLE_CHILD, ROLE_PARENT
-from .family import Family
+from .family import Family, at_home
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -112,7 +112,8 @@ class Notifier:
             day = plan.get(str(weekday)) if isinstance(plan, dict) else None
             if isinstance(day, dict):
                 out[kid_id] = day
-        return out
+        # A child at their other home is not brought or picked up from here.
+        return {kid_id: day for kid_id, day in out.items() if at_home(self.family.member(kid_id), local.date())}
 
     async def _async_morning(self, now: datetime) -> None:
         """Who brings and picks up the children today (Hent og bring)."""

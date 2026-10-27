@@ -259,9 +259,7 @@ export function burst(ctx, x, y, color, n = 26) {
 export function readText(ctx) {
   const m = ctx.me;
   if (!m) return "";
-  const today = (ctx.data.today ? new Date(`${ctx.data.today}T12:00:00`) : new Date()).getDay();
-  const wd = (today + 6) % 7;
-  const mine = (ctx.data.missions || []).filter((x) => (x.member === m.id || (x.member === "all" && m.role === "child")) && (x.days || []).includes(wd));
+  const mine = ctx.missionsOn(m, ctx.data.today ? new Date(`${ctx.data.today}T12:00:00`) : new Date());
   const open = mine.filter((x) => !(`${x.id}:${m.id}` in (ctx.data.done_today || {})));
   const pin = ctx.data.pins?.[m.id]?.text;
   return [

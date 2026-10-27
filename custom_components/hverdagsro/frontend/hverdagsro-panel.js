@@ -341,13 +341,28 @@ class HverdagsroPanel extends HTMLElement {
     }
   }
 
+  get navTabs() {
+    return this._nav();
+  }
   _homeView() {
     const ctx = this.ctx;
+    // The first tab of the member's own menu, when they have arranged it.
+    if (ctx.me?.nav?.order?.length && this._tabs().length) return this._nav().bar[0][0];
     // A child starts in their own room, like in a game.
     return ctx.isKid ? (ctx.feature(ctx.me, "room") && ctx.views.vaerelse ? "vaerelse" : ctx.feature(ctx.me, "board") && ctx.views.tavle ? "tavle" : "dag") : "hjem";
   }
 
   // ------------------------------------------------------------------ tabs and views (the prototype's tabsFor/validView)
+  /* The member's own menu (Mine indstillinger › Min menu): their order, and the tabs they moved to "Mere". */
+  _nav() {
+    const ctx = this.ctx, all = this._tabs(), nav = ctx.me?.nav || {};
+    const order = Array.isArray(nav.order) ? nav.order : [], hide = Array.isArray(nav.hide) ? nav.hide : [];
+    const pos = (v) => (order.includes(v) ? order.indexOf(v) : 100 + all.findIndex((t) => t[0] === v));
+    const sorted = [...all].sort((a, b) => pos(a[0]) - pos(b[0]));
+    let bar = sorted.filter((t) => !hide.includes(t[0]));
+    if (!bar.length) bar = sorted.slice(0, 1);
+    return { all: sorted, bar, more: sorted.filter((t) => !bar.includes(t)) };
+  }
   _tabs() {
     const ctx = this.ctx;
     let list;
@@ -385,9 +400,8 @@ class HverdagsroPanel extends HTMLElement {
   _openFor(m) {
     const ctx = this.ctx;
     if (!m || !ctx.on("missions") || (m.role === "child" && !ctx.feature(m, "missions"))) return 0;
-    const wd = (new Date(`${ctx.data.today}T12:00:00`).getDay() + 6) % 7;
     const done = ctx.data.done_today || {};
-    return (ctx.data.missions || []).filter((x) => (x.member === m.id || (x.member === "all" && m.role === "child")) && (x.days || []).includes(wd) && !(`${x.id}:${m.id}` in done)).length;
+    return ctx.missionsOn(m, new Date(`${ctx.data.today}T12:00:00`)).filter((x) => !(`${x.id}:${m.id}` in done)).length;
   }
 
   _buildTabs() {
@@ -399,9 +413,10 @@ class HverdagsroPanel extends HTMLElement {
     const open = ctx.isKid ? this._openFor(ctx.me) : ctx.members().reduce((n, m) => n + this._openFor(m), 0);
     const pending = (ctx.data.requests || []).filter((r) => r.status === "pending").length;
     const cur = ctx.view === "person" ? "" : ctx.view;
-    let T = this._tabs(), more = [];
-    if (innerWidth < 860 && T.length > 5) {
-      more = T.slice(4);
+    const N = this._nav();
+    let T = N.bar, more = N.more;
+    if (innerWidth < 860 && T.length + (more.length ? 1 : 0) > 5) {
+      more = [...T.slice(4), ...more];
       T = T.slice(0, 4);
     }
     this._more = more;
@@ -603,8 +618,7 @@ class HverdagsroPanel extends HTMLElement {
     let n = 0;
     for (const [iso, done] of Object.entries(ctx.data.done_week || {})) {
       if (iso >= ctx.data.today) continue;
-      const wd = (new Date(`${iso}T12:00:00`).getDay() + 6) % 7;
-      const list = (ctx.data.missions || []).filter((x) => (x.member === m.id || x.member === "all") && (x.days || []).includes(wd));
+      const list = ctx.missionsOn(m, new Date(`${iso}T12:00:00`));
       if (list.length && list.every((x) => `${x.id}:${m.id}` in done)) n++;
     }
     return n;
@@ -621,11 +635,11 @@ class HverdagsroPanel extends HTMLElement {
     const me = ctx.me;
     let html;
     if (ctx.isKid && me) {
-      const wd = (now.getDay() + 6) % 7;
-      const tasks = (ctx.data.missions || []).filter((x) => (x.member === me.id || x.member === "all") && (x.days || []).includes(wd));
+      const tasks = ctx.missionsOn(me, now);
+      const home = ctx.homeLabel(me, now);
       const done = tasks.filter((x) => `${x.id}:${me.id}` in (ctx.data.done_today || {})).length;
       html = `<div class="date">${esc(cap(`${ctx.fmt.day(now)} ${ctx.fmt.date(now)}`))}</div><h1>${esc(ctx.t("Hej {name}", { name: me.name }))}</h1>
-        <div class="kidbar">${this._decorChip()}${ctx.feature(me, "points") ? `<span class="glass">${svg("pstar")}<span class="num">${ctx.points(me.id)}</span> ${esc(ctx.t("point"))}</span>` : ""}${ctx.feature(me, "missions") ? `<span class="glass">${svg("flame")}${esc(ctx.t("{n} perfekte dage", { n: this._perfectDays(me) }))}</span><span class="glass">${done}/${tasks.length} ${esc(ctx.t("missioner"))}</span>` : ""}${ctx.feature(me, "read") ? `<button class="glass" data-act="read">${svg("speaker")}${esc(ctx.t("Læs op"))}</button>` : ""}</div>`;
+        <div class="kidbar">${this._decorChip()}${home ? `<span class="glass">${svg("home")}${esc(home)}</span>` : ""}${ctx.feature(me, "points") ? `<span class="glass">${svg("pstar")}<span class="num">${ctx.points(me.id)}</span> ${esc(ctx.t("point"))}</span>` : ""}${ctx.feature(me, "missions") ? `<span class="glass">${svg("flame")}${esc(ctx.t("{n} perfekte dage", { n: this._perfectDays(me) }))}</span><span class="glass">${done}/${tasks.length} ${esc(ctx.t("missioner"))}</span>` : ""}${ctx.feature(me, "read") ? `<button class="glass" data-act="read">${svg("speaker")}${esc(ctx.t("Læs op"))}</button>` : ""}</div>`;
     } else {
       const h = this._sky.hour;
       const hello = h < 5 ? "God nat" : h < 10 ? "God morgen" : h < 12 ? "God formiddag" : h < 17.5 ? "God eftermiddag" : h < 22.5 ? "God aften" : "God nat";

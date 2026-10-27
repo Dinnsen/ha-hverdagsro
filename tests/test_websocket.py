@@ -397,3 +397,57 @@ async def test_quick_and_pins(
     state = (await _ws(client, 4, type="hverdagsro/state"))["result"]
     assert state["pins"]["ida"]["text"] == "Far henter dig kl. 13"
     assert state["osky"] == {"accounts": {}, "lists": []}
+
+
+async def test_play_together(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+) -> None:
+    """Mit værelse live: where each child is goes to everyone who plays, and is never stored."""
+    parent = await hass_ws_client(hass)
+    child = await hass_ws_client(hass, hass_read_only_access_token)
+    await parent.send_json({"id": 1, "type": "hverdagsro/play_subscribe"})
+    assert (await parent.receive_json())["success"]
+    first = await parent.receive_json()
+    assert first["event"] == {"players": []}
+
+    msg = await _ws(
+        child,
+        2,
+        type="hverdagsro/play",
+        member="ida",
+        space="room:ida",
+        x=300,
+        y=580,
+        me={"skin": "#fff", "hair": "lang", "n": 5},
+    )
+    assert msg["success"]
+    event = await parent.receive_json()
+    assert event["event"]["player"] == {
+        "member": "ida",
+        "space": "room:ida",
+        "x": 300,
+        "y": 580,
+        "me": {"skin": "#fff", "hair": "lang"},
+    }
+    # A wave, then she stops playing.
+    await _ws(child, 3, type="hverdagsro/play", member="ida", space="park-plads", emote="wave", to="oskar")
+    event = await parent.receive_json()
+    assert event["event"]["player"]["emote"] == "wave" and event["event"]["player"]["me"] == {
+        "skin": "#fff",
+        "hair": "lang",
+    }
+    await _ws(child, 4, type="hverdagsro/play", member="ida", space="")
+    assert (await parent.receive_json())["event"]["player"] == {"member": "ida", "space": ""}
+    # Only for herself.
+    msg = await _ws(child, 5, type="hverdagsro/play", member="oskar", space="x")
+    assert msg["error"]["code"] == "not_allowed"
+    # A new subscriber sees who is playing; old ones go after a minute.
+    await _ws(child, 6, type="hverdagsro/play", member="ida", space="have")
+    await parent.receive_json()
+    hass.data["hverdagsro_play"]["ida"]["_at"] -= 120
+    await parent.send_json({"id": 7, "type": "hverdagsro/play_subscribe"})
+    assert (await parent.receive_json())["success"]
+    assert (await parent.receive_json())["event"] == {"players": []}

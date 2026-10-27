@@ -5,12 +5,14 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import date
 import functools
+import time
 from typing import Any
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 
 from .const import BOARD_SLOTS, DOMAIN, ROLE_PARENT, SECTIONS, SKIN_MODES, SKINS
 from .family import MAX_UNLOCK, Family
@@ -259,6 +261,91 @@ async def ws_game(
     connection.send_result(msg["id"], state)
 
 
+# ---------------------------------------------------------------------- playing together (Mit værelse, live)
+# Where each child is in the game, kept in memory only (never stored) and passed on to the others who play.
+PLAY_SIGNAL = f"{DOMAIN}_play"
+PLAY_TTL = 60.0
+
+
+def _players(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
+    players: dict[str, dict[str, Any]] = hass.data.setdefault(PLAY_SIGNAL, {})
+    now = time.monotonic()
+    for key in [key for key, player in players.items() if now - player["_at"] > PLAY_TTL]:
+        del players[key]
+    return players
+
+
+def _public(player: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in player.items() if not key.startswith("_")}
+
+
+def _look(value: Any) -> dict[str, str]:
+    """The avatar to show the others: a few short words and colours, nothing else."""
+    if not isinstance(value, dict):
+        return {}
+    return {str(k)[:12]: str(v)[:24] for k, v in list(value.items())[:12] if isinstance(v, str)}
+
+
+@websocket_api.websocket_command({vol.Required("type"): "hverdagsro/play_subscribe"})
+@websocket_api.async_response
+@_with_family
+async def ws_play_subscribe(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    """Who is playing where, now and whenever it changes."""
+
+    @callback
+    def forward(player: dict[str, Any]) -> None:
+        connection.send_message(websocket_api.event_message(msg["id"], {"player": player}))
+
+    connection.subscriptions[msg["id"]] = async_dispatcher_connect(hass, PLAY_SIGNAL, forward)
+    connection.send_result(msg["id"])
+    connection.send_message(
+        websocket_api.event_message(msg["id"], {"players": [_public(p) for p in _players(hass).values()]})
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hverdagsro/play",
+        vol.Required("member"): cv.string,
+        vol.Required("space"): vol.All(cv.string, vol.Length(max=80)),
+        vol.Optional("x", default=500): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
+        vol.Optional("y", default=560): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
+        vol.Optional("me", default=None): vol.Any(None, dict),
+        vol.Optional("emote", default=None): vol.Any(None, vol.In(("wave", "jump", "heart"))),
+        vol.Optional("to", default=None): vol.Any(None, vol.All(cv.string, vol.Length(max=40))),
+    }
+)
+@websocket_api.async_response
+@_with_family
+async def ws_play(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    """A child moved, went somewhere, waved, or stopped playing (empty space)."""
+    family.check_member_access(connection.user, msg["member"])
+    member = family.require_member(msg["member"])
+    players = _players(hass)
+    if not msg["space"]:
+        players.pop(member["id"], None)
+        player: dict[str, Any] = {"member": member["id"], "space": ""}
+    else:
+        player = {
+            "member": member["id"],
+            "space": msg["space"],
+            "x": msg["x"],
+            "y": msg["y"],
+            "me": _look(msg["me"]) or players.get(member["id"], {}).get("me", {}),
+            "_at": time.monotonic(),
+        }
+        players[member["id"]] = player
+        player = _public(player)
+        if msg["emote"]:
+            player = {**player, "emote": msg["emote"], "to": msg["to"]}
+    async_dispatcher_send(hass, PLAY_SIGNAL, player)
+    connection.send_result(msg["id"])
+
+
 def _require_parent_account(connection: websocket_api.ActiveConnection, family: Family, member_id: str) -> None:
     """Only a parent logs in to Ønskeskyen, and only as themselves (or an administrator for them)."""
     _require_manager(connection, family)
@@ -347,6 +434,8 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_pin,
         ws_board,
         ws_game,
+        ws_play,
+        ws_play_subscribe,
         ws_osky_login,
         ws_osky_logout,
         ws_osky_refresh,
