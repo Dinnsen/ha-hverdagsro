@@ -17,6 +17,7 @@ from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
+from . import funplay
 from .const import (
     BOARD_SLOTS,
     DEFAULT_KID_FEATURES,
@@ -62,6 +63,7 @@ def default_data() -> dict[str, Any]:
         "pins": {},
         "board_done": {},
         "game": {},
+        "fun": {},
     }
 
 
@@ -507,6 +509,15 @@ class Family:
         state.setdefault("owned", [])
         return state
 
+    def add_coins(self, member_id: str, delta: int) -> None:
+        """Coins from Familieleg (funplay)."""
+        self._add_coins(member_id, delta)
+
+    @callback
+    def changed(self) -> None:
+        """Save and tell the panel (for funplay)."""
+        self._changed()
+
     def _add_coins(self, member_id: str, delta: int) -> None:
         """Earned (or taken back, when something is ticked off again): the experience follows, never below zero."""
         state = self.game(member_id)
@@ -556,6 +567,7 @@ class Family:
             "appliances": self.data["appliances"],
             "points": self.data["points"],
             "game": self.data["game"],
+            "fun": funplay.fun(self),
             "requests": [r for r in self.requests if r["status"] == "pending" or r["at"][:10] == today],
             "ledger": self.data["ledger"][-40:],
             "done_today": self.data["completions"].get(today, {}),

@@ -307,6 +307,12 @@ class HverdagsroPanel extends HTMLElement {
     if (view.keep && this._shown === `${ctx.view}:${ctx.arg}` && ctx.$("main").firstElementChild && !this._forceKeep) {
       this._buildTabs();
       this._header();
+      // It may still want to know that the data changed (the game: the family's play).
+      try {
+        view.update?.(ctx);
+      } catch (err) {
+        console.error("Hverdagsro:", err);
+      }
       return;
     }
     let html;

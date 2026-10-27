@@ -130,7 +130,7 @@ def test_playroom() -> None:
     with pytest.raises(vol.Invalid):
         validate_section("family", [{**member, "playroom": {"items": ["x"]}}])
     with pytest.raises(vol.Invalid):
-        validate_section("family", [{**member, "playroom": {"items": [{"k": "x" * 700}] * 140}}])
+        validate_section("family", [{**member, "playroom": {"items": [{"k": "x" * 1500}] * 140}}])
 
     # The room pages, as one member wants them (Tilpas rummet, kun for mig).
     prefs = {"stue": {"show": {"pic": False}, "fav": ["hygge"], "pin": True}}
