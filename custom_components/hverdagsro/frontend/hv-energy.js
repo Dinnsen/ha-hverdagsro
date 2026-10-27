@@ -222,11 +222,13 @@ function longStatus(ctx, c) {
 }
 
 function ring(soc, color) {
+  // The filled part is the charge, in a colour that says how full it is; the rest is a faint track.
+  color = soc == null ? color : soc < 20 ? "#E5484D" : soc < 50 ? "#F59E0B" : "#22C55E";
   const n = 12, gap = 6, R = 16, segs = [];
   for (let i = 0; i < n; i++) {
     const a0 = ((i * 30 + gap / 2 - 90) * Math.PI) / 180, a1 = (((i + 1) * 30 - gap / 2 - 90) * Math.PI) / 180;
     const on = soc != null && (i + 1) * (100 / n) <= soc + 4;
-    segs.push(`<path d="M${(20 + R * Math.cos(a0)).toFixed(2)} ${(20 + R * Math.sin(a0)).toFixed(2)} A${R} ${R} 0 0 1 ${(20 + R * Math.cos(a1)).toFixed(2)} ${(20 + R * Math.sin(a1)).toFixed(2)}" stroke="${on ? color : "var(--line)"}" stroke-width="5" fill="none" stroke-linecap="round"/>`);
+    segs.push(`<path d="M${(20 + R * Math.cos(a0)).toFixed(2)} ${(20 + R * Math.sin(a0)).toFixed(2)} A${R} ${R} 0 0 1 ${(20 + R * Math.cos(a1)).toFixed(2)} ${(20 + R * Math.sin(a1)).toFixed(2)}" stroke="${on ? color : "color-mix(in srgb, var(--ink) 9%, transparent)"}" stroke-width="5" fill="none" stroke-linecap="round"/>`);
   }
   return `<svg class="ring" viewBox="0 0 40 40" aria-hidden="true">${segs.join("")}<text x="20" y="24" text-anchor="middle">${soc == null ? "?" : soc}</text></svg>`;
 }

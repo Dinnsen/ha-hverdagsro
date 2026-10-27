@@ -118,16 +118,45 @@ class HverdagsroPanel extends HTMLElement {
   }
   set panel(panel) {
     this.ctx.config = panel?.config || {};
+    if (this.isConnected) this._homeScreen(true);
   }
   set route(_route) {}
 
+  /* While Hverdagsro is open, "Add to Home Screen" gets Hverdagsro's own name, icon and start page. */
+  _homeScreen(on) {
+    const base = this.ctx.config?.static_url;
+    if (!base) return;
+    const head = document.head, keep = (this._headWas ||= {});
+    const set = (sel, make, attr, value) => {
+      let el = head.querySelector(sel);
+      if (!on) {
+        if (el && keep[sel] !== undefined) keep[sel] === null ? el.remove() : el.setAttribute(attr, keep[sel]);
+        return;
+      }
+      if (!el) {
+        el = make();
+        head.appendChild(el);
+        if (!(sel in keep)) keep[sel] = null;
+      } else if (!(sel in keep)) keep[sel] = el.getAttribute(attr);
+      el.setAttribute(attr, value);
+    };
+    const link = (rel) => () => Object.assign(document.createElement("link"), { rel });
+    const meta = (name) => () => Object.assign(document.createElement("meta"), { name });
+    set('link[rel="apple-touch-icon"]', link("apple-touch-icon"), "href", `${base}/icons/apple-180.png`);
+    set('link[rel="manifest"]', link("manifest"), "href", `${base}/manifest.json`);
+    set('meta[name="apple-mobile-web-app-title"]', meta("apple-mobile-web-app-title"), "content", "Hverdagsro");
+    set('meta[name="application-name"]', meta("application-name"), "content", "Hverdagsro");
+  }
+
   connectedCallback() {
+    this._homeScreen(true);
     if (this.ctx.hass && !this._unsubs.length && this._booted) this._subscribe();
     this._sky?.start();
     this._tick = setInterval(() => this._header(), 30000);
   }
 
   disconnectedCallback() {
+    this._homeScreen(false);
     for (const u of this._unsubs) {
       try {
         u();
@@ -272,6 +301,12 @@ class HverdagsroPanel extends HTMLElement {
     }
     ctx._watch = new Set();
     const view = ctx.views[ctx.view] || { render: () => `<section class="card hv-empty">${svg("more", "ic big")}<h2>${esc(ctx.t("Siden findes ikke"))}</h2></section>` };
+    // A page that draws itself (Husbyggeren) is left alone while it is open.
+    if (view.keep && this._shown === `${ctx.view}:${ctx.arg}` && ctx.$("main").firstElementChild && !this._forceKeep) {
+      this._buildTabs();
+      this._header();
+      return;
+    }
     let html;
     try {
       setModule(this._viewModule[ctx.view] || null);

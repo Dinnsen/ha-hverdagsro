@@ -213,6 +213,7 @@ SETTINGS = vol.Schema(
         },
         vol.Optional("osky_to", default={}): {vol.Coerce(str): text(40)},
         vol.Optional("pickup_reminder", default=True): cv.boolean,
+        vol.Optional("skema_hide", default=list): vol.All(cv.ensure_list, [text(60, 1)], vol.Length(max=20)),
         # How each to-do list looks under Lister: a shopping list or a fixed list, its colour, icon and note.
         vol.Optional("lists", default={}): {
             cv.entity_id: {
@@ -307,7 +308,14 @@ def _routines(value: Any) -> dict[str, Any]:
             key not in BOARD_SLOTS or not isinstance(v, list) for key, v in board.items()
         ):
             raise vol.Invalid("a board has morgen, eftermiddag and aften lists")
+    weeks = value.get("weeks", {})
+    if not isinstance(weeks, dict) or any(
+        not isinstance(k, str) or len(k) > 10 or not isinstance(v, dict) for k, v in weeks.items()
+    ):
+        raise vol.Invalid("weeks must be an object of weeks")
     clean = {"helpers": helpers, "pickups": pickups, "boards": boards, "cards": cards}
+    if weeks:
+        clean["weeks"] = weeks
     if len(json.dumps(clean, separators=(",", ":"))) > MAX_ROUTINES_BYTES:
         raise vol.Invalid("too much")
     return clean

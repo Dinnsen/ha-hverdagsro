@@ -198,8 +198,10 @@ function genDraw(k, r, W) {
   const wallCol = t === "kid" ? pal.wall : wet ? "#E9EEF0" : t === "kitchen" ? "#F1EEE9" : t === "office" ? "#E6E8E3" : t === "garage" || t === "utility" ? "#E3E1DC" : "#EEE9E2";
   const floor = wet || t === "utility" ? ["#B9B7B2", "#CFCDC8"] : t === "garage" ? ["#9E9C98", "#B2B0AB"] : ["#B07E4F", "#C99A68"];
   let s = shell3({ k, ceil: "#E7E1D8", ceil2: "#D7CFC3", floor: floor[0], floor2: floor[1], left: mixHex(wallCol, "#000000", 0.05), right: t === "kid" ? pal.side : mixHex(wallCol, "#000000", 0.1), back: wallCol, plank: floor[0] === "#B07E4F" ? "rgba(90,55,25,.26)" : "rgba(0,0,0,.08)", seam: "rgba(120,110,95,.35)", seed: (hashStr(k) % 9) + 1 });
-  const small = wet || t === "walkin" || t === "hall";
-  s += window3(small ? 0.55 : 0.3, small ? 0.8 : 0.7, small ? 0.5 : 0.38, 0.82, k, W);
+  // Each room type has its own window, placed so nothing stands in front of it.
+  const WIN = { kid: [0.3, 0.7, 0.38, 0.82], living: [0.48, 0.92, 0.3, 0.86], kitchen: [0.06, 0.4, 0.47, 0.84], bed: [0.64, 0.92, 0.36, 0.84], guest: [0.64, 0.9, 0.38, 0.82], office: [0.55, 0.9, 0.4, 0.84], bath: [0.64, 0.9, 0.6, 0.86], smallbath: [0.58, 0.8, 0.62, 0.86], toilet: [0.58, 0.8, 0.62, 0.86], utility: [0.58, 0.86, 0.45, 0.84], hall: [0.68, 0.88, 0.45, 0.82], walkin: null, garage: null, other: [0.3, 0.7, 0.38, 0.82] };
+  const win = t in WIN ? WIN[t] : WIN.other;
+  if (win) s += window3(win[0], win[1], win[2], win[3], k, W);
   const rug = (u0, u1, t0, t1, c) => poly3([P3(u0, t0, 0.002), P3(u1, t0, 0.002), P3(u1, t1, 0.002), P3(u0, t1, 0.002)], c) + poly3([P3(u0 + 0.02, t0 + 0.03, 0.003), P3(u1 - 0.02, t0 + 0.03, 0.003), P3(u1 - 0.02, t1 - 0.03, 0.003), P3(u0 + 0.02, t1 - 0.03, 0.003)], "none", `stroke="rgba(255,255,255,.5)" stroke-width="1.2" stroke-dasharray="4 3"`);
   const frame = (u0, u1, v0, v1, f) => poly3(qBack(u0, u1, v0, v1), "#2B2F38") + poly3(qBack(u0 + 0.006, u1 - 0.006, v0 + 0.012, v1 - 0.012), f);
   const plant = (u, tt, v = 0) => {
@@ -251,7 +253,7 @@ function genDraw(k, r, W) {
         s += shelf(0.72, 0.96, 0.7, 0.96, 0.35, 1) + `<path d="M${pt3(P3(0.68, 0.45, 0))} L${pt3(P3(0.78, 0.5, 0.45))} L${pt3(P3(0.88, 0.45, 0))}Z" fill="${mixHex(pal.acc2, "#FFFFFF", 0.4)}" stroke="${wood}" stroke-width="1.5"/>`;
       } else {
         const teen = age === "teen" || age === "young" || age === "preteen";
-        s += bed(0.03, teen ? 0.34 : 0.3, 0.4, 0.86, pal.bed, !teen) + desk(0.62, 0.95, 0.78, 0.96, teen ? (age === "young" ? 2 : 1) : 0) + shelf(0.38, 0.55, 0.88, 0.97, teen ? 0.5 : 0.6, !teen);
+        s += bed(0.03, teen ? 0.34 : 0.3, 0.4, 0.86, pal.bed, !teen) + desk(0.62, 0.95, 0.78, 0.96, teen ? (age === "young" ? 2 : 1) : 0) + shelf(0.86, 0.99, 0.3, 0.56, teen ? 0.5 : 0.6, !teen);
         const [x, y] = P3(0.76, 0.66, 0.2), q = sc3(0.66);
         s += teen ? `<rect x="${x - 12 * q}" y="${y - 4 * q}" width="${24 * q}" height="${30 * q}" rx="${6 * q}" fill="#2B2F38"/><rect x="${x - 10 * q}" y="${y - 26 * q}" width="${20 * q}" height="${24 * q}" rx="${5 * q}" fill="${pal.acc}"/>` : `<rect x="${x - 10 * q}" y="${y}" width="${20 * q}" height="${24 * q}" rx="${3 * q}" fill="${wood}"/>`;
         [[0.1, 0.22, 0.55, 0.72, pal.acc2], [0.25, 0.33, 0.5, 0.64, "#F2B01E"]].forEach(([a, b, c, d, f]) => (s += frame(a, b, c, d, f)));
@@ -260,48 +262,164 @@ function genDraw(k, r, W) {
       break;
     }
     case "bed":
-    case "guest":
-      s += rug(0.22, 0.78, 0.2, 0.6, "#D9CBB8") + bed(0.24, 0.76, 0.45, 0.97, t === "bed" ? "#9DB7D5" : "#E8DCC8") + box3(0.12, 0.22, 0.82, 0.97, 0, 0.2, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + box3(0.78, 0.88, 0.82, 0.97, 0, 0.2, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + (t === "bed" ? box3(0.9, 1, 0.3, 0.8, 0, 0.78, "#EEEAE4", "#F5F2EE", "#E0DBD4") : shelf(0.9, 1, 0.4, 0.7, 0.4)) + frame(0.32, 0.68, 0.6, 0.76, "#E8DFD2");
-      break;
-    case "office": {
-      s += rug(0.25, 0.75, 0.2, 0.55, "#C9CED6") + desk(0.25, 0.78, 0.8, 0.97, 2) + shelf(0.82, 1, 0.55, 0.95, 0.7) + plant(0.12, 0.85);
-      const [x, y] = P3(0.5, 0.62, 0.2), q = sc3(0.62);
-      s += `<rect x="${x - 13 * q}" y="${y}" width="${26 * q}" height="${22 * q}" rx="${5 * q}" fill="#2B2F38"/><rect x="${x - 11 * q}" y="${y - 26 * q}" width="${22 * q}" height="${26 * q}" rx="${5 * q}" fill="#3A3F48"/>`;
+    case "guest": {
+      const guest = t === "guest", duvet = guest ? "#E8DCC8" : "#9DB7D5";
+      // The bed against the back wall, left of the window; a nightstand each side; the wardrobe along the right wall.
+      s += poly3(qBack(0.07, 0.56, 0.02, 0.55), mixHex(wallCol, "#000000", 0.035));
+      s += rug(0.04, 0.6, 0.22, 0.62, "#D9CBB8") + bed(0.1, 0.52, 0.42, 0.98, duvet);
+      s += box3(0.01, 0.09, 0.86, 0.98, 0, 0.2, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + box3(0.53, 0.61, 0.86, 0.98, 0, 0.2, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15));
+      s += frame(0.18, 0.44, 0.58, 0.76, guest ? "#D9E4D2" : "#E8DFD2");
+      if (guest) s += shelf(0.84, 0.99, 0.14, 0.34, 0.42) + plant(0.93, 0.9);
+      else s += poly3(qRight(0.12, 0.62, 0, 0.82), "#EEEAE4") + [0.29, 0.45].map((tt) => ln3(P3(1, tt, 0.02), P3(1, tt, 0.8), "#D8D2CA", 1.2)).join("") + [0.27, 0.31, 0.43, 0.47].map((tt) => `<circle cx="${P3(0.995, tt, 0.42)[0].toFixed(1)}" cy="${P3(0.995, tt, 0.42)[1].toFixed(1)}" r="1.8" fill="#8E8579"/>`).join("") + box3(0.66, 0.92, 0.9, 0.99, 0, 0.12, "#C9B8A6", "#D9CBB8", "#B9A896");
+      W.lamps = [[0.05, 0.93, "lamp"], [0.57, 0.93, "lamp"]];
+      W.ceil = [0.32, 0.55];
       break;
     }
-    case "living":
-      s += rug(0.2, 0.8, 0.18, 0.62, "#D9CBB8") + sofa(0.22, 0.78, 0.7, 0.95, "#8E9AAF") + box3(0.38, 0.62, 0.32, 0.48, 0.12, 0.15, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + box3(0.02, 0.1, 0.3, 0.7, 0, 0.16, "#E2D3BE", "#EDE2D2", "#D6C6AF") + poly3([P3(0.012, 0.36, 0.3), P3(0.012, 0.64, 0.3), P3(0.012, 0.64, 0.55), P3(0.012, 0.36, 0.55)], "#1B1E25", `id="${k}-tv"`) + plant(0.9, 0.4);
+    case "office": {
+      s += rug(0.15, 0.7, 0.2, 0.6, "#C9CED6") + desk(0.05, 0.5, 0.82, 0.98, 2) + shelf(0.87, 1, 0.35, 0.8, 0.72) + plant(0.62, 0.93);
+      const [x, y] = P3(0.28, 0.66, 0.2), q = sc3(0.66);
+      s += `<rect x="${x - 13 * q}" y="${y}" width="${26 * q}" height="${22 * q}" rx="${5 * q}" fill="#2B2F38"/><rect x="${x - 11 * q}" y="${y - 26 * q}" width="${22 * q}" height="${26 * q}" rx="${5 * q}" fill="#3A3F48"/>`;
+      s += frame(0.1, 0.24, 0.6, 0.78, "#D7E3EE") + frame(0.28, 0.38, 0.62, 0.76, "#F2E3C9");
+      W.lamps = [[0.42, 0.9, "lamp"], [0.75, 0.4, "lamp"]];
       break;
-    case "kitchen":
-      s += counter(0, 0.58, 0.86) + counter(0.58, 1, 0.86) + poly3(qBack(0.02, 0.56, 0.58, 0.82), "#F7F5F2") + box3(0.3, 0.7, 0.35, 0.55, 0, 0.3, white, "#D9D6D1", "#E8E4DE") + box3(0.3, 0.7, 0.34, 0.56, 0.3, 0.32, "#BFB9B0", "#CFCAC2", "#B5AFA6");
-      [0.36, 0.5, 0.64].forEach((u) => {
+    }
+    case "living": {
+      // Sofa along the left wall, the TV on the right wall, the window free at the back.
+      s += frame(0.08, 0.36, 0.5, 0.76, "#E3D3BE") + frame(0.12, 0.22, 0.55, 0.7, "#C9D8C2");
+      s += rug(0.22, 0.78, 0.16, 0.66, "#D9CBB8");
+      s += box3(0.01, 0.2, 0.28, 0.86, 0, 0.15, "#8E9AAF", mixHex("#8E9AAF", "#FFFFFF", 0.15), mixHex("#8E9AAF", "#000000", 0.12));
+      s += box3(0.0, 0.05, 0.28, 0.86, 0, 0.34, mixHex("#8E9AAF", "#000000", 0.06), mixHex("#8E9AAF", "#FFFFFF", 0.1), mixHex("#8E9AAF", "#000000", 0.16));
+      s += box3(0.01, 0.2, 0.84, 0.9, 0, 0.25, "#8E9AAF", mixHex("#8E9AAF", "#FFFFFF", 0.12), mixHex("#8E9AAF", "#000000", 0.15)) + box3(0.01, 0.2, 0.24, 0.3, 0, 0.25, "#8E9AAF", mixHex("#8E9AAF", "#FFFFFF", 0.12), mixHex("#8E9AAF", "#000000", 0.15));
+      [[0.05, 0.4, "#E8DCC8"], [0.05, 0.68, "#C9A27A"]].forEach(([u, tt, c]) => (s += box3(u, u + 0.03, tt, tt + 0.1, 0.15, 0.26, c, mixHex(c, "#FFFFFF", 0.2), mixHex(c, "#000000", 0.12))));
+      s += box3(0.36, 0.6, 0.36, 0.54, 0.1, 0.13, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15));
+      s += box3(0.88, 1, 0.3, 0.72, 0, 0.14, "#E2D3BE", "#EDE2D2", "#D6C6AF") + poly3(qRight(0.38, 0.64, 0.3, 0.56), "#1B1E25", `id="${k}-tv"`) + poly3(qRight(0.39, 0.63, 0.31, 0.55), "#272B34");
+      const ac = "#C9B79C";
+      s += box3(0.66, 0.82, 0.16, 0.3, 0.02, 0.13, ac, mixHex(ac, "#FFFFFF", 0.2), mixHex(ac, "#000000", 0.12)) + box3(0.66, 0.82, 0.12, 0.16, 0.02, 0.28, mixHex(ac, "#000000", 0.06), mixHex(ac, "#FFFFFF", 0.15), mixHex(ac, "#000000", 0.15)) + box3(0.66, 0.69, 0.12, 0.3, 0.02, 0.2, ac, mixHex(ac, "#FFFFFF", 0.12), mixHex(ac, "#000000", 0.15)) + box3(0.79, 0.82, 0.12, 0.3, 0.02, 0.2, ac, mixHex(ac, "#FFFFFF", 0.12), mixHex(ac, "#000000", 0.15));
+      s += plant(0.95, 0.93);
+      W.psl = [[0.42, 0.46]];
+      W.lamps = [[0.06, 0.94, "lamp"], [0.9, 0.82, "lamp"]];
+      W.ceil = [0.4, 0.55];
+      break;
+    }
+    case "kitchen": {
+      // Worktop along the back with the sink under the window, wall cupboards to the right of it, a tall fridge
+      // column in the corner, an island with stools in the middle and the pendants over the island.
+      s += poly3(qBack(0.42, 0.85, 0.34, 0.6), "#F2EEE8") + [0.48, 0.54, 0.6, 0.66, 0.72, 0.78].map((u) => ln3(P3(u, 1, 0.34), P3(u, 1, 0.6), "rgba(0,0,0,.05)", 0.8)).join("");
+      s += counter(0, 0.85, 0.86);
+      s += box3(0.42, 0.85, 0.9, 1, 0.62, 0.9, white, "#FFFFFF", "#E4E0DA") + [0.53, 0.64, 0.75].map((u) => ln3(P3(u, 0.9, 0.62), P3(u, 0.9, 0.9), "#DAD5CE", 1)).join("");
+      s += box3(0.85, 1, 0.82, 1, 0, 0.9, "#EFEDEA", "#FFFFFF", "#DEDAD4") + ln3(P3(0.86, 0.82, 0.45), P3(0.99, 0.82, 0.45), "#D2CDC6", 1) + ln3(P3(0.87, 0.82, 0.5), P3(0.87, 0.82, 0.7), "#B5AFA6", 2);
+      const [sx, sy] = P3(0.23, 0.93, 0.33), q9 = sc3(0.93);
+      s += `<ellipse cx="${sx}" cy="${sy}" rx="${16 * q9}" ry="${3.5 * q9}" fill="#C9CED6"/><path d="M${sx},${sy - 2} v${-10 * q9} q0,-4 ${5 * q9},-4" stroke="#9AA3AE" stroke-width="${2 * q9}" fill="none"/>`;
+      s += poly3([P3(0.6, 0.88, 0.322), P3(0.74, 0.88, 0.322), P3(0.74, 0.97, 0.322), P3(0.6, 0.97, 0.322)], "#2B2F38");
+      s += box3(0.38, 0.78, 0.36, 0.56, 0, 0.3, white, "#D9D6D1", "#E8E4DE") + box3(0.37, 0.79, 0.35, 0.57, 0.3, 0.32, "#BFB9B0", "#CFCAC2", "#B5AFA6");
+      [0.45, 0.58, 0.71].forEach((u) => {
         const [x, y] = P3(u, 0.3, 0.22), q = sc3(0.3);
         s += `<path d="M${x},${y} v${16 * q}" stroke="#2B2F38" stroke-width="${2 * q}"/><ellipse cx="${x}" cy="${y}" rx="${7 * q}" ry="${2.5 * q}" fill="#2B2F38"/>`;
       });
+      s += plant(0.04, 0.4);
+      W.psl = [[0.47, 0.46], [0.58, 0.46], [0.69, 0.46]];
+      W.lamps = [[0.3, 0.88, "lamp"], [0.92, 0.6, "lamp"]];
+      W.ceil = [0.6, 0.4];
       break;
+    }
     case "bath":
-      s += box3(0.02, 0.45, 0.7, 0.97, 0, 0.22, "#FDFDFC", "#FFFFFF", "#E7EAEC") + poly3([P3(0.05, 0.73, 0.222), P3(0.42, 0.73, 0.222), P3(0.42, 0.94, 0.222), P3(0.05, 0.94, 0.222)], "#BFE3F2") + box3(0.6, 0.85, 0.9, 0.99, 0.26, 0.32, white, "#FFFFFF", "#E7EAEC") + poly3(qBack(0.62, 0.83, 0.45, 0.75), "#DCE6EE") + poly3(qRight(0.3, 0.6, 0, 0.9), "rgba(200,225,240,.35)");
-      break;
     case "smallbath":
-      s += poly3(qRight(0.55, 0.95, 0, 0.95), "rgba(200,225,240,.45)") + box3(0.05, 0.2, 0.82, 0.99, 0, 0.14, "#FDFDFC", "#FFFFFF", "#E7EAEC") + box3(0.25, 0.48, 0.9, 0.99, 0.26, 0.32, white, "#FFFFFF", "#E7EAEC") + poly3(qBack(0.27, 0.46, 0.45, 0.72), "#DCE6EE");
+    case "toilet": {
+      // Tiles halfway up, the toilet and the vanity with its mirror along the walls, the window high and free.
+      const tile = "#DDE5E8", big = t === "bath";
+      s += poly3(qBack(0, 1, 0, 0.5), tile) + poly3(qLeft(0, 1, 0, 0.5), mixHex(tile, "#000000", 0.04)) + poly3(qRight(0, 1, 0, 0.5), mixHex(tile, "#000000", 0.07));
+      for (let v = 0.1; v < 0.5; v += 0.1) s += ln3(P3(0, 1, v), P3(1, 1, v), "rgba(255,255,255,.7)", 0.8) + ln3(P3(0, 0, v), P3(0, 1, v), "rgba(255,255,255,.6)", 0.8) + ln3(P3(1, 0, v), P3(1, 1, v), "rgba(255,255,255,.6)", 0.8);
+      for (let u = 0.1; u < 1; u += 0.1) s += ln3(P3(u, 1, 0), P3(u, 1, 0.5), "rgba(255,255,255,.7)", 0.8);
+      if (big) s += box3(0.02, 0.5, 0.72, 0.98, 0, 0.22, "#FDFDFC", "#FFFFFF", "#E7EAEC") + poly3([P3(0.05, 0.75, 0.222), P3(0.47, 0.75, 0.222), P3(0.47, 0.95, 0.222), P3(0.05, 0.95, 0.222)], "#BFE3F2");
+      else s += poly3(qBack(0.02, 0.36, 0, 0.92), "rgba(200,225,240,.28)") + ln3(P3(0.36, 1, 0), P3(0.36, 0.72, 0), "#B9C4CC", 1.4) + poly3([P3(0.36, 0.72, 0), P3(0.36, 1, 0), P3(0.36, 1, 0.92), P3(0.36, 0.72, 0.92)], "rgba(200,225,240,.35)") + `<circle cx="${P3(0.18, 1, 0.82)[0]}" cy="${P3(0.18, 1, 0.82)[1]}" r="6" fill="#C9CED6"/>`;
+      // vanity and mirror on the right wall
+      s += box3(0.84, 1, 0.42, 0.68, 0.24, 0.32, "#C9A27A", "#FFFFFF", "#B48A5A") + poly3(qRight(0.44, 0.66, 0.42, 0.72), "#DCE6EE") + poly3(qRight(0.46, 0.64, 0.44, 0.7), "#E9F1F6");
+      // the toilet on the left wall
+      s += box3(0.02, 0.12, 0.4, 0.5, 0.14, 0.3, "#FDFDFC", "#FFFFFF", "#E7EAEC") + box3(0.02, 0.17, 0.36, 0.54, 0, 0.14, "#FDFDFC", "#FFFFFF", "#E7EAEC");
+      if (big) s += box3(0.62, 0.66, 0.94, 0.99, 0.3, 0.55, "#C9CED6", null, "#B5BCC4") + poly3(qBack(0.55, 0.62, 0.3, 0.52), "#F2B6C6");
+      s += plant(0.93, 0.92) + box3(0.4, 0.62, 0.08, 0.3, 0, 0.01, "#BFD3DC", "#C9DCE4", "#BFD3DC");
+      W.lamps = [[0.92, 0.55, "lamp"], [0.2, 0.9, "lamp"]];
+      W.ceil = [0.45, 0.5];
       break;
-    case "toilet":
-      s += box3(0.38, 0.55, 0.8, 0.99, 0, 0.14, "#FDFDFC", "#FFFFFF", "#E7EAEC") + box3(0.4, 0.53, 0.95, 0.99, 0.14, 0.3, "#FDFDFC", "#FFFFFF", "#E7EAEC") + box3(0.1, 0.3, 0.92, 0.99, 0.26, 0.32, white, "#FFFFFF", "#E7EAEC") + poly3(qBack(0.12, 0.28, 0.45, 0.7), "#DCE6EE");
+    }
+    case "utility": {
+      // Washer and dryer stacked at the left, the sink under the window, shelves high on the right wall.
+      s += box3(0.01, 0.2, 0.76, 0.98, 0, 0.36, "#FBFBFA", "#FFFFFF", "#E2E0DC") + box3(0.01, 0.2, 0.76, 0.98, 0.37, 0.72, "#FBFBFA", "#FFFFFF", "#E2E0DC");
+      [[0.18], [0.54]].forEach(([v]) => {
+        const [x, y] = P3(0.105, 0.76, v), q = sc3(0.76);
+        s += `<circle cx="${x}" cy="${y}" r="${11 * q}" fill="#3A4150" stroke="#C9CDD3" stroke-width="${3 * q}"/>`;
+      });
+      s += counter(0.22, 0.98, 0.86) + box3(0.6, 0.84, 0.88, 0.97, 0.3, 0.33, "#C9CED6", "#D7DCE2", "#B5BCC4");
+      s += [0.42, 0.62].map((v) => poly3([P3(1, 0.2, v), P3(1, 0.7, v), P3(0.94, 0.7, v), P3(0.94, 0.2, v)], "#FFFFFF")).join("");
+      [[0.3, 0.42, "#7FB9E8"], [0.42, 0.42, "#F5D08A"], [0.55, 0.62, "#C9A4E8"], [0.32, 0.62, "#E5484D"]].forEach(([tt, v, c]) => {
+        const [x, y] = P3(0.975, tt, v);
+        s += `<rect x="${(x - 4).toFixed(1)}" y="${(y - 10).toFixed(1)}" width="8" height="10" rx="2" fill="${c}"/>`;
+      });
+      s += box3(0.42, 0.6, 0.3, 0.44, 0, 0.12, "#D8C7A8", "#E6D8BE", "#C9B793") + box3(0.62, 0.95, 0.12, 0.2, 0.3, 0.32, "#C9CED6", null, "#B5BCC4");
+      W.lamps = [[0.5, 0.9, "lamp"], [0.95, 0.4, "lamp"]];
       break;
-    case "utility":
-      s += counter(0, 0.6, 0.86) + box3(0.62, 0.8, 0.84, 0.99, 0, 0.32, "#FBFBFA", "#FFFFFF", "#E2E0DC") + box3(0.62, 0.8, 0.84, 0.99, 0.32, 0.64, "#FBFBFA", "#FFFFFF", "#E2E0DC") + `<circle cx="${P3(0.71, 0.84, 0.16)[0]}" cy="${P3(0.71, 0.84, 0.16)[1]}" r="11" fill="#3A4150" stroke="#C9CDD3" stroke-width="3"/>`;
+    }
+    case "hall": {
+      const entre = /entr|vindfang|hall/i.test(r.name || "");
+      if (entre) s += poly3(qBack(0.32, 0.58, 0, 0.78), "#5B4632") + poly3(qBack(0.35, 0.55, 0.42, 0.72), "#DCE6EE") + `<circle cx="${P3(0.54, 1, 0.38)[0]}" cy="${P3(0.54, 1, 0.38)[1]}" r="2.6" fill="#D9B45A"/>`;
+      else s += poly3(qBack(0.36, 0.56, 0, 0.78), "#F4F1EC") + ln3(P3(0.36, 1, 0), P3(0.36, 1, 0.78), "#D8D2CA", 1.4) + ln3(P3(0.56, 1, 0), P3(0.56, 1, 0.78), "#D8D2CA", 1.4);
+      // bench and hooks with coats on the left wall, shoes below; a mirror on the right wall
+      s += box3(0.01, 0.12, 0.45, 0.8, 0.18, 0.22, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + box3(0.01, 0.12, 0.45, 0.8, 0, 0.06, "#E9E4DC", "#F2EEE8", "#DAD4CB");
+      [0.5, 0.6, 0.7].forEach((tt, i) => {
+        const [x, y] = P3(0, tt, 0.72), q = sc3(tt);
+        s += `<circle cx="${x + 2}" cy="${y}" r="${2.2 * q}" fill="#2B2F38"/>` + (entre || i < 2 ? `<path d="M${x + 2},${y} l${8 * q},${2 * q} l${2 * q},${34 * q} l${-14 * q},${2 * q} z" fill="${["#5E6A75", "#C2703D", "#7FA36A"][i]}" opacity=".9"/>` : "");
+        const [bx, by] = P3(0.06, tt + 0.03, 0);
+        s += `<ellipse cx="${bx}" cy="${by - 2}" rx="${6 * q}" ry="${2.4 * q}" fill="${["#2B2F38", "#8A6440", "#E5484D"][i]}"/>`;
+      });
+      s += poly3(qRight(0.4, 0.62, 0.28, 0.85), "#C9B8A6") + poly3(qRight(0.42, 0.6, 0.3, 0.83), "#DCE6EE");
+      s += rug(0.25, 0.75, 0.08, entre ? 0.5 : 0.92, entre ? "#B9A896" : "#C9B8A6") + (entre ? "" : frame(0.1, 0.24, 0.5, 0.7, "#E8DFD2"));
+      W.lamps = [[0.08, 0.9, "lamp"], [0.92, 0.3, "lamp"]];
+      W.ceil = [0.5, 0.45];
       break;
-    case "hall":
-      s += box3(0.05, 0.35, 0.85, 0.97, 0, 0.14, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + [0.12, 0.22, 0.32].map((u) => `<circle cx="${P3(u, 1, 0.66)[0]}" cy="${P3(u, 1, 0.66)[1]}" r="3" fill="#2B2F38"/>`).join("") + frame(0.4, 0.52, 0.5, 0.78, "#DCE6EE") + rug(0.3, 0.7, 0.1, 0.5, "#C9B8A6");
+    }
+    case "walkin": {
+      // Hanging rails with clothes on both side walls, drawers and a mirror at the back.
+      const rail = (side) => {
+        let o = "";
+        const u = side ? 0.995 : 0.005, uu = side ? 0.86 : 0.14;
+        o += poly3(side ? qRight(0.15, 0.98, 0.88, 0.9) : qLeft(0.15, 0.98, 0.88, 0.9), "#F2EEE8");
+        o += ln3(P3(uu, 0.15, 0.82), P3(uu, 0.98, 0.82), "#9AA3AE", 1.6);
+        const rr = prng((hashStr(k) % 999) + (side ? 7 : 3)), cols = ["#2B2F38", "#5E6A75", "#C2703D", "#E8DCC8", "#7FA36A", "#9DB7D5", "#F2B6C6", "#FBFAF7"];
+        for (let tt = 0.2; tt < 0.95; tt += 0.045) {
+          const L = 0.36 + rr() * 0.22, c = cols[Math.floor(rr() * cols.length)];
+          o += poly3([P3(uu, tt, 0.81), P3(uu, tt + 0.035, 0.81), P3(uu, tt + 0.035, 0.81 - L), P3(uu, tt, 0.81 - L)], c, 'stroke="rgba(0,0,0,.12)" stroke-width=".6"');
+        }
+        o += box3(side ? 0.84 : 0, side ? 1 : 0.16, 0.15, 0.98, 0, 0.12, "#EEEAE4", "#F5F2EE", "#E0DBD4");
+        return o;
+      };
+      s += rail(0) + rail(1) + box3(0.2, 0.8, 0.9, 1, 0, 0.35, "#EEEAE4", "#F5F2EE", "#E0DBD4") + [0.12, 0.24].map((v) => ln3(P3(0.2, 0.9, v), P3(0.8, 0.9, v), "#D8D2CA", 1)).join("") + poly3(qBack(0.38, 0.62, 0.42, 0.88), "#C9B8A6") + poly3(qBack(0.4, 0.6, 0.44, 0.86), "#DCE6EE");
+      s += rug(0.3, 0.7, 0.2, 0.7, "#D9CBB8");
+      W.lamps = [[0.5, 0.9, "lamp"], [0.3, 0.6, "lamp"]];
       break;
-    case "walkin":
-      s += shelf(0, 0.3, 0.5, 1, 0.9) + shelf(0.7, 1, 0.5, 1, 0.9) + box3(0.32, 0.68, 0.9, 0.99, 0, 0.9, "#EEEAE4", "#F5F2EE", "#E0DBD4");
+    }
+    case "garage": {
+      // The garage door at the back, a car seen from behind, shelves and bikes along the sides.
+      s += poly3(qBack(0.18, 0.82, 0, 0.78), "#C9CCD1");
+      for (let v = 0.08; v < 0.78; v += 0.08) s += ln3(P3(0.18, 1, v), P3(0.82, 1, v), "#AEB3BA", 1.2);
+      s += poly3(qBack(0.24, 0.76, 0.62, 0.7), "#DCE6EE");
+      s += box3(0, 0.12, 0.3, 0.9, 0, 0.7, "#8E9196", "#A3A6AB", "#7D8085") + [0.18, 0.36, 0.54].map((v) => poly3([P3(0, 0.3, v), P3(0.12, 0.3, v), P3(0.12, 0.9, v), P3(0, 0.9, v)], "#6E7176")).join("");
+      [[0.04, 0.5, 0.18, "#E5484D"], [0.06, 0.7, 0.36, "#2F6FD6"], [0.05, 0.6, 0.54, "#F2B01E"]].forEach(([u, tt, v, c]) => (s += box3(u, u + 0.05, tt, tt + 0.08, v, v + 0.1, c, mixHex(c, "#FFFFFF", 0.2), mixHex(c, "#000000", 0.2))));
+      const car = (cx, tt, col) => {
+        const [x, y] = P3(cx, tt, 0), q = sc3(tt), w = 120 * q, h = 62 * q;
+        return `<g><ellipse cx="${x}" cy="${y}" rx="${w * 0.58}" ry="${8 * q}" fill="rgba(0,0,0,.25)"/><rect x="${x - w / 2 - 2 * q}" y="${y - 18 * q}" width="${14 * q}" height="${18 * q}" rx="${3 * q}" fill="#1E1F24"/><rect x="${x + w / 2 - 12 * q}" y="${y - 18 * q}" width="${14 * q}" height="${18 * q}" rx="${3 * q}" fill="#1E1F24"/><path d="M${x - w / 2},${y - 14 * q} v${-h * 0.42} q0,${-8 * q} ${10 * q},${-10 * q} l${12 * q},${-h * 0.36} q${4 * q},${-6 * q} ${12 * q},${-6 * q} h${w - 68 * q} q${8 * q},0 ${12 * q},${6 * q} l${12 * q},${h * 0.36} q${10 * q},${2 * q} ${10 * q},${10 * q} v${h * 0.42} z" fill="${col}"/><path d="M${x - w / 2 + 26 * q},${y - h * 0.62} l${8 * q},${-h * 0.3} h${w - 68 * q} l${8 * q},${h * 0.3} z" fill="#2B3440"/><rect x="${x - w / 2 + 6 * q}" y="${y - h * 0.5}" width="${20 * q}" height="${7 * q}" rx="${3 * q}" fill="#E5484D"/><rect x="${x + w / 2 - 26 * q}" y="${y - h * 0.5}" width="${20 * q}" height="${7 * q}" rx="${3 * q}" fill="#E5484D"/><rect x="${x - 14 * q}" y="${y - h * 0.38}" width="${28 * q}" height="${8 * q}" rx="${1.5 * q}" fill="#F2F2F2"/></g>`;
+      };
+      s += car(0.5, 0.5, "#C9CED6");
+      const bike = (tt) => {
+        const [x, y] = P3(0.97, tt, 0.18), q = sc3(tt);
+        return `<g stroke="#2B2F38" stroke-width="${1.6 * q}" fill="none"><circle cx="${x - 2 * q}" cy="${y}" r="${12 * q}"/><circle cx="${x - 2 * q}" cy="${y - 42 * q}" r="${12 * q}"/><path d="M${x - 2 * q},${y} l${-4 * q},${-21 * q} l${4 * q},${-21 * q}" stroke="#2F6FD6" stroke-width="${2.2 * q}"/></g>`;
+      };
+      s += bike(0.35) + bike(0.6);
+      W.lamps = [[0.5, 0.9, "lamp"], [0.9, 0.85, "lamp"]];
+      W.ceil = [0.5, 0.5];
       break;
-    case "garage":
-      s += box3(0.6, 1, 0.6, 1, 0, 0.5, "#B8B5AF", "#C9C6C0", "#A9A6A0") + `<path d="M${pt3(P3(0.1, 0.3, 0.02))} L${pt3(P3(0.5, 0.3, 0.02))} L${pt3(P3(0.5, 0.75, 0.02))} L${pt3(P3(0.1, 0.75, 0.02))}Z" fill="rgba(0,0,0,.15)"/>`;
-      break;
+    }
     default:
-      s += rug(0.3, 0.7, 0.25, 0.6, "#D9CBB8") + plant(0.85, 0.8) + shelf(0.05, 0.25, 0.8, 0.97, 0.5);
+      s += rug(0.25, 0.75, 0.2, 0.6, "#D9CBB8") + plant(0.9, 0.9) + shelf(0.02, 0.2, 0.84, 0.97, 0.5) + frame(0.76, 0.88, 0.55, 0.72, "#E8DFD2");
   }
   return s;
 }
@@ -309,10 +427,12 @@ function genDraw(k, r, W) {
 /* Where the lamps sit in the picture. */
 const GSLOTS = [[0.5, 0.5, "ceil"], [0.18, 0.8, "lamp"], [0.82, 0.7, "lamp"], [0.5, 0.9, "strip"]];
 const PSL = [[0.36, 0.45], [0.5, 0.45], [0.64, 0.45], [0.43, 0.6], [0.57, 0.6]];
-function slotsFor(lights) {
-  let pn = 0;
+function slotsFor(lights, W = {}) {
+  // The room's drawing says where its lamps go (clear of the window); otherwise the usual places.
+  const psl = W.psl || PSL, ceil = W.ceil ? [...W.ceil, "ceil"] : GSLOTS[0], lamps = W.lamps || [GSLOTS[1], GSLOTS[2]];
+  let pn = 0, ln = 0;
   return lights.map((l, i) =>
-    l.lk === "pendant" ? [...PSL[pn++ % PSL.length], "pend"] : l.lk === "strip" ? GSLOTS[3] : l.lk === "floor" || l.lk === "table" || l.lk === "wall" ? GSLOTS[1 + (i % 2)] : i === 0 ? GSLOTS[0] : GSLOTS[1 + (i % 2)]
+    l.lk === "pendant" ? [...psl[pn++ % psl.length], "pend"] : l.lk === "strip" ? GSLOTS[3] : l.lk === "floor" || l.lk === "table" || l.lk === "wall" ? lamps[ln++ % lamps.length] : i === 0 ? ceil : lamps[ln++ % lamps.length]
   );
 }
 function genLamps(k, lights, slots) {
@@ -385,18 +505,17 @@ const noEntity = (it) => ({ id: "i-" + it.id, ent: "", name: it.name || "", type
 function roomLights(ctx, r) {
   const placed = typeof House.roomLightItems === "function" ? House.roomLightItems(ctx, r.id) : [];
   const seen = new Set();
+  const isGroup = (id) => Array.isArray(ctx.hass.states[id]?.attributes?.entity_id);
   let lights = [];
+  // The light sources drawn in Husbyggeren first (they have a place in the picture) ...
   for (const it of placed) {
-    if (it.ent && ctx.hass.states[it.ent]) {
-      if (seen.has(it.ent)) continue;
-      seen.add(it.ent);
-      lights.push(lightModel(ctx, it.ent, { name: it.name, lk: it.lk }));
-    } else lights.push(noEntity(it));
+    if (!it.ent || !ctx.hass.states[it.ent] || seen.has(it.ent)) continue;
+    seen.add(it.ent);
+    lights.push(lightModel(ctx, it.ent, { name: it.name, lk: it.lk }));
   }
   r._placed = lights.length > 0;
-  // A child's room (and a hand-drawn one) shows all the lights of its area, but not a group of them as well.
-  const isGroup = (id) => Array.isArray(ctx.hass.states[id]?.attributes?.entity_id);
-  if ((r.rtype === "kid" || hasArt(r)) && r.area) {
+  // ... then every other light in the room's area, but not a group of them as well.
+  if (r.area) {
     const inArea = ctx.entities("light").filter((id) => ctx.area(id) === r.area);
     const single = inArea.filter((id) => !isGroup(id));
     for (const id of single.length ? single : inArea)
@@ -413,10 +532,11 @@ function roomLights(ctx, r) {
         lights.push(lightModel(ctx, id));
       }
   if (!lights.length && r.light && ctx.hass.states[r.light]) lights.push(lightModel(ctx, r.light, { name: ctx.t("Loftlampe") }));
-  if (!lights.length && r.area) for (const id of ctx.entities("light")) if (ctx.area(id) === r.area) lights.push(lightModel(ctx, id));
-  lights.sort((a, b) => (a.lk === "strip") - (b.lk === "strip"));
+  // Drawn lamps without a light in Home Assistant are shown in the picture, but last and switched off.
+  for (const it of placed) if (!it.ent || !ctx.hass.states[it.ent]) lights.push(noEntity(it));
+  lights.sort((a, b) => (a.lk === "strip") - (b.lk === "strip") || !!a.noent - !!b.noent);
   const w = lights.length === 1 ? 0.85 : 0;
-  lights.forEach((l, i) => (l.w = w || (l.lk === "strip" || l.lk === "rgb" ? 0.3 : i === 0 ? 0.7 : 0.45)));
+  lights.forEach((l, i) => (l.w = w || (l.lk === "strip" || l.lk === "rgb" ? 0.3 : i === 0 ? 0.7 : Math.max(0.15, 0.45 - i * 0.04))));
   return lights;
 }
 function areaEntities(ctx, r) {
@@ -525,7 +645,7 @@ function scene(ctx, room, lights, prefix = "") {
   const W = {};
   const art = hasArt(room) ? drawArt(ARTH(), room.art, k, W, lights, room.lamps || {}) : null;
   const draw = art ? art.draw : genDraw(k, room, W);
-  const slots = slotsFor(lights);
+  const slots = slotsFor(lights, W);
   const sc = PRESETS(room, lights, slots).find((p) => p[0] === scenes[room.id]);
   const E = env(ctx);
   const svg = `<svg class="rm-svg" id="${k}" viewBox="0 0 480 270" role="img" aria-label="${ctx.esc(room.name)}">
@@ -547,7 +667,7 @@ function repaint(ctx, room) {
     const W = {};
     if (hasArt(room)) drawArt(ARTH(), room.art, k, W, lights, room.lamps || {});
     else genDraw(k, room, W);
-    const sc = PRESETS(room, lights, slotsFor(lights)).find((p) => p[0] === scenes[room.id]);
+    const sc = PRESETS(room, lights, slotsFor(lights, W)).find((p) => p[0] === scenes[room.id]);
     el.textContent = lookCss(k, lights, W, env(ctx), sc?.[3]);
   }
 }
@@ -601,7 +721,7 @@ function lightsCard(ctx, room, lights, cls = "s8") {
   const foot = kid
     ? ""
     : `<p class="t-sub rm-foot">${esc(room._placed ? t("Scenerne er Hverdagsros egne, og lyskilderne er dem, der står i rummet i Husbyggeren.") : t("Scenerne er Hverdagsros egne, og lyset er rummets lys i Home Assistant."))}${haScenes.length ? ` ${esc(t("Scenerne i Home Assistant ligger til sidst."))}` : ""}${offline.length ? ` ${esc(t("{names} er utilgængelig i HA i dag.", { names: offline.join(t(" og ")) }))}` : ""}</p>`;
-  return `<section class="card ${cls} rm-card" data-room="${esc(room.id)}" style="--pc:${color}"><div class="card-head"><h2>${esc((room.rtype === "kid" && room.area && ctx.hass.areas?.[room.area]?.name) || room.name)}</h2><span class="meta">${lights.length ? (on ? esc(t("{n} af {total} lys tændt", { n: on, total: lights.length })) : esc(t("Alt er slukket"))) : esc(t("Ingen lys i rummet"))}${temp != null ? ` · ${ctx.fmt.num(temp, 1)} °C` : ""}</span></div>
+  return `<section class="card ${cls} rm-card" data-room="${esc(room.id)}" style="--pc:${color}"><div class="card-head"><h2>${esc((room.rtype === "kid" && room.area && ctx.hass.areas?.[room.area]?.name) || room.name)}</h2><span class="meta">${lights.length ? (on ? esc(t("{n} af {total} lys tændt", { n: on, total: lights.filter((l) => !l.noent).length })) : esc(t("Alt er slukket"))) : esc(t("Ingen lys i rummet"))}${temp != null ? ` · ${ctx.fmt.num(temp, 1)} °C` : ""}</span></div>
     <div class="rm-wrap"><div class="rm-pic">${sc.svg}${lights.length ? `<span class="rm-hint">${svg("bulb")}${esc(t("Tryk på en lampe"))}</span>` : ""}</div>
     <div class="rm-side">${
       lights.length
@@ -609,6 +729,7 @@ function lightsCard(ctx, room, lights, cls = "s8") {
             .map((p) => `<button data-act="room-scene" data-id="${esc(room.id)}" data-scene="${p[0]}" aria-pressed="${scenes[room.id] === p[0]}"><i style="background:${grad(p)}"></i>${esc(t(p[1]))}</button>`)
             .join("")}${haScenes.map((id) => `<button data-act="room-ha" data-id="${esc(id)}"><i style="background:var(--surface-2)">${svg(id.startsWith("script.") ? "play" : "sparkle")}</i>${esc(ctx.name(id))}</button>`).join("")}</div>
       <div class="rm-lights">${lights
+        .filter((l) => !l.noent)
         .map(
           (l) => `<div class="rm-l${l.on ? " on" : ""}" data-id="${esc(l.id)}" style="--lc:${l.col}"><button class="rm-tg" data-act="room-lamp" data-k="${sc.k}" data-id="${esc(l.id)}" aria-pressed="${l.on}" aria-label="${esc(l.name)}"${l.off ? " disabled" : ""}>${svg("bulb")}</button>
         <div class="rm-ln"><b>${esc(l.name)}</b><small><span class="rm-pct">${l.noent ? esc(t("Slukket")) : l.off ? esc(t("Svarer ikke")) : l.on ? `${l.bri} %` : esc(t("Slukket"))}</span> · ${esc(l.ent || t("Ingen entitet"))}</small></div>
@@ -637,7 +758,7 @@ export function roomCard(ctx, room) {
   const lights = roomLights(ctx, r);
   const sc = scene(ctx, r, lights, "c");
   const on = lights.filter((l) => l.on).length;
-  return `<button class="card rm-mini" data-go="rum:${ctx.esc(r.id)}" style="--pc:${(r.kid && ctx.member(r.kid)?.color) || "var(--violet)"}"><span class="rm-pic">${sc.svg.replace(/data-act="room-lamp"/g, "")}</span><span class="rm-mini-t"><b>${ctx.esc(r.name)}</b><small>${lights.length ? (on ? ctx.esc(ctx.t("{n} af {total} lys tændt", { n: on, total: lights.length })) : ctx.esc(ctx.t("Alt er slukket"))) : ctx.esc(typeName(ctx, r))}</small></span>${ctx.svg("go", "ic rm-mini-go")}</button>`;
+  return `<button class="card rm-mini" data-go="rum:${ctx.esc(r.id)}" style="--pc:${(r.kid && ctx.member(r.kid)?.color) || "var(--violet)"}"><span class="rm-pic">${sc.svg.replace(/data-act="room-lamp"/g, "")}</span><span class="rm-mini-t"><b>${ctx.esc(r.name)}</b><small>${lights.length ? (on ? ctx.esc(ctx.t("{n} af {total} lys tændt", { n: on, total: lights.filter((l) => !l.noent).length })) : ctx.esc(ctx.t("Alt er slukket"))) : ctx.esc(typeName(ctx, r))}</small></span>${ctx.svg("go", "ic rm-mini-go")}</button>`;
 }
 const typeName = (ctx, r) => ctx.t((RTYPES().find((x) => x[0] === r.rtype) || [, "Rum"])[1]);
 

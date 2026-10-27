@@ -29,7 +29,7 @@ export const HT = {
   tv: ["TV", "tv", "#16A34A", "media_player", "medier"],
   lamp: ["Lampe", "bulb", "#F5B301", "light,switch", "lys"],
   temp: ["Termometer", "heat", "#EF4444", "sensor,climate", "klima"],
-  ap: ["Accesspoint", "wifi", "#F97316", "sensor,device_tracker", "netvaerk"],
+  ap: ["Accesspoint", "wifi", "#F97316", "sensor,binary_sensor,device_tracker,update", "netvaerk"],
   washer: ["Vaskemaskine", "plug", "#64748B", "", "apparater"],
   dryer: ["Tørretumbler", "plug", "#64748B", "", "apparater"],
   dish: ["Opvasker", "dish", "#3B82F6", "", "apparater"],
@@ -56,13 +56,53 @@ const ROBOT = new Set(["vacuum", "mower"]);
 const OBJ = new Set(["furn", "light", "car", "charger", "solar", "battery", "tree", "bush"]);
 const PX_M = 60;
 const CM = (v) => Math.round((v * PX_M) / 100);
+/* Furniture: [name, width cm, depth cm, rooms it belongs to]. The back of a piece is its top edge (-y),
+   which is the side that goes against a wall. */
 const FURN = {
-  sofa: ["Sofa", 230, 95], arm: ["Lænestol", 85, 85], bed2: ["Dobbeltseng", 180, 200], bed1: ["Enkeltseng", 90, 200], crib: ["Tremmeseng", 70, 140],
-  table: ["Spisebord", 200, 95], tround: ["Rundt bord", 110, 110], chair: ["Stol", 48, 50], desk: ["Skrivebord", 120, 60], wardrobe: ["Garderobeskab", 120, 60],
-  dresser: ["Kommode", 100, 50], shelf: ["Reol", 120, 35], counter: ["Køkkenbord", 300, 62], island: ["Køkkenø", 200, 100], tvbench: ["TV-bord", 180, 40],
-  tub: ["Badekar", 170, 75], shower: ["Bruseniche", 90, 90], toilet: ["Toilet", 40, 65], sink: ["Håndvask", 60, 45], rug: ["Tæppe", 240, 170], plant: ["Plante", 50, 50],
+  // Stue
+  sofa: ["Sofa", 230, 95, "stue"], corner: ["Hjørnesofa", 280, 200, "stue"], chaise: ["Sofa med chaiselong", 270, 160, "stue"], arm: ["Lænestol", 85, 85, "stue,sove"],
+  pouf: ["Puf", 55, 55, "stue,born"], coffee: ["Sofabord", 120, 60, "stue"], sidet: ["Sidebord", 45, 45, "stue,sove"], tvbench: ["TV-bord", 180, 40, "stue,sove"],
+  sideboard: ["Skænk", 160, 45, "stue,kok,ent"], shelf: ["Reol", 120, 35, "stue,born,kontor,bry"], piano: ["Klaver", 150, 60, "stue"], stove: ["Brændeovn", 55, 50, "stue"],
+  rug: ["Tæppe", 240, 170, "stue,sove,born"], plant: ["Plante", 50, 50, "stue,kok,kontor,ent"],
+  // Køkken
+  base: ["Underskab", 60, 60, "kok,bry"], sinkc: ["Køkkenvask", 80, 60, "kok"], hobc: ["Kogeplade", 60, 60, "kok"], dishc: ["Opvaskemaskine", 60, 60, "kok"],
+  ovenc: ["Ovn i højskab", 60, 60, "kok"], fridgec: ["Køleskab", 60, 65, "kok,bry"], tall: ["Højskab", 60, 60, "kok,bry"], wallc: ["Overskab", 60, 35, "kok,bry,bad"],
+  counter: ["Køkkenbord", 300, 62, "kok"], island: ["Køkkenø", 200, 100, "kok"], table: ["Spisebord", 200, 95, "kok,stue"], tround: ["Rundt bord", 110, 110, "kok,stue"],
+  chair: ["Stol", 48, 50, "kok,stue,born,kontor"], stool: ["Barstol", 40, 40, "kok"], bench: ["Bænk", 140, 40, "kok,ent"],
+  // Soveværelse
+  bed2: ["Dobbeltseng", 180, 200, "sove"], bed1: ["Enkeltseng", 90, 200, "sove,born"], nightstand: ["Natbord", 45, 40, "sove,born"], wardrobe: ["Garderobeskab", 120, 60, "sove,born,ent"],
+  dresser: ["Kommode", 100, 50, "sove,born"], vanity: ["Toiletbord", 100, 45, "sove"], bbench: ["Sengebænk", 140, 40, "sove"],
+  // Børneværelse
+  bunk: ["Køjeseng", 95, 205, "born"], crib: ["Tremmeseng", 70, 140, "born"], desk: ["Skrivebord", 120, 60, "born,kontor"], toybox: ["Legetøjskasse", 70, 40, "born"],
+  playk: ["Legekøkken", 80, 35, "born"], tipi: ["Legetelt", 120, 120, "born"], beanbag: ["Sækkestol", 80, 80, "born,stue"],
+  // Bad
+  tub: ["Badekar", 170, 75, "bad"], shower: ["Bruseniche", 90, 90, "bad"], toilet: ["Toilet", 40, 65, "bad"], sink: ["Håndvask", 60, 45, "bad"],
+  vanityb: ["Vaskeskab", 80, 46, "bad"], mirror: ["Spejlskab", 80, 15, "bad"], towel: ["Håndklædetørrer", 50, 10, "bad"],
+  // Bryggers
+  wm: ["Vaskemaskine", 60, 60, "bry,bad"], td: ["Tørretumbler", 60, 60, "bry,bad"], tower: ["Vaskesøjle", 60, 65, "bry"], usink: ["Bryggersvask", 60, 50, "bry"],
+  rack: ["Tørrestativ", 180, 55, "bry"], clean: ["Rengøringsskab", 60, 60, "bry"], hooks: ["Knagerække", 100, 12, "bry,ent"],
+  // Entré og kontor
+  shoes: ["Skoreol", 80, 30, "ent"], mirrorw: ["Spejl", 60, 5, "ent,sove"], standd: ["Hæve-sænkebord", 160, 80, "kontor"], ochair: ["Kontorstol", 62, 62, "kontor"],
+  cabinet: ["Arkivskab", 45, 60, "kontor"],
+  // Garage og skur
+  work: ["Værkbænk", 180, 70, "gar"], gshelf: ["Stålreol", 120, 45, "gar"], bike: ["Cykel", 180, 60, "gar"], bins: ["Affaldsspande", 150, 75, "gar,have"], tools: ["Værktøjsvæg", 200, 12, "gar"],
+  // Have
+  gset: ["Havemøbler", 240, 180, "have"], gtable: ["Havebord", 180, 90, "have"], lounge: ["Loungemøbler", 240, 200, "have"], lounger: ["Liggestol", 70, 190, "have"],
+  parasol: ["Parasol", 300, 300, "have"], pizza: ["Pizzaovn", 80, 80, "have"], weber: ["Kuglegrill", 60, 60, "have"], grill: ["Gasgrill", 140, 60, "have"],
+  firepit: ["Bålfad", 80, 80, "have"], tramp: ["Trampolin", 366, 366, "have"], sandbox: ["Sandkasse", 150, 150, "have"], raised: ["Højbed", 200, 80, "have"],
+  playhouse: ["Legehus", 150, 150, "have"], swing: ["Gyngestativ", 250, 160, "have"], shed: ["Skur og værksted", 300, 250, "have,gar"],
 };
-const ROUNDF = new Set(["tround", "plant"]);
+const FCATS = [
+  ["stue", "Stue"], ["kok", "Køkken"], ["sove", "Soveværelse"], ["born", "Børneværelse"], ["bad", "Badeværelse"], ["bry", "Bryggers"], ["ent", "Entré"], ["kontor", "Kontor"], ["gar", "Garage og skur"],
+];
+const furnIn = (cat) => {
+  const ks = Object.keys(FURN).filter((k) => FURN[k][3].split(",").includes(cat));
+  // The room's own furniture first, then what it shares with other rooms.
+  return [...ks.filter((k) => FURN[k][3].startsWith(cat)), ...ks.filter((k) => !FURN[k][3].startsWith(cat))];
+};
+/* Furniture that stands against a wall: it turns its back to the wall and follows the wall. */
+const WALLF = new Set(["sofa", "corner", "chaise", "tvbench", "sideboard", "shelf", "piano", "base", "sinkc", "hobc", "dishc", "ovenc", "fridgec", "tall", "wallc", "counter", "bed2", "bed1", "nightstand", "wardrobe", "dresser", "vanity", "bunk", "crib", "desk", "toybox", "playk", "tub", "toilet", "sink", "vanityb", "mirror", "towel", "wm", "td", "tower", "usink", "rack", "clean", "hooks", "shoes", "mirrorw", "standd", "cabinet", "work", "gshelf", "bins", "tools", "bench"]);
+const ROUNDF = new Set(["tround", "plant", "pouf", "sidet", "stool", "beanbag", "ochair", "parasol", "weber", "firepit", "tramp", "tipi"]);
 const LIGHTK = { ceiling: ["Loftlampe", 40], pendant: ["Pendel", 45], spot: ["Spot", 12], floor: ["Gulvlampe", 45], table: ["Bordlampe", 28], wall: ["Væglampe", 25], strip: ["LED-strip", 150], rgb: ["RGBWW-pære", 16], garden: ["Havelampe", 25] };
 const ROUNDL = new Set(["ceiling", "pendant", "spot", "floor", "table", "rgb", "garden"]);
 const CABLE = {
@@ -162,6 +202,12 @@ function normHouse(H) {
   H.items = (H.items || []).filter((i) => i && HT[i.type]);
   H.items.forEach((i) => {
     if (i.lock && i.lockOn == null) i.lockOn = 1;
+    // Openings used to be either horizontal or vertical; now they have the angle of their wall.
+    if (OPENING.has(i.type) && i.ang == null) {
+      i.ang = i.dir === "v" ? 90 : 0;
+      if (i.dir === "v") i.side = -(i.side || 1);
+    }
+    delete i.dir;
   });
   return H;
 }
@@ -380,8 +426,16 @@ function hState(it) {
       return L.on ? [t("Tændt · {n} %", { n: L.bri }), "lit"] : [t("Slukket"), ""];
     case "temp":
       return L.val != null ? [`${C.fmt.num(L.val, 1)}°`, ""] : [t("Ikke koblet"), "warn"];
-    case "ap":
-      return L.ent ? [C.hass.formatEntityState ? C.hass.formatEntityState(L.s) : String(L.val), "ok"] : [t("Online"), "ok"];
+    case "ap": {
+      if (!L.ent) return [t("Ikke koblet"), "warn"];
+      // UniFi and friends: the number of devices on the access point, and whether it is online.
+      const base = L.ent.replace(/_(clients|state|uptime|cpu_utilization|memory_utilization)$/, "");
+      const cl = C.st(L.ent.endsWith("_clients") ? L.ent : base + "_clients"), stt = C.st(base + "_state");
+      const down = stt && !["connected", "online", "on"].includes(String(stt.state).toLowerCase());
+      if (down) return [t("Offline"), "bad"];
+      if (cl && num(cl.state) != null) return [t("Online · {n} enheder", { n: Math.round(num(cl.state)) }), "ok"];
+      return [C.hass.formatEntityState ? C.hass.formatEntityState(L.s) : String(L.val), "ok"];
+    }
     case "car":
       if (!L.home) return [t("Ude"), ""];
       if (L.cable) return [`${t(CABLE[L.cable][0])}${L.soc != null ? ` · ${Math.round(L.soc)} %` : ""}`, L.cable === "charging" ? "play" : L.cable === "fault" ? "off" : "ok"];
@@ -409,7 +463,7 @@ function hState(it) {
 
 /* ------------------------------------------------------------------ drawing: objects */
 function furnSvg(k, w, h) {
-  const W = w / 2, Hh = h / 2;
+  const W = w / 2, Hh = h / 2, rep = (n, fn) => Array.from({ length: n }, (_, i) => fn(i, n)).join("");
   const R = (x, y, ww, hh, rx, c) => `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(Math.max(0, ww))}" height="${f1(Math.max(0, hh))}" rx="${rx}" class="${c}"/>`;
   switch (k) {
     case "sofa":
@@ -459,6 +513,137 @@ function furnSvg(k, w, h) {
       return R(-W, -Hh, w, h * 0.28, 3, "fu-white") + `<ellipse cx="0" cy="${f1(h * 0.14)}" rx="${f1(W * 0.92)}" ry="${f1(h * 0.34)}" class="fu-white"/><ellipse cx="0" cy="${f1(h * 0.17)}" rx="${f1(W * 0.55)}" ry="${f1(h * 0.22)}" class="fu-water"/>`;
     case "sink":
       return R(-W, -Hh, w, h, 4, "fu-white") + `<ellipse cx="0" cy="${f1(h * 0.08)}" rx="${f1(W * 0.7)}" ry="${f1(Hh * 0.62)}" class="fu-water"/><circle cx="0" cy="${f1(-Hh + 5)}" r="2" class="fu-knob"/>`;
+    case "corner": {
+      const b = Math.min(h, w) * 0.2, a = w * 0.36, sh = h * 0.42;
+      return `<path d="M${-W} ${-Hh} H${W} V${f1(-Hh + sh)} H${f1(-W + a)} V${Hh} H${-W} Z" class="fu-fab"/>` + R(-W, -Hh, w, b, 6, "fu-fab2") + R(-W, -Hh, b, h, 6, "fu-fab2") +
+        [0.3, 0.55, 0.8].map((x) => R(-W + w * x - w * 0.11, -Hh + b + 2, w * 0.22, sh - b - 4, 5, "fu-cush")).join("") + R(-W + b + 2, -Hh + sh + 2, a - b - 4, h - sh - 6, 5, "fu-cush");
+    }
+    case "chaise": {
+      const b = h * 0.18, sh = h * 0.58, cw = w * 0.32;
+      return R(-W, -Hh, w, sh, 7, "fu-fab") + R(W - cw, -Hh, cw, h, 7, "fu-fab") + R(-W, -Hh, w, b, 6, "fu-fab2") + R(-W, -Hh, w * 0.06, sh, 5, "fu-fab2") +
+        [0, 1].map((i) => R(-W + w * 0.07 + i * (w - cw - w * 0.07) / 2 + 1.5, -Hh + b + 2, (w - cw - w * 0.07) / 2 - 3, sh - b - 4, 5, "fu-cush")).join("") + R(W - cw + 2, -Hh + b + 2, cw - 4, h - b - 4, 6, "fu-cush");
+    }
+    case "pouf":
+      return `<circle r="${W}" class="fu-fab"/><circle r="${W * 0.6}" class="fu-cush"/>`;
+    case "beanbag":
+      return `<path d="M${-W * 0.9} ${f1(Hh * 0.2)} C${-W} ${-Hh} ${W} ${-Hh * 1.05} ${W * 0.95} ${f1(Hh * 0.1)} C${W * 0.9} ${Hh} ${-W * 0.8} ${Hh} ${-W * 0.9} ${f1(Hh * 0.2)}Z" class="fu-fab"/><ellipse cx="0" cy="${f1(Hh * 0.18)}" rx="${f1(W * 0.5)}" ry="${f1(Hh * 0.38)}" class="fu-cush"/>`;
+    case "sidet":
+      return `<circle r="${W}" class="fu-wood"/><circle r="${W * 0.55}" class="fu-grain"/>`;
+    case "coffee":
+      return R(-W, -Hh, w, h, Math.min(h, 14), "fu-wood") + `<path d="M${-W + 10} 0 H${W - 10}" class="fu-grain"/>`;
+    case "sideboard":
+    case "nightstand":
+    case "cabinet": {
+      const n = k === "sideboard" ? 3 : 1;
+      return R(-W, -Hh, w, h, 3, k === "cabinet" ? "fu-steel" : "fu-wood2") + Array.from({ length: n - 1 }, (_, i) => `<path d="M${f1(-W + ((i + 1) * w) / n)} ${-Hh} V${Hh}" class="fu-ln"/>`).join("") +
+        (k === "cabinet" ? [0.3, 0.55, 0.8].map((y) => `<path d="M${-W + 4} ${f1(-Hh + h * y)} H${W - 4}" class="fu-ln"/>`).join("") : Array.from({ length: n }, (_, i) => `<circle cx="${f1(-W + ((i + 0.5) * w) / n)}" cy="${f1(Hh - 4)}" r="1.8" class="fu-knob"/>`).join(""));
+    }
+    case "piano":
+      return R(-W, -Hh, w, h, 4, "fu-dark") + R(-W + 4, Hh - h * 0.32, w - 8, h * 0.28, 2, "fu-white") + Array.from({ length: Math.floor((w - 8) / 6) }, (_, i) => `<path d="M${f1(-W + 4 + i * 6)} ${f1(Hh - h * 0.32)} v${f1(h * 0.16)}" class="fu-keys"/>`).join("");
+    case "stove":
+      return R(-W, -Hh, w, h, 8, "fu-dark") + `<circle cy="${f1(Hh * 0.15)}" r="${f1(Math.min(W, Hh) * 0.55)}" class="fu-fire"/>`;
+    case "base":
+    case "tall":
+    case "clean":
+      return R(-W, -Hh, w, h, 2, k === "base" ? "fu-stone" : "fu-white") + `<path d="M${-W} ${f1(Hh - 4)} H${W}" class="fu-ln"/>` + (k === "base" ? "" : `<path d="M0 ${-Hh + 3} V${Hh - 6}" class="fu-ln"/>`) + `<circle cx="${f1(k === "base" ? 0 : -4)}" cy="${f1(Hh - 7)}" r="1.6" class="fu-knob"/>`;
+    case "wallc":
+      return R(-W, -Hh, w, h, 2, "fu-dash") + `<path d="M${-W} ${-Hh} L${W} ${Hh} M${W} ${-Hh} L${-W} ${Hh}" class="fu-dashln"/>`;
+    case "sinkc":
+    case "usink":
+      return R(-W, -Hh, w, h, 2, k === "usink" ? "fu-steel" : "fu-stone") + R(-W * 0.72, -Hh * 0.55, W * 1.44, Hh * 1.3, 6, "fu-basin") + `<circle cx="0" cy="${f1(-Hh + 6)}" r="2.6" class="fu-knob"/>`;
+    case "hobc":
+      return R(-W, -Hh, w, h, 2, "fu-stone") + R(-W + 4, -Hh + 4, w - 8, h - 8, 3, "fu-glassd") + [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => `<circle cx="${f1(a * W * 0.42)}" cy="${f1(b * Hh * 0.42)}" r="${f1(Math.min(W, Hh) * (a * b > 0 ? 0.34 : 0.26))}" class="fu-ring"/>`).join("");
+    case "dishc":
+      return R(-W, -Hh, w, h, 2, "fu-stone") + R(-W + 3, Hh - 10, w - 6, 7, 2, "fu-steel") + `<path d="M${-W + 8} ${f1(-Hh + h * 0.3)} H${W - 8} M${-W + 8} ${f1(-Hh + h * 0.5)} H${W - 8}" class="fu-ln"/>`;
+    case "ovenc":
+      return R(-W, -Hh, w, h, 2, "fu-white") + R(-W + 4, Hh - h * 0.42, w - 8, h * 0.36, 3, "fu-glassd") + `<path d="M${-W + 6} ${f1(Hh - h * 0.46)} H${W - 6}" class="fu-handle"/>`;
+    case "fridgec":
+      return R(-W, -Hh, w, h, 3, "fu-white") + `<path d="M${-W} ${f1(-Hh + h * 0.38)} H${W}" class="fu-ln"/><path d="M${W - 6} ${f1(-Hh + h * 0.46)} V${f1(Hh - 6)}" class="fu-handle"/>`;
+    case "stool":
+      return `<circle r="${W}" class="fu-seat"/><circle r="${W * 0.55}" class="fu-grain"/>`;
+    case "bench":
+    case "bbench":
+    case "ebench":
+      return R(-W, -Hh, w, h, 4, k === "bbench" ? "fu-fab" : "fu-wood") + (k === "bbench" ? R(-W + 4, -Hh + 4, w - 8, h - 8, 4, "fu-cush") : [0.33, 0.66].map((y) => `<path d="M${-W + 3} ${f1(-Hh + h * y)} H${W - 3}" class="fu-grain"/>`).join(""));
+    case "vanity":
+      return R(-W, -Hh, w, h, 3, "fu-wood2") + R(-W * 0.6, -Hh, W * 1.2, 4, 1, "fu-glass") + `<circle cx="${f1(W * 0.6)}" cy="${f1(Hh - 5)}" r="1.8" class="fu-knob"/>`;
+    case "bunk":
+      return R(-W, -Hh, w, h, 4, "fu-wood") + R(-W + 3, -Hh + 3, w - 6, h - 6, 4, "fu-sheet") + R(-W + 5, -Hh + 6, w - 10, h * 0.13, 5, "fu-pillow") + R(-W + 3, -Hh + h * 0.3, w - 6, h * 0.7 - 3, 4, "fu-duvet2") +
+        R(-W - 3, -Hh + h * 0.55, 6, h * 0.3, 2, "fu-wood") + [0.6, 0.68, 0.76].map((y) => `<path d="M${-W - 3} ${f1(-Hh + h * y)} h6" class="fu-ln"/>`).join("") + R(-W + 2, -Hh + 2, w - 4, h - 4, 4, "fu-dash");
+    case "toybox":
+      return R(-W, -Hh, w, h, 5, "fu-toy") + `<path d="M${-W + 4} ${f1(-Hh + h * 0.35)} H${W - 4}" class="fu-ln"/>` + `<circle cx="${f1(-W * 0.4)}" cy="${f1(Hh * 0.25)}" r="3" class="fu-dot1"/><circle cx="${f1(W * 0.3)}" cy="${f1(Hh * 0.3)}" r="3" class="fu-dot2"/>`;
+    case "playk":
+      return R(-W, -Hh, w, h, 3, "fu-white") + `<circle cx="${f1(-W * 0.45)}" cy="0" r="${f1(Hh * 0.45)}" class="fu-ring"/><circle cx="${f1(-W * 0.1)}" cy="0" r="${f1(Hh * 0.35)}" class="fu-ring"/>` + R(W * 0.2, -Hh * 0.5, W * 0.65, Hh, 3, "fu-basin");
+    case "tipi": {
+      const n = 6, pts = Array.from({ length: n }, (_, i) => { const a = (i / n) * Math.PI * 2 - Math.PI / 2; return `${f1(Math.cos(a) * W)},${f1(Math.sin(a) * W)}`; }).join(" ");
+      return `<polygon points="${pts}" class="fu-tent"/>` + Array.from({ length: n }, (_, i) => { const a = (i / n) * Math.PI * 2 - Math.PI / 2; return `<path d="M0 0 L${f1(Math.cos(a) * W)} ${f1(Math.sin(a) * W)}" class="fu-ln"/>`; }).join("") + `<circle r="${f1(W * 0.12)}" class="fu-wood"/>`;
+    }
+    case "vanityb":
+      return R(-W, -Hh, w, h, 4, "fu-wood2") + `<ellipse cx="0" cy="${f1(Hh * 0.1)}" rx="${f1(W * 0.62)}" ry="${f1(Hh * 0.55)}" class="fu-white"/><ellipse cx="0" cy="${f1(Hh * 0.14)}" rx="${f1(W * 0.45)}" ry="${f1(Hh * 0.36)}" class="fu-water"/><circle cx="0" cy="${f1(-Hh + 5)}" r="2" class="fu-knob"/>`;
+    case "mirror":
+    case "mirrorw":
+      return R(-W, -Hh, w, h, 2, "fu-glass") + `<path d="M${f1(-W * 0.6)} ${f1(Hh * 0.6)} L${f1(-W * 0.2)} ${f1(-Hh * 0.6)}" class="fu-shine"/>`;
+    case "towel":
+    case "hooks":
+    case "tools":
+      return R(-W, -Hh, w, h, 3, k === "towel" ? "fu-steel" : "fu-wood") + rep(Math.max(2, Math.floor(w / 14)), (i, n) => `<circle cx="${f1(-W + ((i + 0.5) * w) / n)}" cy="0" r="${f1(Math.min(2.6, h * 0.3))}" class="fu-knob"/>`);
+    case "wm":
+    case "td":
+      return R(-W, -Hh, w, h, 4, "fu-white") + R(-W + 3, -Hh + 3, w - 6, h * 0.16, 2, "fu-panel") + `<circle cx="0" cy="${f1(h * 0.08)}" r="${f1(Math.min(W, Hh) * 0.62)}" class="fu-steel"/><circle cx="0" cy="${f1(h * 0.08)}" r="${f1(Math.min(W, Hh) * 0.45)}" class="${k === "wm" ? "fu-water" : "fu-glassd"}"/>`;
+    case "tower":
+      return R(-W, -Hh, w, h, 4, "fu-white") + `<circle cx="0" cy="0" r="${f1(Math.min(W, Hh) * 0.55)}" class="fu-steel"/><circle cx="0" cy="0" r="${f1(Math.min(W, Hh) * 0.36)}" class="fu-water"/>` + R(-W + 3, -Hh + 3, w - 6, 5, 2, "fu-panel") + R(-W + 3, Hh - 8, w - 6, 5, 2, "fu-panel");
+    case "rack":
+      return R(-W, -Hh, w, h, 3, "fu-frame") + rep(Math.max(3, Math.floor(w / 14)), (i, n) => `<path d="M${f1(-W + ((i + 1) * w) / (n + 1))} ${-Hh + 2} V${Hh - 2}" class="fu-rod"/>`);
+    case "shoes":
+      return R(-W, -Hh, w, h, 3, "fu-wood2") + rep(Math.max(2, Math.floor(w / 22)), (i, n) => `<ellipse cx="${f1(-W + ((i + 0.5) * w) / n)}" cy="${f1(Hh * 0.1)}" rx="${f1(w / n / 2.8)}" ry="${f1(Hh * 0.55)}" class="fu-shoe"/>`);
+    case "standd":
+      return R(-W, -Hh, w, h, 4, "fu-wood") + R(-w * 0.2, -Hh + 4, w * 0.4, 5, 2, "fu-dark") + R(-w * 0.12, -Hh + h * 0.5, w * 0.24, h * 0.18, 3, "fu-panel") + `<path d="M${f1(-W + 10)} ${-Hh} V${Hh} M${f1(W - 10)} ${-Hh} V${Hh}" class="fu-rod"/>`;
+    case "ochair":
+      return `<circle r="${W}" class="fu-frame"/>` + [0, 72, 144, 216, 288].map((d) => `<path d="M0 0 L${f1(Math.cos((d * Math.PI) / 180) * W * 0.95)} ${f1(Math.sin((d * Math.PI) / 180) * W * 0.95)}" class="fu-rod"/>`).join("") + `<circle r="${f1(W * 0.62)}" class="fu-fab"/><path d="M${f1(-W * 0.6)} ${f1(-W * 0.55)} Q0 ${f1(-W * 0.95)} ${f1(W * 0.6)} ${f1(-W * 0.55)}" class="fu-back"/>`;
+    case "work":
+      return R(-W, -Hh, w, h, 3, "fu-wood") + `<path d="M${-W + 6} ${f1(-Hh + h * 0.35)} H${W - 6} M${-W + 6} ${f1(-Hh + h * 0.65)} H${W - 6}" class="fu-grain"/>` + R(W - 22, Hh - 14, 18, 12, 2, "fu-steel");
+    case "gshelf":
+      return R(-W, -Hh, w, h, 2, "fu-steel") + rep(Math.max(2, Math.round(w / 40)), (i, n) => R(-W + 4 + (i * (w - 8)) / n, -Hh + 4, (w - 8) / n - 4, h - 8, 2, i % 2 ? "fu-box2" : "fu-box"));
+    case "bike": {
+      const r = Math.min(Hh * 0.9, w * 0.17);
+      return `<circle cx="${f1(-W + r + 2)}" cy="0" r="${f1(r)}" class="fu-wheel"/><circle cx="${f1(W - r - 2)}" cy="0" r="${f1(r)}" class="fu-wheel"/><path d="M${f1(-W + r + 2)} 0 L${f1(-w * 0.05)} ${f1(-r * 0.5)} L${f1(W - r - 2)} 0 M${f1(-w * 0.05)} ${f1(-r * 0.5)} L${f1(w * 0.12)} ${f1(-r * 0.9)}" class="fu-bikef"/>`;
+    }
+    case "bins":
+      return ["#3F7F3A", "#334155", "#2F6FD6"].map((c, i) => R(-W + (i * w) / 3 + 2, -Hh + 2, w / 3 - 4, h - 4, 5, "fu-bin") .replace("/>", ` style="fill:${c}"/>`) + R(-W + (i * w) / 3 + 2, -Hh + 2, w / 3 - 4, 8, 3, "fu-lid")).join("");
+    case "gset": {
+      const tw = w * 0.62, th = h * 0.5;
+      const ch = [[-0.3, -1], [0, -1], [0.3, -1], [-0.3, 1], [0, 1], [0.3, 1]].map(([a, b]) => R(a * tw - 11, b * (th / 2 + 14) - 11, 22, 22, 5, "fu-rattan")).join("");
+      return ch + R(-tw / 2, -th / 2, tw, th, 5, "fu-teak") + [0.25, 0.5, 0.75].map((x) => `<path d="M${f1(-tw / 2 + tw * x)} ${f1(-th / 2 + 3)} V${f1(th / 2 - 3)}" class="fu-grain"/>`).join("");
+    }
+    case "gtable":
+      return R(-W, -Hh, w, h, 5, "fu-teak") + Array.from({ length: 5 }, (_, i) => `<path d="M${f1(-W + ((i + 1) * w) / 6)} ${-Hh + 3} V${Hh - 3}" class="fu-grain"/>`).join("");
+    case "lounge": {
+      const b = Math.min(w, h) * 0.18, a = w * 0.3, sh = h * 0.36;
+      return `<path d="M${-W} ${-Hh} H${W} V${f1(-Hh + sh)} H${f1(-W + a)} V${Hh} H${-W} Z" class="fu-rattan"/>` + R(-W + b, -Hh + b, w - b - 4, sh - b - 4, 5, "fu-cushw") + R(-W + b, -Hh + sh - 4, a - b - 4, h - sh, 5, "fu-cushw") + R(w * 0.02, h * 0.06, w * 0.34, h * 0.3, 6, "fu-teak");
+    }
+    case "lounger":
+      return R(-W, -Hh, w, h, 8, "fu-teak") + R(-W + 4, -Hh + 4, w - 8, h * 0.32, 6, "fu-cushw") + R(-W + 4, -Hh + h * 0.36, w - 8, h * 0.6, 6, "fu-cushw");
+    case "parasol":
+      return Array.from({ length: 8 }, (_, i) => { const a1 = (i / 8) * Math.PI * 2, a2 = ((i + 1) / 8) * Math.PI * 2; return `<path d="M0 0 L${f1(Math.cos(a1) * W)} ${f1(Math.sin(a1) * W)} L${f1(Math.cos(a2) * W)} ${f1(Math.sin(a2) * W)} Z" class="${i % 2 ? "fu-par1" : "fu-par2"}"/>`; }).join("") + `<circle r="4" class="fu-wood"/>`;
+    case "pizza":
+      return R(-W, -Hh, w, h, 6, "fu-brick") + `<circle cy="${f1(Hh * 0.05)}" r="${f1(Math.min(W, Hh) * 0.75)}" class="fu-dome"/><path d="M${f1(-W * 0.35)} ${f1(Hh)} A${f1(W * 0.35)} ${f1(W * 0.35)} 0 0 1 ${f1(W * 0.35)} ${f1(Hh)}" class="fu-fire"/>`;
+    case "weber":
+      return [0, 120, 240].map((d) => `<path d="M0 0 L${f1(Math.cos((d * Math.PI) / 180) * W * 1.05)} ${f1(Math.sin((d * Math.PI) / 180) * W * 1.05)}" class="fu-rod"/>`).join("") + `<circle r="${f1(W * 0.85)}" class="fu-dark"/><circle r="${f1(W * 0.65)}" class="fu-grate"/>` + [-0.4, -0.2, 0, 0.2, 0.4].map((y) => `<path d="M${f1(-W * 0.6 * Math.sqrt(1 - y * y * 2.4))} ${f1(y * W)} H${f1(W * 0.6 * Math.sqrt(1 - y * y * 2.4))}" class="fu-rod"/>`).join("");
+    case "grill":
+      return R(-W, -Hh, w, h, 4, "fu-steel") + R(-W * 0.55, -Hh + 4, W * 1.1, h - 8, 4, "fu-dark") + Array.from({ length: 6 }, (_, i) => `<path d="M${f1(-W * 0.5 + (i * W) / 5)} ${-Hh + 7} V${Hh - 7}" class="fu-rod"/>`).join("");
+    case "firepit":
+      return `<circle r="${W}" class="fu-steel"/><circle r="${f1(W * 0.75)}" class="fu-dark"/><circle r="${f1(W * 0.45)}" class="fu-fire"/>`;
+    case "tramp":
+      return `<circle r="${W}" class="fu-net"/><circle r="${f1(W * 0.9)}" class="fu-pad"/><circle r="${f1(W * 0.78)}" class="fu-mat"/>` + Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<circle cx="${f1(Math.cos(a) * W)}" cy="${f1(Math.sin(a) * W)}" r="3" class="fu-post"/>`; }).join("");
+    case "sandbox":
+      return R(-W, -Hh, w, h, 4, "fu-wood") + R(-W + 8, -Hh + 8, w - 16, h - 16, 3, "fu-sand") + `<circle cx="${f1(W * 0.25)}" cy="${f1(-Hh * 0.2)}" r="5" class="fu-dot1"/><rect x="${f1(-W * 0.4)}" y="${f1(Hh * 0.15)}" width="10" height="7" rx="2" class="fu-dot2"/>`;
+    case "raised":
+      return R(-W, -Hh, w, h, 4, "fu-wood") + R(-W + 6, -Hh + 6, w - 12, h - 12, 3, "fu-soil") + rep(Math.max(3, Math.floor(w / 26)), (i, n) => `<circle cx="${f1(-W + 14 + (i * (w - 28)) / Math.max(1, n - 1))}" cy="${f1(i % 2 ? Hh * 0.25 : -Hh * 0.25)}" r="${f1(Math.min(9, h * 0.16))}" class="fu-leaf"/>`);
+    case "playhouse":
+    case "shed":
+      return R(-W, -Hh, w, h, 3, k === "shed" ? "fu-roof" : "fu-roofk") + `<path d="M${-W} 0 H${W}" class="fu-ridge"/>` + Array.from({ length: 6 }, (_, i) => `<path d="M${f1(-W + ((i + 1) * w) / 7)} ${-Hh} V${Hh}" class="fu-shingle"/>`).join("") + R(-w * 0.12, Hh - 4, w * 0.24, 6, 2, "fu-door");
+    case "swing":
+      return `<path d="M${-W} ${-Hh} L${-W + 10} 0 L${-W} ${Hh} M${W} ${-Hh} L${W - 10} 0 L${W} ${Hh} M${-W + 10} 0 H${W - 10}" class="fu-frameln"/>` + [-0.28, 0.28].map((x) => R(w * x - 14, -6, 28, 12, 3, "fu-toy")).join("");
     case "rug":
       return R(-W, -Hh, w, h, 6, "fu-rug") + R(-W + 7, -Hh + 7, w - 14, h - 14, 4, "fu-rug2");
     case "plant":
@@ -633,42 +818,43 @@ function hObj(it, o) {
   return `<g class="ob ob-${T}${it.fk ? " fk-" + it.fk : ""}${it.lk ? " lk-" + it.lk : ""}${cls}${sel ? " sel" : ""}" ${attrs}><g transform="translate(${x},${y}) rotate(${rot})">${fx}${inner}${hitR && inter ? `<circle r="${hitR}" class="ho-hit"/>` : ""}</g>${over}</g>`;
 }
 
-/* Openings: a door with leaf and swing, a window with glass, a port with slats. */
+/* Openings: a door with leaf and swing, a window with glass, a port with slats. Drawn along their wall, at any angle:
+   the wall runs along the local x axis, and "side" is the side the door opens to. */
 function hOpening(it, o) {
-  const plan = o.mode === "plan", L = lv(it), h = it.dir === "h", w = it.w || 60, x = it.x, y = it.y, hw = w / 2, T = 16, col = HT[it.type][2];
-  const open = plan && L.open, off = plan && L.off;
+  const plan = o.mode === "plan", L = lv(it), w = it.w || 60, x = it.x, y = it.y, hw = w / 2, T = 16, col = HT[it.type][2];
+  const ang = it.ang || 0, sd = it.side || 1, open = plan && L.open, off = plan && L.off;
   const st = off ? " off" : open ? " open" : "";
-  let s = h ? `<rect x="${x - hw}" y="${y - T / 2}" width="${w}" height="${T}" class="ho-gap"/>` : `<rect x="${x - T / 2}" y="${y - hw}" width="${T}" height="${w}" class="ho-gap"/>`;
-  const nx = h ? 0 : it.side || 1, ny = h ? it.side || 1 : 0;
+  let s = `<rect x="${-hw}" y="${-T / 2}" width="${w}" height="${T}" class="ho-gap"/>`;
   if (it.type === "door") {
-    const leaf = (hx, hy, ax, ay, Ln) => {
-      const base = (Math.atan2(ay, ax) * 180) / Math.PI, sg = Math.sign(ax * ny - ay * nx) || 1, ang = sg * 82, er = (ang * Math.PI) / 180;
-      return `<g transform="translate(${hx},${hy}) rotate(${base})"><path class="ho-arc" d="M${Ln},0 A${Ln},${Ln} 0 0 ${sg > 0 ? 1 : 0} ${f1(Ln * Math.cos(er))},${f1(Ln * Math.sin(er))}"/><g class="ho-leaf" style="--ang:${ang}deg;transform:rotate(${open ? ang : 0}deg)"><rect x="0" y="-3.5" width="${Ln}" height="7" rx="3"/></g><circle r="4.5" class="ho-hinge"/></g>`;
+    const leaf = (hx, ax, Ln) => {
+      const base = ax > 0 ? 0 : 180, sg = Math.sign(ax * sd) || 1, a2 = sg * 82, er = (a2 * Math.PI) / 180;
+      return `<g transform="translate(${hx},0) rotate(${base})"><path class="ho-arc" d="M${Ln},0 A${Ln},${Ln} 0 0 ${sg > 0 ? 1 : 0} ${f1(Ln * Math.cos(er))},${f1(Ln * Math.sin(er))}"/><g class="ho-leaf" style="--ang:${a2}deg;transform:rotate(${open ? a2 : 0}deg)"><rect x="0" y="-3.5" width="${Ln}" height="7" rx="3"/></g><circle r="4.5" class="ho-hinge"/></g>`;
     };
-    const sx = h ? x - hw : x, sy = h ? y : y - hw, ex = h ? x + hw : x, ey = h ? y : y + hw;
-    if (it.dbl) s += leaf(sx, sy, ex - sx, ey - sy, hw) + leaf(ex, ey, sx - ex, sy - ey, hw);
-    else s += it.hinge === "r" ? leaf(ex, ey, sx - ex, sy - ey, w) : leaf(sx, sy, ex - sx, ey - sy, w);
+    if (it.dbl) s += leaf(-hw, 1, hw) + leaf(hw, -1, hw);
+    else s += it.hinge === "r" ? leaf(hw, -1, w) : leaf(-hw, 1, w);
   } else if (it.type === "window") {
-    s += h
-      ? `<line x1="${x - hw}" y1="${y - 3}" x2="${x + hw}" y2="${y - 3}" class="ho-glass"/><line x1="${x - hw}" y1="${y + 3}" x2="${x + hw}" y2="${y + 3}" class="ho-glass"/>`
-      : `<line x1="${x - 3}" y1="${y - hw}" x2="${x - 3}" y2="${y + hw}" class="ho-glass"/><line x1="${x + 3}" y1="${y - hw}" x2="${x + 3}" y2="${y + hw}" class="ho-glass"/>`;
-    if (open) s += `<g transform="translate(${h ? x - hw : x},${h ? y : y - hw}) rotate(${h ? 0 : 90})"><g class="ho-sash" style="--ang:${(h ? ny : -nx) * 28}deg;transform:rotate(${(h ? ny : -nx) * 28}deg)"><rect x="0" y="-3" width="${w}" height="6" rx="3"/></g></g>`;
+    s += `<line x1="${-hw}" y1="-3" x2="${hw}" y2="-3" class="ho-glass"/><line x1="${-hw}" y1="3" x2="${hw}" y2="3" class="ho-glass"/>`;
+    if (open) s += `<g transform="translate(${-hw},0)"><g class="ho-sash" style="--ang:${sd * 28}deg;transform:rotate(${sd * 28}deg)"><rect x="0" y="-3" width="${w}" height="6" rx="3"/></g></g>`;
   } else {
     const n = Math.max(3, Math.round(w / 26));
-    s += `<g class="ho-port${open ? " a-open" : ""}">${
-      h
-        ? `<rect x="${x - hw}" y="${y - 7}" width="${w}" height="14" rx="4" class="ho-pbody"/>${Array.from({ length: n - 1 }, (_, i) => `<line x1="${x - hw + ((i + 1) * w) / n}" y1="${y - 7}" x2="${x - hw + ((i + 1) * w) / n}" y2="${y + 7}" class="ho-pln"/>`).join("")}`
-        : `<rect x="${x - 7}" y="${y - hw}" width="14" height="${w}" rx="4" class="ho-pbody"/>`
-    }</g>`;
-    if (plan) s += `<text x="${h ? x : x + 30}" y="${h ? y - 26 : y}" class="sec-lbl sm ho-plbl" text-anchor="middle">${esc(it.short || it.name)} · ${esc(open ? t("åben") : t("lukket"))}</text>`;
+    s += `<g class="ho-port${open ? " a-open" : ""}"><rect x="${-hw}" y="-7" width="${w}" height="14" rx="4" class="ho-pbody"/>${Array.from({ length: n - 1 }, (_, i) => `<line x1="${f1(-hw + ((i + 1) * w) / n)}" y1="-7" x2="${f1(-hw + ((i + 1) * w) / n)}" y2="7" class="ho-pln"/>`).join("")}</g>`;
+  }
+  const g = (lx, ly) => {
+    const a = (ang * Math.PI) / 180;
+    return [x + lx * Math.cos(a) - ly * Math.sin(a), y + lx * Math.sin(a) + ly * Math.cos(a)];
+  };
+  let out = `<g transform="translate(${f1(x)},${f1(y)}) rotate(${f1(ang)})">${s}</g>`;
+  if (it.type === "port" && plan) {
+    const [tx, ty] = g(0, -sd * 26);
+    out += `<text x="${f1(tx)}" y="${f1(ty)}" class="sec-lbl sm ho-plbl" text-anchor="middle">${esc(it.short || it.name)} · ${esc(open ? t("åben") : t("lukket"))}</text>`;
   }
   const hasLock = it.lockOn && it.lock;
   if (hasLock) {
     const locked = plan ? L.locked : true;
-    const lx = x + nx * 30 + (h ? hw - 8 : 0), ly = y + ny * 30 + (h ? 0 : hw - 8);
-    s += `<g class="ho-lock${locked ? " locked" : ""}"><circle cx="${lx}" cy="${ly}" r="13"/><path d="M${lx - 5},${ly - 1} h10 v8 h-10z" class="lk-body"/><path class="lk-sh" d="M${lx - 3.2},${ly - 1} v-3.4 a3.2,3.2 0 0 1 6.4,0 v3.4"/></g>`;
+    const [lx, ly] = g(hw - 8, sd * 30);
+    out += `<g class="ho-lock${locked ? " locked" : ""}"><circle cx="${f1(lx)}" cy="${f1(ly)}" r="13"/><path d="M${f1(lx - 5)},${f1(ly - 1)} h10 v8 h-10z" class="lk-body"/><path class="lk-sh" d="M${f1(lx - 3.2)},${f1(ly - 1)} v-3.4 a3.2,3.2 0 0 1 6.4,0 v3.4"/></g>`;
   }
-  return `<g class="ho ho-${it.type}${st}${hasLock ? " haslock" : ""}${!plan && o.sel === it.id ? " sel" : ""}" style="--hc:${col}" ${hit(it, plan, plan ? hState(it)[0] : "")}><circle cx="${x}" cy="${y}" r="${Math.max(30, hw * 0.8)}" class="ho-hit"/>${open ? `<circle cx="${x}" cy="${y}" r="${hw * 0.7 + 10}" class="ho-alert"/>` : ""}${s}</g>`;
+  return `<g class="ho ho-${it.type}${st}${hasLock ? " haslock" : ""}${!plan && o.sel === it.id ? " sel" : ""}${!plan && o.msel?.has("item:" + it.id) ? " msel" : ""}" style="--hc:${col}" ${hit(it, plan, plan ? hState(it)[0] : "")}><circle cx="${x}" cy="${y}" r="${Math.max(30, hw * 0.8)}" class="ho-hit"/>${open ? `<circle cx="${x}" cy="${y}" r="${hw * 0.7 + 10}" class="ho-alert"/>` : ""}${out}</g>`;
 }
 
 /* Robots drive a route inside their room (vacuum: here and there) or lawn (mower: in lanes). */
@@ -821,6 +1007,9 @@ function roomLit(r) {
   return Object.values(C.hass.entities).some((e) => e.entity_id?.startsWith("light.") && C.area(e.entity_id) === r.area && C.st(e.entity_id)?.state === "on");
 }
 
+/* Surfaces speak for themselves: grass, tiles and gravel only get a label when they have a name of their own. */
+const SURF = { lawn: ["Græs", "Grass", "Græsplæne", "Plæne"], tiles: ["Fliser", "Tiles"], gravel: ["Grus", "Gravel"] };
+const areaLabel = (a) => !!a.name && !(SURF[a.kind] && SURF[a.kind].concat(t(AREAK[a.kind])).some((n) => n.toLowerCase() === String(a.name).trim().toLowerCase()));
 function houseSvg(H, o) {
   CUR = H;
   const pts = (p) => p.map((q) => q.join(",")).join(" ");
@@ -837,7 +1026,7 @@ function houseSvg(H, o) {
     if (a.kind === "label" || !a.pts) s += `<text x="${a.x}" y="${a.y}" class="sec-lbl out big hx-area${sel}"${at}${a.rot ? ` transform="rotate(${a.rot} ${a.x} ${a.y})"` : ""} text-anchor="middle">${esc(a.name)}</text>`;
     else {
       const [cx, cy] = centroid(a.pts);
-      s += `<g class="hx-area k-${esc(a.kind)}${sel}"${at}><polygon points="${pts(a.pts)}" ${fill(a.kind) ? `fill="${fill(a.kind)}"` : `class="hx-${esc(a.kind)}"`}/>${a.kind === "bed" ? "" : `<text x="${f1(cx)}" y="${f1(cy + 8)}" class="sec-lbl out" text-anchor="middle">${esc(a.name)}</text>`}</g>`;
+      s += `<g class="hx-area k-${esc(a.kind)}${sel}"${at}><polygon points="${pts(a.pts)}" ${fill(a.kind) ? `fill="${fill(a.kind)}"` : `class="hx-${esc(a.kind)}"`}/>${a.kind === "bed" || !areaLabel(a) ? "" : `<text x="${f1(cx)}" y="${f1(cy + 8)}" class="sec-lbl out" text-anchor="middle">${esc(a.name)}</text>`}</g>`;
     }
   });
   H.rooms.forEach((r) => {
@@ -858,7 +1047,9 @@ function houseSvg(H, o) {
   I.filter((i) => i.type === "furn" && i.fk === "rug").forEach((i) => (s += hObj(i, o)));
   I.filter((i) => i.type === "furn" && i.fk !== "rug").forEach((i) => (s += hObj(i, o)));
   H.walls.forEach((w) => {
-    s += `<line x1="${w.a[0]}" y1="${w.a[1]}" x2="${w.b[0]}" y2="${w.b[1]}" class="hx-wall k-${esc(w.k || "int")}${o.sel === "wall:" + w.id ? " sel" : ""}"${plan ? ` pointer-events="none"` : ` data-he="wall:${esc(w.id)}"`}/>`;
+    const k = w.k || "int", sel = o.sel === "wall:" + w.id || o.msel?.has("wall:" + w.id);
+    s += `<line x1="${w.a[0]}" y1="${w.a[1]}" x2="${w.b[0]}" y2="${w.b[1]}" class="hx-wall k-${esc(k)}${sel ? " sel" : ""}"${plan ? ` pointer-events="none"` : ` data-he="wall:${esc(w.id)}"`}/>`;
+    if (k === "hedge" || k === "fence") s += `<line x1="${w.a[0]}" y1="${w.a[1]}" x2="${w.b[0]}" y2="${w.b[1]}" class="hx-${k}2"/>`;
   });
   s += lbls;
   I.filter((i) => i.type === "tree" || i.type === "bush").forEach((i) => (s += hObj(i, o)));
@@ -1022,12 +1213,13 @@ function hPop(H, id, vb) {
 /* ------------------------------------------------------------------ the Husbygger */
 let HZ = null;
 const HB_TOOLS = [["vaelg", "Vælg og flyt", "cursor"], ["rum", "Rum", "room"], ["vaeg", "Væg", "wall"]];
+const GARDEN_F = ["gset", "gtable", "lounge", "lounger", "parasol", "pizza", "weber", "grill", "firepit", "tramp", "sandbox", "raised", "playhouse", "swing", "shed", "bins"];
 const HZ_GROUPS = [
   ["tegn", "Tegn", ["vaelg", "rum", "vaeg"]],
-  ["ude", "Have og udearealer", ["ude:lawn", "ude:tiles", "ude:deck", "ude:bed", "ude:drive", "ude:gravel", "tree", "bush", "light:garden"]],
+  ["ude", "Have og udearealer", ["ude:lawn", "ude:tiles", "ude:deck", "ude:bed", "ude:drive", "ude:gravel", "vaeg:hedge", "vaeg:fence", "tree", "bush", "light:garden", ...GARDEN_F.map((k) => "furn:" + k)]],
   ["sik", "Sikkerhed og sensorer", ["door", "window", "port", "camera", "motion", "smoke", "leak", "temp", "ap"]],
   ["lys", "Lys", Object.keys(LIGHTK).filter((k) => k !== "garden").map((k) => "light:" + k).concat(["lamp"])],
-  ["mob", "Møbler", Object.keys(FURN).map((k) => "furn:" + k)],
+  ...FCATS.map(([c, n]) => ["f-" + c, n, furnIn(c).filter((k) => c === "gar" || !GARDEN_F.includes(k)).map((k) => "furn:" + k)]),
   ["med", "TV og højttalere", ["tvset", "soundbar", "spkbox", "tv", "speaker"]],
   ["app", "Apparater", [...APK]],
   ["en", "Biler og energi", ["car", "charger", "solar", "battery"]],
@@ -1041,7 +1233,7 @@ function hbInit(ctx) {
   const base = JSON.stringify(ctx.data.house || {});
   if (HZ && (HZ.dirty || HZ.base === base)) return;
   const d = houseModel(ctx);
-  HZ = { open: new Set(["tegn", "mob", "lys"]), d, base, sel: null, tool: "vaelg", view: hBox(d), snap: true, hist: [], fut: [], dirty: false, chain: null, hover: null, pend: null, corner: null, grp: "tegn", fitted: false };
+  HZ = { open: new Set(["tegn"]), d, base, sel: null, msel: new Set(), multiMode: false, tool: "vaelg", view: hBox(d), snap: true, hist: [], fut: [], dirty: false, chain: null, chainPts: null, hover: null, pend: null, corner: null, grp: "tegn", fitted: false, save: "ok" };
 }
 const hbFind = (key) => {
   if (!key || !HZ) return null;
@@ -1052,12 +1244,38 @@ function hbPush() {
   HZ.hist.push(JSON.stringify(HZ.d));
   if (HZ.hist.length > 80) HZ.hist.shift();
   HZ.fut = [];
+  markDirty();
+}
+/* Every change is saved by itself a moment later, so nothing is lost when the page is closed or reloaded. */
+let saveTimer = null;
+function markDirty() {
   HZ.dirty = true;
+  HZ.save = "wait";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => hbSave(), 1200);
+  saveBadge();
+}
+function flushSave() {
+  if (!HZ?.dirty || !saveTimer) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  hbSave();
+}
+const saveHtml = () =>
+  HZ.save === "err"
+    ? `<span class="hz-save err">${svg("bell")}${esc(t("Ikke gemt"))}</span><button class="btn sm" data-hz="save">${esc(t("Prøv igen"))}</button>`
+    : HZ.save === "busy" || HZ.save === "wait"
+      ? `<span class="hz-save busy">${svg("clock")}${esc(t("Gemmer…"))}</span>`
+      : `<span class="hz-save">${svg("check")}${esc(t("Alt er gemt"))}</span>`;
+function saveBadge() {
+  const el = C?.root?.querySelector(".hz-savebox");
+  if (el) el.innerHTML = saveHtml();
 }
 
 function toolInfo(id) {
   const [b, sub] = id.split(":"), mini = (inner, vb = "-32 -32 64 64") => `<svg viewBox="${vb}" class="hz-mini">${inner}</svg>`;
   if (b === "ude") return [t(AREAK[sub]), `<span class="hz-sw k-${sub}"></span>`];
+  if (b === "vaeg" && sub) return [sub === "hedge" ? t("Hæk") : t("Hegn"), mini(`<line x1="-26" y1="0" x2="26" y2="0" class="hx-wall k-${sub}"/><line x1="-26" y1="0" x2="26" y2="0" class="hx-${sub}2"/>`)];
   if (b === "furn") {
     const [n, wc, dc] = FURN[sub], k = 54 / Math.max(wc, dc);
     return [t(n), mini(furnSvg(sub, wc * k, dc * k))];
@@ -1095,8 +1313,16 @@ function hbHint() {
   }
   if (HZ.tool.startsWith("ude:")) return t("Træk et rektangel for {what}. Bagefter kan du trække i hjørnerne og tilføje knæk.", { what: t(AREAK[HZ.tool.slice(4)]).toLowerCase() });
   if (HZ.tool === "rum") return t("Træk et rektangel for at tegne et rum. Væggene kommer med af sig selv.");
-  if (HZ.tool === "vaeg") return HZ.chain ? t("Tryk for næste hjørne. Dobbelttryk, Esc eller Færdig for at stoppe.") : t("Tryk der, hvor væggen starter.");
-  return t("Træk i ting for at flytte dem. Træk i en tom flade for at panorere. Rul eller knib for at zoome.");
+  if (HZ.tool.startsWith("vaeg")) {
+    const what = HZ.tool === "vaeg:hedge" ? t("hækken") : HZ.tool === "vaeg:fence" ? t("hegnet") : t("væggen");
+    return HZ.chain
+      ? HZ.chainPts?.length >= 3 && HZ.tool === "vaeg"
+        ? t("Tryk for næste hjørne. Tryk på startpunktet for at lukke rummet. Esc eller Færdig for at stoppe.")
+        : t("Tryk for næste hjørne. Den fanger andre vægges ender. Esc, Enter eller Færdig for at stoppe.")
+      : t("Tryk der, hvor {what} starter. Den fanger andre vægges ender og hjørner.", { what });
+  }
+  if (HZ.multiMode) return t("Tryk på ting for at markere flere, eller træk en ramme om dem.");
+  return t("Træk i ting for at flytte dem. Shift-klik eller træk med Shift for at markere flere. Hold Alt nede for at placere frit.");
 }
 const hintHtml = () =>
   `<span>${esc(hbHint())}</span>${HZ.chain ? `<button class="btn sm" data-hz="endwall">${esc(t("Færdig"))}</button>` : HZ.pend || HZ.tool !== "vaelg" ? `<button class="btn soft sm" data-hz="tool" data-id="vaelg">${esc(t("Annullér"))}</button>` : ""}`;
@@ -1104,23 +1330,22 @@ const hintHtml = () =>
 function pHouse() {
   const D = HZ.d;
   return `<div class="hz">
-  <section class="hz-top"><div><span class="eyebrow">${esc(t("Husbygger"))}${D.name ? ` · ${esc(D.name)}` : ""}</span><h2 class="h2">${esc(t("Byg huset"))}</h2><span class="hz-sync">${svg("users")}${esc(t("Gemmes i Home Assistant, så hele familien ser den samme tegning"))}</span></div>
-    <div class="hz-acts">${HZ.dirty ? `<span class="hz-dirty">${esc(t("Ikke gemt"))}</span>` : ""}<button class="iconbtn" data-hz="undo" aria-label="${esc(t("Fortryd"))}" ${HZ.hist.length ? "" : "disabled"}>${svg("undo")}</button><button class="iconbtn" data-hz="redo" aria-label="${esc(t("Gentag"))}" ${HZ.fut.length ? "" : "disabled"}>${svg("redo")}</button>
-      ${C.on("security") && C.views.sikkerhed ? `<button class="btn soft" data-hz="leave">${esc(t("Til Sikkerhed"))}</button>` : ""}<button class="btn" data-hz="save" ${HZ.dirty ? "" : "disabled"}>${svg("check")}${esc(t("Gem huset"))}</button></div></section>
+  <section class="hz-top"><div><span class="eyebrow">${esc(t("Husbygger"))}${D.name ? ` · ${esc(D.name)}` : ""}</span><h2 class="h2">${esc(t("Byg huset"))}</h2><span class="hz-sync">${svg("users")}${esc(t("Gemmes af sig selv i Home Assistant, så hele familien ser den samme tegning"))}</span></div>
+    <div class="hz-acts"><span class="hz-savebox">${saveHtml()}</span><button class="iconbtn" data-hz="undo" aria-label="${esc(t("Fortryd"))}" title="${esc(t("Fortryd"))} (Ctrl/⌘ Z)" ${HZ.hist.length ? "" : "disabled"}>${svg("undo")}</button><button class="iconbtn" data-hz="redo" aria-label="${esc(t("Gentag"))}" title="${esc(t("Gentag"))} (Ctrl/⌘ ⇧ Z)" ${HZ.fut.length ? "" : "disabled"}>${svg("redo")}</button>
+      ${C.on("security") && C.views.sikkerhed ? `<button class="btn soft" data-hz="leave">${esc(t("Til Sikkerhed"))}</button>` : ""}</div></section>
   <div class="hz-body">
     ${hzPalette()}
     <div class="hz-canvas"><svg id="hz-svg" viewBox="${HZ.view.join(" ")}" aria-label="${esc(t("Tegning af huset"))}"></svg>
-      <div class="hz-zoom"><button class="iconbtn" data-hz="zin" aria-label="${esc(t("Zoom ind"))}">${svg("zin")}</button><button class="iconbtn" data-hz="zout" aria-label="${esc(t("Zoom ud"))}">${svg("zout")}</button><button class="iconbtn" data-hz="fit" aria-label="${esc(t("Vis hele huset"))}">${svg("fit")}</button><button class="iconbtn${HZ.snap ? " on" : ""}" data-hz="snap" aria-pressed="${HZ.snap}" aria-label="${esc(t("Fastgør til gitter"))}">${svg("grid")}</button></div>
+      <div class="hz-zoom"><button class="iconbtn" data-hz="zin" aria-label="${esc(t("Zoom ind"))}">${svg("zin")}</button><button class="iconbtn" data-hz="zout" aria-label="${esc(t("Zoom ud"))}">${svg("zout")}</button><button class="iconbtn" data-hz="fit" aria-label="${esc(t("Vis hele huset"))}">${svg("fit")}</button><button class="iconbtn${HZ.snap ? " on" : ""}" data-hz="snap" aria-pressed="${HZ.snap}" aria-label="${esc(t("Fastgør til vægge og gitter"))}" title="${esc(t("Fastgør til vægge og gitter. Hold Alt nede for at placere frit."))}">${svg("grid")}</button><button class="iconbtn${HZ.multiMode ? " on" : ""}" data-hz="multi" aria-pressed="${HZ.multiMode}" aria-label="${esc(t("Markér flere"))}" title="${esc(t("Markér flere: tryk på ting, eller træk en ramme. Med tastatur: hold Shift."))}">${svg("check")}</button></div>
       <div class="hz-hint" id="hz-hint">${hintHtml()}</div></div>
     <aside class="hz-props" id="hz-props">${hbProps()}</aside>
   </div></div>`;
 }
 
-/* Entity fields: an input with a list of matching entities from Home Assistant. */
+/* Entity fields: a search field with a list of matching entities from Home Assistant (name, entity id or area). */
 function domList(dom) {
   const doms = String(dom || "").split(",").filter(Boolean);
-  const ids = Object.keys(C.hass?.states || {}).filter((id) => !doms.length || doms.includes(id.split(".")[0]));
-  return ids.sort().slice(0, 1500);
+  return Object.keys(C.hass?.states || {}).filter((id) => !doms.length || doms.includes(id.split(".")[0]));
 }
 function entInfo(ent, dom) {
   if (!ent) return `<span class="ei warn">${svg("bell")}${esc(t("Ikke koblet til en entitet"))}</span>`;
@@ -1132,9 +1357,62 @@ function entInfo(ent, dom) {
 }
 const fld = (lbl, inner, hint = "") => `<label class="hz-f"><span>${esc(lbl)}</span>${inner}${hint}</label>`;
 function entFld(key, val, dom, lbl) {
-  const list = `dl-${key}-${String(dom || "all").replace(/,/g, "-")}`;
-  const opts = domList(dom).map((id) => `<option value="${esc(id)}">${esc(C.hass.states[id].attributes.friendly_name || "")}</option>`).join("");
-  return fld(lbl || t("Entitet"), `<input data-hf="${key}" value="${esc(val || "")}" list="${list}" placeholder="${esc(String(dom || "").split(",")[0] || "sensor")}.…" autocomplete="off" spellcheck="false"><datalist id="${list}">${opts}</datalist>`, `<span class="hz-ei" data-ei="${key}" data-dom="${esc(dom || "")}">${entInfo(val, dom)}</span>`);
+  return `<div class="hz-f"><span>${esc(lbl || t("Entitet"))}</span><div class="hz-ep"><input data-hf="${key}" data-ep="${esc(dom || "")}" value="${esc(val || "")}" placeholder="${esc(t("Søg på navn, område eller entitet"))}" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false"><div class="hz-epl" role="listbox" hidden></div></div><span class="hz-ei" data-ei="${key}" data-dom="${esc(dom || "")}">${entInfo(val, dom)}</span></div>`;
+}
+function pickList(input) {
+  const box = input.parentElement.querySelector(".hz-epl"), q = input.value.trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
+  const exact = C.hass.states[input.value.trim()];
+  const rows = domList(input.dataset.ep)
+    .map((id) => {
+      const st = C.hass.states[id], name = st.attributes.friendly_name || "", area = C.hass.areas?.[C.area(id)]?.name || "", hay = `${id} ${name} ${area}`.toLowerCase();
+      if (words.length && !exact && !words.every((w) => hay.includes(w))) return null;
+      const score = !words.length ? 0 : (name.toLowerCase().startsWith(q) ? 0 : 1) + (id.toLowerCase().includes(q) ? 0 : 1);
+      return [score, name || id, id, area];
+    })
+    .filter(Boolean)
+    .sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1]))
+    .slice(0, 60);
+  box.innerHTML = rows.length ? rows.map(([, name, id, area], i) => `<button type="button" data-epv="${esc(id)}" role="option"${i === 0 ? ' class="on"' : ""}><b>${esc(name)}</b><small>${esc(id)}${area ? " · " + esc(area) : ""}</small></button>`).join("") : `<div class="none">${esc(t("Ingen entiteter passer"))}</div>`;
+  box.hidden = false;
+  input.setAttribute("aria-expanded", "true");
+}
+function pickSet(input, id) {
+  input.value = id;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  const box = input.parentElement.querySelector(".hz-epl");
+  box.hidden = true;
+  input.setAttribute("aria-expanded", "false");
+}
+function bindPickers(root) {
+  root.addEventListener("focusin", (e) => e.target.dataset?.ep != null && pickList(e.target));
+  root.addEventListener("input", (e) => e.target.dataset?.ep != null && e.isTrusted && pickList(e.target));
+  root.addEventListener("focusout", (e) => {
+    if (e.target.dataset?.ep == null) return;
+    const box = e.target.parentElement.querySelector(".hz-epl");
+    setTimeout(() => (box.hidden = true), 150);
+  });
+  root.addEventListener("mousedown", (e) => {
+    const b = e.target.closest("[data-epv]");
+    if (!b) return;
+    e.preventDefault();
+    pickSet(b.closest(".hz-ep").querySelector("input"), b.dataset.epv);
+  });
+  root.addEventListener("keydown", (e) => {
+    const input = e.target;
+    if (input.dataset?.ep == null) return;
+    const box = input.parentElement.querySelector(".hz-epl"), opts = [...box.querySelectorAll("[data-epv]")], cur = opts.findIndex((b) => b.classList.contains("on"));
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (box.hidden) return pickList(input);
+      const n = Math.max(0, Math.min(opts.length - 1, cur + (e.key === "ArrowDown" ? 1 : -1)));
+      opts.forEach((b, i) => b.classList.toggle("on", i === n));
+      opts[n]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && !box.hidden && opts[cur]) {
+      e.preventDefault();
+      pickSet(input, opts[cur].dataset.epv);
+    } else if (e.key === "Escape") box.hidden = true;
+  });
 }
 const sel = (f, opts, v) => `<select data-hf="${f}">${opts.map(([k, l]) => `<option value="${esc(k)}" ${String(v ?? "") === String(k) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
 
@@ -1160,7 +1438,15 @@ function suggestions() {
 }
 
 function hbProps() {
-  const D = HZ.d, o = hbFind(HZ.sel);
+  const D = HZ.d, o = hbFind(HZ.sel), keys = selKeys();
+  if (keys.size > 1) {
+    const n = (k) => [...keys].filter((x) => x.startsWith(k + ":")).length;
+    const parts = [["item", t("ting")], ["room", t("rum")], ["wall", t("vægge")], ["area", t("arealer")]].filter(([k]) => n(k)).map(([k, l]) => `${n(k)} ${l}`);
+    return `<div class="hz-pp"><div class="hz-ph"><span class="hz-pi" style="--hc:#6E4AFF">${svg("check")}</span><div><b>${esc(t("{n} valgt", { n: keys.size }))}</b><small>${esc(parts.join(" · "))}</small></div></div>
+      <p class="t-sub">${esc(t("Træk i en af dem for at flytte dem alle. Rum tager deres vægge og møbler med. Pilene flytter dem også."))}</p>
+      <div class="hz-row2"><button class="btn soft sm" data-hz="dup">${svg("plus")}${esc(t("Dublér"))}</button>${n("item") ? `<button class="btn soft sm" data-hz="rot" data-id="90">↻ 90°</button>` : ""}<button class="btn soft sm" data-hz="clearsel">${esc(t("Fravælg"))}</button></div>
+      <div class="hz-row2"><button class="btn soft sm danger-t" data-hz="del">${svg("trash")}${esc(t("Slet {n}", { n: keys.size }))}</button></div></div>`;
+  }
   if (!o) {
     const un = suggestions();
     const areas = C.areas();
@@ -1169,7 +1455,8 @@ function hbProps() {
       <div class="hz-cnt">${[["room", D.rooms.length, t("rum")], ["wall", D.walls.length, t("vægge")], ["door", D.items.filter((i) => i.type === "door").length, t("døre")], ["window", D.items.filter((i) => i.type === "window").length, t("vinduer")], ["camera", D.items.filter((i) => !OPENING.has(i.type) && i.type !== "furn").length, t("enheder")]].map(([ic, n, l]) => `<span>${svg(ic)}<b class="num">${n}</b>${esc(l)}</span>`).join("")}</div>
       ${areas.length ? `<div class="hz-quick"><b>${esc(t("Kom hurtigt i gang"))}</b><span>${esc(t("Hent jeres områder fra Home Assistant som rum. Rumtypen gættes ud fra navnet, og enheder i områderne kan sættes ind med ét tryk."))}</span><button class="btn sm" data-hz="haimport">${svg("house")}${esc(t("Start fra jeres områder"))}</button></div>` : ""}
       ${un.length ? `<h4>${esc(t("Fra Home Assistant, ikke placeret"))}</h4>${placeable ? `<button class="btn soft sm" data-hz="autoplace" style="margin-bottom:8px">${svg("sparkle")}${esc(t("Placér {n} i deres rum", { n: placeable }))}</button>` : ""}<div class="hz-un">${un.map(([ty, e, n]) => `<button data-hz="pend" data-id="${esc(e)}" style="--hc:${HT[ty][2]}">${svg(HT[ty][1])}<span><b>${esc(n)}</b><small>${esc(e)}</small></span><i>${esc(t("Placér"))}</i></button>`).join("")}</div>` : ""}
-      <h4>${esc(t("Sådan bygger du"))}</h4><ol class="hz-how"><li>${esc(t("Tegn rum med Rum. Væggene kommer med."))}</li><li>${esc(t("Ret vægge med Væg, eller træk i deres ender."))}</li><li>${esc(t("Sæt døre, vinduer og porte i væggene, og vælg deres sensor."))}</li><li>${esc(t("Placér kameraer, højttalere, lys og møbler, og kobl dem til en entitet."))}</li><li>${esc(t("Tryk Gem huset. Planen bruger tegningen med det samme."))}</li></ol>
+      <h4>${esc(t("Sådan bygger du"))}</h4><ol class="hz-how"><li>${esc(t("Tegn rum med Rum. Væggene kommer med."))}</li><li>${esc(t("Ret vægge med Væg, eller træk i deres ender."))}</li><li>${esc(t("Sæt døre, vinduer og porte i væggene, og vælg deres sensor."))}</li><li>${esc(t("Placér kameraer, højttalere, lys og møbler, og kobl dem til en entitet."))}</li><li>${esc(t("Alt gemmes af sig selv. Planen bruger tegningen med det samme."))}</li></ol>
+      <div class="hz-keys"><span><kbd>Ctrl/⌘ Z</kbd> ${esc(t("fortryd"))} · <kbd>⇧</kbd>+<kbd>Z</kbd> ${esc(t("gentag"))}</span><span><kbd>Delete</kbd> ${esc(t("slet"))} · <kbd>Esc</kbd> ${esc(t("stop eller fravælg"))}</span><span><kbd>← ↑ → ↓</kbd> ${esc(t("flyt"))} (<kbd>⇧</kbd> ${esc(t("langt"))}, <kbd>Alt</kbd> ${esc(t("fint"))})</span><span><kbd>⇧</kbd>+${esc(t("klik eller træk"))}: ${esc(t("markér flere"))} · <kbd>Alt</kbd> ${esc(t("hold nede: placér frit"))}</span><span><kbd>,</kbd> <kbd>.</kbd> ${esc(t("drej"))} · <kbd>Ctrl/⌘ D</kbd> ${esc(t("dublér"))}</span></div>
       <div class="hz-reset"><div class="hz-io"><button class="btn soft sm" data-hz="export">${svg("share")}${esc(t("Gem som fil"))}</button><button class="btn soft sm" data-hz="copy">${svg("share")}${esc(t("Kopiér tegningen"))}</button><button class="btn soft sm" data-hz="import">${svg("plus")}${esc(t("Indsæt en tegning"))}</button><label class="btn soft sm hz-up">${svg("plus")}${esc(t("Hent fra fil"))}<input type="file" accept="application/json,.json" data-hzfile="1" hidden></label></div><button class="btn soft sm" data-hz="blank">${esc(t("Start på en tom tegning"))}</button></div></div>`;
   }
   const k = HZ.sel.split(":")[0];
@@ -1200,8 +1487,12 @@ function hbProps() {
   if (k === "wall") {
     const len = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]);
     return `<div class="hz-pp"><div class="hz-ph"><span class="hz-pi" style="--hc:#334155">${svg("wall")}</span><div><b>${esc(t("Væg"))}</b><small class="num">${esc(t("{m} m på tegningen", { m: C.fmt.num(len / PX_M, 2) }))}</small></div></div>
-      <div class="hz-f"><span>${esc(t("Slags"))}</span><div class="seg">${[["ext", t("Ydervæg")], ["int", t("Indervæg")], ["open", t("Åben side")]].map(([v, n]) => `<button data-hz="wallk" data-id="${v}" aria-pressed="${(o.k || "int") === v}">${esc(n)}</button>`).join("")}</div></div>
-      <p class="t-sub">${esc(t("Træk i enderne for at flytte dem. De klikker fast på andre vægges ender."))}</p><div class="hz-row2">${del}</div></div>`;
+      <div class="hz-f"><span>${esc(t("Slags"))}</span><div class="seg">${[["ext", t("Ydervæg")], ["int", t("Indervæg")], ["open", t("Åben side")], ["hedge", t("Hæk")], ["fence", t("Hegn")]].map(([v, n]) => `<button data-hz="wallk" data-id="${v}" aria-pressed="${(o.k || "int") === v}">${esc(n)}</button>`).join("")}</div></div>
+      ${(() => {
+        const on = D.items.filter((i) => i.wall === o.id).length;
+        return on ? `<p class="t-sub">${esc(t("{n} ting sidder på væggen og flytter med.", { n: on }))}</p>` : "";
+      })()}
+      <p class="t-sub">${esc(t("Træk i enderne for at flytte dem. De klikker fast på andre vægges ender, og rum og vægge, der mødes der, følger med."))}</p><div class="hz-row2">${del}</div></div>`;
   }
   if (k === "area")
     return `<div class="hz-pp"><div class="hz-ph"><span class="hz-pi" style="--hc:#5E8C4E">${svg("tree")}</span><div><b>${esc(t("Udeareal"))}</b><small>${o.pts ? esc(t("{n} hjørner", { n: o.pts.length })) : esc(t("Tekst"))}</small></div></div>
@@ -1246,13 +1537,25 @@ function hbProps() {
       ex += fld(o.type === "mower" ? t("Klipper i") : t("Støvsuger i"), sel("zone", [["", t("Der, hvor den står")], ...zs], o.zone || ""), `<span class="t-sub" style="font-size:11.5px">${esc(t("Ladestationen er der, hvor markøren står."))}</span>`);
     }
   }
-  if (OPENING.has(o.type))
+  if (OPENING.has(o.type)) {
+    // The two sides of the wall, named by the room on each side.
+    const a = ((o.ang || 0) * Math.PI) / 180, sideName = (sd) => {
+      const q = [o.x - Math.sin(a) * sd * 40, o.y + Math.cos(a) * sd * 40], r = roomAt(HZ.d, q[0], q[1]);
+      return r ? r.name : t("Udenfor");
+    };
     ex +=
-      fld(t("Bredde"), `<input type="range" min="30" max="${o.type === "port" ? 320 : 200}" value="${o.w}" data-hf="w">`) +
+      `<div class="hz-row3">${fld(t("Bredde"), `<input type="number" min="25" max="${o.type === "port" ? 1000 : 600}" value="${Math.round((o.w / PX_M) * 100)}" data-hf="wcmo">`, `<small class="t-sub">cm</small>`)}<div></div></div>` +
+      `<div class="hz-f" style="margin-top:-6px"><input type="range" min="15" max="${o.type === "port" ? 360 : 240}" value="${o.w}" data-hf="w" aria-label="${esc(t("Bredde"))}"></div>` +
       (o.type === "door"
         ? `<div class="hz-f"><span>${esc(t("Dørblad"))}</span><div class="seg">${[["l", t("Hængsel venstre")], ["r", t("Hængsel højre")], ["dbl", t("Dobbeltdør")]].map(([v, x]) => `<button data-hz="hinge" data-id="${v}" aria-pressed="${v === "dbl" ? !!o.dbl : !o.dbl && (o.hinge || "l") === v}">${esc(x)}</button>`).join("")}</div></div>`
         : "") +
-      (o.type !== "port" ? `<div class="hz-f"><span>${esc(t("Åbner mod"))}</span><div class="seg"><button data-hz="side" data-id="1" aria-pressed="${(o.side || 1) === 1}">${esc(o.dir === "h" ? t("Syd") : t("Øst"))}</button><button data-hz="side" data-id="-1" aria-pressed="${o.side === -1}">${esc(o.dir === "h" ? t("Nord") : t("Vest"))}</button></div></div>` : "");
+      (o.type !== "port" ? `<div class="hz-f"><span>${esc(t("Åbner mod"))}</span><div class="seg"><button data-hz="side" data-id="1" aria-pressed="${(o.side || 1) === 1}">${esc(sideName(1))}</button><button data-hz="side" data-id="-1" aria-pressed="${o.side === -1}">${esc(sideName(-1))}</button></div></div>` : "") +
+      `<p class="t-sub">${esc(o.wall ? t("Sidder i væggen og flytter med den. Træk langs væggen for at flytte den.") : t("Træk den hen på en væg, så sætter den sig fast."))}</p>`;
+  }
+  if (isObj(o) && isWallObj(o))
+    ex += o.wall
+      ? `<div class="hz-row2"><span class="t-sub" style="flex:1;align-self:center">${esc(t("Står op ad væggen og følger den."))}</span><button class="btn soft sm" data-hz="detach">${esc(t("Slip væggen"))}</button></div>`
+      : `<p class="t-sub">${esc(t("Træk den hen til en væg, så vender den ryggen til væggen og følger med den. Hold Alt nede for at placere frit."))}</p>`;
   if (o.type === "door" || o.type === "window")
     ex += `<div class="hz-lock"><label class="hz-chk"><input type="checkbox" data-hf="lockOn" ${o.lockOn ? "checked" : ""}><span><b>${esc(t("Har lås i Home Assistant"))}</b><small>${esc(o.type === "door" ? t("Så kan I se og styre, om døren er låst.") : t("Så kan I se og styre, om vinduet er låst."))}</small></span></label>${o.lockOn ? entFld("lock", o.lock, "lock", t("Lås")) : ""}</div>`;
   if (o.type === "camera") ex += fld(t("Retning"), `<input type="range" min="0" max="359" value="${o.a ?? 270}" data-hf="a">`) + fld(t("Synsvinkel"), `<input type="range" min="15" max="160" value="${o.s ?? 60}" data-hf="s">`) + fld(t("Rækkevidde"), `<input type="range" min="60" max="420" value="${o.r || 240}" data-hf="r">`);
@@ -1280,8 +1583,44 @@ function hbDraw() {
   let s = `<defs><pattern id="hz-g1" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" class="hz-gl"/></pattern><pattern id="hz-g2" width="100" height="100" patternUnits="userSpaceOnUse"><rect width="100" height="100" fill="url(#hz-g1)"/><path d="M100 0H0V100" class="hz-gl2"/></pattern></defs>
     <rect x="${v[0] - v[2]}" y="${v[1] - v[3]}" width="${v[2] * 3}" height="${v[3] * 3}" fill="url(#hz-g2)" class="hz-bg"/>`;
   s += houseSvg(D, { mode: "edit", sel: HZ.sel && HZ.sel.startsWith("item:") ? HZ.sel.slice(5) : HZ.sel });
-  const o = hbFind(HZ.sel), hr = 8 * k;
-  if (o && HZ.sel.startsWith("room:")) s += o.pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${hr}" class="hz-h${HZ.corner === i ? " on" : ""}" data-hh="room:${esc(o.id)}:${i}"/>`).join("");
+  const o = hbFind(HZ.sel), hr = 8 * k, keys = selKeys();
+  // Several things chosen: a dashed outline round each.
+  if (keys.size > 1)
+    for (const key of keys) {
+      const x = hbFind(key);
+      if (!x) continue;
+      const kk = key.split(":")[0];
+      if (kk === "room" || (kk === "area" && x.pts)) s += `<polygon points="${x.pts.map((q) => q.join(",")).join(" ")}" class="hz-msel"/>`;
+      else if (kk === "wall") s += `<line x1="${x.a[0]}" y1="${x.a[1]}" x2="${x.b[0]}" y2="${x.b[1]}" class="hz-msel" style="stroke-width:14;opacity:.5"/>`;
+      else if (kk === "item") s += `<circle cx="${x.x}" cy="${x.y}" r="${Math.max(18, Math.min(120, (x.w || 30) / 2 + 8))}" class="hz-msel"/>`;
+      else s += `<circle cx="${x.x}" cy="${x.y}" r="24" class="hz-msel"/>`;
+    }
+  // While drawing walls and rooms: the points to snap to.
+  if (HZ.tool.startsWith("vaeg") || HZ.tool === "rum" || (HZ.sel && (HZ.sel.startsWith("wall:") || HZ.sel.startsWith("room:")))) {
+    const seen = new Set();
+    D.walls.forEach((w) =>
+      [w.a, w.b].forEach((q) => {
+        const key = Math.round(q[0]) + "," + Math.round(q[1]);
+        if (seen.has(key)) return;
+        seen.add(key);
+        const hot = HZ.hover && HZ.snapKind && HZ.snapKind !== "grid" && dist(q, HZ.hover) < 1;
+        s += `<circle cx="${q[0]}" cy="${q[1]}" r="${(hot ? 7 : 4.5) * k}" class="hz-anchor${hot ? " hot" : ""}"/>`;
+      }),
+    );
+    if (HZ.chainPts && HZ.chainPts.length >= 3) {
+      const q = HZ.chainPts[0], hot = HZ.hover && dist(q, HZ.hover) < 1;
+      s += `<circle cx="${q[0]}" cy="${q[1]}" r="${(hot ? 10 : 7) * k}" class="hz-anchor hot"/>`;
+    }
+  }
+  if (o && HZ.sel.startsWith("room:") && keys.size === 1) {
+    s += o.pts
+      .map((p, i) => {
+        const q = o.pts[(i + 1) % o.pts.length], m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+        return dist(p, q) > 40 * k ? `<rect x="${f1(m[0] - hr * 0.7)}" y="${f1(m[1] - hr * 0.7)}" width="${f1(hr * 1.4)}" height="${f1(hr * 1.4)}" rx="${f1(hr * 0.35)}" class="hz-eh" data-hh="redge:${esc(o.id)}:${i}"/>` : "";
+      })
+      .join("");
+    s += o.pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${hr}" class="hz-h${HZ.corner === i ? " on" : ""}" data-hh="room:${esc(o.id)}:${i}"/>`).join("");
+  }
   if (o && HZ.sel.startsWith("wall:")) s += ["a", "b"].map((e) => `<circle cx="${o[e][0]}" cy="${o[e][1]}" r="${hr}" class="hz-h" data-hh="wall:${esc(o.id)}:${e}"/>`).join("");
   if (o && HZ.sel.startsWith("area:") && o.pts) s += o.pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${hr}" class="hz-h${HZ.corner === i ? " on" : ""}" data-hh="area:${esc(o.id)}:${i}"/>`).join("");
   if (o && HZ.sel.startsWith("item:") && isObj(o)) {
@@ -1302,8 +1641,14 @@ function hbDraw() {
     s += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="hz-wprev"/><circle cx="${a[0]}" cy="${a[1]}" r="${hr * 0.8}" class="hz-h on"/><text x="${(a[0] + b[0]) / 2}" y="${(a[1] + b[1]) / 2 - 12 * k}" class="hz-meas" text-anchor="middle">${C.fmt.num(Math.hypot(b[0] - a[0], b[1] - a[1]) / PX_M, 2)} m</text>`;
   }
   if (HZ.hover && (isPlace(HZ.tool) || HZ.pend)) {
-    const ty = toolType(HZ.pend ? HZ.pend.type : HZ.tool), sp = OPENING.has(ty) ? hbWallSnap(HZ.hover) : null, p = sp ? sp.p : HZ.hover;
-    s += `<circle cx="${p[0]}" cy="${p[1]}" r="18" class="hz-ghost" style="--hc:${HT[ty][2]}"/>`;
+    const ty = toolType(HZ.pend ? HZ.pend.type : HZ.tool), ow = ty === "port" ? 150 : ty === "window" ? 90 : 60;
+    const sp = OPENING.has(ty) ? hbWallSnap(HZ.hover, 46, ow / 2) : null, p = sp ? sp.p : HZ.hover;
+    if (sp) s += `<g transform="translate(${f1(p[0])},${f1(p[1])}) rotate(${f1(sp.ang)})"><rect x="${-ow / 2}" y="-9" width="${ow}" height="18" rx="5" class="hz-ghost" style="--hc:${HT[ty][2]}"/></g>`;
+    else s += `<circle cx="${p[0]}" cy="${p[1]}" r="18" class="hz-ghost" style="--hc:${HT[ty][2]}"/>`;
+  }
+  if (HZ.marq) {
+    const [a, b] = HZ.marq;
+    s += `<rect x="${Math.min(a[0], b[0])}" y="${Math.min(a[1], b[1])}" width="${Math.abs(b[0] - a[0])}" height="${Math.abs(b[1] - a[1])}" class="hz-marq"/>`;
   }
   svgEl.innerHTML = s;
   svgEl.querySelectorAll(".hz-meas").forEach((x) => (x.style.fontSize = 13 * k + "px"));
@@ -1320,44 +1665,224 @@ function hbRefresh(props = true) {
   const root = C.root;
   root.querySelectorAll(".hz-acts [data-hz=undo]").forEach((b) => (b.disabled = !HZ.hist.length));
   root.querySelectorAll(".hz-acts [data-hz=redo]").forEach((b) => (b.disabled = !HZ.fut.length));
-  const sv = root.querySelector(".hz-acts [data-hz=save]");
-  if (sv) sv.disabled = !HZ.dirty;
-  const ac = root.querySelector(".hz-acts");
-  if (ac) {
-    const d = ac.querySelector(".hz-dirty");
-    if (HZ.dirty && !d) ac.insertAdjacentHTML("afterbegin", `<span class="hz-dirty">${esc(t("Ikke gemt"))}</span>`);
-    if (!HZ.dirty && d) d.remove();
-  }
+  saveBadge();
+  root.querySelectorAll(".hz-zoom [data-hz=multi]").forEach((b) => (b.classList.toggle("on", !!HZ.multiMode), b.setAttribute("aria-pressed", String(!!HZ.multiMode))));
   root.querySelectorAll(".hz-tool").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.id === (HZ.pend ? HZ.pend.type : HZ.tool))));
 }
 
-const sn = (v) => (HZ.snap ? Math.round(v / 10) * 10 : Math.round(v * 2) / 2);
-function hbMagnet(p, skip) {
-  let best = null, bd = 16 * (HZ.k || 1);
-  const test = (q) => {
-    const d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+/* ------------------------------------------------------------------ snapping
+   With the grid on, points snap to wall ends and room corners, then onto walls, then to the grid. Openings sit in a
+   wall at the wall's angle; wall furniture turns its back to the wall. Both remember their wall and follow it.
+   Holding Alt (Option) places freely. */
+const TOL = 9; // drawing units: wall ends and room corners this close belong together (rooms sit inside their walls)
+let FREE = false;
+const snapOn = () => !!HZ && HZ.snap && !FREE;
+const sn = (v, step = 5) => (snapOn() ? Math.round(v / step) * step : Math.round(v * 2) / 2);
+const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+function projSeg(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+  const u = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2));
+  const q = [a[0] + dx * u, a[1] + dy * u];
+  return { u, q, d: dist(p, q), L: Math.sqrt(L2) };
+}
+const wallAng = (w) => (Math.atan2(w.b[1] - w.a[1], w.b[0] - w.a[0]) * 180) / Math.PI;
+const wallHalf = (w) => ({ ext: 6, int: 3.5, open: 2, hedge: 11, fence: 2 })[w.k || "int"] || 3.5;
+const isWallObj = (it) => (it.type === "furn" && WALLF.has(it.fk)) || (it.type === "light" && (it.lk === "wall" || it.lk === "strip")) || ((it.type === "tv" || it.type === "speaker") && !!it.w);
+function hbMagnet(p, skip = {}) {
+  if (!snapOn()) return { p: [Math.round(p[0] * 2) / 2, Math.round(p[1] * 2) / 2], kind: "free" };
+  const r = 14 * (HZ.k || 1);
+  let best = null, bd = r;
+  const test = (q, kind) => {
+    const d = dist(p, q);
     if (d < bd) {
       bd = d;
-      best = q;
+      best = { p: [q[0], q[1]], kind };
     }
   };
-  HZ.d.walls.forEach((w) => w !== skip && (test(w.a), test(w.b)));
-  HZ.d.rooms.forEach((r) => r.pts.forEach(test));
-  return best ? [best[0], best[1]] : [sn(p[0]), sn(p[1])];
+  HZ.d.walls.forEach((w) => skip.walls?.has(w.id) || (test(w.a, "end"), test(w.b, "end")));
+  if (skip.start) test(skip.start, "start");
+  HZ.d.rooms.forEach((rm) => skip.rooms?.has(rm.id) || rm.pts.forEach((q) => test(q, "corner")));
+  if (best) return best;
+  bd = r * 0.8;
+  HZ.d.walls.forEach((w) => {
+    if (skip.walls?.has(w.id)) return;
+    const pr = projSeg(p, w.a, w.b);
+    if (pr.d < bd) {
+      bd = pr.d;
+      best = { p: [Math.round(pr.q[0] * 2) / 2, Math.round(pr.q[1] * 2) / 2], kind: "wall" };
+    }
+  });
+  return best || { p: [sn(p[0], 10), sn(p[1], 10)], kind: "grid" };
 }
-function hbWallSnap(p, maxD = 46) {
+/* Lock a line to 0/45/90 degrees when it is close. */
+function axisLock(from, q) {
+  if (!snapOn()) return q;
+  const dx = q[0] - from[0], dy = q[1] - from[1], L = Math.hypot(dx, dy);
+  if (L < 1) return q;
+  const a = Math.atan2(dy, dx), step = Math.PI / 4, r = Math.round(a / step) * step;
+  if (Math.abs(a - r) > 0.1) return q;
+  return [Math.round((from[0] + Math.cos(r) * L) * 2) / 2, Math.round((from[1] + Math.sin(r) * L) * 2) / 2];
+}
+/* The nearest wall to a point, as a place on it: where, how far along and at which angle. */
+function hbWallSnap(p, maxD = 46, half = 0, skipWalls) {
   let best = null, bd = maxD;
   HZ.d.walls.forEach((w) => {
-    const [ax, ay] = w.a, [bx, by] = w.b, dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1;
-    const tt_ = Math.max(0, Math.min(1, ((p[0] - ax) * dx + (p[1] - ay) * dy) / L2)), q = [ax + dx * tt_, ay + dy * tt_], d = Math.hypot(q[0] - p[0], q[1] - p[1]);
-    if (d < bd) {
-      bd = d;
-      const hz = Math.abs(dx) >= Math.abs(dy);
-      best = { p: [hz ? sn(q[0]) : q[0], hz ? q[1] : sn(q[1])], dir: hz ? "h" : "v" };
-    }
+    if (skipWalls?.has(w.id)) return;
+    const pr = projSeg(p, w.a, w.b);
+    if (pr.d >= bd || pr.L < 2 * half + 4) return;
+    bd = pr.d;
+    let along = pr.u * pr.L;
+    if (snapOn()) along = Math.round(along / 5) * 5;
+    along = Math.max(half, Math.min(pr.L - half, along));
+    const u = along / pr.L, q = [w.a[0] + (w.b[0] - w.a[0]) * u, w.a[1] + (w.b[1] - w.a[1]) * u];
+    const r = (wallAng(w) * Math.PI) / 180, n = [-Math.sin(r), Math.cos(r)];
+    best = { w, wall: w.id, u, p: q, ang: wallAng(w), side: (p[0] - q[0]) * n[0] + (p[1] - q[1]) * n[1] >= 0 ? 1 : -1, d: pr.d };
   });
   return best;
 }
+/* Put an item on its wall: an opening in it, a piece of furniture with its back to it. */
+function placeOnWall(it, w) {
+  const u = Math.max(0, Math.min(1, it.wu ?? 0.5)), q = [w.a[0] + (w.b[0] - w.a[0]) * u, w.a[1] + (w.b[1] - w.a[1]) * u], ang = wallAng(w);
+  if (OPENING.has(it.type)) {
+    it.x = Math.round(q[0] * 10) / 10;
+    it.y = Math.round(q[1] * 10) / 10;
+    it.ang = Math.round(ang * 100) / 100;
+    return;
+  }
+  const r = (ang * Math.PI) / 180, n = [-Math.sin(r), Math.cos(r)], sd = it.ws || 1, off = (it.h || it.w) / 2 + wallHalf(w) + 1;
+  it.x = Math.round((q[0] + n[0] * sd * off) * 10) / 10;
+  it.y = Math.round((q[1] + n[1] * sd * off) * 10) / 10;
+  it.rot = Math.round((((ang + (sd < 0 ? 180 : 0)) % 360) + 360) % 360);
+}
+/* Everything that hangs on a wall follows it. */
+function hbFollow(D) {
+  D.items.forEach((it) => {
+    if (!it.wall) return;
+    const w = D.walls.find((x) => x.id === it.wall);
+    if (!w) {
+      delete it.wall;
+      delete it.wu;
+      delete it.ws;
+      return;
+    }
+    placeOnWall(it, w);
+  });
+}
+/* Try to hang an item on the nearest wall (from where its centre would be); otherwise let it go. */
+function hbAttach(it, c) {
+  const opening = OPENING.has(it.type);
+  if (!opening && (!isWallObj(it) || !snapOn())) return false;
+  const depth = opening ? 0 : (it.h || it.w) / 2;
+  const sp = hbWallSnap(c, opening ? 46 : depth + 26, opening ? (it.w || 60) / 2 : it.w / 2);
+  if (!sp) return false;
+  it.wall = sp.wall;
+  it.wu = Math.round(sp.u * 10000) / 10000;
+  if (!opening) it.ws = sp.side;
+  placeOnWall(it, sp.w);
+  return true;
+}
+const detach = (it) => {
+  delete it.wall;
+  delete it.wu;
+  delete it.ws;
+};
+/* Move wall ends and room corners that sit at the given points (as they were in base) along with them. */
+function linkMove(base, D, moves, opt = {}) {
+  const done = new Set();
+  for (const [old, d] of moves) {
+    base.walls.forEach((bw, wi) => {
+      if (opt.walls?.has(bw.id)) return;
+      ["a", "b"].forEach((e) => {
+        const key = "w" + wi + e;
+        if (done.has(key) || dist(bw[e], old) > TOL) return;
+        done.add(key);
+        D.walls[wi][e] = [bw[e][0] + d[0], bw[e][1] + d[1]];
+      });
+    });
+    if (opt.noRooms) continue;
+    base.rooms.forEach((br, ri) => {
+      if (opt.rooms?.has(br.id)) return;
+      br.pts.forEach((q, qi) => {
+        const key = "r" + ri + ":" + qi;
+        if (done.has(key) || dist(q, old) > TOL) return;
+        done.add(key);
+        D.rooms[ri].pts[qi] = [q[0] + d[0], q[1] + d[1]];
+      });
+    });
+  }
+}
+const onPoly = (p, pts) => pts.some((q, i) => projSeg(p, q, pts[(i + 1) % pts.length]).d <= TOL) || pip(p, pts);
+/* What moves when the selection moves: the rooms with their own walls and what stands in them. */
+function moveSet(base, keys) {
+  const rooms = new Set(), walls = new Set(), items = new Set(), areas = new Set();
+  for (const key of keys) {
+    const [k, id] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
+    if (k === "room") rooms.add(id);
+    if (k === "wall") walls.add(id);
+    if (k === "item") items.add(id);
+    if (k === "area") areas.add(id);
+  }
+  const selRooms = base.rooms.filter((r) => rooms.has(r.id)), others = base.rooms.filter((r) => !rooms.has(r.id));
+  for (const r of selRooms) {
+    base.walls.forEach((w) => {
+      if (!onPoly(w.a, r.pts) || !onPoly(w.b, r.pts)) return;
+      // A wall shared with a room that stays, stays.
+      const mid = [(w.a[0] + w.b[0]) / 2, (w.a[1] + w.b[1]) / 2];
+      if (others.some((o) => onPoly(w.a, o.pts) && onPoly(w.b, o.pts) && projSeg(mid, ...nearEdge(mid, o.pts)).d <= TOL)) return;
+      walls.add(w.id);
+    });
+    base.items.forEach((it) => {
+      if (it.wall && !walls.has(it.wall)) return;
+      if (pip([it.x, it.y], r.pts)) items.add(it.id);
+    });
+  }
+  return { rooms, walls, items, areas };
+}
+const nearEdge = (p, pts) => {
+  let best = [pts[0], pts[1]], bd = Infinity;
+  pts.forEach((q, i) => {
+    const e = [q, pts[(i + 1) % pts.length]], d = projSeg(p, e[0], e[1]).d;
+    if (d < bd) {
+      bd = d;
+      best = e;
+    }
+  });
+  return best;
+};
+function applyMove(base, D, set, d) {
+  const moves = [];
+  D.rooms.forEach((r, i) => {
+    if (!set.rooms.has(r.id)) return;
+    r.pts = base.rooms[i].pts.map((q) => [q[0] + d[0], q[1] + d[1]]);
+  });
+  D.walls.forEach((w, i) => {
+    if (!set.walls.has(w.id)) return;
+    const b = base.walls[i];
+    w.a = [b.a[0] + d[0], b.a[1] + d[1]];
+    w.b = [b.b[0] + d[0], b.b[1] + d[1]];
+    moves.push([b.a, d], [b.b, d]);
+  });
+  D.areas.forEach((a, i) => {
+    if (!set.areas.has(a.id)) return;
+    const b = base.areas[i];
+    if (b.pts) a.pts = b.pts.map((q) => [q[0] + d[0], q[1] + d[1]]);
+    else {
+      a.x = b.x + d[0];
+      a.y = b.y + d[1];
+    }
+  });
+  D.items.forEach((it, i) => {
+    if (!set.items.has(it.id)) return;
+    const b = base.items[i];
+    it.x = b.x + d[0];
+    it.y = b.y + d[1];
+    if (it.wall && !set.walls.has(it.wall)) detach(it);
+  });
+  // Walls that meet the moved walls stretch along; the rooms at the ends of a moved wall follow too.
+  linkMove(base, D, moves, { walls: set.walls, rooms: set.rooms, noRooms: set.rooms.size > 0 });
+  hbFollow(D);
+}
+const selKeys = () => new Set([...(HZ.msel || []), HZ.sel].filter(Boolean));
 function hbAddWall(a, b, k = "int") {
   if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 8) return;
   const near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 3;
@@ -1385,7 +1910,8 @@ function newItem(x, p, pre = {}) {
   else if (x === "battery") ex = { w: 40, h: 64, rot: 0, name: t("Batteri") };
   else if (x === "tree" || x === "bush") ex = { w: CM(x === "tree" ? 250 : 70), h: CM(x === "tree" ? 250 : 70), rot: 0, name: t(HT[x][0]) };
   pre = Object.assign(ex, pre);
-  const sp = OPENING.has(ty) ? hbWallSnap(p) : null, q = sp ? sp.p : [sn(p[0]), sn(p[1])], same = HZ.d.items.filter((i) => i.type === ty).length + 1;
+  const ow = OPENING.has(ty) ? pre.w || (ty === "port" ? 150 : ty === "window" ? 90 : 60) : 0;
+  const sp = OPENING.has(ty) ? hbWallSnap(p, 46, ow / 2) : null, q = sp ? sp.p : [sn(p[0]), sn(p[1])], same = HZ.d.items.filter((i) => i.type === ty).length + 1;
   const zr = ROBOT.has(ty) ? (ty === "mower" ? HZ.d.areas.find((z) => z.kind === "lawn" && z.pts) || roomAt(HZ.d, q[0], q[1]) : roomAt(HZ.d, q[0], q[1])) : null;
   if (zr) pre = Object.assign({ zone: zr.id }, pre);
   if (APK.has(ty) && !pre.appl) {
@@ -1394,11 +1920,14 @@ function newItem(x, p, pre = {}) {
   }
   const it = Object.assign(
     { type: ty, id: hbId(ty[0]), name: `${t(HT[ty][0])} ${same}`, x: q[0], y: q[1], ent: "" },
-    OPENING.has(ty) ? { dir: sp ? sp.dir : "h", w: ty === "port" ? 150 : ty === "window" ? 90 : 60, side: 1, hinge: "l" } : {},
+    OPENING.has(ty) ? { ang: sp ? sp.ang : 0, w: ow, side: 1, hinge: "l", ...(sp ? { wall: sp.wall, wu: Math.round(sp.u * 10000) / 10000 } : {}) } : {},
     ty === "camera" ? { a: 270, s: 60, r: 220 } : {},
     pre,
   );
-  return { it, snapped: !!sp };
+  let snapped = !!sp;
+  if (!OPENING.has(ty) && isWallObj(it) && !pre.noWall) snapped = hbAttach(it, q);
+  delete it.noWall;
+  return { it, snapped };
 }
 function hbPlace(x, p, pre = {}) {
   hbPush();
@@ -1438,17 +1967,26 @@ function hbFit() {
   hbDraw();
 }
 
-/* Furnish a room by its type: furniture and lights fitted into the room. */
+/* Furnish a room by its type: furniture and lights fitted into the room. What is already there stays: only what the
+   room doesn't have yet is added. */
 function furnish(r) {
   const [x0, y0, x1, y1] = bbox(r.pts), W = x1 - x0, Hh = y1 - y0;
   const rtype = r.rtype || guessType(r.name);
   let set = FURNSET[rtype] || FURNSET.other;
   if (rtype === "kid" && (r.age === "baby" || r.age === "toddler")) set = set.map((s) => (s[0] === "furn:bed1" ? ["furn:crib", s[1], s[2], s[3]] : s));
   const inside = HZ.d.items.filter((i) => (i.type === "furn" || i.type === "light") && pip([i.x, i.y], r.pts));
-  if (inside.length) HZ.d.items = HZ.d.items.filter((i) => !inside.includes(i));
-  let n = 0;
+  const have = {};
+  inside.forEach((i) => {
+    const key = i.type === "furn" ? "furn:" + i.fk : "light:" + i.lk;
+    have[key] = (have[key] || 0) + 1;
+  });
+  let n = 0, lit = inside.some((i) => i.type === "light" && i.ent);
   for (const [tool, fx, fy, rot] of set) {
-    const { it } = newItem(tool, [x0 + W * fx, y0 + Hh * fy], { rot });
+    if (have[tool]) {
+      have[tool]--;
+      continue;
+    }
+    const { it } = newItem(tool, [x0 + W * fx, y0 + Hh * fy], { rot, noWall: 1 });
     const rotated = rot % 180 !== 0;
     const fw = rotated ? it.h || it.w : it.w, fh = rotated ? it.w : it.h || it.w;
     const k = Math.min(1, (W * 0.9) / fw, (Hh * 0.9) / fh);
@@ -1460,14 +1998,23 @@ function furnish(r) {
     const hw = (rotated ? it.h || it.w : it.w) / 2, hh = (rotated ? it.w : it.h || it.w) / 2;
     it.x = Math.round(Math.max(x0 + hw + 4, Math.min(x1 - hw - 4, it.x)));
     it.y = Math.round(Math.max(y0 + hh + 4, Math.min(y1 - hh - 4, it.y)));
-    if (tool.startsWith("light:") && n === 0 && r.light && (tool === "light:ceiling" || tool === "light:pendant")) it.ent = r.light;
-    if (tool === "light:ceiling" || tool === "light:pendant") {
-      if (r.light && !it.ent) it.ent = r.light;
-      n++;
+    if ((tool === "light:ceiling" || tool === "light:pendant") && r.light && !lit) {
+      it.ent = r.light;
+      lit = true;
+    }
+    if (isWallObj(it)) {
+      const sp = hbWallSnap([it.x, it.y], (it.h || it.w) / 2 + 20, it.w / 2);
+      if (sp) {
+        it.wall = sp.wall;
+        it.wu = Math.round(sp.u * 10000) / 10000;
+        it.ws = sp.side;
+        placeOnWall(it, sp.w);
+      }
     }
     HZ.d.items.push(it);
+    n++;
   }
-  return set.length;
+  return n;
 }
 
 /* Rooms from Home Assistant's areas, laid out in a grid next to what is drawn. */
@@ -1541,23 +2088,30 @@ function cleanHouse(d) {
 }
 
 async function hbSave() {
+  saveTimer = null;
+  if (!HZ || !HZ.dirty) return;
   const clean = cleanHouse(HZ.d);
   const size = JSON.stringify(clean).length;
   if (size > 600000) {
+    HZ.save = "err";
+    saveBadge();
     C.toast(t("Tegningen er for stor til at blive gemt ({kb} kB). Brug mindre billeder af rummene.", { kb: Math.round(size / 1024) }));
     return;
   }
-  const btn = C.root.querySelector(".hz-acts [data-hz=save]");
-  if (btn) btn.disabled = true;
+  HZ.save = "busy";
+  saveBadge();
+  const sent = JSON.stringify(HZ.d);
   const ok = await C.save("house", clean);
+  if (!HZ) return;
   if (ok) {
-    HZ.dirty = false;
-    HZ.hist = [];
-    HZ.fut = [];
+    // Changed again while saving: that is saved next.
+    if (JSON.stringify(HZ.d) === sent) {
+      HZ.dirty = false;
+      HZ.save = "ok";
+    } else markDirty();
     HZ.base = JSON.stringify(C.data.house || {});
-    hbRefresh(false);
-    C.toast(t("Huset er gemt for hele familien."));
-  } else if (btn) btn.disabled = false;
+  } else HZ.save = "err";
+  saveBadge();
 }
 
 function textSheet(txt) {
@@ -1641,8 +2195,7 @@ function hzClick(e) {
   if (a === "tool") {
     HZ.tool = id;
     HZ.pend = null;
-    HZ.chain = null;
-    HZ.hover = null;
+    hbEndChain();
     if (id !== "vaelg") {
       HZ.sel = null;
       HZ.corner = null;
@@ -1664,23 +2217,28 @@ function hzClick(e) {
     return hbRefresh();
   }
   if (a === "endwall") {
-    HZ.chain = null;
-    HZ.hover = null;
+    hbEndChain();
     HZ.tool = "vaelg";
     return hbRefresh();
   }
-  if (a === "undo" && HZ.hist.length) {
-    HZ.fut.push(JSON.stringify(HZ.d));
-    HZ.d = JSON.parse(HZ.hist.pop());
-    HZ.dirty = true;
+  if ((a === "undo" && HZ.hist.length) || (a === "redo" && HZ.fut.length)) {
+    (a === "undo" ? HZ.fut : HZ.hist).push(JSON.stringify(HZ.d));
+    HZ.d = JSON.parse((a === "undo" ? HZ.hist : HZ.fut).pop());
+    hbEndChain();
+    markDirty();
+    HZ.msel = new Set([...(HZ.msel || [])].filter((k) => hbFind(k)));
     if (!hbFind(HZ.sel)) HZ.sel = null;
     return hbRefresh();
   }
-  if (a === "redo" && HZ.fut.length) {
-    HZ.hist.push(JSON.stringify(HZ.d));
-    HZ.d = JSON.parse(HZ.fut.pop());
-    HZ.dirty = true;
-    if (!hbFind(HZ.sel)) HZ.sel = null;
+  if (a === "undo" || a === "redo") return;
+  if (a === "multi") {
+    HZ.multiMode = !HZ.multiMode;
+    C.toast(HZ.multiMode ? t("Markér flere: tryk på ting, eller træk en ramme om dem") : t("Markér flere: fra"));
+    return hbRefresh(false);
+  }
+  if (a === "clearsel") {
+    HZ.sel = null;
+    HZ.msel = new Set();
     return hbRefresh();
   }
   if (a === "zin") return hbZoom(1 / 1.25);
@@ -1690,11 +2248,11 @@ function hzClick(e) {
     HZ.snap = !HZ.snap;
     b.classList.toggle("on", HZ.snap);
     b.setAttribute("aria-pressed", String(HZ.snap));
-    return C.toast(HZ.snap ? t("Fastgør til gitter: til") : t("Fastgør til gitter: fra"));
+    return C.toast(HZ.snap ? t("Fastgør til vægge og gitter: til") : t("Fastgør til vægge og gitter: fra"));
   }
   if (a === "save") return hbSave();
   if (a === "leave") {
-    if (HZ.dirty) return C.confirm(t("Gem huset først?"), t("Du har ændringer, der ikke er gemt."), t("Forlad uden at gemme"), () => leave(true));
+    flushSave();
     return leave(false);
   }
   if (a === "openroom" && o) return C.go("rum:" + o.id);
@@ -1741,19 +2299,57 @@ function hzClick(e) {
   }
   if (a === "del" && o) {
     hbPush();
-    const i = HZ.sel.indexOf(":"), k = HZ.sel.slice(0, i), oid = HZ.sel.slice(i + 1), D = HZ.d;
-    if (k === "item") D.items = D.items.filter((x) => x.id !== oid);
-    if (k === "room") D.rooms = D.rooms.filter((x) => x.id !== oid);
-    if (k === "wall") D.walls = D.walls.filter((x) => x.id !== oid);
-    if (k === "area") D.areas = D.areas.filter((x) => x.id !== oid);
+    const keys = selKeys(), D = HZ.d;
+    D.items = D.items.filter((x) => !keys.has("item:" + x.id));
+    D.rooms = D.rooms.filter((x) => !keys.has("room:" + x.id));
+    D.walls = D.walls.filter((x) => !keys.has("wall:" + x.id));
+    D.areas = D.areas.filter((x) => !keys.has("area:" + x.id));
+    hbFollow(D);
     HZ.sel = null;
+    HZ.msel = new Set();
+    return hbRefresh();
+  }
+  if (a === "dup" && o) {
+    hbPush();
+    const got = new Set();
+    for (const key of selKeys()) {
+      const x = hbFind(key), k = key.split(":")[0];
+      if (!x) continue;
+      if (k === "item") {
+        const c = Object.assign(clone(x), { id: hbId(x.type[0]), x: x.x + 24, y: x.y + 24 });
+        detach(c);
+        HZ.d.items.push(c);
+        got.add("item:" + c.id);
+      } else if (k === "room" || (k === "area" && x.pts)) {
+        const c = Object.assign(clone(x), { id: hbId(k[0]), pts: x.pts.map((q) => [q[0] + 30, q[1] + 30]) });
+        if (k === "room") c.name = `${x.name} (${t("kopi")})`;
+        (k === "room" ? HZ.d.rooms : HZ.d.areas).push(c);
+        got.add(k + ":" + c.id);
+      } else if (k === "wall") {
+        const c = { ...clone(x), id: hbId("w"), a: [x.a[0] + 30, x.a[1] + 30], b: [x.b[0] + 30, x.b[1] + 30] };
+        HZ.d.walls.push(c);
+        got.add("wall:" + c.id);
+      }
+    }
+    HZ.msel = got.size > 1 ? got : new Set();
+    HZ.sel = [...got][0] || null;
+    return hbRefresh();
+  }
+  if (a === "rot" && o && selKeys().size > 1) {
+    hbPush();
+    for (const key of selKeys()) {
+      const x = hbFind(key);
+      if (!key.startsWith("item:") || !x || !isObj(x)) continue;
+      x.rot = ((((x.rot || 0) + +id) % 360) + 360) % 360;
+      detach(x);
+    }
     return hbRefresh();
   }
   if (!o) return;
   hbPush();
   if (a === "furnish") {
     const n = furnish(o);
-    C.toast(t("{room} er møbleret med {n} ting. Flyt og drej dem, så de passer.", { room: o.name, n }));
+    C.toast(n ? t("{n} ting er sat ind i {room}. Det, der stod der i forvejen, er bevaret.", { room: o.name, n }) : t("{room} har allerede det hele", { room: o.name }));
   }
   if (a === "wallk") o.k = id;
   if (a === "areak") o.kind = id;
@@ -1765,15 +2361,16 @@ function hzClick(e) {
     }
   }
   if (a === "side") o.side = +id;
+  if (a === "flip") o.side = -(o.side || 1);
+  if (a === "detach") detach(o);
   if (a === "rstyle") o.style = id;
   if (a === "noimg") delete o.img;
-  if (a === "rot") o.rot = ((((o.rot || 0) + +id) % 360) + 360) % 360;
-  if (a === "carcol") o.col = id;
-  if (a === "dup") {
-    const c = Object.assign(clone(o), { id: hbId(o.type[0]), x: o.x + 24, y: o.y + 24 });
-    HZ.d.items.push(c);
-    HZ.sel = "item:" + c.id;
+  if (a === "rot") {
+    o.rot = ((((o.rot || 0) + +id) % 360) + 360) % 360;
+    detach(o);
   }
+  if (a === "carcol") o.col = id;
+
   if (a === "addcorner") {
     let bi = 0, bl = 0;
     if (HZ.corner != null && HZ.corner < o.pts.length) bi = HZ.corner;
@@ -1805,10 +2402,16 @@ function leave(discard) {
 function hzInput(e) {
   const el = e.target, f = el.dataset?.hf;
   if (!f || !HZ) return;
+  // A search field only sets its entity when one is picked, or when what was typed is an entity (or nothing).
+  if (el.dataset.ep != null) {
+    if (e.type === "input" && e.isTrusted) return;
+    const v = el.value.trim();
+    if (v && !C.hass.states[v]) return;
+  }
   if (f === "hname") {
     HZ.d.name = el.value;
-    HZ.dirty = true;
-    return hbRefresh(false);
+    markDirty();
+    return;
   }
   const o = hbFind(HZ.sel);
   if (!o) return;
@@ -1817,7 +2420,7 @@ function hzInput(e) {
     HZ.typing = 1;
     setTimeout(() => (HZ && (HZ.typing = 0)), 900);
   }
-  HZ.dirty = true;
+  markDirty();
   if (f === "lockOn") {
     o.lockOn = el.checked ? 1 : 0;
     return hbRefresh();
@@ -1878,7 +2481,18 @@ function hzInput(e) {
     }
     return hbRefresh();
   }
+  if (f === "wcmo") {
+    o.w = Math.max(15, Math.min(f === "wcmo" && o.type === "port" ? 600 : 400, CM(+el.value || 0)));
+    if (o.wall) hbFollow(HZ.d);
+    const r = C.root.querySelector('#hz-props [data-hf="w"]');
+    if (r) r.value = o.w;
+    return hbRefresh(false);
+  }
   o[f] = ["w", "a", "s", "r"].includes(f) ? +el.value : el.value.trim ? el.value.trim() : el.value;
+  if (f === "w") {
+    const c = C.root.querySelector('#hz-props [data-hf="wcmo"]');
+    if (c) c.value = Math.round((o.w / PX_M) * 100);
+  }
   if (f === "name") o.name = el.value;
   const ei = C.root.querySelector(`#hz-props [data-ei="${f}"]`);
   if (ei) ei.innerHTML = entInfo(el.value.trim(), ei.dataset.dom);
@@ -1891,6 +2505,89 @@ function hzInput(e) {
     }
   }
   hbRefresh(false);
+}
+
+/* A finished drag or nudge: one step in the history, and saved shortly after. */
+function hbCommit(before) {
+  HZ.hist.push(before);
+  if (HZ.hist.length > 80) HZ.hist.shift();
+  HZ.fut = [];
+  markDirty();
+}
+/* Move what is chosen by d (from base): one item on its own snaps to walls; rooms take their walls and furniture. */
+function hbMoveSel(base, keys, d, raw) {
+  HZ.d = clone(base);
+  if (keys.size === 1) {
+    const key = [...keys][0];
+    if (key.startsWith("item:")) {
+      const id = key.slice(5), o = HZ.d.items.find((x) => x.id === id), O = base.items.find((x) => x.id === id);
+      if (!o) return;
+      const c = [O.x + raw[0], O.y + raw[1]];
+      if (OPENING.has(o.type) || isWallObj(o)) {
+        if (hbAttach(o, c)) return;
+        detach(o);
+      }
+      o.x = sn(c[0]);
+      o.y = sn(c[1]);
+      return;
+    }
+  }
+  applyMove(base, HZ.d, moveSet(base, keys), d);
+}
+function hbStartChain(q) {
+  HZ.chain = q;
+  HZ.chainPts = [q];
+}
+function hbEndChain() {
+  HZ.chain = null;
+  HZ.chainPts = null;
+  HZ.hover = null;
+}
+/* A wall drawn back to where it started closes a room. */
+function hbChainPoint(q) {
+  if (!HZ.chain) return hbStartChain(q);
+  hbPush();
+  const kind = HZ.tool.includes(":") ? HZ.tool.split(":")[1] : "int";
+  hbAddWall(HZ.chain, q, kind);
+  const pts = HZ.chainPts;
+  if (pts.length >= 3 && dist(q, pts[0]) < 1) {
+    hbEndChain();
+    if (kind === "int" || kind === "ext") {
+      let a = 0;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) a += (pts[j][0] + pts[i][0]) * (pts[j][1] - pts[i][1]);
+      if (Math.abs(a / 2) > 40 * 40) {
+        const [cx, cy] = centroid(pts);
+        // The room sits just inside its walls.
+        const inset = pts.map((q2) => {
+          const dx = cx - q2[0], dy = cy - q2[1], L = Math.hypot(dx, dy) || 1;
+          return [Math.round((q2[0] + (dx / L) * 5) * 2) / 2, Math.round((q2[1] + (dy / L) * 5) * 2) / 2];
+        });
+        const r = { id: hbId("r"), name: t("Rum {n}", { n: HZ.d.rooms.length + 1 }), light: "", area: "", rtype: "other", pts: inset };
+        HZ.d.rooms.push(r);
+        HZ.sel = "room:" + r.id;
+        HZ.msel = new Set();
+        HZ.tool = "vaelg";
+        C.toast(t("Væggene er lukket, og rummet er sat ind. Giv det et navn."));
+      }
+    }
+    return;
+  }
+  HZ.chain = q;
+  pts.push(q);
+}
+function hbSelect(key, add) {
+  if (!add) {
+    HZ.msel = new Set();
+    HZ.sel = key;
+    HZ.corner = null;
+    return;
+  }
+  const all = selKeys();
+  if (all.has(key)) all.delete(key);
+  else all.add(key);
+  HZ.msel = all;
+  HZ.sel = all.size ? [...all][all.size - 1] : null;
+  if (all.size <= 1) HZ.msel = new Set();
 }
 
 function hbBind() {
@@ -1908,6 +2605,7 @@ function hbBind() {
   const ptrs = new Map();
   let drag = null, pinch = null;
   svgEl.addEventListener("pointerdown", (e) => {
+    FREE = e.altKey;
     try {
       svgEl.setPointerCapture(e.pointerId);
     } catch (err) {
@@ -1919,52 +2617,71 @@ function hbBind() {
       pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), v: [...HZ.view] };
       drag = null;
       HZ.prev = null;
+      HZ.marq = null;
       return;
     }
-    const p = hbToSvg(e), tg = e.target, hh = tg.closest("[data-hh]"), he = tg.closest("[data-he]"), D = HZ.d;
+    const p = hbToSvg(e), tg = e.target, D = HZ.d;
+    let hh = tg.closest("[data-hh]"), he = tg.closest("[data-he]");
+    // A door or a lamp under a room's edge handle wins over the handle.
+    if (hh && hh.dataset.hh.startsWith("redge:")) {
+      const under = C.root.elementsFromPoint(e.clientX, e.clientY).map((el) => el.closest?.('[data-he^="item:"]')).find(Boolean);
+      if (under) {
+        hh = null;
+        he = under;
+      }
+    }
+    const add = e.shiftKey || e.metaKey || e.ctrlKey || HZ.multiMode;
     if (HZ.pend) return hbPlace(HZ.pend.type, p, { name: HZ.pend.name, ent: HZ.pend.ent });
     if (isPlace(HZ.tool)) return hbPlace(HZ.tool, p);
     if (HZ.tool === "rum" || HZ.tool.startsWith("ude:")) {
-      const a = [sn(p[0]), sn(p[1])];
+      const a = hbMagnet(p).p;
       HZ.prev = { a, b: a };
       drag = { kind: "rect" };
       return;
     }
-    if (HZ.tool === "vaeg") {
-      const q = hbMagnet(p);
-      if (!HZ.chain) HZ.chain = q;
-      else {
-        hbPush();
-        hbAddWall(HZ.chain, HZ.hover || q, "int");
-        HZ.chain = HZ.hover || q;
-      }
-      hbRefresh(false);
+    if (HZ.tool.startsWith("vaeg")) {
+      let q = hbMagnet(p, { start: HZ.chainPts?.length >= 3 ? HZ.chainPts[0] : null }).p;
+      if (HZ.chain) q = axisLock(HZ.chain, q);
+      if (HZ.hover && HZ.chain && dist(HZ.hover, p) < 30 * (HZ.k || 1)) q = HZ.hover;
+      hbChainPoint(q);
+      hbRefresh(!HZ.chain);
       return;
     }
     if (hh) {
       const [k, id, i] = hh.dataset.hh.split(":");
-      drag = { kind: "handle", k, id, i, before: JSON.stringify(D), moved: false };
+      drag = { kind: "handle", k, id, i, start: p, base: clone(D), before: JSON.stringify(D), moved: false };
       if (k === "room" || k === "area") HZ.corner = +i;
       return;
     }
     if (he) {
       const key = he.dataset.he;
-      if (HZ.sel !== key) {
-        HZ.sel = key;
-        HZ.corner = null;
+      if (add) {
+        hbSelect(key, true);
+        hbRefresh();
+        return;
+      }
+      if (!selKeys().has(key)) {
+        hbSelect(key, false);
         hbRefresh();
       }
-      drag = { kind: "move", key, start: p, orig: clone(hbFind(key)), before: JSON.stringify(D), moved: false };
+      drag = { kind: "move", keys: selKeys(), start: p, base: clone(D), before: JSON.stringify(D), moved: false };
       return;
     }
-    if (HZ.sel) {
+    if (add) {
+      HZ.marq = [p, p];
+      drag = { kind: "marq", keep: e.shiftKey || HZ.multiMode };
+      return;
+    }
+    if (HZ.sel || HZ.msel?.size) {
       HZ.sel = null;
+      HZ.msel = new Set();
       HZ.corner = null;
       hbRefresh();
     }
     drag = { kind: "pan", c: [e.clientX, e.clientY], v: [...HZ.view] };
   });
   svgEl.addEventListener("pointermove", (e) => {
+    FREE = e.altKey;
     if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     if (pinch && ptrs.size === 2) {
       const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -1974,15 +2691,13 @@ function hbBind() {
       return;
     }
     const p = hbToSvg(e);
-    if (HZ.tool === "vaeg" && HZ.chain) {
-      let q = hbMagnet(p);
-      const dx = q[0] - HZ.chain[0], dy = q[1] - HZ.chain[1];
-      if (Math.abs(dx) < Math.abs(dy) * 0.18) q = [HZ.chain[0], q[1]];
-      else if (Math.abs(dy) < Math.abs(dx) * 0.18) q = [q[0], HZ.chain[1]];
-      HZ.hover = q;
+    if (HZ.tool.startsWith("vaeg") && !drag) {
+      const m = hbMagnet(p, { start: HZ.chainPts?.length >= 3 ? HZ.chainPts[0] : null });
+      HZ.snapKind = m.kind;
+      HZ.hover = HZ.chain && m.kind !== "end" && m.kind !== "start" ? axisLock(HZ.chain, m.p) : m.p;
       return hbDraw();
     }
-    if (isPlace(HZ.tool) || HZ.pend) {
+    if ((isPlace(HZ.tool) || HZ.pend) && !drag) {
       HZ.hover = p;
       return hbDraw();
     }
@@ -1992,67 +2707,70 @@ function hbBind() {
       HZ.view = [drag.v[0] - (e.clientX - drag.c[0]) * f, drag.v[1] - (e.clientY - drag.c[1]) * f, drag.v[2], drag.v[3]];
       return hbDraw();
     }
+    if (drag.kind === "marq") {
+      HZ.marq[1] = p;
+      return hbDraw();
+    }
     if (drag.kind === "rect") {
-      HZ.prev.b = [sn(p[0]), sn(p[1])];
+      const m = hbMagnet(p);
+      HZ.prev.b = m.p;
       return hbDraw();
     }
     if (drag.kind === "handle" && drag.k === "obj") {
       const o = hbFind("item:" + drag.id), dx = p[0] - o.x, dy = p[1] - o.y, a = ((o.rot || 0) * Math.PI) / 180;
       drag.moved = true;
       if (drag.i === "rs") {
-        const lx = dx * Math.cos(a) + dy * Math.sin(a), ly = -dx * Math.sin(a) + dy * Math.cos(a), s5 = (v) => (HZ.snap ? Math.round(v / 3) * 3 : v);
+        const lx = dx * Math.cos(a) + dy * Math.sin(a), ly = -dx * Math.sin(a) + dy * Math.cos(a), s5 = (v) => (snapOn() ? Math.round(v / 3) * 3 : v);
         o.w = Math.max(6, s5(2 * Math.abs(lx)));
         o.h = isRoundObj(o) ? o.w : Math.max(3, s5(2 * Math.abs(ly)));
+        if (o.wall) hbFollow(HZ.d);
       } else {
         let ang = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
-        if (HZ.snap) ang = Math.round(ang / 15) * 15;
+        if (snapOn()) ang = Math.round(ang / 15) * 15;
         o.rot = ((Math.round(ang) % 360) + 360) % 360;
+        if (o.wall) detach(o);
       }
       return hbDraw();
     }
     if (drag.kind === "handle") {
-      const o = hbFind(drag.k + ":" + drag.id);
+      const B = drag.base;
       drag.moved = true;
-      if (drag.k === "room") o.pts[+drag.i] = [sn(p[0]), sn(p[1])];
-      if (drag.k === "wall") {
-        let q = hbMagnet(p, o);
-        const other = o[drag.i === "a" ? "b" : "a"], dx = q[0] - other[0], dy = q[1] - other[1];
-        if (Math.abs(dx) < Math.abs(dy) * 0.18) q = [other[0], q[1]];
-        else if (Math.abs(dy) < Math.abs(dx) * 0.18) q = [q[0], other[1]];
-        o[drag.i] = q;
+      HZ.d = clone(B);
+      const D = HZ.d;
+      if (drag.k === "room") {
+        const ri = B.rooms.findIndex((r) => r.id === drag.id), old = B.rooms[ri].pts[+drag.i];
+        const q = hbMagnet(p, { rooms: new Set([drag.id]) }).p, d = [q[0] - old[0], q[1] - old[1]];
+        D.rooms[ri].pts[+drag.i] = q;
+        linkMove(B, D, [[old, d]], { rooms: new Set([drag.id]) });
       }
-      if (drag.k === "area" && o.pts) o.pts[+drag.i] = [sn(p[0]), sn(p[1])];
+      if (drag.k === "redge") {
+        const ri = B.rooms.findIndex((r) => r.id === drag.id), pts = B.rooms[ri].pts, i = +drag.i, j = (i + 1) % pts.length;
+        const ex = pts[j][0] - pts[i][0], ey = pts[j][1] - pts[i][1], L = Math.hypot(ex, ey) || 1, n = [-ey / L, ex / L];
+        const dn = sn((p[0] - drag.start[0]) * n[0] + (p[1] - drag.start[1]) * n[1], 5), d = [n[0] * dn, n[1] * dn];
+        D.rooms[ri].pts[i] = [pts[i][0] + d[0], pts[i][1] + d[1]];
+        D.rooms[ri].pts[j] = [pts[j][0] + d[0], pts[j][1] + d[1]];
+        linkMove(B, D, [[pts[i], d], [pts[j], d]], { rooms: new Set([drag.id]) });
+      }
+      if (drag.k === "wall") {
+        const wi = B.walls.findIndex((w) => w.id === drag.id), w = B.walls[wi], old = w[drag.i], other = w[drag.i === "a" ? "b" : "a"];
+        const m = hbMagnet(p, { walls: new Set([drag.id]) });
+        const q = m.kind === "end" || m.kind === "corner" ? m.p : axisLock(other, m.p), d = [q[0] - old[0], q[1] - old[1]];
+        linkMove(B, D, [[old, d]]);
+        D.walls[wi][drag.i] = q;
+      }
+      if (drag.k === "area") {
+        const o = D.areas.find((a) => a.id === drag.id);
+        if (o?.pts) o.pts[+drag.i] = [sn(p[0], 10), sn(p[1], 10)];
+      }
+      hbFollow(D);
       return hbDraw();
     }
     if (drag.kind === "move") {
-      const o = hbFind(drag.key), dx = p[0] - drag.start[0], dy = p[1] - drag.start[1];
-      if ((Math.hypot(dx, dy) / (HZ.k || 1)) < 3 && !drag.moved) return;
+      const dx = p[0] - drag.start[0], dy = p[1] - drag.start[1];
+      if (Math.hypot(dx, dy) / (HZ.k || 1) < 3 && !drag.moved) return;
       drag.moved = true;
-      const k = drag.key.split(":")[0], O = drag.orig, sdx = sn(dx), sdy = sn(dy);
-      if (k === "room") o.pts = O.pts.map((q) => [q[0] + sdx, q[1] + sdy]);
-      else if (k === "wall") {
-        o.a = [O.a[0] + sdx, O.a[1] + sdy];
-        o.b = [O.b[0] + sdx, O.b[1] + sdy];
-      } else if (k === "area") {
-        if (O.pts) o.pts = O.pts.map((q) => [q[0] + sdx, q[1] + sdy]);
-        else {
-          o.x = O.x + sdx;
-          o.y = O.y + sdy;
-        }
-      } else if (OPENING.has(o.type)) {
-        const sp = hbWallSnap([O.x + dx, O.y + dy]);
-        if (sp) {
-          o.x = sp.p[0];
-          o.y = sp.p[1];
-          o.dir = sp.dir;
-        } else {
-          o.x = sn(O.x + dx);
-          o.y = sn(O.y + dy);
-        }
-      } else {
-        o.x = sn(O.x + dx);
-        o.y = sn(O.y + dy);
-      }
+      const big = [...drag.keys].some((k) => !k.startsWith("item:"));
+      hbMoveSel(drag.base, drag.keys, [sn(dx, big ? 10 : 5), sn(dy, big ? 10 : 5)], [dx, dy]);
       return hbDraw();
     }
   });
@@ -2062,6 +2780,21 @@ function hbBind() {
     if (!drag) return;
     const d = drag;
     drag = null;
+    if (d.kind === "marq") {
+      const [a, b] = HZ.marq, x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
+      HZ.marq = null;
+      const inR = (q) => q[0] >= x0 && q[0] <= x1 && q[1] >= y0 && q[1] <= y1, D = HZ.d;
+      const got = new Set(d.keep ? selKeys() : []);
+      if (x1 - x0 > 4 || y1 - y0 > 4) {
+        D.items.forEach((i) => inR([i.x, i.y]) && got.add("item:" + i.id));
+        D.rooms.forEach((r) => r.pts.every(inR) && got.add("room:" + r.id));
+        D.walls.forEach((w) => inR(w.a) && inR(w.b) && got.add("wall:" + w.id));
+        D.areas.forEach((ar) => (ar.pts ? ar.pts.every(inR) : inR([ar.x, ar.y])) && got.add("area:" + ar.id));
+      }
+      HZ.msel = got.size > 1 ? got : new Set();
+      HZ.sel = got.size ? [...got][got.size - 1] : null;
+      return hbRefresh();
+    }
     if (d.kind === "rect") {
       const p = HZ.prev;
       HZ.prev = null;
@@ -2077,7 +2810,7 @@ function hbBind() {
         HZ.sel = "area:" + a.id;
       } else {
         const name = t("Rum {n}", { n: HZ.d.rooms.length + 1 });
-        const r = { id: hbId("r"), name, light: "", area: "", rtype: "other", pts: [[x0 + 3, y0 + 3], [x1 - 3, y0 + 3], [x1 - 3, y1 - 3], [x0 + 3, y1 - 3]] };
+        const r = { id: hbId("r"), name, light: "", area: "", rtype: "other", pts: [[x0 + 5, y0 + 5], [x1 - 5, y0 + 5], [x1 - 5, y1 - 5], [x0 + 5, y1 - 5]] };
         HZ.d.rooms.push(r);
         hbAddWall([x0, y0], [x1, y0]);
         hbAddWall([x1, y0], [x1, y1]);
@@ -2085,28 +2818,26 @@ function hbBind() {
         hbAddWall([x0, y1], [x0, y0]);
         HZ.sel = "room:" + r.id;
       }
+      HZ.msel = new Set();
       HZ.tool = "vaelg";
       return hbRefresh();
     }
     if ((d.kind === "move" || d.kind === "handle") && d.moved) {
-      HZ.hist.push(d.before);
-      HZ.fut = [];
-      HZ.dirty = true;
+      hbCommit(d.before);
       hbRefresh();
     }
   };
   svgEl.addEventListener("pointerup", up);
   svgEl.addEventListener("pointercancel", up);
   svgEl.addEventListener("pointerleave", () => {
-    if (isPlace(HZ.tool) || HZ.pend) {
+    if (isPlace(HZ.tool) || HZ.pend || (HZ.tool.startsWith("vaeg") && !HZ.chain)) {
       HZ.hover = null;
       hbDraw();
     }
   });
   svgEl.addEventListener("dblclick", () => {
     if (HZ.chain) {
-      HZ.chain = null;
-      HZ.hover = null;
+      hbEndChain();
       HZ.tool = "vaelg";
       hbRefresh();
     }
@@ -2138,40 +2869,106 @@ function hbBind() {
       e.target.files[0].text().then(useJson);
       return;
     }
-    if (e.target.dataset?.hf === "ent") hzInput(e);
+    if (e.target.dataset?.ep != null) hzInput(e);
   });
+  bindPickers(props);
 }
 
+/* The keyboard, anywhere on the page while the house is open: undo, delete, escape, arrows to nudge, and more. */
+let nudge = null;
 function onKey(e) {
-  if (!C || C.view !== "husbygger" || !HZ) return;
-  const path = e.composedPath ? e.composedPath()[0] : e.target;
-  if (path?.closest?.("input,textarea,select")) return;
+  if (!C || C.view !== "husbygger" || !HZ || !C.host?.isConnected) return;
+  FREE = e.altKey;
+  const path = e.composedPath ? e.composedPath() : [e.target];
+  if (path.some((el) => el?.matches?.("input,textarea,select,[contenteditable=true]"))) return;
   if (C.root.querySelector(".sheet-bg")) return;
-  const click = (sel_) => C.root.querySelector(sel_)?.click();
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+  const k = e.key, mod = e.metaKey || e.ctrlKey, done = () => {
     e.preventDefault();
-    return click(`.hz-acts [data-hz=${e.shiftKey ? "redo" : "undo"}]`);
+    e.stopPropagation();
+  };
+  if (mod && k.toLowerCase() === "z") {
+    done();
+    return hzAct(e.shiftKey ? "redo" : "undo");
   }
-  if ((e.key === "Delete" || e.key === "Backspace") && HZ.sel) {
-    e.preventDefault();
-    return click("[data-hz=del]");
+  if (mod && k.toLowerCase() === "y") {
+    done();
+    return hzAct("redo");
   }
-  if (e.key === "Escape") {
-    HZ.chain = null;
-    HZ.hover = null;
-    HZ.pend = null;
-    HZ.prev = null;
-    if (HZ.tool !== "vaelg") HZ.tool = "vaelg";
-    else HZ.sel = null;
+  if (mod && k.toLowerCase() === "d" && HZ.sel) {
+    done();
+    return hzAct("dup");
+  }
+  if (mod && k.toLowerCase() === "a") {
+    done();
+    HZ.msel = new Set([...HZ.d.items.map((i) => "item:" + i.id), ...HZ.d.rooms.map((r) => "room:" + r.id), ...HZ.d.walls.map((w) => "wall:" + w.id), ...HZ.d.areas.map((a) => "area:" + a.id)]);
+    HZ.sel = [...HZ.msel][0] || null;
     return hbRefresh();
   }
-  const x = { v: "vaelg", r: "rum", w: "vaeg", u: "ude:lawn", d: "door", f: "window", k: "camera" }[e.key.toLowerCase()];
-  if (x && !e.metaKey && !e.ctrlKey && !e.altKey) {
+  if ((k === "Delete" || k === "Backspace") && HZ.sel) {
+    done();
+    return hzAct("del");
+  }
+  if (k === "Escape") {
+    done();
+    const had = HZ.chain || HZ.pend || HZ.tool !== "vaelg";
+    hbEndChain();
+    HZ.pend = null;
+    HZ.prev = null;
+    HZ.marq = null;
+    if (had) HZ.tool = "vaelg";
+    else {
+      HZ.sel = null;
+      HZ.msel = new Set();
+    }
+    return hbRefresh();
+  }
+  if (k === "Enter" && HZ.chain) {
+    done();
+    hbEndChain();
+    HZ.tool = "vaelg";
+    return hbRefresh();
+  }
+  const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+  if (arrows && HZ.sel) {
+    done();
+    const step = e.shiftKey ? 30 : e.altKey ? 1 : 5;
+    // Nudges right after each other are one step in the history.
+    if (!nudge || Date.now() - nudge.t > 900) nudge = { before: JSON.stringify(HZ.d), base: clone(HZ.d), d: [0, 0] };
+    nudge.d = [nudge.d[0] + arrows[0] * step, nudge.d[1] + arrows[1] * step];
+    nudge.t = Date.now();
+    const was = HZ.snap;
+    HZ.snap = false;
+    hbMoveSel(nudge.base, selKeys(), nudge.d, nudge.d);
+    HZ.snap = was;
+    if (!nudge.saved) {
+      nudge.saved = 1;
+      hbCommit(nudge.before);
+    } else markDirty();
+    return hbRefresh();
+  }
+  if ((k === "," || k === ".") && HZ.sel) {
+    done();
+    return hzAct("rot", String((k === "," ? -1 : 1) * (e.shiftKey ? 90 : 15)));
+  }
+  if (mod || e.altKey) return;
+  const x = { v: "vaelg", r: "rum", w: "vaeg", u: "ude:lawn", d: "door", f: "window", k: "camera" }[k.toLowerCase()];
+  if (x) {
+    done();
     HZ.tool = x;
     HZ.pend = null;
-    HZ.chain = null;
+    hbEndChain();
     hbRefresh();
   }
+}
+const onKeyUp = (e) => {
+  FREE = e.altKey;
+};
+/* Run a button's action from the keyboard, also when the button isn't on the screen. */
+function hzAct(a, id) {
+  const b = document.createElement("button");
+  b.dataset.hz = a;
+  if (id != null) b.dataset.id = id;
+  hzClick({ target: b, preventDefault() {} });
 }
 
 /* ------------------------------------------------------------------ acts for the live plan */
@@ -2309,6 +3106,47 @@ const css = `
 .hz-props datalist { display: none; }
 .hz-un { max-height: 320px; overflow: auto; }
 @media (prefers-reduced-motion: reduce) { .hp-plan animateMotion { display: none; } }
+
+.fu-keys { stroke: #333; stroke-width: .8; } .fu-fire { fill: #FF8A3D; filter: drop-shadow(0 0 3px #FFB347); }
+.fu-dash { fill: color-mix(in srgb, var(--ink) 4%, transparent); stroke: color-mix(in srgb, var(--ink) 45%, transparent); stroke-width: 1.3; stroke-dasharray: 4 3; }
+.fu-dashln { stroke: color-mix(in srgb, var(--ink) 22%, transparent); stroke-width: 1; }
+.fu-basin { fill: color-mix(in srgb, #C9CED6 70%, #fff); stroke: #9AA3AE; stroke-width: 1.1; } .fu-glassd { fill: #2B2F38; } .fu-ring { fill: none; stroke: #6B7280; stroke-width: 1.4; }
+.fu-handle { stroke: #9AA3AE; stroke-width: 2.4; stroke-linecap: round; } .fu-duvet2 { fill: color-mix(in srgb, #F2B6C6 60%, var(--surface)); }
+.fu-toy { fill: #F2B01E; stroke: #C88A0A; stroke-width: 1; } .fu-dot1 { fill: #E5484D; } .fu-dot2 { fill: #2F6FD6; }
+.fu-tent { fill: color-mix(in srgb, #F3E7D3 85%, var(--surface)); stroke: #C9B48F; stroke-width: 1.2; }
+.fu-glass { fill: color-mix(in srgb, #BFE3F2 75%, #fff); stroke: #8FB8CC; stroke-width: 1; } .fu-shine { stroke: #fff; stroke-width: 1.4; opacity: .8; }
+.fu-panel { fill: #E4E7EB; } .fu-frame { fill: color-mix(in srgb, #9AA3AE 25%, transparent); stroke: #6B7280; stroke-width: 1.2; } .fu-frameln { fill: none; stroke: #6B7280; stroke-width: 3; stroke-linecap: round; }
+.fu-rod { stroke: #6B7280; stroke-width: 1.6; stroke-linecap: round; } .fu-shoe { fill: #5B4632; opacity: .7; } .fu-back { fill: none; stroke: #2B2F38; stroke-width: 4; stroke-linecap: round; }
+.fu-box { fill: #C9A27A; } .fu-box2 { fill: #8E9AAF; } .fu-wheel { fill: none; stroke: #2B2F38; stroke-width: 2.4; } .fu-bikef { fill: none; stroke: #2F6FD6; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.fu-bin { stroke: rgba(0,0,0,.25); stroke-width: 1; } .fu-lid { fill: rgba(0,0,0,.25); }
+.fu-rattan { fill: color-mix(in srgb, #8B6B4A 80%, var(--surface)); stroke: #5E4632; stroke-width: 1.2; } .fu-teak { fill: color-mix(in srgb, #B98652 85%, var(--surface)); stroke: #7A5634; stroke-width: 1.2; }
+.fu-cushw { fill: #F2EEE6; stroke: #D8D0C2; stroke-width: 1; } .fu-par1 { fill: #F2EEE6; } .fu-par2 { fill: #E8DCC4; } .fu-par1, .fu-par2 { stroke: #CDBF9F; stroke-width: 1; }
+.fu-brick { fill: #B5543A; stroke: #7A3220; stroke-width: 1.2; } .fu-dome { fill: #D9CBB8; stroke: #9C8B74; stroke-width: 1.2; } .fu-grate { fill: none; stroke: #9AA3AE; stroke-width: 1.2; }
+.fu-net { fill: none; stroke: color-mix(in srgb, #2B2F38 50%, transparent); stroke-width: 2; stroke-dasharray: 3 3; } .fu-pad { fill: #2F6FD6; } .fu-mat { fill: #1F2430; } .fu-post { fill: #6B7280; }
+.fu-sand { fill: #EBD7A6; } .fu-soil { fill: #6B4A2E; }
+.fu-roof, .fu-roofk { stroke: rgba(0,0,0,.3); stroke-width: 1.4; } .fu-roof { fill: #59626E; } .fu-roofk { fill: #D96C4E; } .fu-ridge { stroke: rgba(0,0,0,.35); stroke-width: 2.5; }
+.fu-shingle { stroke: rgba(255,255,255,.12); stroke-width: 1; } .fu-door { fill: #F2EEE6; }
+.hx-wall.k-hedge { stroke: #4E8F3F; stroke-width: 22; stroke-linecap: round; } .hx-hedge2 { stroke: #63A852; stroke-width: 12; stroke-linecap: round; stroke-dasharray: 2 14; pointer-events: none; }
+.hx-wall.k-fence { stroke: #8A6440; stroke-width: 4; stroke-linecap: round; } .hx-fence2 { stroke: #6B4A2E; stroke-width: 9; stroke-dasharray: 3 37; pointer-events: none; }
+.hz-anchor { fill: var(--surface); stroke: color-mix(in srgb, var(--violet) 60%, transparent); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.hz-anchor.hot { fill: var(--violet); stroke: #fff; }
+.hz-guide { stroke: var(--violet); stroke-width: 1.5; stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; pointer-events: none; opacity: .8; }
+.hz-marq { fill: color-mix(in srgb, var(--violet) 10%, transparent); stroke: var(--violet); stroke-width: 1.5; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.hz-msel { fill: none; stroke: var(--violet); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.hz-eh { fill: var(--violet); stroke: #fff; stroke-width: 2; cursor: ew-resize; vector-effect: non-scaling-stroke; }
+.hz-save { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--muted); padding: 4px 10px; border-radius: 999px; background: var(--surface-2); }
+.hz-save.busy { color: var(--violet); } .hz-save.err { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, var(--surface)); }
+.hz-save .ic { width: 14px; height: 14px; }
+.hz-keys { font-size: 11.5px; color: var(--muted); display: grid; gap: 3px; margin: 6px 0 0; }
+.hz-keys kbd { font: 700 10.5px var(--font-body); background: var(--surface-2); border-radius: 5px; padding: 1px 5px; box-shadow: inset 0 -1px 0 var(--line); }
+.hz-ep { position: relative; }
+.hz-epl { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); background: var(--surface); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.18); max-height: 260px; overflow: auto; padding: 4px; }
+.hz-epl button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 9px; border-radius: 9px; cursor: pointer; font: inherit; color: var(--ink); }
+.hz-epl button:hover, .hz-epl button.on { background: var(--surface-2); } .hz-epl b { display: block; font-size: 13px; } .hz-epl small { font-size: 11px; color: var(--muted); }
+.hz-epl .none { padding: 9px; font-size: 12.5px; color: var(--muted); }
+.hz-tool.multi[aria-pressed="true"] { background: var(--violet); }
+.hz-tools summary { font-size: 9.5px !important; letter-spacing: .2px !important; overflow-wrap: anywhere; hyphens: auto; line-height: 1.25; }
+.hz-tools .hz-tl { display: grid; grid-template-columns: minmax(0, 1fr); }
 `;
 
 const en = {
@@ -2408,6 +3246,7 @@ export default {
       module: "house",
       title: () => t("Husbygger"),
       replace: true, // drawn and bound by hand: replaced, never patched
+      keep: true, // and left alone while it is open, so a drag is never cut off by an update
       render(ctx) {
         C = ctx;
         hbInit(ctx);
@@ -2423,7 +3262,11 @@ export default {
   inputs,
   init(ctx) {
     C = ctx;
-    ctx.root.addEventListener("keydown", onKey);
+    // On the document, so the keys work wherever the focus is, and before Home Assistant's own shortcuts.
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("keyup", onKeyUp, true);
+    window.addEventListener("pagehide", flushSave);
+    document.addEventListener("visibilitychange", () => document.hidden && flushSave());
     window.addEventListener("resize", () => {
       if (!HZ || ctx.view !== "husbygger") return;
       const el = ctx.$("hz-svg");

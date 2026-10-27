@@ -2,6 +2,41 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.4.0] - 2026-10-27
+
+### Added
+- **Husbyggeren, much easier to build with:**
+  - The keyboard works anywhere on the page: undo and redo, Delete, Esc, arrows to nudge (Shift for long steps, Alt for fine ones), `,` and `.` to turn, Ctrl/⌘ D to duplicate.
+  - Choose several things with Shift-click, a Shift-drag frame or the "Markér flere" button, then move, duplicate, turn or delete them together.
+  - Hold Alt to place freely.
+  - Walls snap to other walls' ends and corners. Drawing back to the start closes the room and adds it.
+  - Doors, windows and ports sit in their wall at any angle (also slanted walls) and move with the wall. So do TVs, wall lamps and furniture that stands against a wall, with their back to it.
+  - Moving or resizing a room takes its walls, doors and furniture along. Moving a wall end stretches the walls and rooms that meet there.
+  - Rooms get edge handles for resizing.
+  - Many more furniture, grouped by room: kitchen cabinets, sink, hob, dishwasher, fridge and wall cupboards, bathroom vanity, mirror cabinet and towel rail, washer, dryer and laundry tower, shoe rack, office chair and standing desk, workbench, bikes and bins.
+  - For the garden: hedges and fences (drawn like walls), raised beds, trampoline, garden furniture, lounge set, sun loungers, parasol, pizza oven, Weber grill, gas grill, fire pit, sandbox, swing, playhouse, and a shed/workshop.
+  - A search field for entities that finds them by name, area or id, so access points (and everything else) can be picked.
+  - Access points show whether they are online and how many devices are on them.
+- **Husbyggeren saves by itself:** every change is saved a moment later, so nothing is lost on a reload.
+- **Hent og bring:**
+  - A fixed plan plus each week's own plan.
+  - "Kopiér fra ugen før", "Brug den faste plan", "Gør ugen til fast plan", and "Samme som …" another child.
+  - Messages to the phones follow the week's plan.
+- **Hide lessons in the timetable** (e.g. Aula's "Pædagog i skolen"): tap them under Familieindstillinger › Børnene. They disappear from the timetable, the calendar and the children's pages.
+- **Hverdagsro on the home screen:** its own icon, name and start page, with steps for iPhone, Android and the desktop under Mine indstillinger.
+- **Appliances:** select all or none of an appliance's entities. The dishwasher always has a "Billigst" button, which uses the family's own "start at the cheapest hour" button when there is one.
+
+### Changed
+- **Room pictures are redrawn:** every room type has its own furnishing, and nothing stands in front of the window.
+- **A room shows all its lights** (drawn lamps first), not just the ones drawn in Husbyggeren. Lamps drawn without a light no longer sit in the list as dead buttons.
+- **Møblér rummet** only adds what the room is missing and never removes furniture.
+- Windows and doors can be much narrower (from 25 cm), with the width in centimetres.
+- Grass, tiles and gravel no longer carry a label (unless you have given them a name).
+- The cars' battery rings show the charge in green, amber or red on a faint track.
+
+### Fixed
+- Husbyggeren no longer redraws itself in the middle of a drag when something changes in Home Assistant.
+
 ## [0.3.1] - 2026-10-26
 
 ### Added

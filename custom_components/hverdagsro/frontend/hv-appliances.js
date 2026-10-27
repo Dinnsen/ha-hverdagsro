@@ -273,6 +273,20 @@ function cheapest(ctx, hours = 4) {
   return best && best.at > Date.now() - 3600e3 ? best.at : null;
 }
 
+/* The family's own "start at the cheapest hour" for the dishwasher (a button, input_button or script), and the time it
+   has worked out, when Home Assistant has one. That way their own automation does the starting. */
+function ownCheap(ctx) {
+  const ids = Object.keys(ctx.hass.states);
+  const re = /(opvask|dish)/i, cheap = /(billig|cheap)/i;
+  const press = ids.find((id) => /^(input_button|button|script)\./.test(id) && re.test(id + ctx.name(id)) && cheap.test(id + ctx.name(id)));
+  if (!press) return null;
+  const tid = ids.find((id) => id.startsWith("sensor.") && re.test(id) && cheap.test(id) && !Number.isNaN(Date.parse(ctx.hass.states[id].state)));
+  const at = tid ? Date.parse(ctx.hass.states[tid].state) : null;
+  return { press, at: at && at > Date.now() - 60000 ? at : null };
+}
+const cheapAt = (ctx, a) => ownCheap(ctx)?.at || (isHc(ctx, a) ? cheapest(ctx) : null);
+const cheapLabel = (ctx, c) => (c && c - Date.now() > 15 * 60000 ? ctx.t("Billigst {time}", { time: ctx.fmt.time(c) }) : c ? ctx.t("Billigst nu") : ctx.t("Billigst"));
+
 function apCtl(ctx, a, st, x) {
   if (st.key === "offline") return "";
   if (a.kind === "coffee" && /^(switch|input_boolean)\./.test(a.entity)) {
@@ -284,10 +298,11 @@ function apCtl(ctx, a, st, x) {
       return `${x.left != null ? `<span class="ap-left num">${esc(leftText(ctx, x.left))}</span>` : ""}${x.stop ? `<button class="ap-mini-b" data-act="ap-dishstop" data-id="${esc(a.id)}">${esc(ctx.t("Stop"))}</button>` : ""}`;
     if (st.key === "scheduled")
       return x.stop ? `<button class="ap-mini-b" data-act="ap-dishstop" data-id="${esc(a.id)}">${esc(sched[a.id] ? ctx.t("Fortryd kl. {time}", { time: ctx.fmt.time(sched[a.id]) }) : ctx.t("Fortryd"))}</button>` : "";
-    if (!isHc(ctx, a) && !x.start) return "";
-    const c = isHc(ctx, a) ? cheapest(ctx) : null;
-    return `<button class="ap-mini-b pri" data-act="ap-dishnow" data-id="${esc(a.id)}">${svg("play")}${esc(ctx.t("Eco nu"))}</button>${
-      c && c - Date.now() > 15 * 60000 ? `<button class="ap-mini-b" data-act="ap-dishcheap" data-id="${esc(a.id)}">${svg("bolt")}${esc(ctx.t("Billigst {time}", { time: ctx.fmt.time(c) }))}</button>` : ""
+    const own = ownCheap(ctx);
+    if (!isHc(ctx, a) && !x.start && !own) return "";
+    const c = cheapAt(ctx, a);
+    return `${isHc(ctx, a) || x.start ? `<button class="ap-mini-b pri" data-act="ap-dishnow" data-id="${esc(a.id)}">${svg("play")}${esc(ctx.t("Eco nu"))}</button>` : ""}${
+      own || c ? `<button class="ap-mini-b" data-act="ap-dishcheap" data-id="${esc(a.id)}">${svg("bolt")}${esc(cheapLabel(ctx, c))}</button>` : ""
     }`;
   }
   return "";
@@ -300,8 +315,8 @@ const ord = (ctx, id, i, n) =>
 function firstFact(ctx, a, st, x) {
   if (st.key === "run" && x.left != null && a.kind !== "dish") return leftText(ctx, x.left);
   if (st.key === "done") return ctx.t("Tøm den gerne");
-  if (a.kind === "dish" && st.key !== "run" && st.key !== "offline" && isHc(ctx, a)) {
-    const c = cheapest(ctx);
+  if (a.kind === "dish" && st.key !== "run" && st.key !== "offline") {
+    const c = cheapAt(ctx, a);
     if (c) return ctx.t("kl. {time}", { time: ctx.fmt.time(c) });
   }
   return x.facts[0] ? x.facts[0][1] : "";
@@ -423,7 +438,7 @@ function openSheet(ctx, id) {
   const a = (ctx.data.appliances || []).find((x) => x.id === id);
   if (!a) return;
   const st = status(ctx, a), x = details(ctx, a), run = st.key === "run";
-  const c = a.kind === "dish" && isHc(ctx, a) && !run ? cheapest(ctx) : null;
+  const c = a.kind === "dish" && !run ? cheapAt(ctx, a) : null;
   const facts = [...(c ? [[ctx.t("Billigst start"), ctx.t("kl. {time}", { time: ctx.fmt.time(c) })]] : []), ...(run && x.left != null ? [[ctx.t("Tid"), leftText(ctx, x.left)]] : []), ...(x.finish ? [[ctx.t("Færdig"), ctx.fmt.time(x.finish)]] : []), ...x.facts];
   const ctl = apCtl(ctx, a, st, x) + mainControls(ctx, a, st).filter((h) => !/ap-pw/.test(h) || a.kind !== "coffee").join("") + controlButtons(ctx, { buttons: x.buttons.filter((b) => b.id !== x.stop && b.id !== x.start) });
   const area = ctx.area(a.entity);
@@ -466,7 +481,8 @@ function controlList(ctx, entity, chosen) {
     return `<p class="t-sub">${esc(
       ctx.hass.states[entity] ? ctx.t("Der er ingen andre enheder på samme enhed i Home Assistant.") : ctx.t("Vælg først apparatets hovedenhed. Andre enheder på samme enhed i Home Assistant dukker så op her.")
     )}</p>`;
-  return all
+  const bar = `<div class="apx-all"><button type="button" class="btn soft sm" data-act="ap-ctlall" data-on="1">${esc(ctx.t("Vælg alle"))}</button><button type="button" class="btn soft sm" data-act="ap-ctlall" data-on="0">${esc(ctx.t("Fravælg alle"))}</button></div>`;
+  return bar + all
     .map((id) => {
       const on = chosen ? chosen.includes(id) : interesting(ctx, id);
       const s = ctx.hass.states[id];
@@ -510,6 +526,9 @@ async function saveList(ctx, list, msg) {
 // ------------------------------------------------------------------ actions
 const find = (ctx, id) => (ctx.data.appliances || []).find((a) => a.id === id);
 const acts = {
+  "ap-ctlall": (el) => {
+    el.closest(".apx-ctls")?.querySelectorAll(".apx-ctl input").forEach((c) => (c.checked = el.dataset.on === "1"));
+  },
   "ap-open": (el, e, ctx) => openSheet(ctx, el.dataset.id),
   "ap-editmode": (el, e, ctx) => {
     editing = !editing;
@@ -609,8 +628,19 @@ const acts = {
     }
   },
   "ap-dishcheap": async (el, e, ctx) => {
-    const a = find(ctx, el.dataset.id), c = a && cheapest(ctx);
-    if (!a || !c) return;
+    const a = find(ctx, el.dataset.id);
+    if (!a) return;
+    const own = ownCheap(ctx), nm = a.name || ctx.name(a.entity);
+    if (own) {
+      const d = own.press.split(".")[0];
+      const ok = await ctx.call(d === "script" ? "script" : d, d === "script" ? "turn_on" : "press", { entity_id: own.press });
+      if (ok) ctx.toast(own.at ? ctx.t("{name} starter Eco kl. {time}, når strømmen er billigst", { name: nm, time: ctx.fmt.time(own.at) }) : ctx.t("{name} starter, når strømmen er billigst", { name: nm }));
+      return;
+    }
+    const c = cheapest(ctx);
+    if (!c) return;
+    // The cheapest hour is now: start right away.
+    if (c - Date.now() <= 15 * 60000) return acts["ap-dishnow"](el, e, ctx);
     const secs = Math.max(60, Math.round((c - Date.now()) / 60000) * 60);
     const ok = await ctx.call("home_connect", "set_program_and_options", {
       device_id: devOf(ctx, a),
@@ -720,6 +750,8 @@ function init(ctx) {
 }
 
 const css = `
+.apx-all { display: flex; gap: 6px; margin-bottom: 6px; }
+
 .apx-sugg { margin-top: 16px; }
 .apx-sugg-l { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .apx-sg { display: flex; align-items: center; gap: 10px; text-align: left; border: 1.5px dashed var(--line); background: var(--surface-2); color: var(--ink); border-radius: 16px; padding: 8px 10px; cursor: pointer; font: inherit; }
@@ -775,7 +807,7 @@ const en = {
   "Fortryd kl. {time}": "Cancel {time}",
   Fortryd: "Cancel",
   "Eco nu": "Eco now",
-  "Billigst {time}": "Cheapest {time}",
+  "Billigst {time}": "Cheapest {time}", "Billigst nu": "Cheapest now", Billigst: "Cheapest", "{name} starter, når strømmen er billigst": "{name} starts when power is cheapest",
   "kl. {time}": "at {time}",
   "Vis på siden": "Show on the page",
   "{n} valgt": "{n} chosen",

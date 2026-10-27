@@ -58,6 +58,16 @@ def test_settings() -> None:
     assert settings["waste"][0]["color"] == "#2F7D4F"
     with pytest.raises(vol.Invalid):
         validate_section("settings", {"language": "fr"})
+    assert validate_section("settings", {"skema_hide": "Pædagog i skolen"})["skema_hide"] == ["Pædagog i skolen"]
+    assert validate_section("settings", {})["skema_hide"] == []
+
+
+def test_routine_weeks() -> None:
+    plan = {"ida": {"2": {"bring": {"who": "anna", "at": "08:15"}}}}
+    assert validate_section("routines", {"weeks": {"2026-W44": plan}})["weeks"] == {"2026-W44": plan}
+    assert "weeks" not in validate_section("routines", {})
+    with pytest.raises(vol.Invalid):
+        validate_section("routines", {"weeks": ["2026-W44"]})
 
 
 def test_house() -> None:

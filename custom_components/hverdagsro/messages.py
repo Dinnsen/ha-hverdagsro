@@ -98,15 +98,29 @@ class Notifier:
 
     # ------------------------------------------------------------------ every day
 
+    def _day_plans(self, local: datetime) -> dict[str, Any]:
+        """Each child's Hent og bring for the day: this week's own plan when there is one, otherwise the fixed plan."""
+        routines = self.family.data["routines"]
+        year, week, weekday = local.isocalendar()
+        this_week = (routines.get("weeks") or {}).get(f"{year}-W{week:02d}") or {}
+        out: dict[str, Any] = {}
+        for kid_id, plan in (routines.get("pickups") or {}).items():
+            day = plan.get(str(weekday)) if isinstance(plan, dict) else None
+            if isinstance(day, dict):
+                out[kid_id] = day
+        for kid_id, plan in this_week.items():
+            day = plan.get(str(weekday)) if isinstance(plan, dict) else None
+            if isinstance(day, dict):
+                out[kid_id] = day
+        return out
+
     async def _async_morning(self, now: datetime) -> None:
         """Who brings and picks up the children today (Hent og bring)."""
         if not self.family.data["settings"].get("pickup_reminder", True):
             return
         lines: dict[str, list[str]] = {}
-        weekday = str(now.isoweekday())
-        for kid_id, plan in self.family.data["routines"].get("pickups", {}).items():
+        for kid_id, day in self._day_plans(dt_util.as_local(now)).items():
             kid = self.family.member(kid_id)
-            day = plan.get(weekday) if isinstance(plan, dict) else None
             if kid is None or not isinstance(day, dict):
                 continue
             for part, verb in (("bring", "bringer"), ("hent", "henter")):
@@ -126,10 +140,8 @@ class Notifier:
             return
         local = dt_util.as_local(now)
         soon = (local + timedelta(minutes=30)).strftime("%H:%M")
-        weekday = str(local.isoweekday())
-        for kid_id, plan in self.family.data["routines"].get("pickups", {}).items():
+        for kid_id, day in self._day_plans(local).items():
             kid = self.family.member(kid_id)
-            day = plan.get(weekday) if isinstance(plan, dict) else None
             if kid is None or not isinstance(day, dict):
                 continue
             for part, verb in (("bring", "bringer"), ("hent", "henter")):

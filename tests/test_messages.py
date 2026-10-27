@@ -91,3 +91,23 @@ async def test_pickups_in_the_morning_and_waste_in_the_evening(
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert [c.data["message"] for c in calls] == ["Restaffald bliver tømt i morgen. Husk at stille den ud."]
+
+
+async def test_a_week_with_its_own_pickups(
+    hass: HomeAssistant, init_integration: MockConfigEntry, freezer: FrozenDateTimeFactory
+) -> None:
+    calls = await _phones(hass, init_integration)
+    family = hass.config_entries.async_get_entry(init_integration.entry_id).runtime_data
+    # The fixed plan says 07:45 on Tuesdays; this week (2026-W44) it is 08:15.
+    await family.async_save_section(
+        "routines",
+        {
+            "pickups": {"ida": {"2": {"bring": {"who": "anna", "at": "07:45"}}}},
+            "weeks": {"2026-W44": {"ida": {"2": {"bring": {"who": "anna", "at": "08:15"}}}}},
+        },
+    )
+    assert family.data["routines"]["weeks"]["2026-W44"]["ida"]["2"]["bring"]["at"] == "08:15"
+    freezer.tick(timedelta(hours=14, minutes=1))  # Tuesday 07:01
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert [(c.service, c.data["message"]) for c in calls] == [("anna_phone", "Du bringer Ida kl. 08:15")]

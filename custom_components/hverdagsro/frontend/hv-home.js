@@ -882,7 +882,29 @@ function pMe(ctx) {
     ${p.notify ? "" : `<p class="t-sub" style="margin:-4px 0 10px">${esc(ctx.t("Vælg din telefon under Familieindstillinger › Familien for at få beskeder."))}</p>`}
     <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${msgs.map(([k, t]) => `<span>${esc(ctx.t(t))}</span><button class="toggle" data-act="home-msg" data-id="${k}" aria-pressed="${!off.includes(k)}" aria-label="${esc(ctx.t(t))}"></button>`).join("")}</div>
     ${kid ? `<div class="card-head" style="margin:18px 0 8px"><h2>${esc(ctx.t("Min PIN"))}</h2></div><p class="t-sub">${svg("lock")} ${esc(ctx.t("Din PIN skiftes af far eller mor."))}</p>` : ""}</div>
-    <button class="btn soft" data-act="home-who" style="margin-top:16px">${svg("users")}${esc(ctx.t("Skift bruger"))}</button></section>${skinPicker(ctx, p)}</div>`;
+    <button class="btn soft" data-act="home-who" style="margin-top:16px">${svg("users")}${esc(ctx.t("Skift bruger"))}</button></section>${skinPicker(ctx, p)}${homeScreenCard(ctx)}</div>`;
+}
+
+/* Hverdagsro as its own icon on the phone's home screen. */
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installEvt = e;
+});
+function homeScreenCard(ctx) {
+  const ua = navigator.userAgent || "", base = ctx.config?.static_url || "";
+  const haApp = /Home Assistant\//i.test(ua), ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/i.test(ua);
+  const standalone = window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone;
+  const steps = haApp
+    ? [ctx.t("Hjemmeskærmen kan ikke få et ikon fra Home Assistant-appen."), ctx.t("Åbn jeres Home Assistant i {browser} (samme adresse som i appen), og gå til Hverdagsro.", { browser: ios ? "Safari" : "Chrome" }), ctx.t("Følg så trinene herunder.")]
+    : ios
+      ? [ctx.t("Tryk på Del-knappen nederst i Safari."), ctx.t("Vælg »Føj til hjemmeskærm«."), ctx.t("Tryk »Tilføj«. Ikonet åbner Hverdagsro direkte.")]
+      : android
+        ? [ctx.t("Tryk på ⋮ øverst i Chrome."), ctx.t("Vælg »Føj til startskærm« eller »Installer app«."), ctx.t("Ikonet åbner Hverdagsro direkte.")]
+        : [ctx.t("I Chrome eller Edge: klik på installér-ikonet i adresselinjen, eller ⋮ › »Gem og del« › »Installer side som app«."), ctx.t("I Safari på Mac: Arkiv › »Føj til Dock«.")];
+  return `<section class="card s12 hs-card"><div class="hs-row">${base ? `<img class="hs-icon" src="${esc(base)}/icons/icon-192.png" alt="" width="64" height="64">` : ""}<div><h2>${esc(ctx.t("Hverdagsro på hjemmeskærmen"))}</h2><p class="t-sub">${esc(standalone ? ctx.t("Hverdagsro er åbnet fra hjemmeskærmen.") : ctx.t("Få Hverdagsro som sit eget ikon, der åbner lige ind i familiens hverdag."))}</p></div>
+    ${installEvt && !haApp ? `<button class="btn" data-act="home-install">${svg("plus")}${esc(ctx.t("Installér"))}</button>` : ""}</div>
+    ${standalone ? "" : `<ol class="hs-steps">${steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>`}</section>`;
 }
 
 // ---------------------------------------------------------------- who are you (shared tablet) and PIN
@@ -1153,6 +1175,14 @@ async function setPrefs(ctx, m, prefs) {
 
 // ---------------------------------------------------------------- acts
 const acts = {
+  "home-install": async (el, e, ctx) => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    const r = await installEvt.userChoice.catch(() => null);
+    installEvt = null;
+    if (r?.outcome === "accepted") ctx.toast(ctx.t("Hverdagsro er lagt på hjemmeskærmen"));
+    ctx.render(true);
+  },
   async "home-task"(el, ev, ctx) {
     const member = ctx.member(el.dataset.member);
     const mission = (ctx.data.missions || []).find((x) => x.id === el.dataset.id);
@@ -1414,6 +1444,10 @@ function startLive(ctx) {
 }
 
 const css = `
+.hs-card { margin-top: 0; } .hs-row { display: flex; gap: 14px; align-items: center; } .hs-row > div { flex: 1; } .hs-row h2 { margin: 0 0 2px; }
+.hs-icon { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 8px 20px rgba(110,74,255,.25); flex: none; }
+.hs-steps { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+
 .hh-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 98; }
 .home-fam .band-pick { margin-top: 12px; }
 .task .check[disabled] { opacity: .5; }
@@ -1422,6 +1456,15 @@ const css = `
 `;
 
 const en = {
+  "Hverdagsro på hjemmeskærmen": "Hverdagsro on the home screen", "Hverdagsro er åbnet fra hjemmeskærmen.": "Hverdagsro is open from the home screen.",
+  "Få Hverdagsro som sit eget ikon, der åbner lige ind i familiens hverdag.": "Get Hverdagsro as its own icon that opens straight into the family's day.", Installér: "Install",
+  "Hjemmeskærmen kan ikke få et ikon fra Home Assistant-appen.": "The Home Assistant app can't put an icon on the home screen.",
+  "Åbn jeres Home Assistant i {browser} (samme adresse som i appen), og gå til Hverdagsro.": "Open your Home Assistant in {browser} (same address as in the app) and go to Hverdagsro.",
+  "Følg så trinene herunder.": "Then follow the steps below.", "Tryk på Del-knappen nederst i Safari.": "Tap the Share button at the bottom of Safari.",
+  "Vælg »Føj til hjemmeskærm«.": "Choose »Add to Home Screen«.", "Tryk »Tilføj«. Ikonet åbner Hverdagsro direkte.": "Tap »Add«. The icon opens Hverdagsro directly.",
+  "Tryk på ⋮ øverst i Chrome.": "Tap ⋮ at the top of Chrome.", "Vælg »Føj til startskærm« eller »Installer app«.": "Choose »Add to Home screen« or »Install app«.", "Ikonet åbner Hverdagsro direkte.": "The icon opens Hverdagsro directly.",
+  "I Chrome eller Edge: klik på installér-ikonet i adresselinjen, eller ⋮ › »Gem og del« › »Installer side som app«.": "In Chrome or Edge: click the install icon in the address bar, or ⋮ › »Save and share« › »Install page as app«.",
+  "I Safari på Mac: Arkiv › »Føj til Dock«.": "In Safari on a Mac: File › »Add to Dock«.", "Hverdagsro er lagt på hjemmeskærmen": "Hverdagsro is on the home screen",
   nu: "now",
   "om {n} min": "in {n} min",
   "om {h} t {m} min": "in {h} h {m} min",

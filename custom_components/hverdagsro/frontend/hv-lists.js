@@ -164,13 +164,12 @@ function weekEvents(ctx) {
     out.push({ title: own || `${ctx.t("Skole")}${subj.length ? ` · ${subj.join(` ${ctx.t("og")} `)}` : ""}`, start: e[0].start, end: e[e.length - 1].end, allDay: false, calendar: e[0].calendar, who, src: ctx.name(e[0].calendar), school: true });
   }
   // Hent og bring: who picks up the children (routines.pickups).
-  const pk = ctx.data.routines?.pickups || {};
   // Only today and tomorrow, like the prototype: the whole week's plan is under Hent og bring.
   for (let i = 0; i < 2; i++) {
     const d = addDays(t0, i);
-    const wd = String(((d.getDay() + 6) % 7) + 1);
-    for (const [kid, plan] of Object.entries(pk)) {
-      const step = plan?.[wd]?.hent;
+    for (const kid of ctx.children().map((k) => k.id)) {
+      const pf = typeof KIDS.pickupFor === "function" ? KIDS.pickupFor(ctx, kid, d) : null;
+      const step = pf?.hent;
       const kidM = ctx.member(kid);
       if (!step?.who || !kidM) continue;
       const by = ctx.member(step.who) || (ctx.data.routines?.helpers || []).find((h) => h.id === step.who);
