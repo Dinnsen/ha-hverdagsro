@@ -155,7 +155,7 @@ def _custody(value: Any) -> dict[str, Any] | None:
     """A child with two homes: which days of a repeating cycle they are here, plus single dates the other way."""
     if value is None:
         return None
-    plan = CUSTODY(value)
+    plan: dict[str, Any] = CUSTODY(value)
     if len(plan["except"]) > 200:
         raise vol.Invalid("too many single dates")
     return plan
