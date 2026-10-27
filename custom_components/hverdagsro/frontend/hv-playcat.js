@@ -288,3 +288,6 @@ export const levelOf = (xp) => LEVELS.filter((n) => xp >= n).length;
 
 /* How long a season pack is in the shop: days before and after the occasion. */
 export const SEASON_DAYS = { jul: [30, 2], halloween: [21, 3], paaske: [14, 2], fodselsdag: [14, 3], fastelavn: [14, 2], nytaar: [6, 3], sankthans: [10, 2], valentin: [10, 2], grundlov: [7, 2] };
+
+/* The drawing helpers, for the other packs (hv-packs2.js, hv-packs3.js). */
+export const DRAW = { r, c, e, p, ln, dot, gl, L, tx, star, heart, paw, rep, leaf, T3 };

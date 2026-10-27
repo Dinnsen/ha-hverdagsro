@@ -35,6 +35,7 @@ const runs = [
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]"],
   ["--user", "ida", "--view", "vaerelse", "--narrow", "--width", "844", "--height", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"full\"]"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", ".pl-shopb"],
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "#pl-stage", "--click", "[data-pl=\"sound\"]", "--click", "[data-pl=\"sound\"]"],
   ["--user", "ida", "--view", "lister", "--narrow", "--width", "390"],
   ["--user", "tablet"],
   ["--user", "tablet", "--as", "oskar", "--view", "dag"],
