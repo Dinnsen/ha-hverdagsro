@@ -92,7 +92,8 @@ SECTIONS: Final = (
 )
 MAX_QUICK: Final = 40
 MAX_ROUTINES_BYTES: Final = 120_000
-MAX_PLAYROOM_BYTES: Final = 40_000
+MAX_PLAYROOM_BYTES: Final = 80_000
+MAX_ROOM_PREFS_BYTES: Final = 20_000
 
 SIGNAL_UPDATED: Final = "hverdagsro_updated_{entry_id}"
 

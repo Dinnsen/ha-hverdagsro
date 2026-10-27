@@ -5,15 +5,10 @@
 import { esc } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 import * as Kids from "./hv-kids.js";
+import { occasions, dayNumber } from "./hv-decor.js";
+import { OL, S, shade, THINGS, PATTERNS_X, FLOORS_X, EXTRAS_X, PACKS, SPACES, FEST_WALL, LEVELS, LEVEL_GIFTS, LEVEL_THINGS, levelOf, SEASON_DAYS } from "./hv-playcat.js";
 
 const W = 1000, H = 620, FLOOR = 440;
-const OL = "#2B2340"; // the outline everything is drawn with
-const S = (o = "") => `stroke="${OL}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"${o ? " " + o : ""}`;
-const shade = (hex, k) => {
-  const n = parseInt(String(hex).slice(1), 16);
-  const f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
-  return "#" + [f(n >> 16), f((n >> 8) & 255), f(n & 255)].map((v) => v.toString(16).padStart(2, "0")).join("");
-};
 
 /* ------------------------------------------------------------------ what can go in the room
    Each thing is drawn from its bottom centre (0,0) upwards. c: its colour (the child can change it). */
@@ -102,7 +97,7 @@ function avatarSvg(me, mood = "") {
     sloife: `<path d="M24 -236 l-22 -14 v28z M24 -236 l22 -14 v28z" fill="#F15BB5" ${S("stroke-width=\"3\"")}/><circle cx="24" cy="-236" r="6" fill="#F15BB5" ${S("stroke-width=\"3\"")}/>`,
     krone: `<path d="M-34 -236 l10 -30 14 20 10 -26 10 26 14 -20 10 30z" fill="#FFD93D" ${S()}/>`,
     horn: `<path d="M-8 -238 L0 -290 L8 -238Z" fill="#FFD93D" ${S()}/><path d="M-4 -258 h8 M-6 -248 h12" stroke="${OL}" stroke-width="2"/>`,
-  }[me.extra] || "";
+  }[me.extra] || (EXTRAS_X[me.extra] ? EXTRAS_X[me.extra][1](hc) : "");
   const mouth = mood === "wow" ? `<ellipse cx="0" cy="-150" rx="9" ry="11" fill="${OL}"/>` : mood === "sleep" ? `<path d="M-10 -152 h20" ${S()}/>` : `<path d="M-14 -156 Q0 -142 14 -156" fill="#fff" ${S("stroke-width=\"3.5\"")}/>`;
   const eyes = mood === "sleep" ? `<path d="M-30 -180 q8 6 16 0 M14 -180 q8 6 16 0" fill="none" ${S("stroke-width=\"3.5\"")}/>` : `<ellipse cx="-22" cy="-180" rx="7" ry="9" fill="${OL}"/><ellipse cx="22" cy="-180" rx="7" ry="9" fill="${OL}"/><circle cx="-19" cy="-184" r="2.6" fill="#fff"/><circle cx="25" cy="-184" r="2.6" fill="#fff"/>`;
   return `${hairBack}
@@ -134,9 +129,12 @@ function patternDefs(d) {
     hjerter: `<rect width="60" height="60" fill="${c}"/><path d="M30 42 C10 28 16 14 26 16 C29 17 30 20 30 21 C30 20 31 17 34 16 C44 14 50 28 30 42z" fill="${dk}"/>`,
     skyer: `<rect width="80" height="60" fill="${c}"/><path d="M14 36 a10 10 0 0 1 16 -10 a12 12 0 0 1 22 4 a8 8 0 0 1 2 16 h-36 a8 8 0 0 1 -4 -10z" fill="${lt}"/>`,
   }[p];
-  const floor = FLOORS[d.floor] || FLOORS.lys;
+  const PX = PATTERNS_X[p];
+  const floor = FLOORS[d.floor] || FLOORS_X[d.floor] || FLOORS.lys;
   const fl = d.floor === "tern" ? `<rect width="80" height="40" fill="#F3F3F3"/><rect width="40" height="20" fill="#CFCFE0"/><rect x="40" y="20" width="40" height="20" fill="#CFCFE0"/>` : d.floor === "lys" || d.floor === "mork" ? `<rect width="200" height="36" fill="${floor[1]}"/><path d="M0 35 h200 M120 0 v36" stroke="${shade(floor[1], 0.82)}" stroke-width="3"/>` : `<rect width="40" height="40" fill="${floor[1]}"/><circle cx="20" cy="20" r="2" fill="${shade(floor[1], 0.9)}"/>`;
-  return `<defs>${pat ? `<pattern id="pl-wp" width="${p === "skyer" ? 80 : 60}" height="60" patternUnits="userSpaceOnUse">${pat}</pattern>` : ""}<pattern id="pl-fl" width="${d.floor === "lys" || d.floor === "mork" ? 200 : d.floor === "tern" ? 80 : 40}" height="${d.floor === "lys" || d.floor === "mork" ? 36 : d.floor === "tern" ? 40 : 40}" patternUnits="userSpaceOnUse">${fl}</pattern>
+  const planks = d.floor === "lys" || d.floor === "mork" || d.floor === "scene";
+  const fl2 = d.floor === "scene" ? `<rect width="200" height="36" fill="${floor[1]}"/><path d="M0 35 h200 M120 0 v36" stroke="${shade(floor[1], 0.7)}" stroke-width="3"/>` : d.floor === "regnbue" ? `<rect width="40" height="40" fill="#F7B5CF"/><rect x="0" y="0" width="20" height="20" fill="#C7E6FF"/><rect x="20" y="20" width="20" height="20" fill="#FFF0B8"/>` : d.floor === "graes" ? `<rect width="40" height="40" fill="${floor[1]}"/><path d="M6 30 l3 -8 3 8 M24 14 l3 -8 3 8" stroke="${shade(floor[1], 0.8)}" stroke-width="2" fill="none"/>` : fl;
+  return `<defs>${pat ? `<pattern id="pl-wp" width="${p === "skyer" ? 80 : 60}" height="60" patternUnits="userSpaceOnUse">${pat}</pattern>` : PX ? `<pattern id="pl-wp" width="${PX[2]}" height="${PX[3]}" patternUnits="userSpaceOnUse">${PX[1](c, dk, lt)}</pattern>` : ""}<pattern id="pl-fl" width="${planks ? 200 : d.floor === "tern" ? 80 : 40}" height="${planks ? 36 : 40}" patternUnits="userSpaceOnUse">${fl2}</pattern>
     <radialGradient id="pl-g"><stop offset="0" stop-color="#FFE8A3" stop-opacity=".9"/><stop offset="1" stop-color="#FFE8A3" stop-opacity="0"/></radialGradient></defs>`;
 }
 function sky(ctx) {
@@ -181,39 +179,88 @@ const hourIn = (slot) => {
   return { morgen: [5, 12], eftermiddag: [12, 17.5], aften: [17.5, 29] }[slot]?.[0] <= hh && hh < ({ morgen: [5, 12], eftermiddag: [12, 17.5], aften: [17.5, 29] }[slot]?.[1] ?? 0);
 };
 
+/* The room the child is in: the bedroom itself (the playroom data), or one of the rooms they have opened. */
+const spaceId = () => (ST.d.space && SPACES.some((x) => x.id === ST.d.space) ? ST.d.space : "vaerelse");
+function R() {
+  const id = spaceId();
+  if (id === "vaerelse") return ST.d;
+  const all = (ST.d.spaces ||= {});
+  // A new room comes with a few things from the start pack.
+  const start = { hule: [["rug", 500, 600], ["beanbag", 250, 580], ["teddy", 330, 590], ["moon", 160, 300]], trae: [["rug", 520, 600], ["plant", 120, 590], ["wallshelf", 300, 250], ["ball", 760, 600]], rumstation: [["moon", 240, 320], ["blocks", 820, 600]], scene: [["guitar", 820, 600]] }[id] || [];
+  const r = (all[id] ||= { items: start.map(([k, x, y], i) => ({ id: `${id}${i}`, k, x, y })) });
+  r.items ||= [];
+  return r;
+}
+/* The walls, window and floor of the other rooms. The window always shows the real sky. */
+function backdrop(id, s0, s1, tod) {
+  const win = (x, y, rr) => `<clipPath id="pl-wc"><circle cx="${x}" cy="${y}" r="${rr}"/></clipPath><circle cx="${x}" cy="${y}" r="${rr + 14}" fill="#fff" ${S()}/><g clip-path="url(#pl-wc)"><rect x="${x - rr}" y="${y - rr}" width="${rr * 2}" height="${rr * 2}" fill="url(#pl-sky)"/>${tod === "night" ? [[-30, -20], [20, -40], [40, 20], [-10, 30]].map(([a, b]) => `<circle cx="${x + a}" cy="${y + b}" r="3" fill="#fff" class="pl-twinkle"/>`).join("") : `<circle cx="${x + 30}" cy="${y - 26}" r="20" fill="#FFE066"/>`}</g>`;
+  const sky = `<linearGradient id="pl-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s0}"/><stop offset="1" stop-color="${s1}"/></linearGradient>`;
+  if (id === "hule")
+    return `${sky}<rect width="${W}" height="${H}" fill="#5B3A6E"/>${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M500 -10 L${-120 + i * 250} ${FLOOR + 10}" stroke="#4A2D5C" stroke-width="10" fill="none"/>`).join("")}
+      <path d="M760 ${FLOOR} L860 120 L960 ${FLOOR}Z" fill="url(#pl-sky)" ${S()}/><path d="M760 ${FLOOR} L860 120 L820 ${FLOOR}Z" fill="#7B4F8E" ${S()}/>
+      <path d="M40 60 Q260 140 500 70 Q740 140 960 60" fill="none" stroke="#7A6A8A" stroke-width="3"/>${Array.from({ length: 14 }, (_, i) => {
+        const x = 60 + i * 66, y = 70 + Math.sin((i / 13) * Math.PI * 2) * 26 + 24;
+        return `<g class="pl-lamp"><circle cx="${x}" cy="${y}" r="16" class="pl-glow on" fill="#FFE8A3"/><circle cx="${x}" cy="${y}" r="7" fill="${["#FFE066", "#FF8FA3", "#9BE7FF"][i % 3]}"/></g>`;
+      }).join("")}
+      <rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="#8C5E9E"/>${[120, 330, 560, 800].map((x, i) => `<ellipse cx="${x}" cy="${FLOOR + 40 + (i % 2) * 30}" rx="110" ry="26" fill="${["#9B5DE5", "#F15BB5", "#4D96FF", "#FFB347"][i]}" opacity=".55"/>`).join("")}`;
+  if (id === "trae")
+    return `${sky}<rect width="${W}" height="${FLOOR}" fill="#C98B55"/>${Array.from({ length: 13 }, (_, i) => `<path d="M${i * 80} 0 V${FLOOR}" stroke="#A9764C" stroke-width="4"/><circle cx="${i * 80 + 40}" cy="${30 + (i % 3) * 140}" r="4" fill="#8B5A2B"/>`).join("")}
+      ${win(680, 190, 110)}<path d="M560 190 H800 M680 70 V310" stroke="${OL}" stroke-width="10"/>
+      <path d="M-10 120 Q120 90 220 150 L240 130" fill="none" stroke="#8B5A2B" stroke-width="30" stroke-linecap="round"/>${[[60, 100], [130, 120], [200, 140]].map(([x, y], i) => `<ellipse cx="${x}" cy="${y - 20}" rx="34" ry="18" fill="${i % 2 ? "#6BCB77" : "#5A9E5F"}" ${S()}/>`).join("")}
+      <path d="M0 ${FLOOR - 16} H${W}" stroke="#8B5A2B" stroke-width="16"/><rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="#A9764C"/>${Array.from({ length: 5 }, (_, i) => `<path d="M0 ${FLOOR + 36 * (i + 1)} H${W}" stroke="#8B5A2B" stroke-width="3"/>`).join("")}
+      <rect x="430" y="${FLOOR + 60}" width="140" height="70" rx="8" fill="#5A3A20" ${S()}/><path d="M460 ${FLOOR + 60} V${H} M540 ${FLOOR + 60} V${H} M460 ${FLOOR + 90} H540 M460 ${FLOOR + 120} H540" stroke="#E9C46A" stroke-width="6"/>`;
+  if (id === "rumstation")
+    return `<rect width="${W}" height="${FLOOR}" fill="#3A4466"/>${Array.from({ length: 6 }, (_, i) => `<rect x="${i * 170 + 6}" y="10" width="158" height="${FLOOR - 40}" rx="10" fill="#434E73" stroke="#2B3352" stroke-width="4"/>${[20, FLOOR - 50].map((y) => `<circle cx="${i * 170 + 22}" cy="${y}" r="5" fill="#9AA4BA"/><circle cx="${i * 170 + 148}" cy="${y}" r="5" fill="#9AA4BA"/>`).join("")}`).join("")}
+      <circle cx="660" cy="190" r="136" fill="#CFD6E6" ${S()}/><circle cx="660" cy="190" r="116" fill="#0B1030" ${S()}/>${[[-80, -40], [40, -80], [70, 50], [-40, 70], [10, 10], [-90, 30], [90, -20]].map(([a, b]) => `<circle cx="${660 + a}" cy="${190 + b}" r="${2 + ((a + b) & 1)}" fill="#fff" class="pl-twinkle"/>`).join("")}<circle cx="620" cy="230" r="46" fill="#4D96FF" ${S()}/><path d="M590 214 q20 -10 30 6 q-6 20 -26 14z M630 250 q18 -6 22 10" fill="#6BCB77" stroke="${OL}" stroke-width="3"/>
+      ${[120, 220, 320].map((x, i) => `<circle cx="${x}" cy="90" r="9" fill="${["#FF6B6B", "#6BCB77", "#FFD93D"][i]}" class="pl-blink" style="animation-delay:${-i * 0.6}s"/>`).join("")}
+      <rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="#7A849E"/>${Array.from({ length: 25 }, (_, i) => `<path d="M${i * 40} ${FLOOR} V${H}" stroke="#646E88" stroke-width="3"/>`).join("")}<path d="M0 ${FLOOR} H${W}" stroke="#FFD93D" stroke-width="8" stroke-dasharray="30 20"/>`;
+  if (id === "scene")
+    return `<rect width="${W}" height="${H}" fill="#1B1530"/>${[[200, "#F15BB5"], [500, "#FFE066"], [800, "#00BBF9"]].map(([x, c]) => `<path d="M${x} -10 L${x - 150} ${FLOOR + 40} H${x + 150}Z" fill="${c}" opacity=".16" class="pl-beam"/>`).join("")}
+      <path d="M0 0 H150 Q120 220 160 ${FLOOR} H0Z" fill="#D9473B" ${S()}/><path d="M${W} 0 H${W - 150} Q${W - 120} 220 ${W - 160} ${FLOOR} H${W}Z" fill="#D9473B" ${S()}/>${[40, 80, 120].map((x) => `<path d="M${x} 0 Q${x - 10} 220 ${x + 10} ${FLOOR}" stroke="#B5352B" stroke-width="5" fill="none"/><path d="M${W - x} 0 Q${W - x + 10} 220 ${W - x - 10} ${FLOOR}" stroke="#B5352B" stroke-width="5" fill="none"/>`).join("")}
+      <path d="M0 0 H${W} V50 Q${W / 2} 90 0 50Z" fill="#B5352B" ${S()}/>${Array.from({ length: 9 }, (_, i) => `<circle cx="${100 + i * 100}" cy="${130 + (i % 2) * 20}" r="3" fill="#fff" class="pl-twinkle" style="animation-delay:${-i * 0.4}s"/>`).join("")}
+      <rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="#8B5A2B"/>${Array.from({ length: 5 }, (_, i) => `<path d="M0 ${FLOOR + 36 * (i + 1)} H${W}" stroke="#6E4520" stroke-width="3"/>`).join("")}<path d="M0 ${FLOOR} H${W}" stroke="#FFD93D" stroke-width="6"/>${Array.from({ length: 12 }, (_, i) => `<g class="pl-lamp"><circle cx="${40 + i * 84}" cy="${FLOOR + 6}" r="10" class="pl-glow on" fill="#FFE8A3"/><circle cx="${40 + i * 84}" cy="${FLOOR + 6}" r="5" fill="#FFE066"/></g>`).join("")}`;
+  return "";
+}
+
 function stage(ctx, m) {
-  const d = ST.d, [s0, s1, tod] = sky(ctx), lights = realLights(ctx, m), lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
-  const happy = (() => {
-    const L = bubbles(ctx, m);
-    return L.length < 3;
-  })();
+  const d = ST.d, room = R(), sid = spaceId(), [s0, s1, tod] = sky(ctx), lights = sid === "vaerelse" ? realLights(ctx, m) : [], lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
+  const happy = bubbles(ctx, m).length < 3;
   let s = patternDefs(d);
-  s += `<rect width="${W}" height="${FLOOR}" fill="${d.wall?.p && d.wall.p !== "ren" ? "url(#pl-wp)" : wallFill(d)}"/><rect y="${FLOOR - 16}" width="${W}" height="16" fill="#fff" ${S()}/>`;
-  s += `<rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="url(#pl-fl)"/><rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="url(#pl-shadow)" opacity=".0"/>`;
-  // the window shows the real sky
-  s += `<g class="pl-win"><rect x="560" y="70" width="230" height="200" rx="14" fill="#fff" ${S()}/><linearGradient id="pl-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s0}"/><stop offset="1" stop-color="${s1}"/></linearGradient><rect x="574" y="84" width="202" height="172" rx="6" fill="url(#pl-sky)"/>${
-    tod === "night" ? `<circle cx="720" cy="130" r="22" fill="#FFF6C9"/><circle cx="730" cy="122" r="20" fill="${s0}"/>${[[600, 110], [640, 150], [690, 100], [750, 200], [610, 210]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="#fff" class="pl-twinkle"/>`).join("")}` : `<circle cx="720" cy="130" r="26" fill="#FFE066" ${tod === "dusk" ? 'opacity=".8"' : ""}/><g class="pl-cloud"><ellipse cx="630" cy="150" rx="34" ry="14" fill="#fff"/><ellipse cx="650" cy="140" rx="22" ry="16" fill="#fff"/></g>`
-  }<path d="M675 84 v172 M574 170 h202" ${S()} fill="none"/><path d="M560 60 h230" stroke="#FF6B6B" stroke-width="16" stroke-linecap="round"/></g>`;
-  // the light switch for the real lights
-  if (lights.length) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset i dit værelse"))}"><rect x="500" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="510" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
+  if (sid === "vaerelse") {
+    s += `<rect width="${W}" height="${FLOOR}" fill="${d.wall?.p && d.wall.p !== "ren" ? "url(#pl-wp)" : wallFill(d)}"/><rect y="${FLOOR - 16}" width="${W}" height="16" fill="#fff" ${S()}/>`;
+    s += `<rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="url(#pl-fl)"/>`;
+    // the window shows the real sky
+    s += `<g class="pl-win"><rect x="560" y="70" width="230" height="200" rx="14" fill="#fff" ${S()}/><linearGradient id="pl-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s0}"/><stop offset="1" stop-color="${s1}"/></linearGradient><rect x="574" y="84" width="202" height="172" rx="6" fill="url(#pl-sky)"/>${
+      tod === "night" ? `<circle cx="720" cy="130" r="22" fill="#FFF6C9"/><circle cx="730" cy="122" r="20" fill="${s0}"/>${[[600, 110], [640, 150], [690, 100], [750, 200], [610, 210]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="#fff" class="pl-twinkle"/>`).join("")}` : `<circle cx="720" cy="130" r="26" fill="#FFE066" ${tod === "dusk" ? 'opacity=".8"' : ""}/><g class="pl-cloud"><ellipse cx="630" cy="150" rx="34" ry="14" fill="#fff"/><ellipse cx="650" cy="140" rx="22" ry="16" fill="#fff"/></g>`
+    }<path d="M675 84 v172 M574 170 h202" ${S()} fill="none"/><path d="M560 60 h230" stroke="#FF6B6B" stroke-width="16" stroke-linecap="round"/></g>`;
+    // the light switch for the real lights
+    if (lights.length) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset i dit værelse"))}"><rect x="500" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="510" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
+  } else s += backdrop(sid, s0, s1, tod);
   // things, back to front
   const drawItem = (it) => {
-    const T = ITEMS[it.k];
+    const T = CAT[it.k];
     if (!T) return "";
     const sc = it.s || 1, sel = ST.build && ST.sel === it.id;
-    return `<g class="pl-it${T[1] === "lys" ? " lampit" : ""}${sel ? " sel" : ""}" data-pl="item" data-id="${esc(it.id)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T[4](it.c || T[3])}${sel ? `<rect x="-${ITEMW(it.k) / 2 + 12}" y="-${ITEMH(it.k) + 12}" width="${ITEMW(it.k) + 24}" height="${ITEMH(it.k) + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
+    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${sel ? " sel" : ""}" data-pl="item" data-id="${esc(it.id)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
   };
-  const wallIt = d.items.filter((it) => ITEMS[it.k] && ITEMS[it.k][1] === "væg"), flat = d.items.filter((it) => ITEMS[it.k]?.[2] === 1);
+  const items = room.items || [];
+  const isWall = (it) => wallK(it.k);
+  const wallIt = items.filter(isWall), flat = items.filter((it) => !isWall(it) && CAT[it.k]?.flat === 1);
   s += wallIt.map(drawItem).join("") + flat.map(drawItem).join("");
   const actors = [
-    ...d.items.filter((it) => ITEMS[it.k] && ITEMS[it.k][1] !== "væg" && ITEMS[it.k][2] !== 1).map((it) => [it.y, drawItem(it)]),
-    [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body">${avatarSvg(d.me, ST.mood || (tod === "night" && !lit ? "sleep" : ""))}</g></g>`],
+    ...items.filter((it) => CAT[it.k] && !isWall(it) && CAT[it.k].flat !== 1).map((it) => [it.y, drawItem(it)]),
+    [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body">${avatarSvg(d.me, ST.mood || (tod === "night" && !lit && sid === "vaerelse" ? "sleep" : ""))}</g></g>`],
     ...(m.pet && ctx.feature(m, "pet") ? [[d.py, `<g class="pl-pet${happy ? " happy" : ""}" data-pl="pet" transform="translate(${d.px} ${d.py}) scale(.8)"><ellipse cx="0" cy="0" rx="60" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-petb">${petInRoom(m, happy)}</g><text y="-150" text-anchor="middle" class="pl-petname">${esc(m.pet.name || "")}</text></g>`]] : []),
   ].sort((a, b) => a[0] - b[0]);
   s += actors.map((a) => a[1]).join("");
-  // night: dark unless the lights are on
-  s += `<rect width="${W}" height="${H}" class="pl-dark" fill="#0B1030" opacity="${tod === "night" && !lit ? 0.42 : tod === "dusk" && !lit ? 0.18 : 0}" pointer-events="none"/>`;
+  // night: dark unless the lights are on (the bedroom and the tree house have real windows)
+  const dark = sid === "vaerelse" || sid === "trae";
+  s += `<rect width="${W}" height="${H}" class="pl-dark" fill="#0B1030" opacity="${dark && tod === "night" && !lit ? 0.42 : dark && tod === "dusk" && !lit ? 0.18 : 0}" pointer-events="none"/>`;
   if (lit) s += `<rect width="${W}" height="${H}" fill="#FFD27A" opacity=".08" pointer-events="none"/>`;
+  // the treasure chest with the coins of the day
+  const g = game(ctx, m);
+  if (!ST.build && ctx.data.today && g.daily !== ctx.data.today)
+    s += `<g class="pl-chest" data-pl="daily" role="button" aria-label="${esc(ctx.t("Dagens mønter"))}" transform="translate(${sid === "vaerelse" ? 420 : 880} ${H - 30})"><ellipse cx="0" cy="4" rx="54" ry="9" fill="rgba(0,0,0,.18)"/>${CAT.skattekiste ? CAT.skattekiste.d("#C98B55") : ""}<g class="pl-sparkle"><path d="M-40 -110 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z M44 -96 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#FFE066" stroke="${OL}" stroke-width="2"/></g></g>`;
   // the bubbles to tap
   const B = ST.build ? [] : bubbles(ctx, m);
   s += B.map((b, i) => {
@@ -225,40 +272,185 @@ function stage(ctx, m) {
 const ITEMW = (k) => ({ bed: 300, bunk: 230, desk: 220, chair: 72, shelf: 180, wardrobe: 170, beanbag: 140, rug: 340, floorlamp: 90, tablelamp: 60, plant: 100, teddy: 64, ball: 52, tipi: 220, aquarium: 132, guitar: 80, dollhouse: 192, car: 96, blocks: 84, gaming: 100, poster: 100, rainbow: 124, clock: 72, garland: 320, wallshelf: 160, mirror: 80, photo: 92, moon: 80 })[k] || 100;
 const ITEMH = (k) => ({ bed: 150, bunk: 330, desk: 130, chair: 130, shelf: 240, wardrobe: 290, beanbag: 96, rug: 40, floorlamp: 236, tablelamp: 80, plant: 150, teddy: 112, ball: 52, tipi: 246, aquarium: 90, guitar: 180, dollhouse: 190, car: 52, blocks: 80, gaming: 170, poster: 130, rainbow: 92, clock: 72, garland: 60, wallshelf: 66, mirror: 140, photo: 70, moon: 80 })[k] || 100;
 
+/* ------------------------------------------------------------------ the catalogue: the start pack and the packs
+   One shape for every thing: { n: name, cat, flat, c: colour, w, h, d: draw(c), price, pack }. */
+const CAT = {};
+for (const [k, v] of Object.entries(ITEMS)) CAT[k] = { n: v[0], cat: v[1], flat: v[2], c: v[3], w: ITEMW(k), h: ITEMH(k), d: v[4], price: 0, pack: "start" };
+for (const pk of PACKS) for (const k of pk.items) if (THINGS[k]) {
+  const v = THINGS[k];
+  CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: v[6] || 20, flat: v[7] || 0, pack: pk.id };
+}
+const LOOKS = { p: [PATTERNS_X, 25], f: [FLOORS_X, 20], x: [EXTRAS_X, 30] };
+/* A thing or a look ("p:…" wallpaper, "f:…" floor, "x:…" to wear): its name and price. */
+function info(id) {
+  if (CAT[id]) return { n: CAT[id].n, price: CAT[id].price };
+  const [t, k] = String(id).split(":"), L = LOOKS[t];
+  return L && L[0][k] ? { n: L[0][k][0], price: L[1] } : { n: id, price: 0 };
+}
+const packOf = (id) => PACKS.find((pk) => pk.items.includes(id));
+const game = (ctx, m) => ({ coins: 0, xp: 0, owned: [], ...(ctx.data.game?.[m.id] || {}) });
+/* What the child has: the start pack, what they have unlocked, and the gifts of their level. */
+function ownedSet(ctx, m) {
+  const g = game(ctx, m), lv = levelOf(g.xp), set = new Set(g.owned);
+  for (const [n, id] of Object.entries(LEVEL_THINGS)) if (lv >= +n) set.add(id);
+  return set;
+}
+const has = (owned, id) => (CAT[id] ? CAT[id].pack === "start" || owned.has(id) : owned.has(id));
+/* A season pack is in the shop around its occasion (the ones the family decorates for). */
+function seasonOpen(ctx, pk) {
+  if (!pk.season) return { open: true };
+  const set = ctx.data.settings || {};
+  if (set.decor?.[pk.season] === false) return { open: false };
+  const o = occasions(set, ctx.data.family).find((x) => x[0] === pk.season);
+  if (!o) return { open: false };
+  const t = dayNumber(new Date()), Y = new Date().getFullYear(), [pre, post] = SEASON_DAYS[pk.season] || [10, 2];
+  let next = null;
+  for (const y of [Y - 1, Y, Y + 1])
+    for (const [a, b] of o[4](y)) {
+      if (t >= a - pre && t <= b + post) return { open: true, until: b + post, day: a };
+      if (a - pre > t && (next == null || a - pre < next)) next = a - pre;
+    }
+  return { open: false, next };
+}
+const fromDay = (n) => new Date(n * 864e5);
+/* A small picture of a thing or a look, for the drawer and the shop. */
+function thumb(id, me) {
+  if (CAT[id]) {
+    const T = CAT[id];
+    return `<svg viewBox="${-T.w / 2 - 14} ${-T.h - 14} ${T.w + 28} ${T.h + 28}" aria-hidden="true">${T.d(T.c)}</svg>`;
+  }
+  const [t, k] = String(id).split(":");
+  if (t === "p") {
+    const P = PATTERNS_X[k], c = "#C7E6FF";
+    return `<svg viewBox="0 0 120 90" aria-hidden="true"><defs><pattern id="th-${k}" width="${P[2]}" height="${P[3]}" patternUnits="userSpaceOnUse">${P[1](c, shade(c, 0.85), shade(c, 1.08))}</pattern></defs><rect x="4" y="4" width="112" height="82" rx="12" fill="url(#th-${k})" ${S()}/></svg>`;
+  }
+  if (t === "f") return `<svg viewBox="0 0 120 90" aria-hidden="true"><path d="M4 40 L30 14 H90 L116 40 V80 Q116 86 110 86 H10 Q4 86 4 80Z" fill="${FLOORS_X[k][1]}" ${S()}/></svg>`;
+  if (t === "x") return `<svg viewBox="-110 -340 220 220" aria-hidden="true">${avatarSvg({ ...(me || {}), extra: k })}</svg>`;
+  return "";
+}
+const wallK = (k) => !!CAT[k] && (CAT[k].cat === "væg" || FEST_WALL.has(k));
+const COIN = `<svg viewBox="0 0 24 24" class="pl-coin" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#FFD93D" stroke="#2B2340" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="none" stroke="#E0A800" stroke-width="2"/></svg>`;
+
 /* ------------------------------------------------------------------ the page */
 function render(ctx) {
   const m = ctx.me;
   if (!m) return `<section class="card"><p class="t-sub">${esc(ctx.t("Vælg, hvem du er."))}</p></section>`;
-  if (!ST || ST.kid !== m.id) ST = { kid: m.id, d: JSON.parse(JSON.stringify(m.playroom || defaults(m))), sel: null, build: false, tab: "mob" };
-  const B = bubbles(ctx, m), pts = ctx.points(m.id), lights = realLights(ctx, m), lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
-  const head = `<div class="pl-head"><div><span class="eyebrow">${esc(ctx.t("Mit værelse"))}</span><h2 class="h2">${esc(ctx.t("Hej {name}!", { name: m.name }))}</h2><span class="t-sub">${esc(ST.build ? ctx.t("Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.") : B.length ? ctx.t("Tryk på boblerne, når du har gjort det.") : ctx.t("Alt er klaret lige nu. Godt gået!"))}</span></div>
-    <div class="pl-acts">${lights.length && !ST.build ? `<button class="btn soft" data-go="mitlys">${svg("bulb")}${esc(ctx.t("Lys og stemning"))}</button>` : ""}${ctx.feature(m, "points") ? `<span class="pl-pill">${svg("pstar")}<b class="num">${pts}</b></span>` : ""}<button class="btn${ST.build ? "" : " soft"}" data-pl="build">${svg(ST.build ? "check" : "edit")}${esc(ST.build ? ctx.t("Færdig") : ctx.t("Byg dit værelse"))}</button></div></div>`;
-  return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox${ST.build ? " build" : ""}"><svg id="pl-stage" class="${lit ? "on" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(ctx.t("Dit værelse"))}">${stage(ctx, m)}</svg>${ST.build ? selTools(ctx) : ""}</div>${ST.build ? drawer(ctx, m) : ""}</div>`;
+  if (!ST || ST.kid !== m.id) ST = { kid: m.id, d: JSON.parse(JSON.stringify(m.playroom || defaults(m))), sel: null, build: false, shop: false, tab: "mob" };
+  const t = ctx.t, B = bubbles(ctx, m), pts = ctx.points(m.id), sid = spaceId(), lights = sid === "vaerelse" ? realLights(ctx, m) : [], lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
+  const g = game(ctx, m), lv = levelOf(g.xp), lo = LEVELS[lv - 1] || 0, hi = LEVELS[lv];
+  const prog = hi ? Math.round(((g.xp - lo) / (hi - lo)) * 100) : 100;
+  const sub = ST.shop ? t("Byt dine mønter til nye ting. Mønter får du for rutiner, opgaver og lektier.") : ST.build ? t("Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.") : B.length ? t("Tryk på boblerne, når du har gjort det.") : t("Alt er klaret lige nu. Godt gået!");
+  const head = `<div class="pl-head"><div><span class="eyebrow">${esc(t("Mit værelse"))}</span><h2 class="h2">${esc(t("Hej {name}!", { name: m.name }))}</h2><span class="t-sub">${esc(sub)}</span></div>
+    <div class="pl-acts"><span class="pl-pill pl-coins" title="${esc(t("Mønter"))}">${COIN}<b class="num">${g.coins}</b></span>
+      <span class="pl-lv" title="${esc(hi ? t("{n} XP til næste niveau", { n: hi - g.xp }) : t("Højeste niveau"))}"><b>${esc(t("Niveau {n}", { n: lv }))}</b><i style="--p:${prog}%"></i></span>
+      ${ctx.feature(m, "points") ? `<span class="pl-pill pl-pts-pill" title="${esc(t("Point"))}">${svg("pstar")}<b class="num">${pts}</b></span>` : ""}</div></div>
+    <div class="pl-bar">${ST.shop ? `<button class="btn soft" data-pl="shop">${svg("back")}${esc(t("Tilbage til værelset"))}</button>` : `<div class="pl-spaces" role="tablist">${SPACES.map((x) => {
+      const open = lv >= x.lvl;
+      return `<button role="tab" data-pl="space" data-k="${x.id}" aria-selected="${sid === x.id}"${open ? "" : ` class="locked" title="${esc(t("Åbner på niveau {n}", { n: x.lvl }))}"`}><span>${x.em}</span>${esc(t(x.n))}${open ? "" : `<small>🔒 ${x.lvl}</small>`}</button>`;
+    }).join("")}</div>
+      <div class="pl-bar-b">${lights.length && !ST.build ? `<button class="btn soft" data-go="mitlys" aria-label="${esc(t("Lys og stemning"))}">${svg("bulb")}<span class="pl-hide-s">${esc(t("Lys og stemning"))}</span></button>` : ""}<button class="btn soft pl-shopb" data-pl="shop">${COIN}${esc(t("Butikken"))}</button><button class="btn${ST.build ? "" : " soft"}" data-pl="build">${svg(ST.build ? "check" : "edit")}${esc(ST.build ? t("Færdig") : t("Byg"))}</button></div>`}</div>`;
+  if (ST.shop) return `<div class="pl" style="--pc:${esc(m.color)}">${head}${shop(ctx, m, g, lv)}</div>`;
+  const glow = lit || sid !== "vaerelse";
+  return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox${ST.build ? " build" : ""}"><svg id="pl-stage" class="${glow ? "on" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Dit værelse"))}">${stage(ctx, m)}</svg>${ST.build ? selTools(ctx) : ""}</div>${ST.build ? drawer(ctx, m) : ""}</div>`;
+}
+/* The big moments: a new level, or a new thing bought. Shown once, as a sheet over the page. */
+function showPop(ctx) {
+  const m = ctx.me;
+  if (!m || !ST || ST.kid !== m.id || ST.build || (ST.popEl && ST.popEl.isConnected)) return;
+  const t = ctx.t, lv = levelOf(game(ctx, m).xp);
+  let html = "";
+  if (lv > (ST.d.lvl || 1)) {
+    const gifts = (LEVEL_GIFTS[lv] || []).map((x) => t(x.includes(":") ? info(x).n : x));
+    html = `<div class="pl-pop-badge">${lv}</div><h2>${esc(t("Niveau {n}!", { n: lv }))}</h2><p class="t-sub">${esc(gifts.length ? t("Nu har du åbnet: {things}", { things: gifts.join(", ") }) : t("Du bliver bedre og bedre. Bliv ved!"))}</p><div class="pl-pop-b"><button class="btn" data-close>${esc(t("Fedt!"))}</button></div>`;
+    ST.d.lvl = lv;
+    save(ctx);
+  } else if (ST.got) {
+    const id = ST.got, I = info(id);
+    ST.got = null;
+    html = `<div class="pl-pop-th">${thumb(id, ST.d.me)}</div><h2>${esc(t("Ny ting!"))}</h2><p class="t-sub">${esc(t("{name} er din nu.", { name: t(I.n) }))}</p><div class="pl-pop-b"><button class="btn soft" data-close>${esc(t("Senere"))}</button><button class="btn" data-act="play-place" data-k="${esc(id)}" data-close>${esc(id.startsWith("x:") ? t("Tag den på") : id.includes(":") ? t("Brug den nu") : t("Stil den ind nu"))}</button></div>`;
+  }
+  if (!html) return;
+  const sh = ctx.sheet(`<div class="pl-pop-c" style="--pc:${esc(m.color)}">${html}</div>`, { cls: "pl-pop-sheet" });
+  ST.popEl = sh.el;
 }
 function selTools(ctx) {
-  const it = ST.d.items.find((x) => x.id === ST.sel);
-  if (!it) return `<div class="pl-tip">${esc(ctx.t("Vælg noget nedenfor, eller træk i tingene for at flytte dem."))}</div>`;
-  return `<div class="pl-tools"><b>${esc(ctx.t(ITEMS[it.k][0]))}</b><button data-pl="t-color" aria-label="${esc(ctx.t("Farve"))}"><i style="background:${esc(it.c || ITEMS[it.k][3])}"></i></button><button data-pl="t-flip" aria-label="${esc(ctx.t("Vend"))}">⇆</button><button data-pl="t-small" aria-label="${esc(ctx.t("Mindre"))}">−</button><button data-pl="t-big" aria-label="${esc(ctx.t("Større"))}">+</button><button data-pl="t-del" aria-label="${esc(ctx.t("Fjern"))}">${svg("trash")}</button></div>`;
+  const it = R().items.find((x) => x.id === ST.sel);
+  if (!it || !CAT[it.k]) return `<div class="pl-tip">${esc(ctx.t("Vælg noget nedenfor, eller træk i tingene for at flytte dem."))}</div>`;
+  return `<div class="pl-tools"><b>${esc(ctx.t(CAT[it.k].n))}</b><button data-pl="t-color" aria-label="${esc(ctx.t("Farve"))}"><i style="background:${esc(it.c || CAT[it.k].c)}"></i></button><button data-pl="t-flip" aria-label="${esc(ctx.t("Vend"))}">⇆</button><button data-pl="t-small" aria-label="${esc(ctx.t("Mindre"))}">−</button><button data-pl="t-big" aria-label="${esc(ctx.t("Større"))}">+</button><button data-pl="t-del" aria-label="${esc(ctx.t("Fjern"))}">${svg("trash")}</button></div>`;
 }
 function drawer(ctx, m) {
-  const tabs = [["mob", "Møbler"], ["leg", "Legetøj"], ["lys", "Lamper"], ["væg", "På væggen"], ["tapet", "Tapet og gulv"], ["mig", "Mig"]];
-  const thumb = (k) => `<button class="pl-th" data-pl="add" data-k="${k}"><svg viewBox="${-ITEMW(k) / 2 - 14} ${-ITEMH(k) - 14} ${ITEMW(k) + 28} ${ITEMH(k) + 28}" aria-hidden="true">${ITEMS[k][4](ITEMS[k][3])}</svg><span>${esc(ctx.t(ITEMS[k][0]))}</span></button>`;
+  const t = ctx.t, owned = ownedSet(ctx, m), sid = spaceId();
+  const tabs = [["mob", "Møbler"], ["leg", "Legetøj"], ["lys", "Lamper"], ["væg", "På væggen"], ["fest", "Fest"], ...(sid === "vaerelse" ? [["tapet", "Tapet og gulv"]] : []), ["mig", "Mig"]];
+  if (ST.tab === "tapet" && sid !== "vaerelse") ST.tab = "mob";
+  const more = `<button class="pl-th pl-more" data-pl="shop"><span class="pl-more-ic">${COIN}</span><span>${esc(t("Flere ting i butikken"))}</span></button>`;
+  const th = (k) => `<button class="pl-th" data-pl="add" data-k="${k}">${thumb(k)}<span>${esc(t(CAT[k].n))}</span></button>`;
   let body = "";
-  if (ST.tab === "tapet")
-    body = `<div class="pl-row"><b>${esc(ctx.t("Væggen"))}</b>${Object.entries(WALLS).map(([k, c]) => `<button class="pl-sw" data-pl="wall" data-k="${k}" aria-pressed="${ST.d.wall?.c === k}" style="--c:${c}" aria-label="${esc(k)}"></button>`).join("")}</div>
-      <div class="pl-row">${Object.entries(PATTERNS).map(([k, n]) => `<button class="pl-chip" data-pl="pat" data-k="${k}" aria-pressed="${(ST.d.wall?.p || "ren") === k}">${esc(ctx.t(n))}</button>`).join("")}</div>
-      <div class="pl-row"><b>${esc(ctx.t("Gulvet"))}</b>${Object.entries(FLOORS).map(([k, [n, c]]) => `<button class="pl-chip" data-pl="floor" data-k="${k}" aria-pressed="${ST.d.floor === k}"><i style="background:${c}"></i>${esc(ctx.t(n))}</button>`).join("")}</div>`;
-  else if (ST.tab === "mig") {
+  if (ST.tab === "tapet") {
+    const pats = [...Object.entries(PATTERNS), ...Object.entries(PATTERNS_X).filter(([k]) => owned.has("p:" + k)).map(([k, v]) => [k, v[0]])];
+    const floors = [...Object.entries(FLOORS), ...Object.entries(FLOORS_X).filter(([k]) => owned.has("f:" + k))];
+    body = `<div class="pl-row"><b>${esc(t("Væggen"))}</b>${Object.entries(WALLS).map(([k, c]) => `<button class="pl-sw" data-pl="wall" data-k="${k}" aria-pressed="${ST.d.wall?.c === k}" style="--c:${c}" aria-label="${esc(k)}"></button>`).join("")}</div>
+      <div class="pl-row">${pats.map(([k, n]) => `<button class="pl-chip" data-pl="pat" data-k="${k}" aria-pressed="${(ST.d.wall?.p || "ren") === k}">${esc(t(n))}</button>`).join("")}</div>
+      <div class="pl-row"><b>${esc(t("Gulvet"))}</b>${floors.map(([k, [n, c]]) => `<button class="pl-chip" data-pl="floor" data-k="${k}" aria-pressed="${ST.d.floor === k}"><i style="background:${c}"></i>${esc(t(n))}</button>`).join("")}<button class="pl-chip" data-pl="shop">${COIN}${esc(t("Flere"))}</button></div>`;
+  } else if (ST.tab === "mig") {
     const me = ST.d.me;
     const sw = (key, list) => list.map((c) => `<button class="pl-sw" data-pl="me" data-f="${key}" data-k="${c}" aria-pressed="${me[key] === c}" style="--c:${c}" aria-label="${esc(c)}"></button>`).join("");
-    body = `<div class="pl-row"><b>${esc(ctx.t("Hud"))}</b>${sw("skin", SKINS)}</div>
-      <div class="pl-row"><b>${esc(ctx.t("Hår"))}</b>${Object.entries(HAIRS).map(([k, n]) => `<button class="pl-chip" data-pl="me" data-f="hair" data-k="${k}" aria-pressed="${me.hair === k}">${esc(ctx.t(n))}</button>`).join("")}</div>
-      <div class="pl-row"><b>${esc(ctx.t("Hårfarve"))}</b>${sw("hairc", HAIRC)}</div>
-      <div class="pl-row"><b>${esc(ctx.t("Trøje"))}</b>${sw("top", PAL)}</div>
-      <div class="pl-row"><b>${esc(ctx.t("Bukser"))}</b>${sw("bottom", PAL)}</div>
-      <div class="pl-row"><b>${esc(ctx.t("Ekstra"))}</b>${Object.entries(EXTRAS).map(([k, n]) => `<button class="pl-chip" data-pl="me" data-f="extra" data-k="${k}" aria-pressed="${(me.extra || "ingen") === k}">${esc(ctx.t(n))}</button>`).join("")}</div>`;
-  } else body = `<div class="pl-ths">${Object.keys(ITEMS).filter((k) => ITEMS[k][1] === ST.tab || (ST.tab === "mob" && ITEMS[k][1] === "pynt")).map(thumb).join("")}</div>`;
-  return `<section class="card pl-drawer"><div class="pl-tabs" role="tablist">${tabs.map(([k, n]) => `<button role="tab" data-pl="tab" data-k="${k}" aria-selected="${ST.tab === k}">${esc(ctx.t(n))}</button>`).join("")}</div>${body}</section>`;
+    const extras = [...Object.entries(EXTRAS), ...Object.entries(EXTRAS_X).filter(([k]) => owned.has("x:" + k)).map(([k, v]) => [k, v[0]])];
+    body = `<div class="pl-row"><b>${esc(t("Hud"))}</b>${sw("skin", SKINS)}</div>
+      <div class="pl-row"><b>${esc(t("Hår"))}</b>${Object.entries(HAIRS).map(([k, n]) => `<button class="pl-chip" data-pl="me" data-f="hair" data-k="${k}" aria-pressed="${me.hair === k}">${esc(t(n))}</button>`).join("")}</div>
+      <div class="pl-row"><b>${esc(t("Hårfarve"))}</b>${sw("hairc", HAIRC)}</div>
+      <div class="pl-row"><b>${esc(t("Trøje"))}</b>${sw("top", PAL)}</div>
+      <div class="pl-row"><b>${esc(t("Bukser"))}</b>${sw("bottom", PAL)}</div>
+      <div class="pl-row"><b>${esc(t("Ekstra"))}</b>${extras.map(([k, n]) => `<button class="pl-chip" data-pl="me" data-f="extra" data-k="${k}" aria-pressed="${(me.extra || "ingen") === k}">${esc(t(n))}</button>`).join("")}<button class="pl-chip" data-pl="shop">${COIN}${esc(t("Flere"))}</button></div>`;
+  } else {
+    const keys = Object.keys(CAT).filter((k) => (CAT[k].cat === ST.tab || (ST.tab === "mob" && CAT[k].cat === "pynt")) && has(owned, k));
+    body = `<div class="pl-ths">${keys.map(th).join("")}${more}</div>${ST.tab === "fest" && !keys.length ? `<p class="t-sub">${esc(t("Til jul, påske, halloween og fødselsdage kommer der festpakker i butikken."))}</p>` : ""}`;
+  }
+  return `<section class="card pl-drawer"><div class="pl-tabs" role="tablist">${tabs.map(([k, n]) => `<button role="tab" data-pl="tab" data-k="${k}" aria-selected="${ST.tab === k}">${esc(t(n))}</button>`).join("")}</div>${body}</section>`;
+}
+
+/* ------------------------------------------------------------------ the shop */
+const packPrice = (owned, pk) => {
+  const rest = pk.items.filter((id) => !has(owned, id));
+  const sum = rest.reduce((a, id) => a + info(id).price, 0);
+  return { rest, sum, price: rest.length > 1 ? Math.round((sum * 0.75) / 5) * 5 : sum };
+};
+function shop(ctx, m, g, lv) {
+  const t = ctx.t, owned = ownedSet(ctx, m);
+  if (ST.pack) {
+    const pk = PACKS.find((x) => x.id === ST.pack);
+    if (pk) return packPage(ctx, m, g, lv, owned, pk);
+    ST.pack = null;
+  }
+  const card = (pk) => {
+    const so = seasonOpen(ctx, pk), locked = lv < pk.lvl, { rest, price } = packPrice(owned, pk), n = pk.items.length - rest.length;
+    const art = pk.items.filter((id) => CAT[id]).slice(0, 3).map((id) => `<span>${thumb(id)}</span>`).join("");
+    const tag = locked ? `🔒 ${esc(t("Niveau {n}", { n: pk.lvl }))}` : pk.season && !so.open ? esc(so.next ? t("Kommer {date}", { date: ctx.fmt.date(fromDay(so.next), { day: "numeric", month: "long" }) }) : t("Kommer senere")) : !rest.length ? `✓ ${esc(t("Alle sammen"))}` : `${COIN}${price}`;
+    return `<button class="pl-pack${locked || (pk.season && !so.open) ? " locked" : ""}${!rest.length ? " done" : ""}" data-pl="pack" data-k="${pk.id}"><span class="pl-pack-art">${art}</span><span class="pl-pack-t"><b>${pk.em} ${esc(t(pk.n))}</b><small>${esc(t("{n} af {total} ting", { n, total: pk.items.length }))}</small></span><span class="pl-pack-p">${tag}</span></button>`;
+  };
+  const now = PACKS.filter((pk) => pk.season && seasonOpen(ctx, pk).open);
+  const packs = PACKS.filter((pk) => !pk.season).sort((a, b) => (lv < a.lvl) - (lv < b.lvl) || a.lvl - b.lvl);
+  const later = PACKS.filter((pk) => pk.season && !seasonOpen(ctx, pk).open);
+  return `<section class="pl-shop">
+    ${now.length ? `<h3 class="pl-sh">${esc(t("Lige nu"))}</h3><div class="pl-packs now">${now.map(card).join("")}</div>` : ""}
+    <h3 class="pl-sh">${esc(t("Pakker"))}</h3><div class="pl-packs">${packs.map(card).join("")}</div>
+    <div class="card pl-earn"><b>${esc(t("Sådan får du mønter"))}</b><ul><li>${COIN}<span>${esc(t("Et rutinekort"))}</span><b>3</b></li><li>${COIN}<span>${esc(t("Hele rutinen"))}</span><b>+10</b></li><li>${COIN}<span>${esc(t("En opgave"))}</span><b>10</b></li><li>${COIN}<span>${esc(t("En lektie"))}</span><b>8</b></li><li>${COIN}<span>${esc(t("Skattekisten hver dag"))}</span><b>5</b></li></ul><small>${esc(t("Alle mønter, du får, giver også XP. Med mere XP stiger du i niveau og åbner nye rum og pakker."))}</small></div>
+    ${later.length ? `<h3 class="pl-sh">${esc(t("Festpakker, der kommer igen"))}</h3><div class="pl-packs small">${later.map(card).join("")}</div>` : ""}
+  </section>`;
+}
+function packPage(ctx, m, g, lv, owned, pk) {
+  const t = ctx.t, so = seasonOpen(ctx, pk), locked = lv < pk.lvl || (pk.season && !so.open);
+  const { rest, sum, price } = packPrice(owned, pk);
+  // A season pack gives its first thing free while the occasion lasts.
+  const gift = pk.season && so.open && !pk.items.some((id) => owned.has(id)) ? pk.items[0] : null;
+  const row = (id) => {
+    const mine = has(owned, id), I = info(id), cost = id === gift ? 0 : I.price, ask = ST.ask === id;
+    return `<div class="pl-buy${mine ? " mine" : ""}"><span class="pl-buy-th">${thumb(id, ST.d.me)}</span><b>${esc(t(I.n))}</b>${mine ? `<span class="pl-own">✓ ${esc(t("Din"))}</span>` : locked ? `<span class="pl-own">🔒</span>` : `<button class="btn ${ask ? "" : "soft"} sm${g.coins < cost ? " poor" : ""}" data-pl="buy" data-k="${esc(id)}" data-cost="${cost}">${ask ? esc(t("Køb?")) : cost ? `${COIN}${cost}` : esc(t("Gratis"))}</button>`}</div>`;
+  };
+  const note = lv < pk.lvl ? t("Pakken åbner, når du når niveau {n}.", { n: pk.lvl }) : pk.season && !so.open ? t("Pakken kommer i butikken igen til {name}.", { name: t(pk.n) }) : pk.season && so.until ? t("I butikken til og med {date}.", { date: ctx.fmt.date(fromDay(so.until), { day: "numeric", month: "long" }) }) + (gift ? " " + t("Den første ting er en gave.") : "") : "";
+  return `<section class="pl-shop"><button class="lnk pl-back" data-pl="packs">${svg("back")}${esc(t("Alle pakker"))}</button>
+    <div class="card pl-packhead"><span class="pl-packem">${pk.em}</span><div><h3>${esc(t(pk.n))}</h3><p class="t-sub">${esc(t(pk.d))}</p>${note ? `<p class="pl-note">${esc(note)}</p>` : ""}</div>
+      ${!locked && rest.length > 1 ? `<button class="btn${ST.ask === "pack:" + pk.id ? "" : " soft"}${g.coins < price ? " poor" : ""}" data-pl="buy" data-k="pack:${pk.id}" data-cost="${price}">${ST.ask === "pack:" + pk.id ? esc(t("Køb hele pakken?")) : `${esc(t("Hele pakken"))} ${COIN}${price}`}${sum > price && ST.ask !== "pack:" + pk.id ? `<small>${esc(t("spar {n}", { n: sum - price }))}</small>` : ""}</button>` : ""}</div>
+    <div class="pl-buys">${pk.items.map(row).join("")}</div></section>`;
 }
 
 /* ------------------------------------------------------------------ doing things */
@@ -269,6 +461,7 @@ function redraw(ctx) {
   tmp.innerHTML = render(ctx);
   box.replaceWith(tmp.firstElementChild);
   bind(ctx);
+  showPop(ctx);
 }
 function save(ctx) {
   clearTimeout(ST.saveT);
@@ -289,7 +482,7 @@ const toSvg = (svgEl, e) => {
   pt.y = e.clientY;
   return pt.matrixTransform(svgEl.getScreenCTM().inverse());
 };
-function confetti(ctx, x, y, color) {
+function confetti(ctx, x, y, color, big = false) {
   const svgEl = ctx.$("pl-stage");
   if (!svgEl) return;
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -317,6 +510,7 @@ async function tapBubble(ctx, el) {
   const m = ctx.me, kind = el.dataset.kind, id = el.dataset.id;
   const tr = el.getAttribute("transform").match(/translate\(([\d.]+) ([\d.]+)\)/);
   confetti(ctx, +tr[1], +tr[2], m.color);
+  coinPop(ctx, +tr[1], +tr[2], kind === "card" ? 3 : kind === "homework" ? 8 : 10);
   el.classList.add("pop");
   ST.mood = "wow";
   setTimeout(() => {
@@ -339,13 +533,19 @@ async function tapBubble(ctx, el) {
 }
 function bind(ctx) {
   const svgEl = ctx.$("pl-stage"), box = ctx.root.querySelector(".pl");
-  if (!svgEl || !box || box._hv) return;
+  if (!box || box._hv) return;
   box._hv = 1;
+  // The shop has no room to drag in; its buttons are handled below.
+  if (svgEl) bindStage(ctx, svgEl);
+  bindButtons(ctx, box);
+}
+function bindStage(ctx, svgEl) {
   let drag = null;
   svgEl.addEventListener("pointerdown", (e) => {
     const t = e.target.closest("[data-pl]"), p = toSvg(svgEl, e);
     if (!ST.build) {
       if (t?.dataset.pl === "bub") return tapBubble(ctx, t);
+      if (t?.dataset.pl === "daily") return openChest(ctx, t);
       if (t?.dataset.pl === "light") return toggleLight(ctx);
       if (t?.dataset.pl === "me") {
         ST.wave = true;
@@ -367,7 +567,7 @@ function bind(ctx) {
     // build mode: pick up a thing, or the avatar and the pet
     if (t?.dataset.pl === "item") {
       ST.sel = t.dataset.id;
-      const it = ST.d.items.find((x) => x.id === ST.sel);
+      const it = R().items.find((x) => x.id === ST.sel);
       drag = { kind: "item", it, sx: p.x, sy: p.y, ox: it.x, oy: it.y, el: t };
       try {
         svgEl.setPointerCapture(e.pointerId);
@@ -391,7 +591,7 @@ function bind(ctx) {
     if (Math.hypot(dx, dy) < 4 && !drag.moved) return;
     drag.moved = true;
     if (drag.kind === "item") {
-      const it = drag.it, wall = ITEMS[it.k][1] === "væg";
+      const it = drag.it, wall = wallK(it.k);
       it.x = Math.round(Math.max(30, Math.min(W - 30, drag.ox + dx)));
       it.y = Math.round(wall ? Math.max(40, Math.min(FLOOR - 20, drag.oy + dy)) : Math.max(FLOOR + 10, Math.min(H - 4, drag.oy + dy)));
       drag.el.setAttribute("transform", `translate(${it.x} ${it.y}) scale(${it.f ? -(it.s || 1) : it.s || 1} ${it.s || 1})`);
@@ -413,22 +613,44 @@ function bind(ctx) {
   };
   svgEl.addEventListener("pointerup", up);
   svgEl.addEventListener("pointercancel", up);
+}
+function bindButtons(ctx, box) {
   box.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-pl]");
     if (!b) return;
-    const a = b.dataset.pl, k = b.dataset.k, it = ST.d.items.find((x) => x.id === ST.sel);
+    const a = b.dataset.pl, k = b.dataset.k, room = R(), it = room.items.find((x) => x.id === ST.sel);
     if (a === "build") {
       ST.build = !ST.build;
       ST.sel = null;
       if (!ST.build) save(ctx);
+    } else if (a === "shop") {
+      ST.shop = !ST.shop;
+      ST.build = false;
+      ST.pack = null;
+      ST.ask = null;
+      ST.sel = null;
+      ctx.root.querySelector(".pl")?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    } else if (a === "pack") {
+      ST.pack = k;
+      ST.ask = null;
+    } else if (a === "packs") {
+      ST.pack = null;
+      ST.ask = null;
+    } else if (a === "buy") return buy(ctx, b);
+    else if (a === "space") {
+      const sp = SPACES.find((x) => x.id === k), lv = levelOf(game(ctx, ctx.me).xp);
+      if (!sp) return;
+      if (lv < sp.lvl) return ctx.toast(ctx.t("{name} åbner på niveau {n}. Få flere mønter for at komme dertil.", { name: ctx.t(sp.n), n: sp.lvl }));
+      ST.d.space = k;
+      ST.sel = null;
+      save(ctx);
     } else if (a === "tab") {
       ST.tab = k;
       if (k === "mig" || k === "tapet") ST.sel = null;
-    }
-    else if (a === "add") {
-      const wall = ITEMS[k][1] === "væg", id = "i" + Math.random().toString(36).slice(2, 7);
-      if (ST.d.items.length >= 140) return ctx.toast(ctx.t("Der er ikke plads til mere"));
-      ST.d.items.push({ id, k, x: 380 + Math.round(Math.random() * 240), y: wall ? 200 : ITEMS[k][2] ? 600 : 560 });
+    } else if (a === "add") {
+      const id = "i" + Math.random().toString(36).slice(2, 7);
+      if (room.items.length >= (room === ST.d ? 140 : 80)) return ctx.toast(ctx.t("Der er ikke plads til mere"));
+      room.items.push({ id, k, x: 380 + Math.round(Math.random() * 240), y: wallK(k) ? 200 : CAT[k]?.flat ? 600 : 560 });
       ST.sel = id;
       save(ctx);
     } else if (a === "wall") (ST.d.wall ||= {}).c = k;
@@ -438,14 +660,87 @@ function bind(ctx) {
     else if (it && a === "t-flip") it.f = it.f ? 0 : 1;
     else if (it && a === "t-big") it.s = Math.min(1.8, Math.round(((it.s || 1) + 0.15) * 100) / 100);
     else if (it && a === "t-small") it.s = Math.max(0.5, Math.round(((it.s || 1) - 0.15) * 100) / 100);
-    else if (it && a === "t-color") it.c = PAL[(PAL.indexOf(it.c || ITEMS[it.k][3]) + 1) % PAL.length];
+    else if (it && a === "t-color") it.c = PAL[(PAL.indexOf(it.c || CAT[it.k].c) + 1) % PAL.length];
     else if (it && a === "t-del") {
-      ST.d.items = ST.d.items.filter((x) => x !== it);
+      room.items = room.items.filter((x) => x !== it);
       ST.sel = null;
     } else return;
-    if (a !== "tab" && a !== "build") save(ctx);
+    if (!["tab", "build", "shop", "pack", "packs"].includes(a)) save(ctx);
     redraw(ctx);
   });
+}
+/* Buying: the first tap asks, the second buys. */
+async function buy(ctx, b) {
+  const m = ctx.me, id = b.dataset.k, cost = +b.dataset.cost || 0, g = game(ctx, m);
+  if (ST.ask !== id) {
+    ST.ask = id;
+    return redraw(ctx);
+  }
+  ST.ask = null;
+  if (g.coins < cost) {
+    ctx.toast(ctx.t("Du mangler {n} mønter. Klar en rutine eller en opgave, så kommer de.", { n: cost - g.coins }));
+    return redraw(ctx);
+  }
+  const owned = ownedSet(ctx, m);
+  const items = id.startsWith("pack:") ? (PACKS.find((x) => x.id === id.slice(5))?.items || []).filter((x) => !has(owned, x)) : [id];
+  if (!items.length) return redraw(ctx);
+  try {
+    const res = await ctx.ws("game", { member: m.id, action: "unlock", items, cost });
+    ctx.data.game = { ...(ctx.data.game || {}), [m.id]: res };
+    ST.got = items.find((x) => CAT[x]) || items[0];
+    redraw(ctx);
+    confetti(ctx, W / 2, H / 3, m.color, true);
+  } catch (err) {
+    ctx.toast(String(err?.message || err));
+    redraw(ctx);
+  }
+}
+/* Put a new thing in the room right away (or wear it, or use the wallpaper). */
+function place(ctx, id) {
+  ST.got = null;
+  ST.shop = false;
+  ST.pack = null;
+  const [t, k] = id.split(":");
+  if (CAT[id]) {
+    const room = R();
+    const nid = "i" + Math.random().toString(36).slice(2, 7);
+    room.items.push({ id: nid, k: id, x: 420 + Math.round(Math.random() * 160), y: wallK(id) ? 200 : CAT[id].flat ? 600 : 560 });
+    ST.build = true;
+    ST.sel = nid;
+    ST.tab = wallK(id) ? (CAT[id].cat === "fest" ? "fest" : "væg") : CAT[id].cat === "pynt" ? "mob" : CAT[id].cat;
+  } else if (t === "p") {
+    ST.d.space = "vaerelse";
+    (ST.d.wall ||= {}).p = k;
+  } else if (t === "f") {
+    ST.d.space = "vaerelse";
+    ST.d.floor = k;
+  } else if (t === "x") ST.d.me.extra = k;
+  save(ctx);
+  redraw(ctx);
+}
+/* Coins flying up from where something was done. */
+function coinPop(ctx, x, y, n) {
+  const svgEl = ctx.$("pl-stage");
+  if (!svgEl || !n) return;
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("class", "pl-coinpop");
+  g.innerHTML = `<g transform="translate(${x} ${y - 40})"><circle r="20" fill="#FFD93D" stroke="#2B2340" stroke-width="4"/><circle r="12" fill="none" stroke="#E0A800" stroke-width="3"/><text x="28" y="10" class="pl-cp">+${n}</text></g>`;
+  svgEl.appendChild(g);
+  setTimeout(() => g.remove(), 1300);
+}
+async function openChest(ctx, el) {
+  const m = ctx.me;
+  el.classList.add("open");
+  const tr = el.getAttribute("transform").match(/translate\(([\d.]+) ([\d.]+)\)/);
+  confetti(ctx, +tr[1], +tr[2] - 60, "#FFD93D");
+  coinPop(ctx, +tr[1], +tr[2] - 80, 5);
+  try {
+    const res = await ctx.ws("game", { member: m.id, action: "daily" });
+    ctx.data.game = { ...(ctx.data.game || {}), [m.id]: res };
+  } catch (err) {
+    ctx.toast(String(err?.message || err));
+  }
+  setTimeout(() => redraw(ctx), 1100);
 }
 async function toggleLight(ctx) {
   const lights = realLights(ctx, ctx.me);
@@ -469,6 +764,7 @@ export default {
       render,
       after(ctx) {
         bind(ctx);
+        showPop(ctx);
         clearInterval(tick);
         // The sky, the lights and the bubbles follow along, but never in the middle of building.
         tick = setInterval(() => {
@@ -479,7 +775,9 @@ export default {
       },
     },
   },
-  acts: {},
+  acts: {
+    "play-place": (el, ev, ctx) => place(ctx, el.dataset.k),
+  },
   inputs: {},
   css: `
 .pl-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -545,14 +843,311 @@ export default {
 @keyframes pltw { 0%, 100% { opacity: .3 } 50% { opacity: 1 } }
 @keyframes plcloud { from { transform: translateX(-40px) } to { transform: translateX(120px) } }
 @keyframes plfish { 0%, 100% { transform: translateX(-14px) } 50% { transform: translateX(18px) } }
+.pl-glow.on { opacity: .85; }
+.pl-coin { width: 20px; height: 20px; flex: none; }
+.pl-coins { background: #FFF3B0; }
+.pl-pts-pill { background: var(--surface-2); color: var(--ink); }
+.pl-lv { display: inline-grid; gap: 4px; min-width: 96px; padding: 6px 12px; border-radius: 14px; background: color-mix(in srgb, var(--pc) 14%, var(--surface)); }
+.pl-lv b { font-size: 13px; font-weight: 800; }
+.pl-lv i { display: block; height: 7px; border-radius: 9px; background: color-mix(in srgb, var(--pc) 20%, var(--surface-2)); position: relative; overflow: hidden; }
+.pl-lv i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p); border-radius: 9px; background: var(--pc); }
+.pl-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.pl-bar-b { display: flex; gap: 8px; align-items: center; }
+.pl-bar-b .btn .pl-coin { width: 18px; height: 18px; }
+.pl-spaces { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1 1 260px; min-width: 0; padding: 2px; }
+.pl-spaces::-webkit-scrollbar { display: none; }
+.pl-spaces button { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); font: 800 13.5px var(--font-body); color: var(--ink); cursor: pointer; }
+.pl-spaces button[aria-selected="true"] { background: var(--pc); color: #fff; box-shadow: none; }
+.pl-spaces button.locked { opacity: .55; }
+.pl-spaces small { font-size: 11px; font-weight: 800; }
+.pl-chest { cursor: pointer; animation: plchest 2.4s ease-in-out infinite; }
+.pl-chest.open { animation: plpop .6s ease-in forwards; }
+.pl-sparkle { animation: pltw 1.4s ease-in-out infinite; }
+.pl-coinpop { animation: plcoin 1.2s ease-out forwards; pointer-events: none; }
+.pl-cp { font: 900 34px var(--font-body, sans-serif); fill: #2B2340; paint-order: stroke; stroke: #fff; stroke-width: 7px; }
+.pl-blink { animation: pltw 1.2s ease-in-out infinite; }
+.pl-beam { animation: plbeam 4s ease-in-out infinite alternate; transform-origin: 50% 0; transform-box: fill-box; }
+.pl-more { background: color-mix(in srgb, #FFD93D 22%, var(--surface)); }
+.pl-more-ic { width: 64px; height: 56px; display: grid; place-items: center; }
+.pl-more-ic .pl-coin { width: 40px; height: 40px; }
+.pl-th svg { pointer-events: none; }
+/* the shop */
+.pl-shop { display: grid; gap: 12px; }
+.pl-sh { margin: 6px 0 0; font-size: 15px; font-weight: 800; letter-spacing: .02em; }
+.pl-packs { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.pl-packs.small { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.pl-pack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px; border: 0; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); text-align: left; color: var(--ink); font: inherit; cursor: pointer; transition: transform .15s; position: relative; }
+.pl-pack:active { transform: scale(.97); }
+.pl-packs.now .pl-pack { box-shadow: 0 0 0 3px #FFD93D, var(--shadow); }
+.pl-pack.locked { filter: grayscale(.7); opacity: .7; }
+.pl-pack-art { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; height: 96px; border-radius: 16px; background: color-mix(in srgb, var(--pc) 10%, var(--surface-2)); padding: 6px; }
+.pl-packs.small .pl-pack-art { height: 64px; }
+.pl-pack-art span { display: grid; place-items: center; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
+.pl-pack-art svg { width: 100%; height: 100%; max-height: 84px; }
+.pl-packs.small .pl-pack-art svg { max-height: 52px; }
+.pl-pack-t b { display: block; font-size: 15px; }
+.pl-pack-t small { color: var(--muted); font-size: 12.5px; }
+.pl-pack-p { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; font-size: 14px; }
+.pl-pack.done .pl-pack-p { color: #16A34A; }
+.pl-earn { display: grid; gap: 8px; }
+.pl-earn ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.pl-earn li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; font-weight: 600; }
+.pl-earn li span { flex: 1; }
+.pl-earn small { color: var(--muted); font-size: 12.5px; }
+.pl-back { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; min-height: 44px; justify-self: start; }
+.pl-back .ic { width: 18px; height: 18px; }
+.pl-packhead { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.pl-packhead > div { flex: 1 1 220px; min-width: 0; }
+.pl-packhead h3 { margin: 0; font-size: 22px; }
+.pl-packhead .t-sub { margin: 2px 0 0; }
+.pl-packem { font-size: 46px; line-height: 1; }
+.pl-note { margin: 6px 0 0; font-size: 13px; font-weight: 700; color: var(--pc); }
+.pl-packhead .btn { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pl-packhead .btn small { font-size: 11.5px; font-weight: 700; opacity: .8; }
+.btn.poor { opacity: .55; }
+.pl-buys { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.pl-buy { display: grid; justify-items: center; gap: 6px; padding: 10px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); text-align: center; }
+.pl-buy-th { width: 100%; height: 92px; display: grid; place-items: center; border-radius: 14px; background: var(--surface-2); }
+.pl-buy-th svg { width: 86%; height: 86%; }
+.pl-buy b { font-size: 13.5px; line-height: 1.2; }
+.pl-buy .btn { min-height: 40px; display: inline-flex; align-items: center; gap: 4px; }
+.pl-buy .btn .pl-coin { width: 16px; height: 16px; }
+.pl-buy.mine { background: color-mix(in srgb, #6BCB77 14%, var(--surface)); }
+.pl-own { font-weight: 800; font-size: 13px; color: #16A34A; min-height: 40px; display: grid; place-items: center; }
+/* the big moments */
+.pl-pop-c { text-align: center; display: grid; gap: 10px; justify-items: center; padding: 8px 4px; animation: plin .5s cubic-bezier(.3,1.6,.5,1); }
+.pl-pop-c h2 { margin: 0; font-size: 26px; }
+.pl-pop-c p { margin: 0; color: var(--muted); }
+.pl-pop-th { width: 160px; height: 140px; display: grid; place-items: center; border-radius: 22px; background: color-mix(in srgb, #FFD93D 25%, var(--surface)); }
+.pl-pop-th svg { width: 88%; height: 88%; }
+.pl-pop-badge { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; font: 900 44px var(--font-display, sans-serif); color: #2B2340; background: radial-gradient(circle at 35% 30%, #FFF6C9, #FFD93D 60%, #E0A800); box-shadow: 0 0 0 5px #2B2340, 0 0 40px #FFD93D; }
+.pl-pop-b { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+@keyframes plchest { 0%, 100% { translate: 0 0 } 50% { translate: 0 -6px } }
+@keyframes plcoin { 0% { transform: translateY(0); opacity: 0 } 15% { opacity: 1 } 100% { transform: translateY(-110px); opacity: 0 } }
+@keyframes plbeam { from { transform: rotate(-6deg) } to { transform: rotate(6deg) } }
+@keyframes plfade { from { opacity: 0 } }
+@keyframes plin { from { transform: scale(.6); opacity: 0 } }
+@media (max-width: 640px) { .pl-hide-s { display: none; } .pl-lv { min-width: 80px; } .pl-buys { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pl-packs { grid-template-columns: minmax(0, 1fr); } .pl-packs.small { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .pl-tools { top: 8px; bottom: auto; gap: 4px; padding: 4px 6px 4px 12px; } .pl-tools button { width: 38px; height: 38px; font-size: 18px; } .pl-tools b { font-size: 12px; } .pl-stagebox { border-radius: 20px; } .pl-th svg { width: 60px; height: 52px; } }
-@media (prefers-reduced-motion: reduce) { .pl-me .pl-body, .pl-pet .pl-petb, .pl-bub, .pl-cloud, .pl-fish, .pl-twinkle { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .pl-me .pl-body, .pl-pet .pl-petb, .pl-bub, .pl-cloud, .pl-fish, .pl-twinkle, .pl-chest, .pl-sparkle, .pl-blink, .pl-beam, .pl-pop-c { animation: none !important; } }
 `,
   en: {
     "Mit værelse": "My room", "Hej {name}!": "Hi {name}!", "Tryk på boblerne, når du har gjort det.": "Tap the bubbles when you have done it.", "Alt er klaret lige nu. Godt gået!": "All done for now. Well done!",
     "Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.": "Drag things where they should go. Tap something to change it.", "Byg dit værelse": "Build your room", "Lys og stemning": "Lights and mood", Færdig: "Done", "Dit værelse": "Your room", "Lyset i dit værelse": "The light in your room",
     "Vælg noget nedenfor, eller træk i tingene for at flytte dem.": "Pick something below, or drag things to move them.", Farve: "Colour", Vend: "Flip", Mindre: "Smaller", Større: "Bigger", Fjern: "Remove",
     Møbler: "Furniture", Legetøj: "Toys", Lamper: "Lamps", "På væggen": "On the wall", "Tapet og gulv": "Wallpaper and floor", Mig: "Me", Væggen: "The wall", Gulvet: "The floor",
+    Mønter: "Coins", "{n} XP til næste niveau": "{n} XP to the next level", "Højeste niveau": "Highest level", "Niveau {n}": "Level {n}", Point: "Points", "Tilbage til værelset": "Back to the room",
+    "Åbner på niveau {n}": "Opens at level {n}", Butikken: "The shop", Byg: "Build", "Byt dine mønter til nye ting. Mønter får du for rutiner, opgaver og lektier.": "Swap your coins for new things. You get coins for routines, missions and homework.",
+    "Niveau {n}!": "Level {n}!", "Nu har du åbnet: {things}": "Now you have opened: {things}", "Du bliver bedre og bedre. Bliv ved!": "You get better and better. Keep going!", "Fedt!": "Cool!",
+    "Ny ting!": "New thing!", "{name} er din nu.": "{name} is yours now.", Senere: "Later", "Tag den på": "Put it on", "Brug den nu": "Use it now", "Stil den ind nu": "Put it in now",
+    Fest: "Party", "Flere ting i butikken": "More things in the shop", Flere: "More", "Til jul, påske, halloween og fødselsdage kommer der festpakker i butikken.": "At Christmas, Easter, Halloween and birthdays there are party packs in the shop.",
+    "Kommer {date}": "Comes {date}", "Kommer senere": "Comes later", "Alle sammen": "All of them", "{n} af {total} ting": "{n} of {total} things", "Lige nu": "Right now", Pakker: "Packs",
+    "Sådan får du mønter": "How you get coins", "Et rutinekort": "A routine card", "Hele rutinen": "The whole routine", "En opgave": "A mission", "En lektie": "Homework", "Skattekisten hver dag": "The treasure chest every day",
+    "Alle mønter, du får, giver også XP. Med mere XP stiger du i niveau og åbner nye rum og pakker.": "Every coin you get also gives XP. With more XP you go up a level and open new rooms and packs.",
+    "Festpakker, der kommer igen": "Party packs that come back", Din: "Yours", "Køb?": "Buy?", Gratis: "Free", "Pakken åbner, når du når niveau {n}.": "The pack opens when you reach level {n}.",
+    "Pakken kommer i butikken igen til {name}.": "The pack comes back to the shop for {name}.", "I butikken til og med {date}.": "In the shop until {date}.", "Den første ting er en gave.": "The first thing is a gift.",
+    "Alle pakker": "All packs", "Køb hele pakken?": "Buy the whole pack?", "Hele pakken": "The whole pack", "spar {n}": "save {n}", "{name} åbner på niveau {n}. Få flere mønter for at komme dertil.": "{name} opens at level {n}. Get more coins to get there.",
+    "Du mangler {n} mønter. Klar en rutine eller en opgave, så kommer de.": "You need {n} more coins. Do a routine or a mission and they'll come.", "Dagens mønter": "Today's coins",
+    // the things, looks and packs (hv-playcat.js)
+    "Pudefort": "Pillow fort",
+    "Sengehimmel": "Bed canopy",
+    "Sovepose": "Sleeping bag",
+    "Lommelygte": "Torch",
+    "H\u00e6ngek\u00f8je": "Hammock",
+    "Pudebjerg": "Pile of cushions",
+    "Skattekiste": "Treasure chest",
+    "Stjerneprojektor": "Star projector",
+    "Lanterne": "Lantern",
+    "Skilt: Hulen": "Sign: The den",
+    "Lysgardin": "Fairy light curtain",
+    "Gamerbord": "Gaming desk",
+    "Gamersk\u00e6rm": "Gaming screen",
+    "Dobbeltsk\u00e6rm": "Two screens",
+    "TV med spillekonsol": "TV with games console",
+    "LED-lys": "LED light",
+    "Headset p\u00e5 holder": "Headset on a stand",
+    "Arkademaskine": "Arcade machine",
+    "Neonskilt": "Neon sign",
+    "Minik\u00f8leskab": "Mini fridge",
+    "VR-briller": "VR headset",
+    "Racerstol": "Racing chair",
+    "Redningsfyrt\u00e5rn": "Rescue lighthouse",
+    "Brandbil": "Fire engine",
+    "Politibil": "Police car",
+    "Redningsb\u00e5d": "Lifeboat",
+    "Helikopter": "Helicopter",
+    "Hundekurv": "Dog basket",
+    "Knoglepude": "Bone cushion",
+    "Potet\u00e6ppe": "Paw rug",
+    "Poteplakat": "Paw poster",
+    "Madsk\u00e5l": "Food bowl",
+    "Hvalpebamse": "Puppy plush",
+    "Scene": "Stage",
+    "Mikrofon": "Microphone",
+    "Spotlight": "Spotlight",
+    "Discokugle": "Disco ball",
+    "H\u00f8jttaler": "Speaker",
+    "Neonhjerte": "Neon heart",
+    "Bandplakat": "Band poster",
+    "Glimmergardin": "Glitter curtain",
+    "Keyboard": "Keyboard",
+    "Lysstav": "Light stick",
+    "Guldplade": "Gold record",
+    "Raket": "Rocket",
+    "Planetlampe": "Planet lamp",
+    "Teleskop": "Telescope",
+    "Rumdragt": "Space suit",
+    "UFO-lampe": "UFO lamp",
+    "Rumv\u00e6sen-bamse": "Alien plush",
+    "Stjernekort": "Star map",
+    "Robot": "Robot",
+    "Globus": "Globe",
+    "Kaninbur": "Rabbit hutch",
+    "Hamsterbur": "Hamster cage",
+    "Kradsetr\u00e6": "Cat tree",
+    "Papeg\u00f8je p\u00e5 pind": "Parrot on a perch",
+    "Skildpadde": "Tortoise",
+    "Gyngehest": "Rocking horse",
+    "Enhj\u00f8rning-bamse": "Unicorn plush",
+    "Fuglehus": "Birdhouse",
+    "Palme": "Palm tree",
+    "Lianer": "Vines",
+    "Abebamse": "Monkey plush",
+    "L\u00f8vet\u00e6ppe": "Lion rug",
+    "Bambus": "Bamboo",
+    "Tropeplakat": "Tropical poster",
+    "Krokodille-bamse": "Crocodile plush",
+    "Basketkurv": "Basketball hoop",
+    "Fodboldm\u00e5l": "Football goal",
+    "Skateboard": "Skateboard",
+    "Trampolin": "Trampoline",
+    "Bokses\u00e6k": "Punching bag",
+    "L\u00f8becykel": "Balance bike",
+    "Pokalhylde": "Trophy shelf",
+    "Medaljer": "Medals",
+    "Staffeli": "Easel",
+    "Kridttavle": "Chalkboard",
+    "Malerpletter": "Paint splash rug",
+    "Garnkurv": "Yarn basket",
+    "Byggebord": "Building table",
+    "Uro med stjerner": "Star mobile",
+    "Tegninger p\u00e5 snor": "Drawings on a string",
+    "Muslingeseng": "Shell bed",
+    "S\u00f8stjernepude": "Starfish cushion",
+    "Fiskeuro": "Fish mobile",
+    "Dykkerhjelm": "Diving helmet",
+    "Stort akvarie": "Big aquarium",
+    "Bl\u00e6ksprutte-bamse": "Octopus plush",
+    "Skib i flaske": "Ship in a bottle",
+    "Trone": "Throne",
+    "Slotsseng": "Castle bed",
+    "Rustning": "Suit of armour",
+    "Skjold": "Shield",
+    "Dragebamse": "Dragon plush",
+    "Slotsport": "Castle gate",
+    "Fane": "Banner",
+    "Gr\u00e6skarlygte": "Pumpkin lantern",
+    "Sp\u00f8gelse": "Ghost",
+    "Edderkoppespind": "Spider web",
+    "Heksekedel": "Witch's cauldron",
+    "Flagermus-guirlande": "Bat garland",
+    "Sliksk\u00e5l": "Sweets bowl",
+    "Juletr\u00e6": "Christmas tree",
+    "Julesok": "Christmas stocking",
+    "Julegaver": "Christmas presents",
+    "Nisse": "Elf",
+    "Snemand": "Snowman",
+    "Adventskrans": "Advent wreath",
+    "Julestjerne": "Christmas star",
+    "P\u00e5skekurv": "Easter basket",
+    "P\u00e5skekylling": "Easter chick",
+    "P\u00e5skehare": "Easter bunny",
+    "G\u00e6kkebrev": "Snowdrop letter",
+    "P\u00e5skeliljer": "Daffodils",
+    "Lagkage": "Layer cake",
+    "Balloner": "Balloons",
+    "Flagguirlande": "Bunting",
+    "Gave\u00e6ske": "Present",
+    "Tillykke-banner": "Birthday banner",
+    "Fastelavnst\u00f8nde": "Shrovetide barrel",
+    "Udkl\u00e6dningskiste": "Dressing-up chest",
+    "Maske": "Mask",
+    "Fyrv\u00e6rkeriplakat": "Fireworks poster",
+    "Konfettikanon": "Confetti cannon",
+    "Nyt\u00e5rsur": "New Year clock",
+    "Lejrb\u00e5l": "Campfire",
+    "Solsikker": "Sunflowers",
+    "Hjertepude": "Heart cushion",
+    "Hjerteballon": "Heart balloon",
+    "Bordflag": "Table flag",
+    "R\u00f8d-hvid guirlande": "Red and white garland",
+    "Poter": "Paws",
+    "Neon": "Neon",
+    "Glimmer": "Glitter",
+    "Galakse": "Galaxy",
+    "Junglerblade": "Jungle leaves",
+    "Bobler": "Bubbles",
+    "Slotsmur": "Castle wall",
+    "Flagermus": "Bats",
+    "Snefnug": "Snowflakes",
+    "Guldtapet": "Gold wallpaper",
+    "Regnbuestriber": "Rainbow stripes",
+    "Scenegulv": "Stage floor",
+    "M\u00e5nest\u00f8v": "Moon dust",
+    "Kunstgr\u00e6s": "Artificial grass",
+    "Sand": "Sand",
+    "Gamer-t\u00e6ppe": "Gamer rug",
+    "Regnbuegulv": "Rainbow floor",
+    "Hunde\u00f8rer": "Dog ears",
+    "Headset": "Headset",
+    "Rumhjelm": "Space helmet",
+    "Stjernebriller": "Star glasses",
+    "Heksehat": "Witch's hat",
+    "Nissehue": "Elf hat",
+    "Kanin\u00f8rer": "Bunny ears",
+    "Festhat": "Party hat",
+    "Ridderhjelm": "Knight's helmet",
+    "Guldkrone": "Gold crown",
+    "Redningshvalpene": "The rescue pups",
+    "Popstjerne": "Pop star",
+    "Gamer-setup": "Gaming setup",
+    "Dyrevenner": "Animal friends",
+    "Sport": "Sport",
+    "Kreativt hj\u00f8rne": "Creative corner",
+    "Junglen": "The jungle",
+    "Rumrejsen": "The space trip",
+    "Havets bund": "The sea bed",
+    "Eventyrslottet": "The fairy-tale castle",
+    "Halloween": "Halloween",
+    "Jul": "Christmas",
+    "P\u00e5ske": "Easter",
+    "F\u00f8dselsdag": "Birthday",
+    "Fastelavn": "Shrovetide",
+    "Nyt\u00e5r": "New Year",
+    "Sankt Hans": "Midsummer",
+    "Valentinsdag": "Valentine's Day",
+    "Grundlovsdag": "Constitution Day",
+    "Puder, telte, lysk\u00e6der og en skattekiste til en hemmelig hule.": "Cushions, tents, fairy lights and a treasure chest for a secret den.",
+    "Et redningsfyrt\u00e5rn, biler, b\u00e5de og alt til hvalpene p\u00e5 mission.": "A rescue lighthouse, cars, boats and everything for the pups on a mission.",
+    "En scene med lys, mikrofon og glimmer. Nu skal der danses.": "A stage with lights, a microphone and glitter. Time to dance.",
+    "Sk\u00e6rme, konsol, arkademaskine og LED-lys til det fede gamerhj\u00f8rne.": "Screens, a console, an arcade machine and LED lights for the cool gaming corner.",
+    "Kanin, hamster, papeg\u00f8je og en gyngehest.": "Rabbit, hamster, parrot and a rocking horse.",
+    "M\u00e5l, kurv, trampolin og pokaler.": "Goal, hoop, trampoline and trophies.",
+    "Staffeli, kridttavle og byggebord.": "Easel, chalkboard and a building table.",
+    "Palmer, lianer og en abe i v\u00e6relset.": "Palms, vines and a monkey in the room.",
+    "Raket, rumdragt og UFO-lampe.": "Rocket, space suit and a UFO lamp.",
+    "Muslingeseng, stort akvarie og bl\u00e6ksprutte.": "Shell bed, big aquarium and an octopus.",
+    "Trone, slotsseng, rustning og en drage.": "Throne, castle bed, armour and a dragon.",
+    "Gr\u00e6skar, sp\u00f8gelser og spindelv\u00e6v.": "Pumpkins, ghosts and cobwebs.",
+    "Juletr\u00e6, nisse, gaver og snemand.": "Christmas tree, elf, presents and a snowman.",
+    "Kylling, hare, \u00e6g og g\u00e6kkebrev.": "Chick, bunny, eggs and a snowdrop letter.",
+    "Lagkage, balloner og flag til f\u00f8dselsdagen.": "Cake, balloons and flags for the birthday.",
+    "T\u00f8nde, maske og udkl\u00e6dningskiste.": "Barrel, mask and a dressing-up chest.",
+    "Fyrv\u00e6rkeri og konfetti.": "Fireworks and confetti.",
+    "Lejrb\u00e5l og solsikker.": "Campfire and sunflowers.",
+    "Hjerter til dem, man holder af.": "Hearts for the ones you love.",
+    "Flag og r\u00f8d-hvid guirlande.": "Flags and a red and white garland.",
+    Værelset: "The room", Hulen: "The den", Trætophuset: "The tree house", Rumstationen: "The space station", "Den store scene": "The big stage",
     Hud: "Skin", Hår: "Hair", Hårfarve: "Hair colour", Trøje: "Top", Bukser: "Trousers", Ekstra: "Extra", "Der er ikke plads til mere": "There's no room for more", "Vælg, hvem du er.": "Choose who you are.",
   },
 };

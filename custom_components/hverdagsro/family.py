@@ -61,10 +61,21 @@ def default_data() -> dict[str, Any]:
         "routines": {"helpers": [], "pickups": {}, "boards": {}, "cards": []},
         "pins": {},
         "board_done": {},
+        "game": {},
     }
 
 
 HOMEWORK_PREFIX = "lektie:"
+
+# Mit værelse: coins for what a child gets done, spent on new things for the room. The experience (xp) is all the
+# coins ever earned, and gives the room's level.
+COINS_CARD = 3
+COINS_ROUTINE = 10
+COINS_MISSION = 10
+COINS_HOMEWORK = 8
+COINS_DAILY = 5
+MAX_UNLOCK = 40
+MAX_OWNED = 600
 
 
 class Family:
@@ -262,7 +273,7 @@ class Family:
         member = self.require_member(member_id)
         if "msg_off" in prefs and user is not None and not self.can_manage(user):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
-        allowed = {"quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal", "playroom"}
+        allowed = {"quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal", "playroom", "room_prefs"}
         family = copy.deepcopy(self.members)
         for item in family:
             if item["id"] == member["id"]:
@@ -299,12 +310,15 @@ class Family:
         key = f"{slot}:{int(index)}"
         if done and key not in mine:
             mine.append(key)
+            self._add_coins(member["id"], COINS_CARD)
         elif not done and key in mine:
             mine.remove(key)
+            self._add_coins(member["id"], -COINS_CARD)
         cards = self.data["routines"].get("boards", {}).get(member["id"], {}).get(slot, [])
         bonus = f"{slot}:bonus"
         if cards and bonus not in mine and all(f"{slot}:{i}" in mine for i in range(len(cards))):
             mine.append(bonus)
+            self._add_coins(member["id"], COINS_ROUTINE)
             if self.feature(member, "points"):
                 self._add_points(member["id"], 5, "Rutinetavle", None)
         self._changed()
@@ -353,12 +367,15 @@ class Family:
         if done == (key in today):
             return done
         by = self.member_for_user(user)
+        coins = COINS_HOMEWORK if virtual else COINS_MISSION
         if done:
             today[key] = {"at": dt_util.now().isoformat(), "by": by["id"] if by else None}
+            self._add_coins(member["id"], coins)
             if not virtual:
                 self._emit("mission", {"member": member["id"], "mission": mission})
         else:
             today.pop(key, None)
+            self._add_coins(member["id"], -coins)
         if self.data["modules"].get("points", True) and mission["points"]:
             delta = mission["points"] if done else -mission["points"]
             self._add_points(member["id"], delta, mission["title"], by["id"] if by else None)
@@ -461,6 +478,46 @@ class Family:
         options = [r for r in self.data["rewards"] if r["member"] in (EVERYONE, member_id) and r["cost"] > points]
         return min(options, key=lambda r: r["cost"], default=None)
 
+    # ------------------------------------------------------------------ Mit værelse: coins and things
+
+    def game(self, member_id: str) -> dict[str, Any]:
+        """A member's coins, experience and the things they have unlocked for their room."""
+        state: dict[str, Any] = self.data["game"].setdefault(member_id, {"coins": 0, "xp": 0, "owned": []})
+        state.setdefault("coins", 0)
+        state.setdefault("xp", 0)
+        state.setdefault("owned", [])
+        return state
+
+    def _add_coins(self, member_id: str, delta: int) -> None:
+        """Earned (or taken back, when something is ticked off again): the experience follows, never below zero."""
+        state = self.game(member_id)
+        state["coins"] = max(0, int(state["coins"]) + int(delta))
+        state["xp"] = max(0, int(state["xp"]) + int(delta))
+
+    async def async_game(
+        self, member_id: str, action: str, items: list[str], cost: int, user: User | None = None
+    ) -> dict[str, Any]:
+        """The room game: the coin of the day for looking in, or unlocking things (one, or a whole pack) for coins."""
+        self._check_member_access(user, member_id)
+        member = self.require_member(member_id)
+        state = self.game(member["id"])
+        if action == "daily":
+            today = dt_util.now().date().isoformat()
+            if state.get("daily") != today:
+                state["daily"] = today
+                self._add_coins(member["id"], COINS_DAILY)
+                self._changed()
+            return state
+        new = [item for item in dict.fromkeys(items) if item not in state["owned"]]
+        if not new:
+            return state
+        if int(cost) > int(state["coins"]):
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="not_enough_coins")
+        state["coins"] = int(state["coins"]) - int(cost)
+        state["owned"] = [*state["owned"], *new][-MAX_OWNED:]
+        self._changed()
+        return state
+
     # ------------------------------------------------------------------ the panel
 
     def panel_state(self, user: User | None) -> dict[str, Any]:
@@ -479,6 +536,7 @@ class Family:
             "house": self.data["house"],
             "appliances": self.data["appliances"],
             "points": self.data["points"],
+            "game": self.data["game"],
             "requests": [r for r in self.requests if r["status"] == "pending" or r["at"][:10] == today],
             "ledger": self.data["ledger"][-40:],
             "done_today": self.data["completions"].get(today, {}),

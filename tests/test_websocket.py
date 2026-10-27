@@ -336,6 +336,43 @@ async def test_prefs_pin_and_board(
     assert msg["error"]["code"] == "not_allowed"
 
 
+async def test_room_game(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+) -> None:
+    """Mit værelse: coins for routines, missions and homework; unlocking things costs coins."""
+    family = init_integration.runtime_data
+    child = await hass_ws_client(hass, hass_read_only_access_token)
+    await family.async_save_section("routines", {"boards": {"ida": {"morgen": ["op", "taend"]}}})
+    await _ws(child, 1, type="hverdagsro/board", member="ida", slot="morgen", index=0, done=True)
+    assert family.game("ida")["coins"] == 3
+    await _ws(child, 2, type="hverdagsro/board", member="ida", slot="morgen", index=1, done=True)
+    assert family.game("ida")["coins"] == 16  # two cards and the whole routine
+    await _ws(child, 3, type="hverdagsro/board", member="ida", slot="morgen", index=1, done=False)
+    assert family.game("ida")["coins"] == 13
+    await _ws(child, 4, type="hverdagsro/mission", mission="teeth", member="ida", done=True)
+    await _ws(child, 5, type="hverdagsro/mission", mission="lektie:44:matematik", member="ida", done=True)
+    assert family.game("ida") == {"coins": 31, "xp": 31, "owned": []}
+    # The coin of the day, once a day.
+    msg = await _ws(child, 6, type="hverdagsro/game", member="ida", action="daily")
+    assert msg["result"]["coins"] == 36
+    msg = await _ws(child, 7, type="hverdagsro/game", member="ida", action="daily")
+    assert msg["result"]["coins"] == 36
+    # Unlocking: not without the coins, once only, and the experience stays.
+    msg = await _ws(child, 8, type="hverdagsro/game", member="ida", action="unlock", items=["arcade"], cost=99)
+    assert msg["error"]["code"] == "not_enough_coins"
+    msg = await _ws(child, 9, type="hverdagsro/game", member="ida", action="unlock", items=["arcade", "tv"], cost=30)
+    assert msg["result"] == {"coins": 6, "xp": 36, "owned": ["arcade", "tv"], "daily": TODAY}
+    msg = await _ws(child, 10, type="hverdagsro/game", member="ida", action="unlock", items=["arcade"], cost=30)
+    assert msg["result"]["coins"] == 6
+    msg = await _ws(child, 11, type="hverdagsro/game", member="oskar", action="daily")
+    assert msg["error"]["code"] == "not_allowed"
+    state = (await _ws(child, 12, type="hverdagsro/state"))["result"]
+    assert state["game"]["ida"]["owned"] == ["arcade", "tv"]
+
+
 async def test_quick_and_pins(
     hass: HomeAssistant, init_integration: MockConfigEntry, hass_ws_client: WebSocketGenerator
 ) -> None:

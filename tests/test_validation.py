@@ -101,4 +101,13 @@ def test_playroom() -> None:
     with pytest.raises(vol.Invalid):
         validate_section("family", [{**member, "playroom": {"items": ["x"]}}])
     with pytest.raises(vol.Invalid):
-        validate_section("family", [{**member, "playroom": {"items": [{"k": "x" * 400}] * 140}}])
+        validate_section("family", [{**member, "playroom": {"items": [{"k": "x" * 700}] * 140}}])
+
+    # The room pages, as one member wants them (Tilpas rummet, kun for mig).
+    prefs = {"stue": {"show": {"pic": False}, "fav": ["hygge"], "pin": True}}
+    assert validate_section("family", [{**member, "room_prefs": prefs}])[0]["room_prefs"] == prefs
+    assert validate_section("family", [member])[0]["room_prefs"] is None
+    with pytest.raises(vol.Invalid):
+        validate_section("family", [{**member, "room_prefs": {"stue": "nope"}}])
+    with pytest.raises(vol.Invalid):
+        validate_section("family", [{**member, "room_prefs": {f"r{i}": {"n": "x" * 300} for i in range(80)}}])

@@ -13,7 +13,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .const import BOARD_SLOTS, DOMAIN, ROLE_PARENT, SECTIONS, SKIN_MODES, SKINS
-from .family import Family
+from .family import MAX_UNLOCK, Family
 from .schema import vol
 from .validation import iso_date
 
@@ -238,6 +238,27 @@ async def ws_board(
     connection.send_result(msg["id"], {"done": done})
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hverdagsro/game",
+        vol.Required("member"): cv.string,
+        vol.Required("action"): vol.In(("daily", "unlock")),
+        vol.Optional("items", default=[]): vol.All(
+            cv.ensure_list, [vol.All(cv.string, vol.Length(min=1, max=40))], vol.Length(max=MAX_UNLOCK)
+        ),
+        vol.Optional("cost", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=5000)),
+    }
+)
+@websocket_api.async_response
+@_with_family
+async def ws_game(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    """Mit værelse: the daily coin, or unlocking things for coins."""
+    state = await family.async_game(msg["member"], msg["action"], msg["items"], msg["cost"], connection.user)
+    connection.send_result(msg["id"], state)
+
+
 def _require_parent_account(connection: websocket_api.ActiveConnection, family: Family, member_id: str) -> None:
     """Only a parent logs in to Ønskeskyen, and only as themselves (or an administrator for them)."""
     _require_manager(connection, family)
@@ -325,6 +346,7 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_prefs,
         ws_pin,
         ws_board,
+        ws_game,
         ws_osky_login,
         ws_osky_logout,
         ws_osky_refresh,

@@ -1081,6 +1081,12 @@ export function roomLightItems(ctx, roomId) {
   if (!r || !r.pts) return [];
   return H.items.filter((i) => (i.type === "light" || i.type === "lamp") && roomAt(H, i.x, i.y) === r);
 }
+/* The entities of the things placed in the room (not the lights): for the room page's groups. */
+export function roomItemEntities(ctx, roomId) {
+  const H = houseModel(ctx), r = roomOfId(H, roomId);
+  if (!r || !r.pts) return [];
+  return H.items.filter((i) => i.type !== "light" && i.type !== "lamp" && roomAt(H, i.x, i.y) === r).flatMap((i) => [i.ent, i.lock]).filter((x) => typeof x === "string" && x);
+}
 /* The little drawing of the room ("På tegningen") and how many pieces of furniture are in it. */
 export function roomPlan(ctx, roomId) {
   C = ctx;
@@ -2090,6 +2096,12 @@ function cleanHouse(d) {
 async function hbSave() {
   saveTimer = null;
   if (!HZ || !HZ.dirty) return;
+  // How each room's page looks is chosen on the room page; keep the newest choice.
+  const cur = C.data?.house?.rooms || [];
+  (HZ.d.rooms || []).forEach((r) => {
+    const c = cur.find((x) => x.id === r.id);
+    if (c && c.page) r.page = c.page;
+  });
   const clean = cleanHouse(HZ.d);
   const size = JSON.stringify(clean).length;
   if (size > 600000) {

@@ -12,6 +12,17 @@ All notable changes to Hverdagsro. The version is the one in `custom_components/
   - Their pet lives in the room, wags when the day goes well, and can be moved.
   - The routine cards for this part of the day, the day's missions and homework float as bubbles to tap when done.
   - The window shows the real sky, the switch on the wall turns the real lights in their room on and off, and the room gets dark at night when the lights are off.
+- **Mit værelse is a game now:**
+  - Coins for every routine card (3), a whole routine (+10), a mission (10) and homework (8), plus a treasure chest with 5 coins once a day. Ticking something off again takes its coins back.
+  - The coins buy new things in the shop, one at a time or a whole pack at a discount: 20 packs with 132 new things, 11 wallpapers, 6 floors and 10 things to wear. Among them a den (pillow fort, hammock, fairy lights), a gaming setup (screens, console, arcade machine, LED lights), rescue pups (lighthouse headquarters, fire engine, helicopter), a pop stage (lights, microphone, disco ball), space, animals, jungle, sport, a creative corner, the sea bed and a fairy-tale castle. All drawn for Hverdagsro, with no characters or brands from shows or bands.
+  - Party packs come to the shop around the occasions the family decorates for: Christmas, New Year, Shrovetide, Easter, Halloween, birthdays, Midsummer, Valentine's Day and Constitution Day. The first thing in each is a gift, and what is bought stays.
+  - Every coin also gives experience. Ten levels open the packs and four more rooms to furnish: the den, the tree house, the space station and the big stage, plus a gold wallpaper, a rainbow floor and a gold crown.
+  - A coin flies up when a bubble is tapped, and a new level or a new thing is celebrated.
+- **The room page, picture first (layout A):**
+  - The room's picture across the top with its name and temperature. Tap a lamp in the picture to open it in the drawer below (brightness, colour, on and off); tap it again to turn it off.
+  - The moods as a row of chips, favourites first, then the room's scenes from Home Assistant.
+  - "Alle N lamper i rummet" lists every lamp. Climate, music and TV, doors, windows and cameras, and the rest are small cards below.
+  - "Tilpas rummet" chooses what the page shows, the favourite moods, names for the lamps, lamps to hide, and whether the room is pinned to the front page. Parents choose for the whole family; anyone can choose only for themselves.
 - **Routines and homework among the missions, without points:** each part of the routine board shows as one mission (done when all its cards are), and homework from Aula (Min Uddannelse via the Aula integration) shows on its weekday.
 - **Husbyggeren, much easier to build with:**
   - The keyboard works anywhere on the page: undo and redo, Delete, Esc, arrows to nudge (Shift for long steps, Alt for fine ones), `,` and `.` to turn, Ctrl/⌘ D to duplicate.

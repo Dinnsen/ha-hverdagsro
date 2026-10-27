@@ -502,7 +502,7 @@ function lightModel(ctx, id, extra = {}) {
 const noEntity = (it) => ({ id: "i-" + it.id, ent: "", name: it.name || "", type: it.rgb ? "color" : "ct", on: false, bri: 80, col: WARM, lk: it.lk || "", off: true, noent: true });
 /* Like the prototype's genRoom: the light sources placed in the room in Husbyggeren. Without any, the room's own
    light (as "Loftlampe"), or the lights in the room's area in Home Assistant. */
-function roomLights(ctx, r) {
+function roomLights(ctx, r, all = false) {
   const placed = typeof House.roomLightItems === "function" ? House.roomLightItems(ctx, r.id) : [];
   const seen = new Set();
   const isGroup = (id) => Array.isArray(ctx.hass.states[id]?.attributes?.entity_id);
@@ -535,6 +535,13 @@ function roomLights(ctx, r) {
   // Drawn lamps without a light in Home Assistant are shown in the picture, but last and switched off.
   for (const it of placed) if (!it.ent || !ctx.hass.states[it.ent]) lights.push(noEntity(it));
   lights.sort((a, b) => (a.lk === "strip") - (b.lk === "strip") || !!a.noent - !!b.noent);
+  // The names and hidden lamps chosen in "Tilpas rummet".
+  const cfg = roomCfg(ctx, r);
+  lights.forEach((l) => {
+    l.base = l.name;
+    if (cfg.names[l.id]) l.name = cfg.names[l.id];
+  });
+  if (!all && cfg.hide.length) lights = lights.filter((l) => !cfg.hide.includes(l.id));
   const w = lights.length === 1 ? 0.85 : 0;
   lights.forEach((l, i) => (l.w = w || (l.lk === "strip" || l.lk === "rgb" ? 0.3 : i === 0 ? 0.7 : Math.max(0.15, 0.45 - i * 0.04))));
   return lights;
@@ -828,26 +835,173 @@ function thingRow(ctx, id) {
   return `<div class="rp-row st-${unav ? "warn" : cls || "none"}" style="--hc:${col}"><span class="rp-ic">${svg(ic)}</span><div><b>${esc(name)}</b><small>${esc(txt)}</small></div>${ctl}</div>`;
 }
 
-/* ------------------------------------------------------------------ pages (the prototype's pRoomPage and kRoom) */
+/* ------------------------------------------------------------------ the room page (layout A: the picture first) */
+/* What a room page shows, and how. The family's choice is stored on the room in the house (room.page); a member's
+   own choice ("kun for mig") in their prefs (room_prefs[room id]) and wins over the family's. */
+const SHOW = [["pic", "Billede af rummet"], ["scenes", "Stemninger"], ["lights", "Lys"], ["climate", "Klima"], ["media", "Musik og TV"], ["security", "Døre, vinduer og kamera"], ["other", "Andet i rummet"]];
+const sel = {}; // room id → the lamp in the drawer
+const allOpen = {}; // room id → the list of all lamps is open
+const famCfg = (r) => (r && r.page && typeof r.page === "object" ? r.page : {});
+const myCfg = (ctx, r) => (r && ctx.me?.room_prefs && typeof ctx.me.room_prefs === "object" ? ctx.me.room_prefs[r.id] || {} : {});
+function roomCfg(ctx, r, scope = "") {
+  const f = famCfg(r), m = scope === "family" ? {} : myCfg(ctx, r);
+  const pick = (k, d) => (Array.isArray(m[k]) || typeof m[k] === "boolean" ? m[k] : Array.isArray(f[k]) || typeof f[k] === "boolean" ? f[k] : d);
+  return {
+    show: { pic: true, scenes: true, lights: true, climate: true, media: true, security: true, other: true, ...(f.show || {}), ...(m.show || {}) },
+    fav: pick("fav", []),
+    hide: pick("hide", []),
+    names: { ...(f.names || {}), ...(m.names || {}) },
+    pin: pick("pin", false),
+  };
+}
+const hasMine = (ctx, r) => Object.keys(myCfg(ctx, r)).length > 0;
+/* What else is in the room, sorted into the page's groups. */
+function roomEntities(ctx, room) {
+  const ids = new Set(areaEntities(ctx, room));
+  if (typeof House.roomItemEntities === "function") for (const id of House.roomItemEntities(ctx, room.id)) if (ctx.hass.states[id] && !id.startsWith("light.")) ids.add(id);
+  return [...ids];
+}
+function groupOf(ctx, id) {
+  const d = id.split(".")[0], dc = ctx.hass.states[id]?.attributes?.device_class;
+  if (d === "media_player") return "media";
+  if (d === "climate" || d === "fan" || d === "humidifier" || (d === "sensor" && ["temperature", "humidity", "co2", "carbon_dioxide", "pm25", "illuminance"].includes(dc))) return "climate";
+  if (d === "lock" || d === "camera" || d === "cover" || d === "binary_sensor" || d === "alarm_control_panel") return "security";
+  return "other";
+}
+const GROUPS = [["climate", "Klima", "heat"], ["media", "Musik og TV", "speaker"], ["security", "Døre, vinduer og kamera", "door"], ["other", "Andet i rummet", "plug"]];
+/* The drawer for one lamp: on and off, brightness and colour. */
+function lampSheet(ctx, room, l, k) {
+  const { t, esc, svg } = ctx;
+  return `<section class="card ra-sheet${l.on ? " on" : ""}" data-id="${esc(l.id)}" style="--lc:${l.col}">
+    <div class="ra-sh-top"><span class="ra-sh-ic">${svg("bulb")}</span><div class="ra-sh-t"><b>${esc(l.name)}</b><small class="rm-pct">${l.off ? esc(t("Svarer ikke")) : l.on ? (l.type === "onoff" ? esc(t("Tændt")) : `${esc(t("Tændt"))} · ${l.bri} %`) : esc(t("Slukket"))}</small></div>
+    <button class="btn ${l.on ? "soft" : ""} ra-sh-tg" data-act="room-lamp" data-k="${k}" data-id="${esc(l.id)}" data-sheet="1" aria-pressed="${l.on}"${l.off ? " disabled" : ""}>${esc(l.on ? t("Sluk") : t("Tænd"))}</button></div>
+    ${l.type === "onoff" ? "" : `<label class="ra-bri"><span>${esc(t("Lysstyrke"))}</span><input type="range" min="1" max="100" value="${l.bri}" data-in="room-bri" data-id="${esc(l.id)}" data-room="${esc(room.id)}" aria-label="${esc(t("Lysstyrke {name}", { name: l.name }))}"${l.off ? " disabled" : ""}></label>`}
+    ${l.type === "color" || l.type === "ct" ? `<div class="rm-cols ra-cols">${(l.type === "color" ? SW_COLOR : SW_CT).map((c) => `<button data-act="room-col" data-id="${esc(l.id)}" data-room="${esc(room.id)}" data-col="${c}" style="--sw:${c}" aria-label="${esc(t("Farve"))}" aria-pressed="${c === l.col}"></button>`).join("")}</div>` : ""}
+  </section>`;
+}
 function roomPage(ctx, id) {
   const { t, esc, svg } = ctx;
   const raw = (houseOf(ctx).rooms || []).find((x) => x.id === id);
-  if (!raw) return `<section class="card"><h2>${esc(t("Rummet findes ikke længere"))}</h2><button class="btn soft" data-go="${ctx.isParent && ctx.on("security") ? "sikkerhed" : "hjem"}">${esc(t("Til Huset"))}</button></section>`;
-  const room = meta(ctx, raw);
-  const lights = roomLights(ctx, room);
-  const plan = typeof House.roomPlan === "function" ? House.roomPlan(ctx, room.id) : null;
-  let things = typeof House.roomThings === "function" ? House.roomThings(ctx, room.id) : [];
-  if (!things.length) things = areaEntities(ctx, room).map((x) => thingRow(ctx, x)).filter(Boolean);
-  const ag = AGES().find((a) => a[0] === room.age), st = GSTYLES().find((s) => s[0] === (room.style || "neutral"));
-  const area = room.area && (ctx.hass.areas?.[room.area]?.name || room.area);
   const back = ctx.isParent && ctx.on("security") ? "sikkerhed" : "hjem";
-  return `<button class="back" data-go="${back}">${svg("back")}${esc(back === "sikkerhed" ? t("Huset") : t("Hjem"))}</button>
-  <section class="rp-head"><div><span class="eyebrow">${esc(typeName(ctx, room))}${room.rtype === "kid" && ag ? ` · ${esc(t(ag[1]))} · ${esc(t(st ? st[1] : ""))}` : ""}${area ? ` · ${esc(t("område {name}", { name: area }))}` : ""}</span><h2 class="h2">${esc(room.name)}</h2></div>
-    ${ctx.isKid || !ctx.isParent || !ctx.on("house") ? "" : `<button class="btn soft" data-act="house-redit" data-id="${esc(room.id)}">${svg("edit")}${esc(t("Redigér rummet"))}</button>`}</section>
-  <div class="grid rp-grid">${lightsCard(ctx, room, lights, "s8")}
-    <aside class="rp-side s4">${plan ? `<section class="card rp-mini"><div class="card-head"><h2>${esc(t("På tegningen"))}</h2><span class="meta">${esc(t("{n} møbler", { n: plan.furn }))}</span></div>${plan.svg}</section>` : ""}
-      <section class="card"><div class="card-head"><h2>${esc(t("I rummet"))}</h2><span class="meta">${esc(t("{n} ting", { n: things.length }))}</span></div>${things.length ? `<div class="rp-list">${things.join("")}</div>` : `<p class="t-sub">${esc(t("Der er ikke sat enheder i rummet endnu. Det gøres i Husbyggeren."))}</p>`}</section></aside></div>
-  <p class="foot">${esc(room.img ? t("Billedet er jeres eget.") : hasArt(room) ? t("Værelset er håndtegnet.") : room.rtype === "kid" ? t("Billedet er tegnet ud fra rumtypen, alder og stil.") : t("Billedet er tegnet ud fra rumtypen."))} ${esc(t("Lamperne i billedet er lyskilderne, I har sat i rummet i Husbyggeren."))}</p>`;
+  if (!raw) return `<section class="card"><h2>${esc(t("Rummet findes ikke længere"))}</h2><button class="btn soft" data-go="${back}">${esc(t("Til Huset"))}</button></section>`;
+  const room = meta(ctx, raw);
+  const cfg = roomCfg(ctx, room);
+  const lights = roomLights(ctx, room);
+  const real = lights.filter((l) => !l.noent);
+  const on = real.filter((l) => l.on).length;
+  const temp = roomTemp(ctx, room);
+  const color = (room.kid && ctx.member(room.kid)?.color) || "var(--violet)";
+  const sc = scene(ctx, room, lights);
+  const ag = AGES().find((a) => a[0] === room.age);
+  const count = lights.length ? (on ? t("{n} af {total} lys tændt", { n: on, total: real.length }) : t("Alt er slukket")) : t("Ingen lys i rummet");
+  const eyebrow = [typeName(ctx, room), room.rtype === "kid" && ag ? t(ag[1]) : "", temp != null ? `${ctx.fmt.num(temp, 1)} °C` : ""].filter(Boolean).join(" · ");
+  const tools = `<button class="ra-back" data-go="${back}">${svg("back")}${esc(back === "sikkerhed" ? t("Huset") : t("Hjem"))}</button>
+    <button class="ra-tune" data-act="room-tune" data-id="${esc(room.id)}" aria-label="${esc(t("Tilpas rummet"))}">${svg("sliders")}</button>`;
+  const head = cfg.show.pic
+    ? `<div class="ra-hero">${sc.svg}${tools}<div class="ra-cap"><div><span>${esc(eyebrow)}</span><h2>${esc(room.name)}</h2></div><em>${esc(count)}</em></div></div>`
+    : `<div class="ra-flat">${tools}<div class="ra-cap"><div><span>${esc(eyebrow)}</span><h2>${esc(room.name)}</h2></div><em>${esc(count)}</em></div></div>`;
+  // The moods: favourites first, then Hverdagsro's own, then the room's scenes in Home Assistant.
+  const haScenes = room.area ? Object.keys(ctx.hass.states).filter((x) => (x.startsWith("scene.") || x.startsWith("script.")) && ctx.area(x) === room.area) : [];
+  const chips = [
+    ...PRESETS(room, lights, sc.slots).map((p) => ({ id: p[0], html: `<button class="ra-chip" data-act="room-scene" data-id="${esc(room.id)}" data-scene="${p[0]}" aria-pressed="${scenes[room.id] === p[0]}">${cfg.fav.includes(p[0]) ? `${svg("pstar")}` : ""}${esc(t(p[1]))}</button>` })),
+    ...haScenes.map((x) => ({ id: x, html: `<button class="ra-chip ha" data-act="room-ha" data-id="${esc(x)}">${cfg.fav.includes(x) ? svg("pstar") : svg(x.startsWith("script.") ? "play" : "sparkle")}${esc(ctx.name(x))}</button>` })),
+  ].sort((a, b) => (cfg.fav.includes(b.id) ? 1 : 0) - (cfg.fav.includes(a.id) ? 1 : 0) || (cfg.fav.indexOf(a.id) - cfg.fav.indexOf(b.id)));
+  const scenesRow = cfg.show.scenes && lights.length
+    ? `<div class="ra-chips" role="group" aria-label="${esc(t("Stemninger"))}"><button class="ra-chip off" data-act="room-off" data-id="${esc(room.id)}">${svg("power")}${esc(t("Sluk alt"))}</button>${chips.map((c) => c.html).join("")}</div>`
+    : "";
+  // The lamp in the drawer: the one tapped last, else the first one that is on, else the first.
+  let cur = real.find((l) => l.id === sel[room.id]) || real.find((l) => l.on) || real[0];
+  const lightsPart = cfg.show.lights && real.length
+    ? `${cfg.show.pic ? `<p class="ra-hint">${esc(t("Tryk på en lampe i billedet, eller vælg en stemning."))}</p>` : ""}
+      ${cur ? lampSheet(ctx, room, cur, sc.k) : ""}
+      ${real.length > 1 ? `<button class="ra-all" data-act="room-all" data-id="${esc(room.id)}" aria-expanded="${!!allOpen[room.id]}">${esc(t("Alle {n} lamper i rummet", { n: real.length }))}${svg("go", "ic")}</button>` : ""}
+      ${allOpen[room.id] && real.length > 1 ? `<div class="ra-list">${real.map((l) => `<button class="ra-li${l.on ? " on" : ""}${cur && l.id === cur.id ? " cur" : ""}" data-act="room-pick" data-room="${esc(room.id)}" data-id="${esc(l.id)}" style="--lc:${l.col}"><i></i><b>${esc(l.name)}</b><small>${esc(l.off ? t("Svarer ikke") : l.on ? (l.type === "onoff" ? t("Tændt") : `${l.bri} %`) : t("Slukket"))}</small></button>`).join("")}</div>` : ""}`
+    : cfg.show.lights && !lights.length ? `<p class="t-sub">${esc(t("Der er ikke koblet lys til rummet. Sæt lyskilder i rummet i Husbyggeren, eller vælg rummets område i Home Assistant."))}</p>` : "";
+  // Everything else in the room, as small cards per group.
+  const ents = roomEntities(ctx, room);
+  const groups = GROUPS.filter(([g]) => cfg.show[g]).map(([g, name, ic]) => {
+    const rows = ents.filter((x) => groupOf(ctx, x) === g).map((x) => thingRow(ctx, x)).filter(Boolean);
+    return rows.length ? `<section class="card ra-group"><div class="card-head"><h2>${svg(ic, "ic")}${esc(t(name))}</h2></div><div class="rp-list">${rows.join("")}</div></section>` : "";
+  }).filter(Boolean);
+  const plan = ctx.isParent && cfg.show.other && typeof House.roomPlan === "function" ? House.roomPlan(ctx, room.id) : null;
+  if (plan) groups.push(`<section class="card ra-group rp-mini"><div class="card-head"><h2>${esc(t("På tegningen"))}</h2><span class="meta">${esc(t("{n} møbler", { n: plan.furn }))}</span></div>${plan.svg}</section>`);
+  return `<div class="ra rm-card" data-room="${esc(room.id)}" style="--pc:${color}">
+    <div class="ra-main">${head}${scenesRow}</div>
+    <div class="ra-side">${lightsPart}</div>
+    ${groups.length ? `<div class="ra-groups">${groups.join("")}</div>` : ""}
+  </div>
+  <p class="foot">${esc(room.img ? t("Billedet er jeres eget.") : hasArt(room) ? t("Værelset er håndtegnet.") : room.rtype === "kid" ? t("Billedet er tegnet ud fra rumtypen, alder og stil.") : t("Billedet er tegnet ud fra rumtypen."))} ${esc(t("Tryk på knappen øverst til højre for at vælge, hvad siden viser."))}</p>`;
+}
+
+/* "Tilpas rummet": what the page shows, favourite moods, lamps (rename, hide) and the front page. For the whole
+   family (parents) or only for me. */
+const tune = { s: null, id: "", scope: "" };
+function tuneHtml(ctx, room) {
+  const { t, esc, svg } = ctx;
+  const fam = ctx.isParent, mine = !!ctx.me;
+  if (!tune.scope) tune.scope = fam ? "family" : "me";
+  const scope = tune.scope;
+  const cfg = roomCfg(ctx, room, scope);
+  const all = roomLights(ctx, room, true).filter((l) => !l.noent);
+  const sc = PRESETS(room, all, []).map((p) => [p[0], t(p[1])]);
+  const ha = room.area ? Object.keys(ctx.hass.states).filter((x) => (x.startsWith("scene.") || x.startsWith("script.")) && ctx.area(x) === room.area).map((x) => [x, ctx.name(x)]) : [];
+  const d = `data-room="${esc(room.id)}"`;
+  return `<div class="ra-tn"><span class="eyebrow">${esc(room.name)}</span><h2>${esc(t("Tilpas rummet"))}</h2>
+    ${fam && mine ? `<div class="seg ra-scope" role="tablist"><button data-act="room-scope" data-v="family" aria-pressed="${scope === "family"}">${esc(t("For hele familien"))}</button><button data-act="room-scope" data-v="me" aria-pressed="${scope === "me"}">${esc(t("Kun for mig"))}</button></div>` : ""}
+    <p class="t-sub">${esc(scope === "family" ? t("Det, du vælger her, gælder for alle i familien, som ikke har valgt selv.") : t("Det, du vælger her, gælder kun for dig."))}${scope === "me" && hasMine(ctx, room) ? ` <button class="lnk" data-act="room-reset" ${d}>${esc(t("Brug familiens igen"))}</button>` : ""}</p>
+    <div class="ra-tn-list">${SHOW.map(([k, name]) => `<label class="ra-tn-row"><span>${esc(t(name))}</span><input type="checkbox" data-in="room-cfg" ${d} data-k="show.${k}" ${cfg.show[k] ? "checked" : ""}></label>`).join("")}</div>
+    ${sc.length || ha.length ? `<b class="ra-tn-h">${esc(t("Favoritstemninger"))}</b><div class="ra-tn-chips">${[...sc, ...ha].map(([id, name]) => `<button class="ra-chip${cfg.fav.includes(id) ? " fav" : ""}" data-act="room-fav" ${d} data-v="${esc(id)}" aria-pressed="${cfg.fav.includes(id)}">${cfg.fav.includes(id) ? svg("pstar") : ""}${esc(name)}</button>`).join("")}</div>` : ""}
+    ${all.length ? `<b class="ra-tn-h">${esc(t("Lamper"))}</b><div class="ra-tn-lamps">${all.map((l) => {
+      const hidden = cfg.hide.includes(l.id);
+      return `<div class="ra-tn-lamp${hidden ? " hid" : ""}" style="--lc:${l.col}"><i></i><input type="text" maxlength="40" value="${esc(cfg.names[l.id] || "")}" placeholder="${esc(l.base || l.name)}" data-in="room-name" ${d} data-id="${esc(l.id)}" aria-label="${esc(t("Navn på {name}", { name: l.base || l.name }))}"><button class="btn soft sm" data-act="room-hide" ${d} data-id="${esc(l.id)}">${esc(hidden ? t("Vis") : t("Skjul"))}</button></div>`;
+    }).join("")}</div>` : ""}
+    <label class="ra-tn-row ra-tn-pin"><span>${esc(t("Vis på forsiden"))}</span><input type="checkbox" data-in="room-cfg" ${d} data-k="pin" ${cfg.pin ? "checked" : ""}></label>
+    <div class="sheet-actions">${fam && ctx.on("house") ? `<button class="btn soft" data-act="house-redit" data-id="${esc(room.id)}" data-close>${svg("edit")}${esc(t("Billede, type og område"))}</button>` : ""}<button class="btn" data-close>${esc(t("Færdig"))}</button></div></div>`;
+}
+function openTune(ctx, id) {
+  const raw = findRoom(ctx, id);
+  if (!raw) return;
+  tune.id = id;
+  tune.scope = "";
+  tune.s = ctx.sheet(tuneHtml(ctx, meta(ctx, raw)), { cls: "ra-tune-sheet" });
+}
+function redrawTune(ctx) {
+  const raw = findRoom(ctx, tune.id);
+  if (!raw || !tune.s?.el?.isConnected) return;
+  const at = tune.s.el.scrollTop;
+  tune.s.el.innerHTML = tuneHtml(ctx, meta(ctx, raw));
+  tune.s.el.scrollTop = at;
+}
+/* Change one setting in the chosen scope, save it and redraw. */
+async function setCfg(ctx, roomId, change) {
+  const scope = tune.scope || (ctx.isParent ? "family" : "me");
+  if (scope === "family") {
+    if (!ctx.isParent) return;
+    const house = JSON.parse(JSON.stringify(ctx.data?.house || {}));
+    const r = (house.rooms || []).find((x) => x.id === roomId);
+    if (!r) return;
+    r.page = change({ ...famCfg(r) });
+    await ctx.save("house", house);
+  } else if (ctx.me) {
+    const all = { ...(ctx.me.room_prefs || {}) };
+    const next = change({ ...(all[roomId] || {}) });
+    if (next && Object.keys(next).length) all[roomId] = next;
+    else delete all[roomId];
+    ctx.me.room_prefs = all;
+    try {
+      await ctx.ws("prefs", { member: ctx.me.id, prefs: { room_prefs: all } });
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
+  }
+  redrawTune(ctx);
+  ctx.render();
+}
+/* The rooms pinned to the front page, as small living cards. */
+export function pinnedRooms(ctx) {
+  const rooms = (houseOf(ctx).rooms || []).filter((r) => roomCfg(ctx, r).pin);
+  if (!rooms.length) return "";
+  return `<section class="card s12 ra-pins"><div class="card-head"><h2>${ctx.esc(ctx.t("Rum"))}</h2></div><div class="ra-pin-grid">${rooms.map((r) => roomCard(ctx, r)).join("")}</div></section>`;
 }
 
 const findRoom = (ctx, id) => (houseOf(ctx).rooms || []).find((x) => x.id === id);
@@ -862,6 +1016,13 @@ const acts = {
     room = meta(ctx, room);
     const l = roomLights(ctx, room).find((x) => x.id === el.dataset.id);
     if (!l || l.off) return;
+    // On the room page a tap on a lamp that is on first opens it in the drawer; the next tap turns it off.
+    const page = el.closest(".ra");
+    if (page && !el.dataset.sheet) {
+      const was = sel[room.id];
+      sel[room.id] = l.id;
+      if (l.on && was !== l.id) return ctx.render();
+    }
     ctx.q(`.rm-card[data-room="${CSS.escape(room.id)}"]`)?.classList.add("touched");
     setOverride(l, { on: !l.on });
     delete scenes[room.id];
@@ -871,8 +1032,36 @@ const acts = {
       row.classList.toggle("on", !l.on);
       row.querySelector(".rm-tg")?.setAttribute("aria-pressed", String(!l.on));
     }
+    if (page) ctx.render();
     return lightCall(ctx, l, !l.on, null, null);
   },
+  "room-pick": (el, ev, ctx) => {
+    sel[el.dataset.room] = el.dataset.id;
+    ctx.render();
+  },
+  "room-all": (el, ev, ctx) => {
+    allOpen[el.dataset.id] = !allOpen[el.dataset.id];
+    ctx.render();
+  },
+  "room-tune": (el, ev, ctx) => openTune(ctx, el.dataset.id),
+  "room-scope": (el, ev, ctx) => {
+    tune.scope = el.dataset.v;
+    redrawTune(ctx);
+  },
+  "room-fav": (el, ev, ctx) => {
+    const raw = findRoom(ctx, el.dataset.room);
+    if (!raw) return;
+    const cur = roomCfg(ctx, raw, tune.scope).fav, v = el.dataset.v;
+    return setCfg(ctx, raw.id, (c) => ({ ...c, fav: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v].slice(-12) }));
+  },
+  "room-hide": (el, ev, ctx) => {
+    const raw = findRoom(ctx, el.dataset.room);
+    if (!raw) return;
+    const cur = roomCfg(ctx, raw, tune.scope).hide, v = el.dataset.id;
+    if (sel[raw.id] === v) delete sel[raw.id];
+    return setCfg(ctx, raw.id, (c) => ({ ...c, hide: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v].slice(-40) }));
+  },
+  "room-reset": (el, ev, ctx) => setCfg(ctx, el.dataset.room, () => ({})),
   "room-off": (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.id));
     const lights = roomLights(ctx, room).filter((l) => l.on && l.ent);
@@ -910,7 +1099,7 @@ const acts = {
     setOverride(l, { on: true, col });
     repaint(ctx, room);
     el.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === el)));
-    el.closest(".rm-l")?.style.setProperty("--lc", col);
+    el.closest(".rm-l, .ra-sheet")?.style.setProperty("--lc", col);
     return lightCall(ctx, l, true, null, col);
   },
   "room-toggle": (el, ev, ctx) => ctx.call("homeassistant", "toggle", { entity_id: el.dataset.id }),
@@ -932,6 +1121,21 @@ const acts = {
 };
 
 const inputs = {
+  "room-cfg": (el, ev, ctx) => {
+    if (ev.type !== "change") return;
+    const k = el.dataset.k, v = !!el.checked;
+    return setCfg(ctx, el.dataset.room, (c) => (k === "pin" ? { ...c, pin: v } : { ...c, show: { ...(c.show || {}), [k.slice(5)]: v } }));
+  },
+  "room-name": (el, ev, ctx) => {
+    if (ev.type !== "change") return;
+    const id = el.dataset.id, v = el.value.trim().slice(0, 40);
+    return setCfg(ctx, el.dataset.room, (c) => {
+      const names = { ...(c.names || {}) };
+      if (v) names[id] = v;
+      else delete names[id];
+      return { ...c, names };
+    });
+  },
   "room-bri": (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.room));
     const l = roomLights(ctx, room).find((x) => x.id === el.dataset.id);
@@ -939,10 +1143,10 @@ const inputs = {
     const bri = +el.value;
     delete scenes[room.id];
     setOverride(l, { on: true, bri });
-    const row = el.closest(".rm-l");
+    const row = el.closest(".rm-l, .ra-sheet");
     if (row) {
       row.classList.add("on");
-      row.querySelector(".rm-pct").textContent = `${bri} %`;
+      row.querySelector(".rm-pct").textContent = row.classList.contains("ra-sheet") ? `${ctx.t("Tændt")} · ${bri} %` : `${bri} %`;
       row.querySelector(".rm-tg")?.setAttribute("aria-pressed", "true");
     }
     repaint(ctx, room);
@@ -997,6 +1201,79 @@ const css = `
 .rm-none-ic { width: 76px; height: 76px; border-radius: 26px; display: grid; place-items: center; background: color-mix(in srgb, var(--violet) 12%, var(--surface)); animation: rmbob 5s ease-in-out infinite; }
 .v-vaerelse .rp-head { margin-top: 0; }
 @media (prefers-reduced-motion: reduce) { .rm-mini:hover { transform: none; } }
+/* the room page, layout A: the picture first */
+.ra { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); margin-bottom: 8px; }
+@media (min-width: 900px) { .ra { grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); align-items: start; } .ra-groups { grid-column: 1 / -1; } }
+.ra-main, .ra-side { display: grid; gap: 12px; min-width: 0; align-content: start; }
+.ra-hero { position: relative; border-radius: 26px; overflow: hidden; background: #2A2440; box-shadow: var(--shadow); }
+.ra-hero .rm-svg { display: block; width: 100%; height: auto; }
+.ra-hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 48%; background: linear-gradient(to top, rgba(12, 10, 28, .7), transparent); pointer-events: none; }
+.ra-back, .ra-tune { position: absolute; top: 12px; z-index: 2; min-height: 44px; border: 0; border-radius: 999px; background: rgba(27, 21, 48, .55); color: #fff; font: inherit; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.ra-back { left: 12px; padding: 0 14px 0 8px; }
+.ra-tune { right: 12px; width: 44px; justify-content: center; }
+.ra-back .ic, .ra-tune .ic { width: 20px; height: 20px; }
+.ra-cap { position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; color: #fff; pointer-events: none; }
+.ra-cap span { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .9; }
+.ra-cap h2 { margin: 0; font-size: clamp(24px, 4vw, 34px); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.ra-cap em { font-style: normal; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 999px; background: rgba(27, 21, 48, .55); white-space: nowrap; }
+.ra-flat { position: relative; padding: 68px 16px 16px; border-radius: 26px; background: color-mix(in srgb, var(--pc) 80%, #1B1530); }
+.ra-flat .ra-cap { position: static; }
+.ra-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: 0 -2px; }
+.ra-chips::-webkit-scrollbar { display: none; }
+.ra-chip { flex: none; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--line); }
+.ra-chip[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--pc, var(--violet)); background: color-mix(in srgb, var(--pc, var(--violet)) 10%, var(--surface)); }
+.ra-chip.off { background: var(--ink); color: var(--surface); box-shadow: none; }
+.ra-chip .ic { width: 16px; height: 16px; }
+.ra-chip svg path[fill="currentColor"] { color: #F5B000; }
+.ra-hint { margin: 0; color: var(--muted); font-size: 13px; }
+.ra-sheet { display: grid; gap: 14px; }
+.ra-sh-top { display: flex; align-items: center; gap: 12px; }
+.ra-sh-ic { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); flex: none; transition: background .3s, box-shadow .3s; }
+.ra-sh-ic .ic { width: 22px; height: 22px; }
+.ra-sheet.on .ra-sh-ic { background: var(--lc); color: #3A2A10; box-shadow: 0 0 22px color-mix(in srgb, var(--lc) 70%, transparent); }
+.ra-sh-t { flex: 1; min-width: 0; }
+.ra-sh-t b { display: block; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ra-sh-t small { color: var(--muted); font-size: 13px; }
+.ra-bri { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.ra-bri input { width: 100%; accent-color: var(--pc, var(--violet)); min-height: 28px; }
+.ra-cols { display: flex; flex-wrap: wrap; gap: 10px; }
+.ra-cols button { width: 34px; height: 34px; }
+.ra-sh-tg { min-width: 84px; }
+.ra-all { min-height: 44px; border: 0; background: none; padding: 0 2px; font: inherit; font-size: 14px; font-weight: 700; color: var(--violet); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; justify-self: start; }
+.ra-all .ic { width: 16px; height: 16px; transition: transform .2s; }
+.ra-all[aria-expanded="true"] .ic { transform: rotate(90deg); }
+.ra-list { display: grid; gap: 6px; }
+.ra-li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 48px; padding: 0 14px; border-radius: 14px; border: 0; background: var(--surface); font: inherit; color: var(--ink); text-align: left; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--line); }
+.ra-li b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ra-li small { color: var(--muted); font-size: 12.5px; }
+.ra-li i { width: 10px; height: 10px; border-radius: 9px; background: var(--line); }
+.ra-li.on i { background: var(--lc); box-shadow: 0 0 8px var(--lc); }
+.ra-li.cur { box-shadow: inset 0 0 0 2px var(--pc, var(--violet)); }
+.ra-groups { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.ra-group .card-head h2 { display: inline-flex; align-items: center; gap: 8px; }
+.ra-group .card-head h2 .ic { width: 18px; height: 18px; color: var(--muted); }
+.ra-tn { display: grid; gap: 12px; }
+.ra-tn h2 { margin: 0; }
+.ra-tn .t-sub { margin: 0; }
+.ra-scope { display: flex; background: var(--surface-2); border-radius: 999px; padding: 4px; }
+.ra-scope button { flex: 1; min-height: 40px; border-radius: 999px; border: 0; background: transparent; font: inherit; font-weight: 700; font-size: 13px; color: var(--ink); cursor: pointer; }
+.ra-scope button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.ra-tn-list { display: grid; }
+.ra-tn-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; border-bottom: 1px solid var(--line); font-weight: 700; cursor: pointer; }
+.ra-tn-row input { width: 22px; height: 22px; accent-color: var(--violet); flex: none; }
+.ra-tn-pin { border: 0; background: var(--surface-2); border-radius: 14px; padding: 0 14px; }
+.ra-tn-h { font-size: 14px; margin-top: 4px; }
+.ra-tn-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ra-tn-chips .ra-chip { min-height: 38px; }
+.ra-tn-chips .ra-chip.fav { background: var(--ink); color: var(--surface); box-shadow: none; }
+.ra-tn-lamps { display: grid; gap: 8px; }
+.ra-tn-lamp { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.ra-tn-lamp i { width: 10px; height: 10px; border-radius: 9px; background: var(--lc); }
+.ra-tn-lamp input { font: inherit; font-size: 14px; font-weight: 600; min-width: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); color: var(--ink); }
+.ra-tn-lamp.hid { opacity: .55; }
+.ra-pin-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.ra-pin-grid .rm-pic { max-height: 180px; overflow: hidden; }
+@media (max-width: 600px) { .ra-hero, .ra-flat { border-radius: 22px; } .ra-cap em { display: none; } }
 `;
 
 const en = {
@@ -1027,6 +1304,12 @@ const en = {
   "Billedet er tegnet ud fra rumtypen. Lyset følger lamperne i rummet, og vinduet følger solen og vejret.": "The picture is drawn from the room type. The light follows the lamps in the room, and the window follows the sun and the weather.",
   "{name} er sat i gang": "{name} has started", "Lås {name} op?": "Unlock {name}?", "Døren låses op med det samme.": "The door is unlocked right away.",
   "Billedet er for stort": "The photo is too large", "Billed-upload er ikke slået til i Home Assistant": "Image upload is not enabled in Home Assistant", "Billedet er lagt ind": "The photo has been added", "Billedet kunne ikke lægges op: {error}": "The photo could not be uploaded: {error}",
+  "Billede af rummet": "Picture of the room", Stemninger: "Moods", Klima: "Climate", "Musik og TV": "Music and TV", "Døre, vinduer og kamera": "Doors, windows and camera", "Andet i rummet": "Other things in the room",
+  "Tilpas rummet": "Customise the room", "For hele familien": "For the whole family", "Kun for mig": "Only for me", "Det, du vælger her, gælder for alle i familien, som ikke har valgt selv.": "What you choose here applies to everyone in the family who hasn't chosen for themselves.",
+  "Det, du vælger her, gælder kun for dig.": "What you choose here only applies to you.", "Brug familiens igen": "Use the family's again", Favoritstemninger: "Favourite moods", Lamper: "Lamps", "Navn på {name}": "Name of {name}", Vis: "Show", Skjul: "Hide",
+  "Vis på forsiden": "Show on the front page", "Billede, type og område": "Picture, type and area", Færdig: "Done", Sluk: "Turn off", Tænd: "Turn on", Lysstyrke: "Brightness",
+  "Tryk på en lampe i billedet, eller vælg en stemning.": "Tap a lamp in the picture, or pick a mood.", "Alle {n} lamper i rummet": "All {n} lamps in the room",
+  "Tryk på knappen øverst til højre for at vælge, hvad siden viser.": "Use the button at the top right to choose what the page shows.",
   "Dit værelse er ikke sat op endnu": "Your room isn't set up yet", "Bed far eller mor om at vælge dit værelse, når de tegner huset i Hverdagsro.": "Ask a parent to pick your room when they draw the house in Hverdagsro.", "Mit værelse": "My room",
 };
 

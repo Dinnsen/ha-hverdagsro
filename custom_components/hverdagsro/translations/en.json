@@ -93,6 +93,9 @@
     },
     "osky_error": {
       "message": "Ønskeskyen says: {error}"
+    },
+    "not_enough_coins": {
+      "message": "There are not enough coins."
     }
   },
   "services": {

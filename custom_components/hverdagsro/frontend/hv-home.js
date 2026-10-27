@@ -578,6 +578,8 @@ function pHome(ctx) {
         <div class="day-split">${esc(ctx.t("I morgen, {day}", { day: ctx.fmt.day(t1) }))}</div>${dayRows(t1) || `<div class="t-sub">${esc(ctx.t("Ingen aftaler i morgen"))}</div>`}
       </div>${pickupLine(ctx)}
     </section>`);
+  const pins = typeof Rooms.pinnedRooms === "function" ? Rooms.pinnedRooms(ctx) : "";
+  if (pins) cards.push(pins);
   const goals = ctx.on("points") && ctx.on("shop") && kids.some((k) => ctx.feature(k, "shop"));
   if (ctx.on("meals") && ctx.data.settings.meals_calendar) {
     const dn = dinnerOn(ctx, t0);

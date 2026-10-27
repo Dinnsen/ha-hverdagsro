@@ -20,6 +20,7 @@ from .const import (
     MAX_PLAYROOM_BYTES,
     MAX_QUICK,
     MAX_REWARDS,
+    MAX_ROOM_PREFS_BYTES,
     MAX_ROUTINES_BYTES,
     MODULES,
     PET_KINDS,
@@ -139,6 +140,17 @@ def _playroom(value: Any) -> dict[str, Any] | None:
     return value
 
 
+def _room_prefs(value: Any) -> dict[str, Any] | None:
+    """A member's own choices for the room pages (Tilpas rummet, kun for mig): per room id, checked loosely."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or not all(isinstance(k, str) and isinstance(v, dict) for k, v in value.items()):
+        raise vol.Invalid("expected an object of rooms")
+    if len(json.dumps(value, separators=(",", ":"))) > MAX_ROOM_PREFS_BYTES:
+        raise vol.Invalid("too many room choices")
+    return value
+
+
 MEMBER = vol.Schema(
     {
         vol.Required("id"): ident,
@@ -166,6 +178,7 @@ MEMBER = vol.Schema(
         vol.Optional("msg_off", default=[]): text_list(20, 40),
         vol.Optional("goal", default=None): vol.Any(None, ident),
         vol.Optional("playroom", default=None): _playroom,
+        vol.Optional("room_prefs", default=None): _room_prefs,
     }
 )
 
