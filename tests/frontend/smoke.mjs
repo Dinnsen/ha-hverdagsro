@@ -36,12 +36,17 @@ const runs = [
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]"],
   ["--user", "ida", "--view", "vaerelse", "--narrow", "--width", "844", "--height", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"full\"]"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", ".pl-shopb"],
-  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "#pl-stage", "--click", "[data-pl=\"sound\"]", "--click", "[data-pl=\"sound\"]"],
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", ".pl-here", "--click", "[data-pl=\"sound\"]", "--click", "[data-pl=\"sound\"]"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", "[data-pl=\"fun\"]", "--click", "[data-act=\"fun-done\"]"],
   ["--user", "anna", "--view", "vaerelse", "--click", "[data-pl=\"fun\"]", "--click", "[data-act=\"fun-approve\"]", "--click", "[data-act=\"fun-hunt-stop\"]", "--click", "[data-act=\"fun-hunt\"]"],
   ["--user", "ida", "--view", "vaerelse", "--narrow", "--width", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"story\"]", "--click", "[data-act=\"play-story-save\"]"],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"city\"]"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--narrow", "--width", "844", "--height", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"city\"]"],
+  // 0.11: the wall posters (big), hiding the bubbles, the pet, doors between rooms, the arrow keys.
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", ".wl-poster[data-pl=\"wall-rutine\"]", "--click", "[data-act=\"wall-card\"]:not([disabled])"],
+  ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", ".wl-poster[data-pl=\"wall-skema\"]"],
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", ".pl-bubhide", "--click", ".pl-bubmini", "--click", ".pl-pet", "--click", ".pt-do[data-k=\"ball\"]", "--click", ".pl-pet", "--click", ".pt-do[data-k=\"treat\"]"],
+  ["--user", "ida", "--view", "vaerelse", "--narrow", "--width", "844", "--height", "390", "--click", ".sheet [data-close]", "--click", ".wk-door[data-k=\"h:kokken\"]", "--eval", "for (let i = 0; i < 30; i++) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))"],
   // 0.10: Verden, the house in 3D (and into a room from there), the fallback house, things that work.
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"house\"]", "--click", ".hz-sign[data-k=\"h:bad\"]", "--click", ".pl-it[data-k=\"badekar\"]", "--click", ".pl-it[data-k=\"haandvask\"]"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--narrow", "--width", "844", "--height", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"town\"]", "--click", "button[data-pl=\"house\"]"],

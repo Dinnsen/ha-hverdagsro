@@ -18,6 +18,9 @@ import * as Fun from "./hv-fun.js";
 import * as Toys from "./hv-toys.js";
 import * as Life from "./hv-life.js";
 import * as Fix from "./hv-fixtures.js";
+import * as Wall from "./hv-wall.js";
+import * as Walk from "./hv-walk.js";
+import * as Pet from "./hv-pet.js";
 import { HOME_THINGS, HOME_ACT, HOME_EN } from "./hv-homethings.js";
 import { CITY_THINGS, CITY_PACKS, CITY_EN } from "./hv-citythings.js";
 import { citySvg, CITY_MAP_EN, placePrice } from "./hv-city.js";
@@ -179,8 +182,9 @@ export function avatarSvg(me, mood = "", pose = "") {
     bamse: `<g transform="translate(46 -86)"><circle cx="-10" cy="-26" r="8" fill="#C98B55" ${S("stroke-width=\"3\"")}/><circle cx="10" cy="-26" r="8" fill="#C98B55" ${S("stroke-width=\"3\"")}/><circle cx="0" cy="-14" r="16" fill="#C98B55" ${S("stroke-width=\"3\"")}/><ellipse cx="0" cy="8" rx="16" ry="14" fill="#C98B55" ${S("stroke-width=\"3\"")}/><circle cx="-5" cy="-16" r="2" fill="${OL}"/><circle cx="5" cy="-16" r="2" fill="${OL}"/></g>`,
   }[me.acc] || "";
   const mk = me.mouth || "smil";
-  const mouth = mood === "wow" || mk === "o" ? `<ellipse cx="0" cy="-150" rx="9" ry="11" fill="${OL}"/>` : mood === "sleep" ? `<path d="M-10 -152 h20" ${S()}/>` : mk === "grin" ? `<path d="M-18 -158 Q0 -134 18 -158Z" fill="#fff" ${S("stroke-width=\"3.5\"")}/>` : mk === "tunge" ? `<path d="M-14 -156 Q0 -142 14 -156" fill="#fff" ${S("stroke-width=\"3.5\"")}/><path d="M-6 -150 q6 14 12 0z" fill="#FF6B8A" ${S("stroke-width=\"2.5\"")}/>` : `<path d="M-14 -156 Q0 -142 14 -156" fill="#fff" ${S("stroke-width=\"3.5\"")}/>`;
-  const brows = me.brows ? `<path d="M-32 -198 q10 -6 20 0 M12 -198 q10 -6 20 0" fill="none" ${S("stroke-width=\"4\"")}/>` : "";
+  const mouth = mood === "wow" || mk === "o" ? `<ellipse cx="0" cy="-150" rx="9" ry="11" fill="${OL}"/>` : mood === "sleep" ? `<path d="M-10 -152 h20" ${S()}/>` : mood === "sur" || mood === "trist" ? `<path d="M-14 -146 Q0 -158 14 -146" fill="none" ${S("stroke-width=\"3.5\"")}/>` : mk === "grin" || mood === "glad" ? `<path d="M-18 -158 Q0 -134 18 -158Z" fill="#fff" ${S("stroke-width=\"3.5\"")}/>` : mk === "tunge" || mood === "tunge" ? `<path d="M-14 -156 Q0 -142 14 -156" fill="#fff" ${S("stroke-width=\"3.5\"")}/><path d="M-6 -150 q6 14 12 0z" fill="#FF6B8A" ${S("stroke-width=\"2.5\"")}/>` : `<path d="M-14 -156 Q0 -142 14 -156" fill="#fff" ${S("stroke-width=\"3.5\"")}/>`;
+  // Cross or sad: the brows show it (and a tear).
+  const brows = mood === "sur" ? `<path d="M-36 -206 l22 10 M36 -206 l-22 10" fill="none" ${S("stroke-width=\"5\"")}/>` : mood === "trist" ? `<path d="M-34 -196 l20 -8 M34 -196 l-20 -8" fill="none" ${S("stroke-width=\"4\"")}/><path d="M-26 -166 q-6 10 0 14 q6 -4 0 -14z" fill="#9FD4FF" ${S("stroke-width=\"2\"")}/>` : me.brows ? `<path d="M-32 -198 q10 -6 20 0 M12 -198 q10 -6 20 0" fill="none" ${S("stroke-width=\"4\"")}/>` : "";
   const eyes = mood === "sleep" ? `<path d="M-30 -180 q8 6 16 0 M14 -180 q8 6 16 0" fill="none" ${S("stroke-width=\"3.5\"")}/>` : `<ellipse cx="-22" cy="-180" rx="7" ry="9" fill="${eye}"/><ellipse cx="22" cy="-180" rx="7" ry="9" fill="${eye}"/><circle cx="-19" cy="-184" r="2.6" fill="#fff"/><circle cx="25" cy="-184" r="2.6" fill="#fff"/>`;
   // Legs, standing or sitting.
   const sit = pose === "sit";
@@ -438,7 +442,7 @@ function people(ctx, m, sid, room, pl) {
     if (!N) continue;
     const st = pos[2] ? seated(room, pos[2]) : null;
     const tf = st ? (st[4] === "lie" ? `translate(${st[0]} ${st[1]}) rotate(-90) scale(.66)` : `translate(${st[0]} ${st[1]}) scale(.82)`) : `translate(${pos[0]} ${pos[1]}) scale(.82)`;
-    out.push([st ? st[2] : pos[1], `<g class="pl-npc${st ? " seated" : ""}" data-pl="npc" data-id="${esc(id)}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body" style="animation-delay:${-(id.length % 5) * 0.4}s">${charSvg(N[3], st?.[4] === "lie" ? "sleep" : ST.npcMood?.[id] || "", avatarSvg)}</g>${id.startsWith("fig:") && !st ? `<text y="-262" text-anchor="middle" class="pl-petname">${esc(N[0])}</text>` : ""}</g>${blanket(st)}`]);
+    out.push([st ? st[2] : pos[1], `<g class="pl-npc${st ? " seated" : ""}" data-pl="npc" data-id="${esc(id)}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body" style="animation-delay:${-(id.length % 5) * 0.4}s">${charSvg(N[3], st?.[4] === "lie" ? "sleep" : ST.npcMood?.[id] || "", avatarSvg)}${heldSvg(room, id)}</g>${id.startsWith("fig:") && !st ? `<text y="-262" text-anchor="middle" class="pl-petname">${esc(N[0])}</text>` : ""}</g>${blanket(st)}`]);
   }
   const key = presenceKey(sid), live = new Set();
   for (const [pid, pe] of Object.entries(ST.peers || {})) {
@@ -455,7 +459,7 @@ function people(ctx, m, sid, room, pl) {
     const px = pos ? pos[0] : vk ? x.playroom?.ax || 640 : 700 + i * 140, py = pos ? pos[1] : vk ? x.playroom?.ay || 590 : 600;
     const st = pos && pos[2] ? seated(room, pos[2]) : null;
     const tf = st ? st[3] : `translate(${px} ${py})`;
-    out.push([st ? st[2] : py, `<g class="pl-npc pl-fam${st ? " seated" : ""}" data-pl="${vk ? "fam" : "npc"}" data-id="${vk ? esc(x.id) : `fam:${esc(x.id)}`}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body">${avatarSvg({ ...me, age: ageGroup(x) }, st?.[4] === "lie" ? "sleep" : "", st?.[4] === "sit" ? "sit" : "")}</g>${st ? "" : `<text y="${nameY(ageGroup(x))}" text-anchor="middle" class="pl-petname">${esc(x.name)}</text>`}</g>${blanket(st)}`]);
+    out.push([st ? st[2] : py, `<g class="pl-npc pl-fam${st ? " seated" : ""}" data-pl="${vk ? "fam" : "npc"}" data-id="${vk ? esc(x.id) : `fam:${esc(x.id)}`}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body">${avatarSvg({ ...me, age: ageGroup(x) }, st?.[4] === "lie" ? "sleep" : "", st?.[4] === "sit" ? "sit" : "")}${vk ? "" : heldSvg(room, `fam:${x.id}`)}</g>${st ? "" : `<text y="${nameY(ageGroup(x))}" text-anchor="middle" class="pl-petname">${esc(x.name)}</text>`}</g>${blanket(st)}`]);
   });
   return out;
 }
@@ -467,10 +471,18 @@ function familyLook(x) {
 function stage(ctx, m) {
   const d = ST.d, room = R(), sid = spaceId(), [s0, s1, tod] = sky(ctx), lights = sid === "vaerelse" ? realLights(ctx, m) : [], lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
   const happy = bubbles(ctx, m).length < 3, pl = placeOf(ctx, sid), vk = visitKid(sid), dd = vk ? room : d;
+  // How wide the room is, where the screen is in it, and the doors to the rooms next door.
+  const rw = (ST.rw = Walk.roomWidth(ctx, sid, ST.kid));
+  if (ST.camFor !== sid) {
+    ST.camFor = sid;
+    ST.camX = Math.round(d.ax - W / 2);
+  }
+  ST.camX = Math.max(0, Math.min(rw - W, ST.camX || 0));
+  ST.doors = Walk.neighbours(ctx, sid, ST.kid, rw);
   let s = patternDefs(dd);
   if (sid === "vaerelse" || vk) {
-    s += `<rect width="${W}" height="${FLOOR}" fill="${dd.wall?.p && dd.wall.p !== "ren" ? "url(#pl-wp)" : wallFill(dd)}"/><rect y="${FLOOR - 16}" width="${W}" height="16" fill="#fff" ${S()}/>`;
-    s += `<rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="url(#pl-fl)"/>`;
+    s += `<rect width="${rw}" height="${FLOOR}" fill="${dd.wall?.p && dd.wall.p !== "ren" ? "url(#pl-wp)" : wallFill(dd)}"/><rect y="${FLOOR - 16}" width="${rw}" height="16" fill="#fff" ${S()}/>`;
+    s += `<rect y="${FLOOR}" width="${rw}" height="${H - FLOOR}" fill="url(#pl-fl)"/>`;
     // the window shows the real sky
     s += `<g class="pl-win"><rect x="560" y="70" width="230" height="200" rx="14" fill="#fff" ${S()}/><linearGradient id="pl-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s0}"/><stop offset="1" stop-color="${s1}"/></linearGradient><rect x="574" y="84" width="202" height="172" rx="6" fill="url(#pl-sky)"/>${
       tod === "night" ? `<circle cx="720" cy="130" r="22" fill="#FFF6C9"/><circle cx="730" cy="122" r="20" fill="${s0}"/>${[[600, 110], [640, 150], [690, 100], [750, 200], [610, 210]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="#fff" class="pl-twinkle"/>`).join("")}` : `<circle cx="720" cy="130" r="26" fill="#FFE066" ${tod === "dusk" ? 'opacity=".8"' : ""}/><g class="pl-cloud"><ellipse cx="630" cy="150" rx="34" ry="14" fill="#fff"/><ellipse cx="650" cy="140" rx="22" ry="16" fill="#fff"/></g>`
@@ -479,7 +491,7 @@ function stage(ctx, m) {
     if (lights.length) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset i dit værelse"))}"><rect x="500" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="510" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
   } else if (pl) {
     World.BG.look = paintable(pl) ? room.look || {} : {};
-    s += pl.bg(s0, s1, tod) + Toys.seasonSvg(ctx, pl);
+    s += pl.bg(s0, s1, tod, rw) + Toys.seasonSvg(ctx, pl);
     World.BG.look = {};
   }
   else s += backdrop(sid, s0, s1, tod);
@@ -491,6 +503,7 @@ function stage(ctx, m) {
     }
     Object.defineProperty(room, "settled", { value: true, enumerable: false, configurable: true });
   }
+  s += Walk.doorsSvg(ctx, ST.doors, rw, FLOOR);
   // things, back to front
   const drawItem = (it) => {
     const T = CAT[it.k];
@@ -502,15 +515,17 @@ function stage(ctx, m) {
   const isWall = (it) => wallK(it.k);
   const wallIt = items.filter(isWall), flat = items.filter((it) => !isWall(it) && CAT[it.k]?.flat === 1 && !it.at);
   s += wallIt.map(drawItem).join("") + flat.map(drawItem).join("");
+  // The timetable and the routine list on the child's own wall.
+  if (sid === "vaerelse") s += Wall.wallSvg(ctx, m);
   // Everyday life: the shelf of knowledge, the plant, a little mess, the dinner sign, the building site.
   s += Life.shelfSvg(ctx) + Life.roomSvg(ctx) + Life.dinnerSvg(ctx, pl) + Life.siteSvg(ctx);
   const actors = [
     ...items.filter((it) => CAT[it.k] && !isWall(it) && (CAT[it.k].flat !== 1 || it.at)).map((it) => [it.at ? Fix.depthOf(items, it, wallK) : it.y, drawItem(it)]),
     (() => {
       const st = d.seat && d.seat.space === sid ? seated(room, d.seat) : null;
-      const mood = ST.mood || (st?.[4] === "lie" || (tod === "night" && !lit && sid === "vaerelse") ? "sleep" : "");
-      if (st) return [st[2], `<g class="pl-me seated" data-pl="me" transform="${st[3]}"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood, st[4] === "sit" ? "sit" : "")}${handSvg(d, st[4] === "sit", ageGroup(ctx.member(ST.kid)))}</g></g>${blanket(st)}${st[4] === "lie" ? `<g transform="translate(${st[0] - 150} ${st[1] - 110})" pointer-events="none"><text class="pl-zzz">z</text><text class="pl-zzz" x="18" y="-22" style="animation-delay:.5s">z</text><text class="pl-zzz" x="36" y="-44" style="animation-delay:1s">Z</text></g>` : ""}`];
-      return [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood)}${handSvg(d, false, ageGroup(ctx.member(ST.kid)))}</g></g>`];
+      const mood = ST.mood || (st?.[4] === "lie" || (tod === "night" && !lit && sid === "vaerelse") ? "sleep" : d.expr || "");
+      if (st) return [st[2], `<g class="pl-me seated" data-pl="me" transform="${st[3]}"><g class="pl-facing" transform="scale(${d.face < 0 && st[4] !== "lie" ? -1 : 1} 1)"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood, st[4] === "sit" ? "sit" : "")}${handSvg(d, st[4] === "sit", ageGroup(ctx.member(ST.kid)))}</g></g></g>${blanket(st)}${st[4] === "lie" ? `<g transform="translate(${st[0] - 150} ${st[1] - 110})" pointer-events="none"><text class="pl-zzz">z</text><text class="pl-zzz" x="18" y="-22" style="animation-delay:.5s">z</text><text class="pl-zzz" x="36" y="-44" style="animation-delay:1s">Z</text></g>` : ""}`];
+      return [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-facing" transform="scale(${d.face < 0 ? -1 : 1} 1)"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood)}${handSvg(d, false, ageGroup(ctx.member(ST.kid)))}</g></g></g>`];
     })(),
     ...people(ctx, m, sid, room, pl),
     ...(m.pet && ctx.feature(m, "pet") ? [[d.py, `<g class="pl-pet${happy ? " happy" : ""}" data-pl="pet" transform="translate(${d.px} ${d.py}) scale(.8)"><ellipse cx="0" cy="0" rx="60" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-petb">${petInRoom(m, happy)}</g><text y="-150" text-anchor="middle" class="pl-petname">${esc(m.pet.name || "")}</text></g>`]] : []),
@@ -518,21 +533,32 @@ function stage(ctx, m) {
   s += actors.map((a) => a[1]).join("");
   // night: dark unless the lights are on (the bedroom and the tree house have real windows)
   const dark = sid === "vaerelse" || sid === "trae" || !!vk || (pl && pl.area === "hjem");
-  s += `<rect width="${W}" height="${H}" class="pl-dark" fill="#0B1030" opacity="${dark && tod === "night" && !lit ? 0.42 : dark && tod === "dusk" && !lit ? 0.18 : 0}" pointer-events="none"/>`;
-  if (lit) s += `<rect width="${W}" height="${H}" fill="#FFD27A" opacity=".08" pointer-events="none"/>`;
+  // What stays on the screen while the room scrolls: the light, the bubbles, the bag, the post, the moon.
+  let hud = `<rect width="${W}" height="${H}" class="pl-dark" fill="#0B1030" opacity="${dark && tod === "night" && !lit ? 0.42 : dark && tod === "dusk" && !lit ? 0.18 : 0}" pointer-events="none"/>`;
+  if (lit) hud += `<rect width="${W}" height="${H}" fill="#FFD27A" opacity=".08" pointer-events="none"/>`;
   // the treasure chest with the coins of the day
   const g = game(ctx, m);
   if (!ST.build && ctx.data.today && g.daily !== ctx.data.today)
     s += `<g class="pl-chest" data-pl="daily" role="button" aria-label="${esc(ctx.t("Dagens mønter"))}" transform="translate(${sid === "vaerelse" ? 420 : 880} ${H - 30})"><ellipse cx="0" cy="4" rx="54" ry="9" fill="rgba(0,0,0,.18)"/>${CAT.skattekiste ? CAT.skattekiste.d("#C98B55") : ""}<g class="pl-sparkle"><path d="M-40 -110 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z M44 -96 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#FFE066" stroke="${OL}" stroke-width="2"/></g></g>`;
   // Familieleg: stars to find, a hidden thing. Secrets, the party lights and the pocket.
-  s += Fun.overlay(ctx) + Toys.secretsSvg(ctx) + Toys.partySvg() + Toys.pocketSvg(ctx) + Life.questSvg(ctx) + Life.mailSvg(ctx) + Life.nightSvg(ctx);
+  s += Fun.overlay(ctx) + Toys.secretsSvg(ctx) + Life.questSvg(ctx);
+  hud += Toys.partySvg() + Toys.pocketSvg(ctx) + Life.mailSvg(ctx) + Life.nightSvg(ctx);
   // the bubbles to tap
-  const B = ST.build ? [] : bubbles(ctx, m);
-  s += B.map((b, i) => {
+  const B0 = ST.build ? [] : bubbles(ctx, m), B = ST.d.bubHide ? [] : B0;
+  if (ST.d.bubHide && B0.length) hud += Wall.bubToggle(ctx, B0.length, true);
+  if (B.length) hud += Wall.hideButton(ctx, 72 + Math.min(4, B.length - 1) * 122 + 62, 36);
+  hud += B.map((b, i) => {
     const x = 72 + (i % 5) * 122 + (i >= 5 ? 60 : 0), y = 66 + (i >= 5 ? 124 : 0), col = b.kind === "card" ? "#4D96FF" : b.kind === "homework" ? "#6BCB77" : "#FFB347";
     return `<g class="pl-bub" data-pl="bub" data-kind="${b.kind}" data-id="${esc(b.id)}" role="button" aria-label="${esc(b.label)}" style="animation-delay:${-i * 0.7}s" transform="translate(${x} ${y})"><circle r="40" fill="#fff" stroke="${col}" stroke-width="7"/><text y="14" text-anchor="middle" font-size="38">${esc(b.em)}</text><text y="64" text-anchor="middle" class="pl-bl">${esc(b.label.length > 12 ? b.label.slice(0, 11) + "…" : b.label)}</text>${b.pts ? `<g transform="translate(30 -30)"><circle r="15" fill="#FFD93D" ${S("stroke-width=\"3\"")}/><text y="6" text-anchor="middle" class="pl-pts">${b.pts}</text></g>` : ""}</g>`;
   }).join("");
-  return s + Life.gateSvg(ctx, ST.gate);
+  return `<g id="pl-world" class="now" style="transform:translateX(${-ST.camX}px)">${s}</g>${hud}${Life.gateSvg(ctx, ST.gate)}`;
+}
+/* What a character holds, given to them by the child. */
+function heldSvg(room, id) {
+  const it = room.held?.[id], T = it && CAT[it.k];
+  if (!T) return "";
+  const f = Math.min(0.8, 110 / T.h, 120 / T.w) * (it.s || 1);
+  return `<g class="pl-hand" data-pl="npchand" data-id="${esc(id)}" transform="translate(78 -54) scale(${f})">${T.d(it.c || T.c)}</g>`;
 }
 /* The thing the child holds: in the right hand, a bit smaller. It goes along everywhere. */
 function handSvg(d, sit = false, age = "kid") {
@@ -540,7 +566,7 @@ function handSvg(d, sit = false, age = "kid") {
   if (!T) return "";
   // The hand is where the figure's right hand is: higher up on a grown-up, lower on a small child.
   const P = AGES[age] || AGES.kid, L = (sit ? 26 : 56) * P.leg, lift = sit ? 30 - (L - 26) : -(L - 56);
-  const f = Math.min(0.8, 110 / T.h, 120 / T.w) * (it.s || 1), hx = (sit ? 70 : 78) * P.sc, hy = ((sit ? -64 : -54) + lift) * P.sc;
+  const f = Math.min(0.8, 110 / T.h, 120 / T.w) * (it.s || 1) * (1 - 0.22 * (it.bite || 0)), hx = (sit ? 70 : 78) * P.sc, hy = ((sit ? -64 : -54) + lift) * P.sc;
   return `<g class="pl-hand" data-pl="hand" transform="translate(${hx.toFixed(1)} ${hy.toFixed(1)}) scale(${it.f ? -f : f} ${f})">${T.d(it.c || T.c)}${Fix.onSvg(it)}</g>`;
 }
 const ITEMW = (k) => ({ bed: 300, bunk: 230, desk: 220, chair: 72, shelf: 180, wardrobe: 170, beanbag: 140, rug: 340, floorlamp: 90, tablelamp: 60, plant: 100, teddy: 64, ball: 52, tipi: 220, aquarium: 132, guitar: 80, dollhouse: 192, car: 96, blocks: 84, gaming: 100, poster: 100, rainbow: 124, clock: 72, garland: 320, wallshelf: 160, mirror: 80, photo: 92, moon: 80 })[k] || 100;
@@ -703,21 +729,25 @@ function placeName(ctx, id) {
   return pl ? `${pl.em || ""} ${ctx.t(pl.n)}` : "";
 }
 /* Go somewhere: from the map or the room list. */
-function goTo(ctx, key) {
+function goTo(ctx, key, opts = {}) {
   if (ST.gate?.blocked && key !== "vaerelse") return ctx.toast(ST.gate.text);
   if (!placeOpen(ctx, key)) return askPlace(ctx, key);
   const lv = levelOf(game(ctx, ctx.me).xp), need = levelFor(key);
   if (lv < need) return ctx.toast(ctx.t("Det åbner på niveau {n}. Klar rutiner og opgaver for at komme dertil.", { n: need }));
+  const prev = spaceId();
   ST.d.space = key;
   ST.d.onMap = false;
+  ST.camFor = null;
   // The map shows where the child has been (explored) and what is new.
   if (World.PLACES[key] && !(ST.d.seen ||= []).includes(key)) ST.d.seen = [...ST.d.seen, key].slice(-60);
   ST.map = false;
   ST.build = false;
   ST.sel = null;
-  // Arrive at the edge of the place, like walking in.
-  ST.d.ax = 140;
-  ST.d.ay = 590;
+  // Arrive at the edge of the place, like walking in; from the room next door, by its door.
+  const arrive = opts.from && Walk.arrival(ctx, prev, key, ST.kid, Walk.roomWidth(ctx, key, ST.kid));
+  ST.d.ax = arrive ? arrive.x : 140;
+  ST.d.ay = arrive ? arrive.y : 590;
+  if (arrive) ST.d.face = arrive.x > 500 ? -1 : 1;
   Sound.sfx("whoosh");
   save(ctx);
   redraw(ctx);
@@ -915,7 +945,7 @@ const toSvg = (svgEl, e) => {
   return pt.matrixTransform(svgEl.getScreenCTM().inverse());
 };
 function confetti(ctx, x, y, color, big = false) {
-  const svgEl = ctx.$("pl-stage");
+  const svgEl = layer(ctx);
   if (!svgEl) return;
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.setAttribute("class", "pl-burst");
@@ -936,7 +966,9 @@ function walk(ctx, x, y) {
     return redraw(ctx);
   }
   setTimeout(() => publish(ctx), 50);
-  d.ax = Math.max(60, Math.min(W - 60, x));
+  const nx = Math.max(40, Math.min(RW() - 40, x));
+  if (Math.abs(nx - d.ax) > 2) turn(ctx, nx < d.ax ? -1 : 1);
+  d.ax = nx;
   d.ay = Math.max(FLOOR + 40, Math.min(H - 8, y));
   const me = ctx.root.querySelector(".pl-me");
   if (me) {
@@ -944,13 +976,110 @@ function walk(ctx, x, y) {
     me.setAttribute("transform", `translate(${d.ax} ${d.ay})`);
     setTimeout(() => me.classList.remove("walking"), 700);
   }
+  follow(ctx);
   save(ctx);
+  // Walked out at the end of the room: into the room next door.
+  setTimeout(() => atEdge(ctx), 500);
+}
+/* Which way the figure looks. */
+function turn(ctx, face) {
+  if (ST.d.face === face) return;
+  ST.d.face = face;
+  ctx.root.querySelector(".pl-me .pl-facing")?.setAttribute("transform", `scale(${face} 1)`);
+}
+/* At the left or right end of the room, by a door: go through it. */
+function atEdge(ctx) {
+  const d = ST.d, rw = RW();
+  const side = d.ax <= 70 ? "left" : d.ax >= rw - 70 ? "right" : "";
+  const n = side && (ST.doors || []).find((x) => x.side === side);
+  if (!n || d.seat || ST.build || ST.map) return false;
+  goTo(ctx, n.key, { from: spaceId() });
+  return true;
+}
+/* Through a door: walk to it, then into the room behind it. */
+function walkThrough(ctx, key) {
+  const n = (ST.doors || []).find((x) => x.key === key);
+  if (!n) return goTo(ctx, key);
+  const d = ST.d, me = ctx.root.querySelector(".pl-me"), x = n.side === "left" ? 40 : n.side === "right" ? RW() - 40 : n.x;
+  if (d.seat) d.seat = null;
+  turn(ctx, x < d.ax ? -1 : 1);
+  d.ax = x;
+  d.ay = n.side === "wall" ? FLOOR + 44 : d.ay;
+  me?.classList.add("walking");
+  me?.setAttribute("transform", `translate(${d.ax} ${d.ay})`);
+  follow(ctx);
+  Sound.sfx("step");
+  setTimeout(() => goTo(ctx, key, { from: spaceId() }), 520);
+}
+/* The faces the figure can make: tap the head for the next one. */
+const FACES_PLAY = ["", "glad", "wow", "tunge", "sur", "trist"];
+function nextFace(ctx) {
+  const i = (FACES_PLAY.indexOf(ST.d.expr || "") + 1) % FACES_PLAY.length;
+  ST.d.expr = FACES_PLAY[i];
+  Sound.sfx(ST.d.expr === "trist" ? "snore" : "pop");
+  save(ctx);
+  redraw(ctx);
+}
+/* ------------------------------------------------------------------ the arrow keys */
+/* Walk with the arrow keys (or W A S D): left and right along the room, up and down into it and out of it. At the
+   end of the room, or up against a door in the back wall, you go through. In Byg the arrows move the chosen thing. */
+let keysOn = false;
+function bindKeys() {
+  if (keysOn || typeof document === "undefined") return;
+  keysOn = true;
+  document.addEventListener("keydown", (e) => {
+    const ctx = ST?.ctx;
+    if (!ctx || ctx.view !== "vaerelse" || ST.map || ST.shop || !ctx.host?.isConnected || e.altKey || e.ctrlKey || e.metaKey) return;
+    const a = (ctx.root.activeElement || document.activeElement);
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    if (ctx.root.querySelector(".sheet-bg")) return;
+    const k = { ArrowLeft: "l", ArrowRight: "r", ArrowUp: "u", ArrowDown: "d", a: "l", d: "r", w: "u", s: "d", A: "l", D: "r", W: "u", S: "d" }[e.key];
+    if (!k) return;
+    e.preventDefault();
+    const dx = k === "l" ? -1 : k === "r" ? 1 : 0, dy = k === "u" ? -1 : k === "d" ? 1 : 0;
+    if (ST.build) {
+      const it = R().items.find((x) => x.id === ST.sel);
+      if (!it) return;
+      it.x = Math.max(30, Math.min(RW() - 30, it.x + dx * 12));
+      it.y = wallK(it.k) ? Math.max(40, Math.min(FLOOR - 20, it.y + dy * 12)) : Math.max(60, Math.min(H - 4, it.y + dy * 12));
+      ctx.root.querySelector(`.pl-it[data-id="${CSS.escape(it.id)}"]`)?.setAttribute("transform", `translate(${it.x} ${it.y}) scale(${it.f ? -(it.s || 1) : it.s || 1} ${it.s || 1})`);
+      return save(ctx);
+    }
+    keyStep(ctx, dx, dy);
+  });
+}
+function keyStep(ctx, dx, dy) {
+  const d = ST.d, rw = RW();
+  if (d.seat) {
+    d.seat = null;
+    save(ctx);
+    redraw(ctx);
+  }
+  if (dy < 0 && d.ay <= FLOOR + 48) {
+    // Up against the back wall, by a door: through it.
+    const n = (ST.doors || []).find((x) => x.side === "wall" && Math.abs(x.x - d.ax) < 80);
+    if (n) return walkThrough(ctx, n.key);
+  }
+  if (dx) turn(ctx, dx);
+  d.ax = Math.max(40, Math.min(rw - 40, d.ax + dx * 34));
+  d.ay = Math.max(FLOOR + 40, Math.min(H - 8, d.ay + dy * 22));
+  const me = ctx.root.querySelector(".pl-me");
+  if (me) {
+    me.classList.add("walking", "kbd");
+    me.setAttribute("transform", `translate(${d.ax} ${d.ay})`);
+    clearTimeout(ST.walkT);
+    ST.walkT = setTimeout(() => me.classList.remove("walking", "kbd"), 260);
+  }
+  follow(ctx);
+  publish(ctx);
+  save(ctx);
+  if (dx && atEdge(ctx)) return;
 }
 async function tapBubble(ctx, el) {
   const m = ctx.me, kind = el.dataset.kind, id = el.dataset.id;
   const tr = el.getAttribute("transform").match(/translate\(([\d.]+) ([\d.]+)\)/);
-  confetti(ctx, +tr[1], +tr[2], m.color);
-  coinPop(ctx, +tr[1], +tr[2], kind === "card" ? 3 : kind === "homework" ? 8 : 10);
+  confetti(ctx, +tr[1] + cam(), +tr[2], m.color);
+  coinPop(ctx, +tr[1] + cam(), +tr[2], kind === "card" ? 3 : kind === "homework" ? 8 : 10);
   if (kind === "card") Life.cardDone(ctx, el.querySelector("text")?.textContent || "✨");
   el.classList.add("pop");
   ST.mood = "wow";
@@ -1023,12 +1152,26 @@ function bind(ctx) {
   Sound.playTheme(...themeFor(ctx));
   // The shop has no room to drag in; its buttons are handled below.
   if (svgEl) bindStage(ctx, svgEl);
+  bindKeys();
   bindButtons(ctx, box);
 }
 function bindStage(ctx, svgEl) {
   let drag = null;
+  // Where a finger or the mouse is in the room (it scrolls), and on the screen.
+  const at = (e) => {
+    const q = toSvg(svgEl, e);
+    return { x: q.x + (ST.map ? 0 : cam()), y: q.y, sx: q.x };
+  };
+  const capture = (e) => {
+    try {
+      svgEl.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* synthetic */
+    }
+    e.preventDefault();
+  };
   svgEl.addEventListener("pointerdown", (e) => {
-    const t = e.target.closest("[data-pl]"), p = toSvg(svgEl, e);
+    const t = e.target.closest("[data-pl]"), p = at(e);
     if (t?.dataset.pl === "go") return goTo(ctx, t.dataset.k);
     if (ST.map) {
       if (t?.dataset.pl === "town" || t?.dataset.pl === "city" || t?.dataset.pl === "house") {
@@ -1047,9 +1190,13 @@ function bindStage(ctx, svgEl) {
       return;
     }
     if (!ST.build) {
-      if (t?.dataset.pl !== "emo") ctx.$("pl-stage")?.querySelectorAll(".pl-emomenu").forEach((n) => n.remove());
+      if (t?.dataset.pl !== "emo") layer(ctx)?.querySelectorAll(".pl-emomenu").forEach((n) => n.remove());
+      if (t?.dataset.pl !== "petdo") Pet.closeMenu(ctx);
       if (t?.dataset.pl === "emo") return doEmote(ctx, t);
+      if (t?.dataset.pl === "petdo") return Pet.act(ctx, t.dataset.k);
+      if (t?.dataset.pl === "door") return walkThrough(ctx, t.dataset.k);
       if (t?.dataset.pl === "star") return Fun.tapStar(ctx, t);
+      if (Wall.tap(ctx, t)) return;
       if (t?.dataset.pl === "pocket") {
         ST.pocketOpen = !ST.pocketOpen;
         Sound.sfx("tap");
@@ -1060,16 +1207,10 @@ function bindStage(ctx, svgEl) {
       if (Fun.tapStage(ctx, p, e.target)) return;
       if (t?.dataset.pl === "npc") {
         const id = t.dataset.id, tr = (t.getAttribute("transform") || "").match(/translate\(([\d.]+) ([\d.]+)\)/);
-        const at = R().npc?.[id] || (tr ? [+tr[1], +tr[2]] : null);
-        if (!at) return;
-        drag = { kind: "npc", id, el: t, sx: p.x, sy: p.y, ox: at[0], oy: at[1] };
-        try {
-          svgEl.setPointerCapture(e.pointerId);
-        } catch (err) {
-          /* synthetic */
-        }
-        e.preventDefault();
-        return;
+        const pos = R().npc?.[id] || (tr ? [+tr[1], +tr[2]] : null);
+        if (!pos) return;
+        drag = { kind: "npc", id, el: t, sx: p.x, sy: p.y, ox: pos[0], oy: pos[1] };
+        return capture(e);
       }
       if (t?.dataset.pl === "fam" || t?.dataset.pl === "peer") return hello(ctx, t);
       // A thing: tap to use it, drag to move it (not the fixed things: the kitchen, the toilet, the bath …).
@@ -1077,47 +1218,27 @@ function bindStage(ctx, svgEl) {
         const room = R(), it = room.items.find((x) => x.id === t.dataset.id);
         if (!it || room.ro || Fix.FIXED.has(it.k)) return itemTap(ctx, t);
         drag = grab(it, t, p, true);
-        try {
-          svgEl.setPointerCapture(e.pointerId);
-        } catch (err) {
-          /* synthetic */
-        }
-        e.preventDefault();
-        return;
+        return capture(e);
       }
-      if (t?.dataset.pl === "hand") {
-        drag = { kind: "hand", el: t, sx: p.x, sy: p.y };
-        try {
-          svgEl.setPointerCapture(e.pointerId);
-        } catch (err) {
-          /* synthetic */
-        }
-        e.preventDefault();
-        return;
+      // What the child, or someone else, holds in the hand.
+      if (t?.dataset.pl === "hand" || t?.dataset.pl === "npchand") {
+        drag = { kind: "hand", el: t, sx: p.x, sy: p.y, src: t.dataset.pl === "npchand" ? t.dataset.id : "" };
+        return capture(e);
       }
       if (t?.dataset.pl === "bub") return tapBubble(ctx, t);
       if (t?.dataset.pl === "daily") return openChest(ctx, t);
       if (t?.dataset.pl === "light") return toggleLight(ctx);
       if (t?.dataset.pl === "me") {
-        drag = { kind: "me", sx: p.x, sy: p.y, ox: ST.d.ax, oy: ST.d.ay, el: t, play: true };
-        try {
-          svgEl.setPointerCapture(e.pointerId);
-        } catch (err) {
-          /* synthetic */
-        }
-        e.preventDefault();
-        return;
+        drag = { kind: "me", sx: p.x, sy: p.y, ox: ST.d.ax, oy: ST.d.ay, el: t, play: true, head: !ST.d.seat && p.y < ST.d.ay - 150 };
+        return capture(e);
       }
       if (t?.dataset.pl === "pet") {
-        const pet = ctx.root.querySelector(".pl-pet");
-        pet?.classList.add("jump");
-        confetti(ctx, ST.d.px, ST.d.py - 120, "#FF6B6B");
-        setTimeout(() => pet?.classList.remove("jump"), 700);
-        drag = { kind: "pet", sx: p.x, sy: p.y, ox: ST.d.px, oy: ST.d.py };
-        return;
+        drag = { kind: "pet", sx: p.x, sy: p.y, ox: ST.d.px, oy: ST.d.py, play: true };
+        return capture(e);
       }
-      if (p.y > FLOOR) walk(ctx, p.x, p.y);
-      return;
+      // The room itself: drag it sideways to look around, tap the floor to walk there.
+      drag = { kind: "pan", sx: p.sx, sy: p.y, cam0: cam(), wx: p.x, wy: p.y, screen: true };
+      return capture(e);
     }
     // build mode: pick up a thing, or the avatar and the pet
     if (t?.dataset.pl === "pocket") {
@@ -1128,80 +1249,108 @@ function bindStage(ctx, svgEl) {
       ST.sel = t.dataset.id;
       const it = R().items.find((x) => x.id === ST.sel);
       drag = grab(it, t, p, false);
-      try {
-        svgEl.setPointerCapture(e.pointerId);
-      } catch (err) {
-        /* synthetic */
-      }
-      e.preventDefault();
-      return;
+      return capture(e);
     }
     if (t?.dataset.pl === "me" || t?.dataset.pl === "pet") {
       drag = { kind: t.dataset.pl, sx: p.x, sy: p.y, ox: t.dataset.pl === "me" ? ST.d.ax : ST.d.px, oy: t.dataset.pl === "me" ? ST.d.ay : ST.d.py, el: t };
       e.preventDefault();
       return;
     }
+    if (!t) {
+      drag = { kind: "pan", sx: p.sx, sy: p.y, cam0: cam(), screen: true, build: true };
+      return capture(e);
+    }
     ST.sel = null;
     redraw(ctx);
   });
+  /* Dragging something to the edge of the screen scrolls the room. */
+  const edge = (sx) => {
+    if (RW() <= W) return;
+    if (sx > W - 70) setCam(ctx, cam() + W / 2 + 18, true);
+    else if (sx < 70) setCam(ctx, cam() + W / 2 - 18, true);
+  };
   svgEl.addEventListener("pointermove", (e) => {
     if (!drag) return;
-    const p = toSvg(svgEl, e), dx = p.x - drag.sx, dy = p.y - drag.sy;
-    if (Math.hypot(dx, dy) < 4 && !drag.moved) return;
+    const p = at(e), dx = (drag.screen ? p.sx : p.x) - drag.sx, dy = p.y - drag.sy, rw = RW();
+    if (Math.hypot(dx, dy) < (drag.kind === "pan" ? 8 : 4) && !drag.moved) return;
     drag.moved = true;
-    if (drag.kind === "npc") {
-      const x = Math.round(Math.max(60, Math.min(W - 60, drag.ox + dx))), y = Math.round(Math.max(FLOOR + 40, Math.min(H - 8, drag.oy + dy)));
+    if (drag.kind === "pan") {
+      setCam(ctx, drag.cam0 - dx + W / 2, true);
+    } else if (drag.kind === "npc") {
+      const x = Math.round(Math.max(60, Math.min(rw - 60, drag.ox + dx))), y = Math.round(Math.max(FLOOR + 40, Math.min(H - 8, drag.oy + dy)));
       drag.x = x;
       drag.y = y;
       drag.fx = p.x;
       drag.fy = p.y + 50;
-      drag.el.setAttribute("transform", `translate(${Math.max(40, Math.min(W - 40, p.x))} ${Math.max(120, Math.min(H - 8, p.y + 50))}) scale(.82)`);
+      drag.el.setAttribute("transform", `translate(${Math.max(40, Math.min(rw - 40, p.x))} ${Math.max(120, Math.min(H - 8, p.y + 50))}) scale(.82)`);
       drag.el.classList.add("held");
+      edge(p.sx);
     } else if (drag.kind === "item") {
       const it = drag.it, wall = wallK(it.k);
       drag.fx = p.x;
       drag.fy = p.y;
       // Things can be lifted up over the floor (onto a table, a bed or a shelf); the wall things stay on the wall.
-      it.x = Math.round(Math.max(30, Math.min(W - 30, drag.ox + dx)));
+      it.x = Math.round(Math.max(30, Math.min(rw - 30, drag.ox + dx)));
       it.y = Math.round(wall ? Math.max(40, Math.min(FLOOR - 20, drag.oy + dy)) : Math.max(60, Math.min(H - 4, drag.oy + dy)));
       drag.el.setAttribute("transform", `translate(${it.x} ${it.y}) scale(${it.f ? -(it.s || 1) : it.s || 1} ${it.s || 1})`);
       drag.el.classList.add("held");
       moveRiders(drag);
+      edge(p.sx);
     } else if (drag.kind === "hand") {
+      const it = drag.src ? R().held?.[drag.src] : ST.d.hand;
       drag.fx = p.x;
       drag.fy = p.y;
       drag.el.style.visibility = "hidden";
-      drag.ghost ||= ghostOf(svgEl, ST.d.hand);
-      drag.ghost?.setAttribute("transform", `translate(${p.x} ${p.y + 40}) scale(${ST.d.hand?.s || 1})`);
+      drag.ghost ||= ghostOf(layer(ctx), it);
+      drag.ghost?.setAttribute("transform", `translate(${p.x} ${p.y + 40}) scale(${it?.s || 1})`);
+      edge(p.sx);
     } else {
-      const x = Math.max(60, Math.min(W - 60, drag.ox + dx)), y = Math.max(FLOOR + 40, Math.min(H - 8, drag.oy + dy));
+      const x = Math.max(60, Math.min(rw - 60, drag.ox + dx)), y = Math.max(FLOOR + 40, Math.min(H - 8, drag.oy + dy));
       if (drag.kind === "me") {
+        if (Math.abs(x - ST.d.ax) > 2) turn(ctx, x < ST.d.ax ? -1 : 1);
         Object.assign(ST.d, { ax: x, ay: y });
         ST.d.seat = null;
         // Dragged up over the furniture: follow the finger, also above the floor.
         drag.fx = p.x;
         drag.fy = p.y;
       } else Object.assign(ST.d, { px: x, py: y });
-      const fx = drag.kind === "me" ? Math.max(40, Math.min(W - 40, p.x)) : x, fy = drag.kind === "me" ? Math.max(120, Math.min(H - 8, p.y + 60)) : y;
+      const fx = drag.kind === "me" ? Math.max(40, Math.min(rw - 40, p.x)) : x, fy = drag.kind === "me" ? Math.max(120, Math.min(H - 8, p.y + 60)) : y;
       ctx.root.querySelector(drag.kind === "me" ? ".pl-me" : ".pl-pet")?.setAttribute("transform", `translate(${fx} ${fy})${drag.kind === "pet" ? " scale(.8)" : ""}`);
+      edge(p.sx);
     }
   });
   const up = () => {
     if (!drag) return;
     const d = drag;
     drag = null;
+    if (d.kind === "pan") {
+      if (!d.moved && !d.build) {
+        if (d.wy > FLOOR) walk(ctx, d.wx, d.wy);
+      } else if (!d.moved && d.build) {
+        ST.sel = null;
+        redraw(ctx);
+      }
+      return;
+    }
     if (d.kind === "npc") {
       d.el.classList.remove("held");
       if (!d.moved) return d.id.startsWith("fam:") ? (Life.tapCharacter(ctx, d.id) ? undefined : hello(ctx, d.el)) : npcTap(ctx, d.el, d.id);
-      if (Toys.pocketHit(d.fx, d.fy - 50) && Toys.toPocket(ctx, "npc", d.id)) return;
+      if (Toys.pocketHit(d.fx - cam(), d.fy - 50) && Toys.toPocket(ctx, "npc", d.id)) return;
       const room = R(), st = seatNear(room, d.fx, d.fy);
       (room.npc ||= {})[d.id] = st ? [d.x, d.y, { id: st.id, x: st.x, y: st.y }] : [d.x, d.y];
       save(ctx);
       return redraw(ctx);
     }
+    if (d.kind === "pet") {
+      if (!d.moved && d.play) return Pet.menu(ctx);
+      save(ctx);
+      return;
+    }
     if (d.kind === "me") {
       if (!d.moved && d.play) {
         const body = ctx.root.querySelector(".pl-me .pl-body");
+        // The face: a new look on each tap. The rest of the figure: a wave.
+        if (d.head) return nextFace(ctx);
         body?.classList.add("wave", "jump");
         Sound.voice("person", ctx.member(ST.kid)?.role === "child" ? 1.35 : pitchOf(ST.kid));
         setTimeout(() => body?.classList.remove("wave", "jump"), 900);
@@ -1211,6 +1360,7 @@ function bindStage(ctx, svgEl) {
       ST.d.seat = st ? { space: spaceId(), id: st.id, x: st.x, y: st.y } : null;
       save(ctx);
       publish(ctx);
+      if (!st && atEdge(ctx)) return;
       return redraw(ctx);
     }
     if (d.kind === "hand") return dropHand(ctx, d);
@@ -1235,7 +1385,7 @@ function grab(it, el, p, play) {
 }
 /* What stands on a thing moves with it. */
 function moveRiders(drag) {
-  const ddx = drag.it.x - drag.ox, ddy = drag.it.y - drag.oy, svgEl = ST.ctx.$("pl-stage");
+  const ddx = drag.it.x - drag.ox, ddy = drag.it.y - drag.oy, svgEl = layer(ST.ctx);
   for (const [r, x0, y0] of drag.riders || []) {
     r.x = Math.round(x0 + ddx);
     r.y = Math.round(y0 + ddy);
@@ -1252,13 +1402,47 @@ function fallDown(room, id) {
 /* Is a point on our own figure? */
 const onMe = (x, y) => !ST.d.seat && Math.abs(x - ST.d.ax) < 80 && y > ST.d.ay - 300 && y < ST.d.ay + 20;
 /* A thing let go: into the bag, into the hand, onto a top, or down on the floor. */
+/* Is food: you can eat it. */
+const isFood = (k) => ACT.yum.includes(k) && !Fix.FIXED.has(k) && Fix.holdable(k, CAT[k]);
+/* Someone in the room at a point (a character, the family): { id, el }. */
+function figureAt(ctx, x, y) {
+  for (const el of layer(ctx)?.querySelectorAll(".pl-npc") || []) {
+    const m = (el.getAttribute("transform") || "").match(/translate\(([\d.-]+) ([\d.-]+)\)/);
+    if (m && Math.abs(x - +m[1]) < 70 && y > +m[2] - 260 && y < +m[2] + 20) return { id: el.dataset.id, el };
+  }
+  return null;
+}
+/* Give a thing to someone: food is eaten, the rest is held in the hand. */
+function giveTo(ctx, who, it) {
+  const room = R();
+  room.items = room.items.filter((x) => x !== it);
+  const body = who.el.querySelector(".pl-body");
+  if (isFood(it.k)) {
+    body?.classList.add("jump");
+    setTimeout(() => body?.classList.remove("jump"), 700);
+    const m = (who.el.getAttribute("transform") || "").match(/translate\(([\d.-]+) ([\d.-]+)\)/);
+    if (m) floatIcons(ctx, +m[1], +m[2] - 230, ["😋", "❤️"]);
+    Sound.sfx("yum");
+  } else {
+    const { x, y, at, ...rest } = it;
+    void x, void y, void at;
+    const old = room.held?.[who.id];
+    if (old) room.items.push({ ...old, id: "i" + Math.random().toString(36).slice(2, 7), x: Math.max(40, Math.min(RW() - 40, it.x + 90)), y: Math.max(FLOOR + 30, it.y) });
+    (room.held ||= {})[who.id] = rest;
+    Sound.sfx("pop");
+  }
+  save(ctx);
+  redraw(ctx);
+}
 function dropItem(ctx, d) {
   const room = R(), it = d.it;
-  if (Toys.pocketHit(d.fx, d.fy)) {
+  if (Toys.pocketHit(d.fx - cam(), d.fy)) {
     fallDown(room, it.id);
     if (Toys.toPocket(ctx, "item", it.id)) return;
   }
   if (d.play && onMe(d.fx, d.fy) && Fix.holdable(it.k, CAT[it.k]) && !Fix.ridersOf(room.items, it.id).length) return takeInHand(ctx, it);
+  const who = d.play && !room.ro && Fix.holdable(it.k, CAT[it.k]) && !Fix.ridersOf(room.items, it.id).length && figureAt(ctx, d.fx, d.fy);
+  if (who) return giveTo(ctx, who, it);
   if (!wallK(it.k)) {
     const top = Fix.topNear(room.items, CAT, it, it.x, it.y), y0 = it.y;
     if (top) {
@@ -1280,7 +1464,7 @@ function takeInHand(ctx, it) {
   const room = R();
   if (ST.d.hand) {
     // The thing already in the hand is put down by the feet.
-    const old = { ...ST.d.hand, id: "i" + Math.random().toString(36).slice(2, 7), x: Math.max(40, Math.min(W - 40, ST.d.ax + 110)), y: Math.min(H - 8, ST.d.ay) };
+    const old = { ...ST.d.hand, id: "i" + Math.random().toString(36).slice(2, 7), x: Math.max(40, Math.min(RW() - 40, ST.d.ax + 110)), y: Math.min(H - 8, ST.d.ay) };
     room.items.push(old);
   }
   room.items = room.items.filter((x) => x !== it);
@@ -1292,6 +1476,24 @@ function takeInHand(ctx, it) {
   redraw(ctx);
 }
 /* A copy of the thing in the hand, to drag around. */
+/* The room scrolls: what pops up in it goes into the room's own layer, so it scrolls along. */
+const layer = (ctx) => ctx.root.querySelector("#pl-world") || ctx.$("pl-stage");
+const RW = () => (ST && ST.rw) || W;
+const cam = () => (ST && ST.camX) || 0;
+/* Scroll the room so x is in the middle of the screen. */
+function setCam(ctx, x, now = false) {
+  ST.camX = Math.max(0, Math.min(RW() - W, Math.round(x - W / 2)));
+  const g = ctx.root.querySelector("#pl-world");
+  if (g) {
+    g.classList.toggle("now", now);
+    g.style.transform = `translateX(${-ST.camX}px)`;
+  }
+}
+/* Keep the figure on the screen: scroll when it gets near the edge. */
+function follow(ctx) {
+  const x = ST.d.ax - cam();
+  if (x < 220 || x > W - 220) setCam(ctx, ST.d.ax);
+}
 function ghostOf(svgEl, it) {
   const T = it && CAT[it.k];
   if (!T) return null;
@@ -1305,15 +1507,27 @@ function ghostOf(svgEl, it) {
 /* The thing in the hand let go: tapped, it is used; dragged out, it is put down where it is let go. */
 function dropHand(ctx, d) {
   d.ghost?.remove();
-  const it = ST.d.hand, room = R();
+  const room = R(), it = d.src ? room.held?.[d.src] : ST.d.hand;
   if (!it) return;
-  if (!d.moved) return useHand(ctx, d.el);
-  if (room.ro || onMe(d.fx, d.fy)) return redraw(ctx);
-  const id = "i" + Math.random().toString(36).slice(2, 7), x = Math.round(Math.max(30, Math.min(W - 30, d.fx))), y = Math.round(Math.max(60, Math.min(H - 4, d.fy + 40)));
+  if (!d.moved) return d.src ? redraw(ctx) : useHand(ctx, d.el);
+  if (room.ro || (!d.src && onMe(d.fx, d.fy))) return redraw(ctx);
+  // Taken from someone: into my own hand when let go on me.
+  if (d.src && onMe(d.fx, d.fy)) {
+    delete room.held[d.src];
+    if (ST.d.hand) room.items.push({ ...ST.d.hand, id: "i" + Math.random().toString(36).slice(2, 7), x: Math.max(40, Math.min(RW() - 40, ST.d.ax + 110)), y: Math.min(H - 8, ST.d.ay) });
+    ST.d.hand = it;
+    Sound.sfx("pop");
+    save(ctx);
+    return redraw(ctx);
+  }
+  const id = "i" + Math.random().toString(36).slice(2, 7), x = Math.round(Math.max(30, Math.min(RW() - 30, d.fx))), y = Math.round(Math.max(60, Math.min(H - 4, d.fy + 40)));
   const put = { ...it, id, x, y };
-  ST.d.hand = null;
+  if (d.src) delete room.held[d.src];
+  else ST.d.hand = null;
   room.items.push(put);
-  if (Toys.pocketHit(d.fx, d.fy) && Toys.toPocket(ctx, "item", id)) return;
+  if (Toys.pocketHit(d.fx - cam(), d.fy) && Toys.toPocket(ctx, "item", id)) return;
+  const who = !d.src && figureAt(ctx, d.fx, d.fy);
+  if (who) return giveTo(ctx, who, put);
   const top = Fix.topNear(room.items, CAT, put, x, y);
   if (top) {
     put.y = top.y;
@@ -1329,6 +1543,18 @@ function useHand(ctx, el) {
   const it = ST.d.hand;
   if (!it) return;
   const k = it.k, kind = Object.keys(ACT).find((a) => ACT[a].includes(k)) || "wiggle", x = ST.d.ax + 78, y = ST.d.ay - 160;
+  // Food is eaten, bite by bite.
+  if (isFood(k)) {
+    it.bite = (it.bite || 0) + 1;
+    Sound.sfx("yum");
+    floatIcons(ctx, x, y, it.bite >= 3 ? ["😋", "❤️"] : ["😋"]);
+    const body = ctx.root.querySelector(".pl-me .pl-body");
+    body?.classList.add("jump");
+    setTimeout(() => body?.classList.remove("jump"), 500);
+    if (it.bite >= 3) ST.d.hand = null;
+    save(ctx);
+    return setTimeout(() => redraw(ctx), 250);
+  }
   Sound.sfx(kind === "read" ? "page" : kind === "open" ? "chest" : kind === "screen" ? "screen" : kind);
   el.classList.remove("pl-do", "do-bounce");
   void el.getBBox();
@@ -1517,7 +1743,7 @@ function place(ctx, id) {
 }
 /* Coins flying up from where something was done. */
 function coinPop(ctx, x, y, n) {
-  const svgEl = ctx.$("pl-stage");
+  const svgEl = layer(ctx);
   if (!svgEl || !n) return;
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.setAttribute("class", "pl-coinpop");
@@ -1543,11 +1769,11 @@ async function openChest(ctx, el) {
 /* ------------------------------------------------------------------ the characters and the things come alive */
 /* A speech bubble over someone. */
 function say(ctx, x, y, text) {
-  const svgEl = ctx.$("pl-stage");
+  const svgEl = layer(ctx);
   if (!svgEl) return;
   svgEl.querySelectorAll(".pl-say").forEach((n) => n.remove());
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  const w = Math.min(440, 40 + text.length * 13), bx = Math.max(10, Math.min(W - w - 10, x - w / 2)), by = Math.max(10, y - 300);
+  const w = Math.min(440, 40 + text.length * 13), bx = Math.max(cam() + 10, Math.min(cam() + W - w - 10, x - w / 2)), by = Math.max(10, y - 300);
   g.setAttribute("class", "pl-say");
   g.innerHTML = `<rect x="${bx}" y="${by}" width="${w}" height="58" rx="22" fill="#fff" stroke="#2B2340" stroke-width="4"/><path d="M${Math.max(bx + 24, Math.min(bx + w - 24, x)) - 12} ${by + 56} l12 20 l12 -20z" fill="#fff" stroke="#2B2340" stroke-width="4" stroke-linejoin="round"/><rect x="${Math.max(bx + 24, Math.min(bx + w - 24, x)) - 14}" y="${by + 50}" width="28" height="8" fill="#fff"/><text x="${bx + w / 2}" y="${by + 37}" text-anchor="middle" class="pl-sayt">${esc(text)}</text>`;
   svgEl.appendChild(g);
@@ -1616,20 +1842,20 @@ const storyActs = {
 };
 /* A sibling (live) or someone of the family: tap them, and pick wave, hug or high five. */
 function hello(ctx, el) {
-  const svgEl = ctx.$("pl-stage"), tr = el.getAttribute("transform").match(/translate\(([\d.]+) ([\d.]+)\)/);
+  const svgEl = layer(ctx), tr = el.getAttribute("transform").match(/translate\(([\d.]+) ([\d.]+)\)/);
   if (!svgEl || !tr) return;
   svgEl.querySelectorAll(".pl-emomenu").forEach((n) => n.remove());
   const x = +tr[1], y = +tr[2] + (el.classList.contains("seated") ? 60 : 0), g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.setAttribute("class", "pl-emomenu");
   const by = Math.max(70, y - 300);
-  g.innerHTML = [["wave", "👋"], ["hug", "🤗"], ["highfive", "✋"]].map(([k, em], i) => `<g class="pl-emo" data-pl="emo" data-k="${k}" data-id="${esc(el.dataset.id)}" data-peer="${el.dataset.pl === "peer" ? 1 : ""}" data-x="${x}" data-y="${y}" transform="translate(${Math.max(80, Math.min(W - 80, x + (i - 1) * 86))} ${by})" role="button" aria-label="${esc(ctx.t({ wave: "Vink", hug: "Kram", highfive: "High five" }[k]))}"><circle r="36" fill="#fff" stroke="#2B2340" stroke-width="4"/><text y="13" text-anchor="middle" font-size="36">${em}</text></g>`).join("");
+  g.innerHTML = [["wave", "👋"], ["hug", "🤗"], ["highfive", "✋"]].map(([k, em], i) => `<g class="pl-emo" data-pl="emo" data-k="${k}" data-id="${esc(el.dataset.id)}" data-peer="${el.dataset.pl === "peer" ? 1 : ""}" data-x="${x}" data-y="${y}" transform="translate(${Math.max(80, Math.min(RW() - 80, x + (i - 1) * 86))} ${by})" role="button" aria-label="${esc(ctx.t({ wave: "Vink", hug: "Kram", highfive: "High five" }[k]))}"><circle r="36" fill="#fff" stroke="#2B2340" stroke-width="4"/><text y="13" text-anchor="middle" font-size="36">${em}</text></g>`).join("");
   svgEl.appendChild(g);
   setTimeout(() => g.remove(), 4000);
 }
 /* Wave, hug or high five: my avatar goes over, both do it, and a sibling playing sees it too. */
 function doEmote(ctx, b) {
   const kind = b.dataset.k, raw = b.dataset.id, id = raw.replace(/^fam:/, ""), x = +b.dataset.x, y = +b.dataset.y, peer = !!b.dataset.peer;
-  ctx.$("pl-stage")?.querySelectorAll(".pl-emomenu").forEach((n) => n.remove());
+  layer(ctx)?.querySelectorAll(".pl-emomenu").forEach((n) => n.remove());
   const el = ctx.root.querySelector(`[data-id="${CSS.escape(raw)}"]:not(.pl-emo)`), body = el?.querySelector(".pl-body");
   const name = ctx.member(id)?.name || "";
   if (kind === "wave") {
@@ -1641,7 +1867,7 @@ function doEmote(ctx, b) {
     // Walk over next to them first.
     const side = ST.d.ax < x ? -1 : 1;
     ST.d.seat = null;
-    ST.d.ax = Math.max(60, Math.min(W - 60, x + side * 110));
+    ST.d.ax = Math.max(60, Math.min(RW() - 60, x + side * 110));
     ST.d.ay = Math.max(FLOOR + 40, Math.min(H - 8, y));
     const me = ctx.root.querySelector(".pl-me");
     me?.setAttribute("transform", `translate(${ST.d.ax} ${ST.d.ay})`);
@@ -1729,7 +1955,7 @@ function itemTap(ctx, el) {
   Toys.special(ctx, it);
 }
 function floatIcons(ctx, x, y, list) {
-  const svgEl = ctx.$("pl-stage");
+  const svgEl = layer(ctx);
   if (!svgEl) return;
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.setAttribute("class", "pl-notes");
@@ -1880,6 +2106,8 @@ async function toggleLight(ctx) {
 
 let tick = null;
 /* What the toys (hv-toys) may use of the game. */
+Wall.init({ st: () => ST, save, redraw, sfx: (n) => Sound.sfx(n) });
+Pet.init({ st: () => ST, save, floatIcons, say, layer, rw: () => RW(), sfx: (n) => Sound.sfx(n), voice: (k) => Sound.voice(k), FLOOR, H });
 Toys.init({
   st: () => ST,
   R: () => R(),
@@ -2016,6 +2244,7 @@ export default {
     ...storyActs,
     ...Toys.acts,
     ...Life.acts,
+    ...Wall.WALL_ACTS,
     "play-buy-place": (el, ev, ctx) => {
       el.closest(".sheet-bg")?.close?.();
       return buyPlace(ctx, el.dataset.k);
@@ -2037,6 +2266,7 @@ export default {
 .pl-hand { cursor: grab; }
 .pl-ghost { opacity: .9; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
 .pl-me, .pl-pet { transition: transform .7s cubic-bezier(.3,.9,.4,1); cursor: pointer; }
+.pl-me.kbd { transition-duration: .22s; transition-timing-function: linear; }
 .pl-me .pl-body { animation: plbob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 .pl-me.walking .pl-body { animation: plwalk .35s ease-in-out infinite; }
 .pl-body.jump { animation: pljump .7s cubic-bezier(.3,1.6,.5,1) !important; }
@@ -2184,6 +2414,7 @@ export default {
 .pl-fs { position: fixed; inset: 0; z-index: 400; background: #2B2340; display: grid; overflow: hidden; }
 .pl-fs .pl { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); gap: 6px; color: #fff; }
 .pl-fs .pl-head { display: none; }
+.pl-fs > .sheet-bg, .pl-fs > .toast { z-index: 500; }
 .pl-fs .pl-bar { margin: 0; }
 .pl-fs .pl-here { color: #fff; }
 .pl-fs .pl-stagebox { grid-row: 2; align-self: center; justify-self: center; width: min(100%, calc((100dvh - 90px) * 1000 / 620)); max-height: 100%; box-shadow: 0 0 0 4px #000; }
@@ -2283,7 +2514,7 @@ export default {
 @media (max-width: 640px) { .pl-hide-s { display: none; } .pl-lv { min-width: 80px; } .pl-buys { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pl-packs { grid-template-columns: minmax(0, 1fr); } .pl-packs.small { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .pl-tools { top: 8px; bottom: auto; gap: 4px; padding: 4px 6px 4px 12px; } .pl-tools button { width: 38px; height: 38px; font-size: 18px; } .pl-tools b { font-size: 12px; } .pl-stagebox { border-radius: 20px; } .pl-th svg { width: 60px; height: 52px; } }
 @media (prefers-reduced-motion: reduce) { .pl-me .pl-body, .pl-pet .pl-petb, .pl-bub, .pl-cloud, .pl-fish, .pl-twinkle, .pl-chest, .pl-sparkle, .pl-blink, .pl-beam, .pl-pop-c { animation: none !important; } }
-` + Fun.FUN_CSS + Toys.TOYS_CSS + Life.LIFE_CSS + Fix.FIX_CSS + HOUSE3D_CSS,
+` + Fun.FUN_CSS + Toys.TOYS_CSS + Life.LIFE_CSS + Fix.FIX_CSS + HOUSE3D_CSS + Wall.WALL_CSS + Pet.PET_CSS + Walk.WALK_CSS,
   en: {
     "Mit værelse": "My room", "Hej {name}!": "Hi {name}!", "Tryk på boblerne, når du har gjort det.": "Tap the bubbles when you have done it.", "Alt er klaret lige nu. Godt gået!": "All done for now. Well done!",
     "Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.": "Drag things where they should go. Tap something to change it.", "Byg dit værelse": "Build your room", "Lys og stemning": "Lights and mood", Færdig: "Done", "Dit værelse": "Your room", "Lyset i dit værelse": "The light in your room",
@@ -2523,6 +2754,8 @@ export default {
     ...Life.LIFE_EN,
     ...Fix.FIX_EN,
     ...HOUSE3D_EN,
+    ...Wall.WALL_EN,
+    ...Pet.PET_EN,
     Verden: "World",
     "Spilletid tilbage i dag": "Play time left today",
     ...CITY_EN,

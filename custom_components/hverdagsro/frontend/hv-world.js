@@ -223,42 +223,55 @@ const ROOMLOOK = {
   kid: { wall: "#C7E6FF", floor: "#E8C69A", decor: [["bed", 260, 560], ["desk", 760, 520], ["rug", 520, 610], ["shelf", 900, 470]] },
   other: { wall: "#F2E3CF", floor: "#C98B55", decor: [["shelf", 260, 470], ["stueplante", 800, 520], ["baenk", 520, 600]] },
 };
-function roomBackdrop(look, s0, s1, tod) {
+function roomBackdrop(look, s0, s1, tod, wd = W) {
   // The family may have painted the room (Byg › Væg og gulv): BG.look has their colours.
   const L = { ...(ROOMLOOK[look] || ROOMLOOK.other), ...(BG.look?.wall ? { wall: BG.look.wall } : {}), ...(BG.look?.floor ? { floor: BG.look.floor } : {}) };
-  const tiles = L.tiles ? rep(25, (i) => rep(6, (j) => `<rect x="${i * 40}" y="${FLOOR - 180 + j * 30}" width="40" height="30" fill="none" stroke="${L.tiles}" stroke-width="3"/>`)) : "";
+  const tiles = L.tiles ? rep(Math.ceil(wd / 40), (i) => rep(6, (j) => `<rect x="${i * 40}" y="${FLOOR - 180 + j * 30}" width="40" height="30" fill="none" stroke="${L.tiles}" stroke-width="3"/>`)) : "";
   const garage = look === "garage" ? `<rect x="560" y="80" width="380" height="${FLOOR - 80}" fill="#B9BED0" ${out()}/>${rep(8, (i) => `<path d="M560 ${110 + i * 40} H940" stroke="#9AA4BA" stroke-width="5"/>`)}` : "";
+  // A wide room has more windows along the wall.
+  const more = look === "garage" ? "" : rep(Math.max(0, Math.floor((wd - 1000) / 700)), (i) => {
+    const x = 1150 + i * 700;
+    return `<rect x="${x}" y="70" width="200" height="170" rx="12" fill="#fff" ${out()}/><rect x="${x + 14}" y="84" width="172" height="142" rx="6" fill="url(#pl-sky)"/><path d="M${x + 100} 84 V226 M${x + 14} 155 H${x + 186}" stroke="${OL}" stroke-width="5"/>`;
+  });
   const window = look === "garage" ? "" : `${skyDef(s0, s1)}<rect x="${look === "kitchen" ? 760 : 620}" y="70" width="200" height="170" rx="12" fill="#fff" ${out()}/><rect x="${look === "kitchen" ? 774 : 634}" y="84" width="172" height="142" rx="6" fill="url(#pl-sky)"/>${tod === "night" ? `<circle cx="${look === "kitchen" ? 900 : 760}" cy="130" r="14" fill="#FFF6C9"/>` : `<circle cx="${look === "kitchen" ? 900 : 760}" cy="130" r="18" fill="#FFE066"/>`}<path d="M${look === "kitchen" ? 860 : 720} 84 V226 M${look === "kitchen" ? 774 : 634} 155 H${look === "kitchen" ? 946 : 806}" stroke="${OL}" stroke-width="5"/>`;
-  return `${rect(0, 0, W, FLOOR, L.wall)}${tiles}${garage}${window}${rect(0, FLOOR - 16, W, 16, "#fff", 0, out())}${rect(0, FLOOR, W, H - FLOOR, L.floor)}${rep(6, (i) => `<path d="M0 ${FLOOR + 30 * (i + 1)} H${W}" stroke="${shade(L.floor, 0.88)}" stroke-width="3"/>`)}`;
+  return `${rect(0, 0, wd, FLOOR, L.wall)}${tiles}${garage}${window}${more}${rect(0, FLOOR - 16, wd, 16, "#fff", 0, out())}${rect(0, FLOOR, wd, H - FLOOR, L.floor)}${rep(6, (i) => `<path d="M0 ${FLOOR + 30 * (i + 1)} H${wd}" stroke="${shade(L.floor, 0.88)}" stroke-width="3"/>`)}`;
 }
-/* A family house for the game when no floor plan has been drawn in Husbyggeren yet: a long house with the bedrooms
-   along the back, the kitchen and the living room in the middle, and a terrace and a garden in front. In metres. */
+/* A family house for the game when no floor plan has been drawn in Husbyggeren yet: a long, low L-shaped house with
+   a double garage, the utility room and the entrance, the children's rooms along the front, a big kitchen and family
+   room, the living room in the wing with the guest room, the bathrooms, the walk-in and the bedroom, and a covered
+   terrace in the corner by the garden. In metres, north up. */
 const FB_ROOMS = [
-  ["v1", "Værelse", "kid", [[0, 0], [4.5, 0], [4.5, 5.5], [0, 5.5]]],
-  ["v2", "Værelse", "kid", [[0, 5.5], [4.5, 5.5], [4.5, 10.5], [0, 10.5]]],
-  ["toilet", "Toilet", "toilet", [[4.5, 0], [7, 0], [7, 3.5], [4.5, 3.5]]],
-  ["gang", "Gang", "hall", [[4.5, 3.5], [7, 3.5], [7, 8], [4.5, 8]]],
-  ["gaeste", "Gæsteværelse", "guest", [[7, 0], [12, 0], [12, 5], [7, 5]]],
-  ["bad", "Badeværelse", "bath", [[12, 0], [16.5, 0], [16.5, 5], [12, 5]]],
-  ["walkin", "Walk-in", "walkin", [[16.5, 0], [19, 0], [19, 5], [16.5, 5]]],
-  ["sove", "Soveværelse", "bed", [[19, 0], [25, 0], [25, 5], [19, 5]]],
-  ["entre", "Entré", "hall", [[0, 10.5], [4.5, 10.5], [4.5, 13.5], [0, 13.5]]],
-  ["bryggers", "Bryggers", "utility", [[0, 13.5], [4.5, 13.5], [4.5, 18], [0, 18]]],
-  ["kokken", "Køkken", "kitchen", [[4.5, 8], [7, 8], [7, 5], [12, 5], [12, 18], [4.5, 18]]],
-  ["stue", "Stue", "living", [[12, 5], [25, 5], [25, 11], [12, 11]]],
+  ["garage", "Garage", "garage", [[0, 0], [7.67, 0], [7.67, 8.51], [0, 8.51]]],
+  ["bryggers", "Bryggers", "utility", [[7.67, 0], [10.95, 0], [10.95, 2.7], [7.67, 2.7]]],
+  ["depot", "Depot", "utility", [[7.67, 2.7], [9.1, 2.7], [9.1, 3.95], [7.67, 3.95]]],
+  ["entre", "Entré", "hall", [[10.95, 0], [12.6, 0], [12.6, 3.95], [10.95, 3.95]]],
+  ["v1", "Værelse", "kid", [[12.6, 0], [16, 0], [16, 3.45], [12.6, 3.45]]],
+  ["v2", "Værelse", "kid", [[16, 0], [21.35, 0], [21.35, 3.05], [16, 3.05]]],
+  ["gang", "Gang", "hall", [[16, 3.05], [17.6, 3.05], [17.6, 4.9], [16, 4.9]]],
+  ["bad1", "Badeværelse", "bath", [[17.6, 3.05], [21.35, 3.05], [21.35, 4.9], [17.6, 4.9]]],
+  ["kokken", "Køkken", "kitchen", [[7.67, 3.95], [9.1, 3.95], [12.6, 3.95], [12.6, 3.45], [16, 3.45], [16, 4.9], [16.92, 4.9], [16.92, 8.51], [7.67, 8.51]]],
+  ["v3", "Værelse", "kid", [[16.92, 4.9], [21.35, 4.9], [21.35, 7.95], [16.92, 7.95]]],
+  ["stue", "Stue", "living", [[12.84, 8.51], [16.92, 8.51], [16.92, 15.17], [12.84, 15.17]]],
+  ["gaeste", "Gæsteværelse", "guest", [[16.92, 7.95], [21.35, 7.95], [21.35, 10.7], [16.92, 10.7]]],
+  ["bad2", "Badeværelse", "bath", [[16.92, 10.7], [21.35, 10.7], [21.35, 13], [16.92, 13]]],
+  ["walkin", "Walk-in", "walkin", [[16.92, 13], [21.35, 13], [21.35, 14.7], [16.92, 14.7]]],
+  ["sove", "Soveværelse", "bed", [[16.92, 14.7], [21.35, 14.7], [21.35, 19.19], [16.92, 19.19]]],
 ];
 const FB_FURN = [
-  ["bed1", 2.2, 2.6, 0.9, 2], ["desk", 3.4, 4.6, 1.2, 0.6], ["bed1", 2.2, 8, 0.9, 2], ["toybox", 3.6, 9.8, 0.7, 0.4], ["toilet", 5.4, 1, 0.4, 0.65], ["sink", 6.3, 2.8, 0.6, 0.45],
-  ["bed2", 9.5, 2.2, 1.8, 2], ["tub", 14.2, 1, 1.7, 0.75], ["sink", 15.6, 4.2, 0.6, 0.45], ["shower", 13, 4.2, 0.9, 0.9], ["wardrobe", 17.7, 2.5, 0.6, 1.8], ["bed2", 22, 2.2, 1.8, 2], ["nightstand", 20.6, 1, 0.45, 0.4],
-  ["counter", 8.2, 17.4, 4, 0.62], ["island", 8.2, 14.6, 2.2, 1], ["table", 8.6, 10, 1, 2.6], ["chair", 7.7, 9.3, 0.48, 0.5], ["chair", 9.5, 10.7, 0.48, 0.5], ["fridgec", 11.4, 17.3, 0.6, 0.65], ["hobc", 6.4, 17.4, 0.6, 0.6],
-  ["wm", 1, 17.3, 0.6, 0.6], ["td", 1.7, 17.3, 0.6, 0.6], ["shoes", 2.2, 13.2, 0.8, 0.3], ["hooks", 0.3, 12, 0.12, 1],
-  ["sofa", 18, 10.2, 3, 0.95], ["coffee", 18, 8.8, 1.2, 0.6], ["tvbench", 18, 5.4, 1.8, 0.4], ["arm", 15, 8.6, 0.85, 0.85], ["plant", 24.4, 5.6, 0.5, 0.5], ["rug", 18, 8.6, 3.2, 2.2],
-  ["gset", 16, 13.4, 2.4, 1.8], ["parasol", 19.5, 13.4, 3, 3], ["tramp", 25, 20, 3.6, 3.6], ["sandbox", 17, 21.5, 1.5, 1.5],
+  ["bed1", 13.5, 1.7, 0.9, 2], ["desk", 15.2, 0.5, 1.2, 0.6], ["bed1", 20.6, 1.4, 0.9, 2], ["desk", 18.4, 0.5, 1.2, 0.6], ["bed1", 20.6, 6.4, 0.9, 2], ["desk", 18.4, 7.5, 1.2, 0.6],
+  ["wm", 9.6, 2.2, 0.6, 0.6], ["td", 10.3, 2.2, 0.6, 0.6], ["usink", 9.3, 0.5, 0.8, 0.6], ["shoes", 11.8, 3.6, 0.8, 0.3], ["hooks", 12.45, 1.8, 0.12, 1],
+  ["toilet", 21, 3.5, 0.4, 0.65], ["shower", 20.9, 4.4, 0.9, 0.9], ["sink", 18.4, 4.5, 0.6, 0.45],
+  ["tall", 8.1, 5.6, 0.6, 0.6], ["ovenc", 8.1, 6.2, 0.6, 0.6], ["counter", 8.1, 7.3, 0.62, 1.6], ["hobc", 8.1, 6.9, 0.6, 0.6], ["island", 9.8, 6.2, 1, 2.4], ["table", 13.4, 6.3, 2.8, 1.2],
+  ["chair", 12.4, 5.5, 0.48, 0.5], ["chair", 13.4, 5.5, 0.48, 0.5], ["chair", 14.4, 5.5, 0.48, 0.5], ["chair", 12.4, 7.1, 0.48, 0.5], ["chair", 13.4, 7.1, 0.48, 0.5], ["chair", 14.4, 7.1, 0.48, 0.5], ["fridgec", 8.1, 4.4, 0.6, 0.65],
+  ["stove", 14.5, 8.65, 1.5, 0.4], ["sofa", 16.3, 11.6, 0.95, 3], ["coffee", 14.8, 11.6, 1, 1.6], ["arm", 13.6, 10.1, 0.85, 0.85], ["arm", 13.6, 13.2, 0.85, 0.85],
+  ["bed1", 19.2, 9.4, 1.2, 2], ["tub", 19.2, 11.4, 1.7, 0.75], ["sink", 19.2, 12.6, 0.6, 0.45], ["toilet", 21, 12.3, 0.4, 0.65], ["wardrobe", 19.1, 13.4, 3.4, 0.6], ["bed2", 19.2, 17.4, 1.8, 2], ["nightstand", 18, 18.6, 0.45, 0.4],
+  ["gset", 14.8, 17.3, 2.4, 1.8], ["tramp", 7, 14, 3.6, 3.6], ["sandbox", 3, 11.5, 1.5, 1.5], ["gtable", 10.6, 10.6, 1.8, 0.9],
 ];
 const FB_AREAS = [
-  ["terr", "deck", [[12, 11], [25, 11], [25, 16], [12, 16]]],
-  ["have", "lawn", [[12, 16], [29, 16], [29, 24], [12, 24]]],
-  ["indk", "drive", [[-6, 6], [-1.5, 6], [-1.5, 22], [-6, 22]]],
+  ["terr", "deck", [[12.84, 15.17], [16.92, 15.17], [16.92, 19.19], [12.84, 19.19]]],
+  ["have", "lawn", [[-1, 8.51], [12.84, 8.51], [12.84, 21], [-1, 21]]],
+  ["terr2", "deck", [[8.5, 8.51], [12.84, 8.51], [12.84, 12.5], [8.5, 12.5]]],
+  ["indk", "drive", [[0, -6], [7.67, -6], [7.67, 0], [0, 0]]],
 ];
 const M2U = (pts) => pts.map(([x, y]) => [Math.round(x * 60), Math.round(y * 60)]);
 /* The house the game uses: the family's own floor plan, or the house above with the children's rooms given to the
@@ -270,7 +283,7 @@ export function houseData(ctx) {
   let k = 0;
   return {
     fallback: true,
-    rooms: FB_ROOMS.map(([id, name, rtype, pts]) => ({ id, name, rtype, pts: M2U(pts), kid: rtype === "kid" ? kids[k++]?.id || "" : "" })).filter((r) => r.rtype !== "kid" || r.kid),
+    rooms: FB_ROOMS.map(([id, name, rtype, pts]) => ({ id, name, rtype, pts: M2U(pts), kid: rtype === "kid" ? kids[k++]?.id || "" : "" })).map((r) => (r.rtype === "kid" && !r.kid ? { ...r, rtype: "guest", name: "Værelse" } : r)),
     walls: [],
     items: FB_FURN.map(([fk, x, y, w, d], i) => ({ type: "furn", id: `fb${i}`, fk, x: Math.round(x * 60), y: Math.round(y * 60), w: Math.round(w * 60), h: Math.round(d * 60), rot: 0 })),
     areas: FB_AREAS.map(([id, kind, pts]) => ({ id, kind, pts: M2U(pts) })),
@@ -311,6 +324,12 @@ const inside = (x, y, pts) => {
   }
   return hit;
 };
+/* How wide a room of the house is in the game: as long as its longest side (290 to the metre, one to 2.4 screens). */
+export function planWidth(pts) {
+  if (!Array.isArray(pts) || pts.length < 3) return W;
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), m = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 60;
+  return Math.max(W, Math.min(2400, Math.round((m * 290) / 10) * 10));
+}
 export function houseDecor(ctx, room) {
   const pts = room?.pts;
   if (!Array.isArray(pts) || pts.length < 3) return null;
@@ -322,7 +341,7 @@ export function houseDecor(ctx, room) {
     const k = it.type === "furn" ? FURN_GAME[it.fk] : it.type === "light" ? LIGHT_GAME[it.lk] : it.type === "tv" ? "tv" : it.type === "washer" || it.type === "dryer" ? "vaskemaskine" : null;
     if (!k) continue;
     const fx = (it.x - x0) / (x1 - x0 || 1), fy = (it.y - y0) / (y1 - y0 || 1);
-    const sx = Math.round(90 + fx * 820), sy = ON_WALL.has(k) ? 240 : Math.round(470 + fy * 160);
+    const wd = planWidth(pts), sx = Math.round(90 + fx * (wd - 180)), sy = ON_WALL.has(k) ? 240 : Math.round(470 + fy * 160);
     // The same thing right next to itself (a row of kitchen units) is one.
     if (out.some(([ok, ox, oy]) => ok === k && Math.abs(ox - sx) < 90 && Math.abs(oy - sy) < 60)) continue;
     out.push([k, sx, sy]);
@@ -335,7 +354,7 @@ export function place(ctx, key) {
   if (String(key).startsWith("h:")) {
     const h = houseRooms(ctx).find((x) => x.id === key);
     if (!h) return null;
-    return { ...h, area: "hjem", bg: (s0, s1, tod) => roomBackdrop(h.look, s0, s1, tod), decor: houseDecor(ctx, h.room) || (ROOMLOOK[h.look] || ROOMLOOK.other).decor, own: !!houseDecor(ctx, h.room), npcs: [] };
+    return { ...h, area: "hjem", bg: (s0, s1, tod, wd) => roomBackdrop(h.look, s0, s1, tod, wd), decor: houseDecor(ctx, h.room) || (ROOMLOOK[h.look] || ROOMLOOK.other).decor, own: !!houseDecor(ctx, h.room), npcs: [] };
   }
   return null;
 }
