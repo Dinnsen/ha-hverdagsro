@@ -50,10 +50,27 @@ function lamp(x, y) {
   const [bx, by] = P(x, y), [, ty] = P(x, y, 3.2);
   return `<path d="M${bx} ${by} V${ty}" stroke="#7A849E" stroke-width="2"/><circle cx="${bx}" cy="${ty}" r="3" fill="#FFE066" stroke="${OL}" stroke-width="1"/>`;
 }
-/* A sign on a roof: a round badge with the place's picture. */
+/* A sign on a roof: a round badge with the place's picture. While the town is drawn, the badges are collected and
+   drawn last, on top of everything, each right over its own building (PIN is the place the badge belongs to). */
+let PINS = null, PIN = null;
 function sign(x, y, z, em, cls = "") {
   const [sx, sy] = P(x, y, z);
+  if (PINS) {
+    PINS.push({ sx, sy, em, cls, ...(PIN || {}) });
+    return `<path d="M${sx} ${sy} v-12" stroke="${OL}" stroke-width="2"/>`;
+  }
   return `<g class="tm-sign ${cls}"><path d="M${sx} ${sy} v-12" stroke="${OL}" stroke-width="2"/><circle cx="${sx}" cy="${sy - 30}" r="19" fill="#fff" stroke="${OL}" stroke-width="2.5"/><text x="${sx}" y="${sy - 22}" class="tm-em">${em}</text></g>`;
+}
+/* A badge over a building: the picture, the name of the part of town above it, NEW or explored, who is there. */
+function pinSvg(q, t) {
+  const { sx, sy } = q, cy = sy - 30, act = q.act ? ` data-pl="${q.act}"${q.k ? ` data-k="${q.k}"` : ""} role="button" aria-label="${q.aria || ""}"` : "";
+  const label = q.label ? (() => {
+    const w = Math.max(56, [...q.label].length * 8.2 + 22);
+    return `<rect x="${(sx - w / 2).toFixed(1)}" y="${cy - 52}" width="${w.toFixed(1)}" height="24" rx="12" fill="${q.locked ? "#E8E4F0" : "#fff"}" stroke="${OL}" stroke-width="2"/><text x="${sx}" y="${cy - 35}" class="tm-area">${q.label}</text>`;
+  })() : "";
+  const badge = q.status === "new" ? `<g class="tm-new"><rect x="${sx + 6}" y="${cy - 30}" width="34" height="18" rx="9" fill="#FFD93D" stroke="${OL}" stroke-width="2"/><text x="${sx + 23}" y="${cy - 17}" class="tm-newt">${t("NY")}</text></g>` : q.status === "seen" ? `<g class="tm-seen"><circle cx="${sx + 17}" cy="${cy - 15}" r="9" fill="#6BCB77" stroke="#fff" stroke-width="2.5"/><path d="M${sx + 13} ${cy - 15} l3 3 l6 -7" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/></g>` : "";
+  const who = (q.who || []).map((pe, j) => `<circle cx="${sx - 18 + j * 10}" cy="${cy - 16}" r="8" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="2.5"/>`).join("");
+  return `<g class="tm-pin${q.locked ? " locked" : ""}${q.here ? " here" : ""} ${q.cls || ""}"${act}><circle cx="${sx}" cy="${cy}" r="19" fill="${q.here ? "#FFD93D" : "#fff"}" stroke="${OL}" stroke-width="2.5"/><text x="${sx}" y="${cy + 8}" class="tm-em">${q.locked ? "🔒" : q.em}</text>${label}${badge}${who}</g>`;
 }
 const label = (x, y, z, text) => {
   const [lx, ly] = P(x, y, z);
@@ -115,37 +132,10 @@ const BUILD = {
     })()}${sign(bx + 12, by + 8, 1.6, "⚓")}`,
 };
 
-/* ------------------------------------------------------------------ the family's house: an open doll's house */
-function dollhouse(ctx, x0, y0, w, d, here, peers) {
-  const rooms = (ctx.data?.house?.rooms || []).filter((r) => Array.isArray(r.pts) && r.pts.length >= 3);
-  if (!rooms.length) {
-    return `<g class="wm-room${here === "vaerelse" ? " here" : ""}" data-pl="go" data-k="vaerelse" role="button">${box(x0 + 2, y0 + 1, 7, 5, 3.4, "#FFF6E6")}${gable(x0 + 2, y0 + 1, 7, 5, 3.4, 2.4, "#E5484D", "#FFF6E6")}${windows(x0 + 2, y0 + 1, 7, 5, 3.4, 1, 3, 2, "#C7E6FF")}${door(x0 + 5, y0 + 1, 5)}</g>${sign(x0 + 5.5, y0 + 3.5, 6, "🏠")}`;
-  }
-  const xs = rooms.flatMap((r) => r.pts.map((q) => q[0])), ys = rooms.flatMap((r) => r.pts.map((q) => q[1]));
-  const ax = Math.min(...xs), bx = Math.max(...xs), ay = Math.min(...ys), by = Math.max(...ys);
-  const s = Math.min(w / (bx - ax || 1), d / (by - ay || 1));
-  const map = ([px, py]) => [x0 + (px - ax) * s + (w - (bx - ax) * s) / 2, y0 + (py - ay) * s + (d - (by - ay) * s) / 2];
-  const HR = houseRooms(ctx);
-  const FL = 0.4, WH = 2;
-  let floors = "", walls = [];
-  for (const r of rooms) {
-    const h = HR.find((x) => x.room.id === r.id), q = r.pts.map(map);
-    const key = h?.kid ? (h.kid === ctx.me?.id ? "vaerelse" : `visit:${h.kid}`) : `h:${r.id}`;
-    const pk = h?.kid ? `room:${h.kid}` : key, who = peers.filter((pe) => pe.space === pk);
-    const col = h?.kid ? "#C7E6FF" : { kitchen: "#FFF0B8", living: "#FFE4CC", bath: "#D8F1FF", bed: "#E2D5FF", garage: "#E2E8F0", hall: "#FFF6E6", office: "#E8F6E0" }[h?.look] || "#FFF6E6";
-    const cx = q.reduce((a, p) => a + p[0], 0) / q.length, cy = q.reduce((a, p) => a + p[1], 0) / q.length;
-    const [tx, ty] = P(cx, cy, FL);
-    floors += `<g class="wm-room${key === here ? " here" : ""}" data-pl="go" data-k="${key}" role="button" aria-label="${r.name}">${poly(q.map(([a, b]) => [a, b, FL]), col)}<text x="${tx.toFixed(1)}" y="${(ty + 7).toFixed(1)}" class="tm-room">${h?.em || ""}</text>${who.map((pe, j) => `<circle cx="${(tx + 12 - j * 10).toFixed(1)}" cy="${(ty - 12).toFixed(1)}" r="7" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="2.5"/>`).join("")}</g>`;
-    q.forEach((p, i) => walls.push([p, q[(i + 1) % q.length]]));
-  }
-  // The walls: low, so the rooms can be seen; the ones at the back first.
-  walls.sort((a, b) => a[0][0] + a[0][1] + a[1][0] + a[1][1] - (b[0][0] + b[0][1] + b[1][0] + b[1][1]));
-  const wallSvg = walls.map(([a, b]) => {
-    const front = b[1] + a[1] > 0 && Math.abs(b[0] - a[0]) > Math.abs(b[1] - a[1]);
-    return poly([[a[0], a[1], FL], [b[0], b[1], FL], [b[0], b[1], WH], [a[0], a[1], WH]], front ? "#FFFFFF" : "#F2EDE6", 'opacity=".92" pointer-events="none"');
-  }).join("");
-  const base = poly([[x0 - 0.3, y0 - 0.3, 0], [x0 + w + 0.3, y0 - 0.3, 0], [x0 + w + 0.3, y0 + d + 0.3, 0], [x0 - 0.3, y0 + d + 0.3, 0]], "#E8E2D6", 'stroke-width="1.5"');
-  return `${base}${box(x0 - 0.3, y0 - 0.3, w + 0.6, d + 0.6, FL, "#D9CFC0")}${floors}${wallSvg}`;
+/* ------------------------------------------------------------------ the family's house
+   In Verden the house is closed, with its roof on. Tapped, it opens on the Huset page (hv-house3d.js). */
+function closedHouse(x0, y0) {
+  return `${box(x0, y0 + 1.2, 9.2, 4.8, 3.2, "#FFF6E6")}${windows(x0, y0 + 1.2, 9.2, 4.8, 3.2, 1, 5, 2, "#C7E6FF")}${gable(x0, y0 + 1.2, 9.2, 4.8, 3.2, 2.4, "#E5484D", "#FFF6E6")}${door(x0 + 4, y0 + 1.2, 4.8, 1.4, 2.3, "#4D96FF")}${box(x0 + 6.8, y0 + 2, 0.8, 0.8, 5.6, "#C98B55")}${box(x0 - 2.6, y0 + 1.6, 2.6, 4.4, 2.4, "#F2E3CF")}${gable(x0 - 2.6, y0 + 1.6, 2.6, 4.4, 2.4, 1.4, "#C2502A", "#F2E3CF")}${windows(x0 - 2.6, y0 + 1.6, 2.6, 4.4, 2.4, 1, 1, 2, "#C7E6FF")}`;
 }
 
 /* ------------------------------------------------------------------ the whole town */
@@ -174,47 +164,48 @@ export function townSvg(ctx, lv, here, peers, t, opts = {}) {
   const roads = `${road(12, 0, 2, 41)}${road(26, 0, 2, 41)}${road(0, 12, 41, 2)}${road(0, 26, 41, 2)}${dash(13, 0, 13, 41)}${dash(27, 0, 27, 41)}${dash(0, 13, 41, 13)}${dash(0, 27, 41, 27)}${box(39.4, 12.3, 2.6, 1.4, 0.6, "#C98B55")}${box(39.4, 26.3, 2.6, 1.4, 0.6, "#C98B55")}`;
   const plotCol = { skov: "#8FD08A", park: "#9BD7A0", nat: "#8E88AA", hjem: "#B5E3A8", redning: "#DCD7E6", tekno: "#DCE6F2", pop: "#EDE3F7", slik: "#FBE3EC", butik: "#F2EDE6" };
   const plots = Object.entries(BLOCKS).map(([a, [x, y]]) => box(x + 0.4, y + 0.4, 11.2, 11.2, 0.35, plotCol[a] || "#E9E4F0")).join("");
-  // The buildings, the back ones first.
+  // The buildings, the back ones first. Their badges are collected and drawn last, right over each building.
   const items = [];
+  PINS = [];
+  const named = new Set();
   for (const [id, place] of Object.entries(PLACES)) {
     const blk = BLOCKS[place.area];
     if (!blk || !BUILD[id]) continue;
     const area = AREAS.find((a) => a.id === place.area), open = lv >= (area?.lvl || 1);
-    const who = peers.filter((pe) => pe.space === id);
-    const [sx, sy] = P(blk[0] + 6, blk[1] + 6, 6);
-    // Explored (been there) or new (open, not been there yet). Two places share a block: one badge each side.
-    const nth = Object.entries(PLACES).filter(([, pl]) => pl.area === place.area).findIndex(([k]) => k === id);
-    const [bx2, by2] = P(blk[0] + (nth ? 9 : 3), blk[1] + (nth ? 9 : 3), 5);
     const seen = (opts.seen || []).includes(id);
-    const status = !open || !opts.seen ? "" : seen ? `<g class="tm-seen" pointer-events="none"><circle cx="${bx2}" cy="${by2}" r="11" fill="#6BCB77" stroke="#fff" stroke-width="3"/><path d="M${bx2 - 5} ${by2} l4 4 l7 -8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></g>` : `<g class="tm-new" pointer-events="none"><rect x="${bx2 - 19}" y="${by2 - 11}" width="38" height="22" rx="11" fill="#FFD93D" stroke="${OL}" stroke-width="2"/><text x="${bx2}" y="${by2 + 5}" class="tm-newt">${t("NY")}</text></g>`;
-    items.push([blk[0] + blk[1] + (id.endsWith("havn") || id.endsWith("vand") || id.endsWith("butik") || id.endsWith("gaard") || id.endsWith("studie") || id.endsWith("hule") ? 1 : 0), `<g class="tm-place${open ? "" : " locked"}${id === here ? " here" : ""}" data-pl="go" data-k="${id}" role="button" aria-label="${t(place.n)}">${BUILD[id](blk[0] + 0.4, blk[1] + 0.4)}${open ? "" : `<g class="tm-lock"><circle cx="${sx}" cy="${sy}" r="16" fill="#fff" stroke="${OL}" stroke-width="2"/><text x="${sx}" y="${sy + 6}" class="tm-em">🔒</text></g>`}${status}${who.map((pe, j) => `<circle cx="${sx + 22 - j * 12}" cy="${sy - 22}" r="9" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="3"/>`).join("")}</g>`]);
+    // The first building of a part of town carries its name.
+    const label = named.has(place.area) ? "" : `${t(area?.n || "")}${open ? "" : ` · ${t("niv. {n}", { n: area?.lvl || 1 })}`}`;
+    named.add(place.area);
+    PIN = { act: "go", k: id, aria: t(place.n), label, locked: !open, here: id === here, status: !open || !opts.seen ? "" : seen ? "seen" : "new", who: peers.filter((pe) => pe.space === id) };
+    items.push([blk[0] + blk[1] + (id.endsWith("havn") || id.endsWith("vand") || id.endsWith("butik") || id.endsWith("gaard") || id.endsWith("studie") || id.endsWith("hule") ? 1 : 0), `<g class="tm-place${open ? "" : " locked"}${id === here ? " here" : ""}" data-pl="go" data-k="${id}" role="button" aria-label="${t(place.n)}">${BUILD[id](blk[0] + 0.4, blk[1] + 0.4)}</g>`]);
   }
   // The town's trees and lamps along the roads.
   const deco = [[11, 3], [11, 9], [15, 11], [24, 11.4], [29, 11.4], [38, 11.2], [11, 17], [11, 23], [29, 25.4], [11.4, 31], [11.4, 37], [25.4, 37], [29, 39], [38, 25.5], [15, 25.5], [1, 42.5], [6, 42.6], [17, 42.6], [33, 42.4], [-0.2, 20], [-0.2, 34]].map(([a, b], i) => (i % 3 ? tree(a, b, 0.65, ["#6BCB77", "#5A9E5F", "#8FD08A"][i % 3]) : lamp(a, b))).join("");
   // The shop: coins buy things.
+  PIN = { act: "shop", aria: t("Butikken") };
   const shop = `<g class="tm-place" data-pl="shop" role="button" aria-label="${t("Butikken")}">${box(16, 30.5, 8, 6, 3.4, "#FFF3B0")}${windows(16, 30.5, 8, 6, 3.4, 1, 4, 3, "#FFFFFF")}${flat([[16, 36.5, 3.4], [24, 36.5, 3.4], [24, 36.5, 2.6], [16, 36.5, 2.6]], "#FF6B6B", `stroke="${OL}" stroke-width="1.5"`)}${door(19.4, 30.5, 6, 1.4, 2.3, "#FFD93D")}${sign(20, 33.5, 3.6, "🪙")}${label(20, 36.5, 1.4, t("BUTIKKEN"))}</g>`;
   const fountain = (() => {
     const [fx, fy] = P(20, 39.2);
     return `<ellipse cx="${fx}" cy="${fy}" rx="26" ry="11" fill="#9BE7FF" stroke="${OL}" stroke-width="2"/><path d="M${fx} ${fy} v-16 m-8 6 q8 -18 16 0" stroke="#4FB3FF" stroke-width="3" fill="none"/>`;
   })();
-  // Home: the doll's house and the garden.
-  const home = dollhouse(ctx, 14.8, 14.8, 10.4, 7.6, here, peers);
+  // Home: the house (it opens on the Huset page) and the garden.
+  const homeKeys = new Set(houseRooms(ctx).map((h) => (h.kid ? `room:${h.kid}` : h.id)));
+  const inHome = peers.filter((pe) => homeKeys.has(pe.space));
+  const atHome = here === "vaerelse" || String(here).startsWith("h:") || String(here).startsWith("visit:");
+  PIN = { act: "house", aria: t("Huset"), label: t("Huset"), here: atHome, who: inHome };
+  const home = `<g class="tm-place tm-home" data-pl="house" role="button" aria-label="${t("Huset")}">${closedHouse(17.2, 15.2)}${sign(20.6, 18.6, 5, "🏠")}</g>`;
   const gw = peers.filter((pe) => pe.space === "have");
+  PIN = { act: "go", k: "have", aria: t("Haven"), here: here === "have", who: gw };
   const garden = `<g class="tm-place${here === "have" ? " here" : ""}" data-pl="go" data-k="have" role="button" aria-label="${t("Haven")}">${flat([[15, 22.6, 0.37], [25, 22.6, 0.37], [25, 25.6, 0.37], [15, 25.6, 0.37]], "#8FD08A", `stroke="${OL}" stroke-width="1.5"`)}${tree(16.4, 24, 0.7)}${(() => {
     const [tx, ty] = P(21, 24.2, 0.4);
     return `<ellipse cx="${tx}" cy="${ty}" rx="20" ry="8" fill="#4D96FF" stroke="${OL}" stroke-width="2"/><ellipse cx="${tx}" cy="${ty}" rx="14" ry="5" fill="#1B1530"/>`;
-  })()}${sign(23.6, 24, 0.4, "🌳")}${gw.map((pe, j) => {
-    const [gx, gy] = P(23.6, 24, 4.4);
-    return `<circle cx="${gx + 22 - j * 12}" cy="${gy - 12}" r="9" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="3"/>`;
-  }).join("")}</g>`;
+  })()}${sign(16.6, 24.2, 2.6, "🌳")}</g>`;
   // Today's gift over the house, until it is opened.
-  const [hx, hy] = P(20, 17, 6);
-  const gift = opts.gift ? `<g class="tm-gift" data-pl="daily" role="button" aria-label="${t("Dagens gave")}"><rect x="${hx - 64}" y="${hy - 60}" width="128" height="40" rx="14" fill="#fff" stroke="${OL}" stroke-width="2.5"/><path d="M${hx - 8} ${hy - 22} l8 12 l8 -12z" fill="#fff" stroke="${OL}" stroke-width="2.5" stroke-linejoin="round"/><rect x="${hx - 10}" y="${hy - 25}" width="20" height="6" fill="#fff"/><text x="${hx}" y="${hy - 34}" class="tm-gt">🎁 ${t("Dagens gave")}</text></g>` : "";
-  const names = AREAS.filter((a) => BLOCKS[a.id]).map((a) => {
-    const [x, y] = BLOCKS[a.id], [lx, ly] = P(x + 6, y + 11.6, 0.4);
-    const text = `${t(a.n)}${lv >= a.lvl ? "" : ` · ${t("niv. {n}", { n: a.lvl })}`}`;
-    return `<g class="tm-name${lv >= a.lvl ? "" : " locked"}"><rect x="${lx - text.length * 4.3 - 10}" y="${ly + 4}" width="${text.length * 8.6 + 20}" height="22" rx="11" fill="${lv >= a.lvl ? "#fff" : "#E8E4F0"}" stroke="${OL}" stroke-width="2"/><text x="${lx}" y="${ly + 20}" class="tm-area">${text}</text></g>`;
-  }).join("");
+  // Today's gift: a speech bubble from the house, to its left.
+  const [hx, hy] = P(20.6, 18.6, 5);
+  const gx = hx - 112, gy = hy - 30;
+  const gift = opts.gift ? `<g class="tm-gift" data-pl="daily" role="button" aria-label="${t("Dagens gave")}"><rect x="${gx - 72}" y="${gy - 20}" width="144" height="40" rx="14" fill="#fff" stroke="${OL}" stroke-width="2.5"/><path d="M${gx + 70} ${gy - 8} l14 8 l-14 8z" fill="#fff" stroke="${OL}" stroke-width="2.5" stroke-linejoin="round"/><rect x="${gx + 66}" y="${gy - 9}" width="6" height="18" fill="#fff"/><text x="${gx}" y="${gy + 6}" class="tm-gt">🎁 ${t("Dagens gave")}</text></g>` : "";
+  PIN = null;
   // Zebra crossings, parked cars and a bus stop.
   const zebra = [[13, 12], [27, 12], [13, 26], [27, 26]].map(([x, y]) => rep(4, (i) => flat([[x - 1 + i * 0.5, y + 2.3, 0.06], [x - 0.75 + i * 0.5, y + 2.3, 0.06], [x - 0.75 + i * 0.5, y + 3.5, 0.06], [x - 1 + i * 0.5, y + 3.5, 0.06]], "#fff"))).join("");
   const car = (x, y, c, along) => (along ? box(x, y, 1.8, 0.9, 0.7, c, 0.04) + box(x + 0.4, y, 1, 0.9, 0.55, "#CFE8FF", 0.74) : box(x, y, 0.9, 1.8, 0.7, c, 0.04) + box(x, y + 0.4, 0.9, 1, 0.55, "#CFE8FF", 0.74));
@@ -224,7 +215,10 @@ export function townSvg(ctx, lv, here, peers, t, opts = {}) {
   const stop = `<g class="tm-place" data-pl="city" role="button" aria-label="${t("Til Centrum")}">${box(4.5, 26.4, 3, 0.5, 2.2, "#E8F6FF", 0.05)}${box(4.5, 26.2, 3, 0.9, 0.2, "#4D96FF", 2.25)}</g>`;
   const busLabel = `<g class="tm-place" data-pl="city" role="button" aria-label="${t("Til Centrum")}"><rect x="${bsx - 62}" y="${bsy - 34}" width="124" height="26" rx="13" fill="#FFD93D" stroke="${OL}" stroke-width="2"/><text x="${bsx}" y="${bsy - 16}" class="tm-area">🚌 ${t("Til Centrum")}</text></g>`;
   items.sort((a, b) => a[0] - b[0]);
-  return `<defs>${sky}</defs><rect width="${W}" height="${H}" fill="url(#tm-sky)"/>${skyline}${hills}${land}${river}${roads}${zebra}${plots}${cars}${stop}${deco}${home}${sign(20, 15.6, 2.2, "🏠", "tm-home")}${garden}${items.map((i) => i[1]).join("")}${shop}${fountain}${names}${busLabel}${gift}`;
+  const body = `${home}${garden}${items.map((i) => i[1]).join("")}${shop}${fountain}`;
+  const pins = PINS.sort((a, b) => a.sy - b.sy).map((q) => pinSvg(q, t)).join("");
+  PINS = null;
+  return `<defs>${sky}</defs><rect width="${W}" height="${H}" fill="url(#tm-sky)"/>${skyline}${hills}${land}${river}${roads}${zebra}${plots}${cars}${stop}${deco}${body}${pins}${busLabel}${gift}`;
 }
 
 export const MAP_EN = { BUTIKKEN: "SHOP", "Dagens gave": "Today's gift" };

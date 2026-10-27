@@ -54,7 +54,7 @@ export function pocketBar(ctx, draw) {
   const st = A.st();
   if (!st.pocketOpen) return "";
   const list = st.d.pocket || [];
-  return `<div class="pl-pocketbar"><b>👜 ${esc(ctx.t("Lommen"))}</b>${list.length ? list.map((p, i) => `<button data-pl="unpocket" data-k="${i}" aria-label="${esc(ctx.t("Tag frem"))}"><svg viewBox="-130 -330 260 340">${draw(p)}</svg></button>`).join("") : `<span class="t-sub">${esc(ctx.t("Træk en figur eller en ting (i Byg) hen på tasken for at tage den med."))}</span>`}</div>`;
+  return `<div class="pl-pocketbar"><b>👜 ${esc(ctx.t("Lommen"))}</b>${list.length ? list.map((p, i) => `<button data-pl="unpocket" data-k="${i}" aria-label="${esc(ctx.t("Tag frem"))}"><svg viewBox="-130 -330 260 340">${draw(p)}</svg></button>`).join("") : `<span class="pl-pocket-e">${esc(ctx.t("Træk ting og figurer op i tasken"))}</span>`}</div>`;
 }
 export function fromPocket(ctx, i) {
   const st = A.st(), room = A.R(), list = st.d.pocket || [], p = list[i];
@@ -307,7 +307,7 @@ export const acts = {
 };
 
 export const TOYS_EN = {
-  Lommen: "The pocket", "Lommen er fuld": "The pocket is full", "Tag frem": "Take out", "Træk en figur eller en ting (i Byg) hen på tasken for at tage den med.": "Drag a character, or a thing (in Build), onto the bag to take it with you.",
+  Lommen: "The pocket", "Lommen er fuld": "The pocket is full", "Tag frem": "Take out", "Træk ting og figurer op i tasken": "Drag things and characters into the bag",
   "Hemmelighed fundet: {name}!": "Secret found: {name}!", Hemmeligheder: "Secrets",
   "Næste gave kommer på fredag!": "The next gift comes on Friday!", "Fredagsgave: {name}!": "Friday gift: {name}!", "Du har alt! Her er en glad hilsen fra posthuset.": "You have everything! Here is a happy hello from the post office.",
   "Ny frisure": "New hairstyle", "Vælg frisure og farve. Det kan altid laves om.": "Pick a style and a colour. You can always change it.", "Overrask mig": "Surprise me", "Færdig": "Done",
@@ -356,8 +356,10 @@ export const TOYS_CSS = `
 .pl-pocket { cursor: pointer; }
 .pl-pocket.open circle:first-child { fill: #FFF3B0; }
 .pl-pocketn { font: 900 16px system-ui, sans-serif; fill: #fff; }
-.pl-pocketbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 0; padding: 10px; border-radius: 18px; background: #FFF6E6; border: 2px solid #2B2340; }
-.pl-pocketbar button { width: 72px; height: 72px; border-radius: 14px; border: 2px solid #2B2340; background: #fff; padding: 2px; cursor: pointer; }
+.pl-pocketbar { position: absolute; top: 19%; right: 1.2%; z-index: 3; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; max-width: 62%; margin: 0; padding: 8px 10px; border-radius: 18px; background: rgba(255,246,230,.96); border: 3px solid #2B2340; box-shadow: 0 6px 18px rgba(0,0,0,.18); color: #2B2340; }
+.pl-pocketbar b { font-size: 14px; }
+.pl-pocket-e { font-size: 13px; font-weight: 700; opacity: .75; }
+.pl-pocketbar button { width: clamp(46px, 6vw, 64px); height: clamp(46px, 6vw, 64px); border-radius: 14px; border: 2px solid #2B2340; background: #fff; padding: 2px; cursor: pointer; }
 .pl-pocketbar svg { width: 100%; height: 100%; }
 .pl-glint { font-size: 22px; opacity: 0; animation: plglint 7s ease-in-out infinite; }
 @keyframes plglint { 0%, 80%, 100% { opacity: 0; } 88% { opacity: .75; } }

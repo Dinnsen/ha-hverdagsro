@@ -197,6 +197,27 @@ const SFX = {
     noise(t + 0.03, 0.06, { vol: 0.3, hp: 1500 });
   },
   snore: (t) => note(110, t, 0.8, { type: "sawtooth", vol: 0.05, to: 90 }),
+  // Things that work: running water, a flush, the stove, a ding, a tv clicking on, a shower.
+  water: (t) => {
+    noise(t, 1.6, { vol: 0.16, hp: 1200, lp: 7000 });
+    noise(t + 0.2, 1.2, { vol: 0.08, hp: 300, lp: 1500 });
+  },
+  flush: (t) => {
+    noise(t, 0.25, { vol: 0.25, hp: 200, lp: 3000 });
+    noise(t + 0.2, 1.3, { vol: 0.3, hp: 150, lp: 2200 });
+    note(400, t + 0.3, 1.1, { type: "sine", vol: 0.05, to: 120 });
+  },
+  shower: (t) => noise(t, 2, { vol: 0.12, hp: 2500, lp: 9000 }),
+  fire: (t) => {
+    noise(t, 0.15, { vol: 0.25, hp: 1500, lp: 6000 });
+    noise(t + 0.1, 0.8, { vol: 0.1, hp: 200, lp: 900 });
+  },
+  ding: (t) => [96, 91].forEach((m, i) => note(hz(m), t + i * 0.18, 0.6, { type: "sine", vol: 0.25 })),
+  tv: (t) => {
+    note(1500, t, 0.05, { type: "square", vol: 0.06 });
+    noise(t + 0.05, 0.25, { vol: 0.1, hp: 2000, lp: 8000 });
+  },
+  hum: (t) => note(110, t, 1.4, { type: "sawtooth", vol: 0.05, to: 130 }),
 };
 export function sfx(name) {
   // Only after the first touch has woken the sound (wake() runs on pointerdown).
