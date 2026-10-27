@@ -89,3 +89,16 @@ def test_appliances_and_modules() -> None:
         validate_section("modules", {"spaceship": True})
     with pytest.raises(vol.Invalid):
         validate_section("appliances", [{"id": "a", "entity": "sensor.x"}, {"id": "a", "entity": "sensor.y"}])
+
+
+def test_playroom() -> None:
+    member = {"id": "ida", "name": "Ida", "role": "child"}
+    room = {"wall": {"c": "rosa"}, "items": [{"id": "i1", "k": "bed", "x": 200, "y": 560}]}
+    assert validate_section("family", [{**member, "playroom": room}])[0]["playroom"] == room
+    assert validate_section("family", [member])[0]["playroom"] is None
+    with pytest.raises(vol.Invalid):
+        validate_section("family", [{**member, "playroom": "nope"}])
+    with pytest.raises(vol.Invalid):
+        validate_section("family", [{**member, "playroom": {"items": ["x"]}}])
+    with pytest.raises(vol.Invalid):
+        validate_section("family", [{**member, "playroom": {"items": [{"k": "x" * 400}] * 140}}])

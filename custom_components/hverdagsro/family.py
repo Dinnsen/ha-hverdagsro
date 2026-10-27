@@ -345,7 +345,7 @@ class Family:
         self._check_member_access(user, member_id)
         # Homework from the school (Aula) shows as a mission without points: "lektie:<id>".
         virtual = mission_id.startswith(HOMEWORK_PREFIX) and 0 < len(mission_id) <= 120
-        mission = {"id": mission_id, "title": "", "points": 0} if virtual else self.mission(mission_id)
+        mission: dict[str, Any] = {"id": mission_id, "title": "", "points": 0} if virtual else self.mission(mission_id)
         member = self.require_member(member_id)
         day = day or dt_util.now().date()
         key = f"{mission['id']}:{member['id']}"
