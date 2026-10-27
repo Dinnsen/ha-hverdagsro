@@ -96,6 +96,21 @@
     },
     "not_enough_coins": {
       "message": "There are not enough coins."
+    },
+    "not_for_you": {
+      "message": "That task is for someone else."
+    },
+    "no_spaces": {
+      "message": "There is nowhere to hide the stars."
+    },
+    "no_hunt": {
+      "message": "There is no star hunt right now."
+    },
+    "no_hide": {
+      "message": "Nothing is hidden right now."
+    },
+    "no_task": {
+      "message": "The task is gone."
     }
   },
   "services": {

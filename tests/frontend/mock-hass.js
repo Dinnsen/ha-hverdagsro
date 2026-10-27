@@ -172,6 +172,16 @@ export function demoData(setupDone = true) {
       : [],
     points: { ida: 135, oskar: 48 },
     game: { ida: { coins: 140, xp: 520, owned: ["fyrtaarn", "brandbil", "p:poter"], daily: "" } },
+    fun: {
+      day: { date: t, kind: "wave", need: 5, count: 2, keys: [], who: ["oskar"], paid: false },
+      tasks: [
+        { id: "t1", title: "Find noget rødt i huset", emoji: "🔴", for: [], coins: 5, real: true, by: "anna", at: iso(day(0, 15)), done: {} },
+        { id: "t2", title: "Lav en dans til aftensmaden", emoji: "💃", for: ["ida"], coins: 10, real: true, by: "anna", at: iso(day(0, 16)), done: { ida: "wait" } },
+      ],
+      hunt: { id: "h1", by: "anna", who: ["anna", "ida", "oskar"], stars: [{ id: "s0", space: "room:ida", x: 300, y: 470 }, { id: "s1", space: "have", x: 600, y: 520 }, { id: "s2", space: "room:oskar", x: 500, y: 500 }], found: { s2: "oskar" }, at: iso(day(0, 16)), done: false },
+      hide: { id: "x1", by: "oskar", space: "room:ida", x: 820, y: 560, thing: "teddy", at: iso(day(0, 16)), found_by: null },
+      party: null,
+    },
     requests: [{ id: "r1", member: "ida", reward: "film", at: iso(day(0, 8, 2)), status: "pending" }],
     ledger: [{ at: iso(day(0, 7, 20)), member: "ida", delta: 5, reason: "Børst tænder", by: null }],
     done_today: { "tandboerst:ida": { at: iso(day(0, 7, 20)), by: null } },
@@ -220,6 +230,18 @@ export function demoHouse() {
       I("vacuum", "robot", "Robotstøvsuger", 700, 300, { ent: "vacuum.robotstovsuger", appl: "robot" }),
       I("mower", "klipper", "Plæneklipper", 200, 900, { ent: "lawn_mower.plaeneklipper", appl: "klipper" }),
       I("washer", "vask", "Vaskemaskine", 130, 130, { ent: "sensor.vaskemaskine_status", appl: "vask" }),
+      // Furniture put in with Husbyggeren (it comes into the game's rooms).
+      I("furn", "f_sofa", "Sofa", 640, 360, { fk: "sofa", w: 230, h: 95, rot: 180 }),
+      I("furn", "f_coffee", "Sofabord", 640, 270, { fk: "coffee", w: 120, h: 60, rot: 0 }),
+      I("furn", "f_arm", "Lænestol", 860, 260, { fk: "arm", w: 85, h: 85, rot: 0 }),
+      I("furn", "f_plant", "Plante", 880, 130, { fk: "plant", w: 50, h: 50, rot: 0 }),
+      I("furn", "f_piano", "Klaver", 500, 130, { fk: "piano", w: 150, h: 60, rot: 0 }),
+      I("furn", "f_counter", "Køkkenbord", 260, 120, { fk: "counter", w: 300, h: 62, rot: 0 }),
+      I("furn", "f_hob", "Kogeplade", 380, 120, { fk: "hobc", w: 60, h: 60, rot: 0 }),
+      I("furn", "f_fridge", "Køleskab", 430, 130, { fk: "fridgec", w: 60, h: 65, rot: 0 }),
+      I("furn", "f_table", "Spisebord", 280, 320, { fk: "table", w: 200, h: 95, rot: 0 }),
+      I("furn", "f_chair1", "Stol", 200, 320, { fk: "chair", w: 48, h: 50, rot: 0 }),
+      I("furn", "f_chair2", "Stol", 360, 320, { fk: "chair", w: 48, h: 50, rot: 0 }),
     ],
   };
 }
@@ -237,7 +259,7 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
   const reg = seed?.registry || demoRegistry(states);
   const store = seed?.store || demoData(setup);
   if (seed && !setup) Object.assign(store, { setup_done: false, family: [], missions: [], rewards: [] });
-  for (const [k, v] of Object.entries({ quick: [], routines: { helpers: [], pickups: {}, boards: {}, cards: [] }, pins: {}, board_done: {}, game: {}, osky: { accounts: {}, lists: [] } })) if (!(k in store)) store[k] = v;
+  for (const [k, v] of Object.entries({ quick: [], routines: { helpers: [], pickups: {}, boards: {}, cards: [] }, pins: {}, board_done: {}, game: {}, fun: { tasks: [], hunt: null, hide: null, party: null, day: null }, osky: { accounts: {}, lists: [] } })) if (!(k in store)) store[k] = v;
   const calls = [];
   const listeners = new Set();
   const playListeners = new Set();
@@ -345,6 +367,50 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
       const player = msg.space ? { member: msg.member, space: msg.space, x: msg.x, y: msg.y, me: msg.me || {} } : { member: msg.member, space: "" };
       setTimeout(() => playListeners.forEach((cb) => cb({ player })), 10);
       return null;
+    }
+    if (t === "hverdagsro/fun") {
+      const f = store.fun, a = msg.action;
+      if (!["task_add", "task_approve", "task_remove", "hunt_stop", "hide_stop"].includes(a)) check(msg.member);
+      if (["task_add", "task_approve", "task_remove"].includes(a) && !canManage()) throw { code: "not_allowed", message: "Kun en voksen kan det." };
+      const coin = (id, n) => {
+        const g = (store.game[id] ||= { coins: 0, xp: 0, owned: [] });
+        g.coins += n;
+        g.xp += n;
+      };
+      if (a === "event" && f.day.kind === msg.kind && !f.day.paid) {
+        f.day.count = Math.min(f.day.need, f.day.count + 1);
+        if (!f.day.who.includes(msg.member)) f.day.who.push(msg.member);
+        if (f.day.count >= f.day.need) {
+          f.day.paid = true;
+          f.day.who.forEach((id) => coin(id, 8));
+          f.party = { id: "p" + Date.now(), at: iso(new Date()), reason: "day", who: f.day.who };
+        }
+      } else if (a === "task_add") f.tasks.push({ id: "t" + Date.now(), title: msg.title, emoji: msg.emoji || "⭐", for: msg.for || [], coins: msg.coins || 5, real: msg.real !== false, by: memberForUser()?.id || "", at: iso(new Date()), done: {} });
+      else if (a === "task_done") f.tasks.find((x) => x.id === msg.task).done[msg.member] = "wait";
+      else if (a === "task_approve") {
+        f.tasks.find((x) => x.id === msg.task).done[msg.member] = "ok";
+        coin(msg.member, 5);
+      } else if (a === "task_remove") f.tasks = f.tasks.filter((x) => x.id !== msg.task);
+      else if (a === "hunt_start") f.hunt = { id: "h" + Date.now(), by: msg.member, who: msg.who || [], stars: Array.from({ length: msg.n || 8 }, (_, i) => ({ id: "s" + i, space: msg.spaces[i % msg.spaces.length], x: 150 + ((i * 97) % 700), y: 380 + ((i * 53) % 200) })), found: {}, at: iso(new Date()), done: false };
+      else if (a === "hunt_find") {
+        f.hunt.found[msg.star] = msg.member;
+        coin(msg.member, 3);
+        if (Object.keys(f.hunt.found).length >= f.hunt.stars.length) {
+          f.hunt.done = true;
+          f.party = { id: "p" + Date.now(), at: iso(new Date()), reason: "hunt", who: [...new Set(Object.values(f.hunt.found))] };
+        }
+      } else if (a === "hunt_stop") f.hunt = null;
+      else if (a === "hide") f.hide = { id: "x" + Date.now(), by: msg.member, space: msg.space, x: msg.x, y: msg.y, thing: msg.thing, at: iso(new Date()), found_by: null };
+      else if (a === "seek") {
+        if (!f.hide || f.hide.found_by || f.hide.by === msg.member) throw { code: "no_hide", message: "Der er ikke gemt noget lige nu." };
+        if (msg.space === f.hide.space && Math.hypot(msg.x - f.hide.x, msg.y - f.hide.y) <= 80) {
+          f.hide.found_by = msg.member;
+          coin(msg.member, 10);
+          f.party = { id: "p" + Date.now(), at: iso(new Date()), reason: "hide", who: [msg.member, f.hide.by] };
+        }
+      } else if (a === "hide_stop") f.hide = null;
+      setTimeout(push, 10);
+      return JSON.parse(JSON.stringify(f));
     }
     if (t === "hverdagsro/game") {
       check(msg.member);

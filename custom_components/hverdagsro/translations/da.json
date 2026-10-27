@@ -96,6 +96,21 @@
     },
     "not_enough_coins": {
       "message": "Der er ikke mønter nok."
+    },
+    "not_for_you": {
+      "message": "Den opgave er til en anden."
+    },
+    "no_spaces": {
+      "message": "Der er ingen steder at gemme stjernerne."
+    },
+    "no_hunt": {
+      "message": "Der er ingen stjernejagt lige nu."
+    },
+    "no_hide": {
+      "message": "Der er ikke gemt noget lige nu."
+    },
+    "no_task": {
+      "message": "Opgaven er væk."
     }
   },
   "services": {

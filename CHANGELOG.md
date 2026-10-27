@@ -2,6 +2,29 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.7.0] - 2026-10-27
+
+### Added
+- **Familieleg, the whole family plays together:** grown-ups and children in the same world at the same time.
+  - **Today's family mission:** one small shared goal a day (wave to each other, visit places, talk to characters, meet up, build, hug, find stars). Everyone who helps gets coins when the family reaches it.
+  - **Star hunt:** stars get hidden around the house for the players you choose. Each star found gives coins, and all of them found gives a party.
+  - **Hide and seek:** hide a thing somewhere in the house, and the others look for it with warmer and colder hints. Both the finder and the hider get coins.
+  - **Fun tasks from the grown-ups:** a small task, in real life or in the game, for one child or everyone. The child says done, a grown-up approves, and the coins come.
+  - **Call the family:** everyone playing gets "come here!" with a button that takes them there.
+  - **Hug and high five:** tap someone, then wave, hug or high five. A sibling who is playing sees it too.
+  - A party with confetti and sounds when the family reaches a goal.
+- **Your own furniture in the game:** the rooms of the house have the furniture the family put in with Husbyggeren, in the same order.
+- **75 everyday things for the house**, free for everyone: kitchen, food, clothes, devices, bathroom, books and toys, storage, garden and little treasures. Fridges, wardrobes, bags and chests open and show what is inside, and books open.
+- **Sit in vehicles and on more furniture:** cars, tractor, bike, canoe, sledge, plane, armchairs, rocking chair, garden swing and more.
+- **The map shows where you have been:** a tick on explored places and "NY" on places that are open but not visited yet.
+- **More to wear:** glasses and masks on the face as well as a hat, and something to carry (bag, backpack, necklace, medal, teddy). Outfits can be named.
+- **My stories:** keep a game as a story and play it again another day.
+- **Everything saves by itself:** a moment after each change, at once when the app is hidden or closed, and again later if Home Assistant could not be reached. The game opens where the child left off, on any device, including the map, the outfit and the sound choice.
+
+### Fixed
+- Tapping your own avatar could stop it waving (an error in 0.6.0).
+- A sibling who waved once kept jumping.
+
 ## [0.6.0] - 2026-10-27
 
 ### Added

@@ -184,6 +184,12 @@ const SFX = {
     [84, 88, 91, 96].forEach((m, i) => note(hz(m), t + 0.15 + i * 0.06, 0.25, { type: "sine", vol: 0.22 }));
   },
   step: (t) => noise(t, 0.04, { vol: 0.12, hp: 200, lp: 1200 }),
+  page: (t) => noise(t, 0.18, { vol: 0.16, hp: 2500, lp: 9000 }),
+  hug: (t) => [64, 67, 72].forEach((m, i) => note(hz(m + 12), t + i * 0.08, 0.5, { type: "sine", vol: 0.22 })),
+  clap: (t) => {
+    noise(t, 0.08, { vol: 0.45, hp: 900, lp: 6000 });
+    noise(t + 0.03, 0.06, { vol: 0.3, hp: 1500 });
+  },
   snore: (t) => note(110, t, 0.8, { type: "sawtooth", vol: 0.05, to: 90 }),
 };
 export function sfx(name) {

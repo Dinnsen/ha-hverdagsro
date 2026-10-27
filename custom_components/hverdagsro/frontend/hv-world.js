@@ -239,13 +239,57 @@ export function houseRooms(ctx) {
     return { id: `h:${r.id}`, room: r, n: r.name, kid, look, em: { living: "🛋️", kitchen: "🍳", bath: "🛁", bed: "🛏️", office: "💻", hall: "🚪", utility: "🧺", garage: "🚗", kid: "🧸", other: "🏠" }[look] || "🏠" };
   });
 }
+/* ------------------------------------------------------------------ the house's own furniture (from Husbyggeren)
+   What the family has put in a room in Husbyggeren comes into the game in the same order, left to right and back to
+   front. Furniture the game has no drawing for is left out. */
+const FURN_GAME = {
+  sofa: "sofa", corner: "sofa", chaise: "sofa", arm: "laenestol", pouf: "hyggepude", coffee: "sofabord", sidet: "natbord", tvbench: "tv",
+  sideboard: "shelf", shelf: "shelf", piano: "keyboard", rug: "gulvtaeppe", plant: "stueplante",
+  base: "koekken", sinkc: "koekken", counter: "koekken", island: "koekken", tall: "koekken", dishc: "koekken", hobc: "komfur", ovenc: "komfur",
+  fridgec: "koeleskab", table: "spisebord", tround: "spisebord", chair: "chair", stool: "chair", bench: "baenk",
+  bed2: "dobbeltseng", bed1: "bed", nightstand: "natbord", wardrobe: "wardrobe", dresser: "natbord", vanity: "sminkebord", bbench: "baenk",
+  bunk: "bunk", crib: "dukkeseng", desk: "desk", standd: "desk", ochair: "gaming", cabinet: "shelf", toybox: "blocks", playk: "minikokken", tipi: "tipi", beanbag: "beanbag",
+  tub: "badekar", toilet: "toilet", sink: "haandvask", vanityb: "haandvask", usink: "haandvask", mirror: "mirror", mirrorw: "mirror",
+  wm: "vaskemaskine", td: "vaskemaskine", tower: "vaskemaskine", clean: "wardrobe", hooks: "knager", shoes: "skoreol",
+  work: "vaerktoejskasse", gshelf: "shelf", bike: "cykel", bins: "skraldespand", tools: "vaerktoejsvaeg",
+  gset: "havemoebel", gtable: "havemoebel", lounge: "havemoebel", lounger: "baenk", parasol: "parasol", firepit: "baal", tramp: "trampolinhave",
+  sandbox: "sandkasse", raised: "hoejbed", playhouse: "telt", swing: "gyngestativ",
+};
+const LIGHT_GAME = { floor: "floorlamp", table: "tablelamp", garden: "lygtepael" };
+const ON_WALL = new Set(["mirror", "knager", "vaerktoejsvaeg"]);
+const inside = (x, y, pts) => {
+  let hit = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-9) + xi) hit = !hit;
+  }
+  return hit;
+};
+export function houseDecor(ctx, room) {
+  const pts = room?.pts;
+  if (!Array.isArray(pts) || pts.length < 3) return null;
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const out = [];
+  for (const it of ctx.data?.house?.items || []) {
+    if (typeof it.x !== "number" || typeof it.y !== "number" || !inside(it.x, it.y, pts)) continue;
+    const k = it.type === "furn" ? FURN_GAME[it.fk] : it.type === "light" ? LIGHT_GAME[it.lk] : it.type === "tv" ? "tv" : it.type === "washer" || it.type === "dryer" ? "vaskemaskine" : null;
+    if (!k) continue;
+    const fx = (it.x - x0) / (x1 - x0 || 1), fy = (it.y - y0) / (y1 - y0 || 1);
+    const sx = Math.round(90 + fx * 820), sy = ON_WALL.has(k) ? 240 : Math.round(470 + fy * 160);
+    // The same thing right next to itself (a row of kitchen units) is one.
+    if (out.some(([ok, ox, oy]) => ok === k && Math.abs(ox - sx) < 90 && Math.abs(oy - sy) < 60)) continue;
+    out.push([k, sx, sy]);
+  }
+  return out.length >= 2 ? out.slice(0, 16) : null;
+}
 /* A place, by its key: an area's place, a room of the house, or the garden. */
 export function place(ctx, key) {
   if (P[key]) return { id: key, ...P[key] };
   if (String(key).startsWith("h:")) {
     const h = houseRooms(ctx).find((x) => x.id === key);
     if (!h) return null;
-    return { ...h, area: "hjem", bg: (s0, s1, tod) => roomBackdrop(h.look, s0, s1, tod), decor: (ROOMLOOK[h.look] || ROOMLOOK.other).decor, npcs: [] };
+    return { ...h, area: "hjem", bg: (s0, s1, tod) => roomBackdrop(h.look, s0, s1, tod), decor: houseDecor(ctx, h.room) || (ROOMLOOK[h.look] || ROOMLOOK.other).decor, own: !!houseDecor(ctx, h.room), npcs: [] };
   }
   return null;
 }

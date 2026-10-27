@@ -14,6 +14,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 
+from . import funplay
 from .const import BOARD_SLOTS, DOMAIN, ROLE_PARENT, SECTIONS, SKIN_MODES, SKINS
 from .family import MAX_UNLOCK, Family
 from .schema import vol
@@ -283,7 +284,7 @@ def _look(value: Any) -> dict[str, str]:
     """The avatar to show the others: a few short words and colours, nothing else."""
     if not isinstance(value, dict):
         return {}
-    return {str(k)[:12]: str(v)[:24] for k, v in list(value.items())[:12] if isinstance(v, str)}
+    return {str(k)[:12]: str(v)[:24] for k, v in list(value.items())[:24] if isinstance(v, str)}
 
 
 @websocket_api.websocket_command({vol.Required("type"): "hverdagsro/play_subscribe"})
@@ -313,7 +314,9 @@ async def ws_play_subscribe(
         vol.Optional("x", default=500): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
         vol.Optional("y", default=560): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
         vol.Optional("me", default=None): vol.Any(None, dict),
-        vol.Optional("emote", default=None): vol.Any(None, vol.In(("wave", "jump", "heart"))),
+        vol.Optional("emote", default=None): vol.Any(
+            None, vol.In(("wave", "jump", "heart", "hug", "highfive", "invite"))
+        ),
         vol.Optional("to", default=None): vol.Any(None, vol.All(cv.string, vol.Length(max=40))),
     }
 )
@@ -344,6 +347,57 @@ async def ws_play(
             player = {**player, "emote": msg["emote"], "to": msg["to"]}
     async_dispatcher_send(hass, PLAY_SIGNAL, player)
     connection.send_result(msg["id"])
+
+
+# ---------------------------------------------------------------------- Familieleg (the whole family plays together)
+_SHORT = vol.All(cv.string, vol.Length(max=80))
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hverdagsro/fun",
+        vol.Required("action"): vol.In(
+            (
+                "event",
+                "task_add",
+                "task_done",
+                "task_approve",
+                "task_remove",
+                "hunt_start",
+                "hunt_find",
+                "hunt_stop",
+                "hide",
+                "seek",
+                "hide_stop",
+            )
+        ),
+        vol.Optional("member"): vol.All(cv.string, vol.Length(max=40)),
+        vol.Optional("kind"): vol.In(("wave", "visit", "talk", "meet", "build", "hug", "star")),
+        vol.Optional("key"): _SHORT,
+        vol.Optional("task"): vol.All(cv.string, vol.Length(max=12)),
+        vol.Optional("title"): vol.All(cv.string, vol.Strip, vol.Length(min=1, max=80)),
+        vol.Optional("emoji"): vol.All(cv.string, vol.Length(max=8)),
+        vol.Optional("for"): vol.All(cv.ensure_list, [vol.All(cv.string, vol.Length(max=40))], vol.Length(max=12)),
+        vol.Optional("coins"): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
+        vol.Optional("real"): cv.boolean,
+        vol.Optional("spaces"): vol.All(cv.ensure_list, [_SHORT], vol.Length(max=40)),
+        vol.Optional("who"): vol.All(cv.ensure_list, [vol.All(cv.string, vol.Length(max=40))], vol.Length(max=12)),
+        vol.Optional("n"): vol.All(vol.Coerce(int), vol.Range(min=3, max=12)),
+        vol.Optional("star"): vol.All(cv.string, vol.Length(max=6)),
+        vol.Optional("space"): _SHORT,
+        vol.Optional("x"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
+        vol.Optional("y"): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
+        vol.Optional("thing"): vol.All(cv.string, vol.Length(max=40)),
+    }
+)
+@websocket_api.async_response
+@_with_family
+async def ws_fun(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    """Familieleg: missions, star hunts, hide and seek and fun tasks for the whole family."""
+    state = await funplay.async_fun(family, connection.user, msg["action"], msg)
+    connection.send_result(msg["id"], state)
 
 
 def _require_parent_account(connection: websocket_api.ActiveConnection, family: Family, member_id: str) -> None:
@@ -436,6 +490,7 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_game,
         ws_play,
         ws_play_subscribe,
+        ws_fun,
         ws_osky_login,
         ws_osky_logout,
         ws_osky_refresh,

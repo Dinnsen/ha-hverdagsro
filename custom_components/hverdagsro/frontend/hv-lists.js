@@ -260,7 +260,7 @@ function newEvent(ctx) {
   const people = PEOPLE(ctx);
   const t0 = startOfDay(new Date());
   const kid = ctx.children()[0]?.id;
-  const bg = ctx.sheet(`<h2>${esc(ctx.t("Ny aftale"))}</h2><form id="nf"><div class="field"><label for="nf-t">${esc(ctx.t("Hvad"))}</label><input id="nf-t" required placeholder="${esc(ctx.t("Fx Elvin til fødselsdag hos Alma"))}"></div>
+  const bg = ctx.sheet(`<h2>${esc(ctx.t("Ny aftale"))}</h2><form id="nf"><div class="field"><label for="nf-t">${esc(ctx.t("Hvad"))}</label><input id="nf-t" required placeholder="${esc(ctx.t("Fx Noah til fødselsdag hos Alma"))}"></div>
     <div class="field"><span class="lbl">${esc(ctx.t("For hvem"))}</span><div class="filters" id="nf-who">${people.map((p) => `<button type="button" class="fchip" data-w="${esc(p.id)}" aria-pressed="${p.id === kid}" style="--fc:${pcolor(ctx, p.id)}">${ctx.avatar(p.id)}${esc(p.name)}</button>`).join("")}</div></div>
     <div class="row"><div class="field"><label for="nf-d">${esc(ctx.t("Dag"))}</label><select id="nf-d">${Array.from({ length: 7 }, (_, i) => addDays(t0, i))
       .map((d, i) => `<option value="${i}">${esc(cap(dayShort(ctx, d)))} ${d.getDate()}. ${esc(MONTHS[d.getMonth()].slice(0, 3))}.</option>`)
@@ -536,7 +536,7 @@ function newList(ctx) {
   const lists = (ctx.data.osky?.lists || []).filter((l) => (ctx.data.settings.osky_to || {})[l.id] === "skjul" || !(l.id in (ctx.data.settings.osky_to || {})));
   const logged = Object.keys(ctx.data.osky?.accounts || {}).length > 0;
   const people = [...PEOPLE(ctx).map((p) => [p.id, p.name]), ["begge", ctx.t("Far og mor")], ["andre", ctx.t("Venner og familie")]];
-  const bg = ctx.sheet(`<h2>${esc(ctx.t("Ny liste"))}</h2><form id="nl"><div class="field"><label for="nl-t">${esc(ctx.t("Navn"))}</label><input id="nl-t" placeholder="${esc(ctx.t("Fx Elmers fødselsdag"))}"></div>
+  const bg = ctx.sheet(`<h2>${esc(ctx.t("Ny liste"))}</h2><form id="nl"><div class="field"><label for="nl-t">${esc(ctx.t("Navn"))}</label><input id="nl-t" placeholder="${esc(ctx.t("Fx Noahs fødselsdag"))}"></div>
     <div class="field"><span class="lbl">${esc(ctx.t("Slags"))}</span><div class="seg" id="nl-k"><button type="button" data-k="list" aria-pressed="true">${esc(ctx.t("Liste"))}</button>${ctx.on("wish") ? `<button type="button" data-k="onske" aria-pressed="false">Ønskeskyen</button>` : ""}</div></div>
     <div class="field" id="nl-l-f" hidden>${
       logged
@@ -834,7 +834,7 @@ const en = {
   Sne: "Snow",
   "Delvis skyet": "Partly cloudy",
   Hvad: "What",
-  "Fx Elvin til fødselsdag hos Alma": "E.g. birthday party at Alma's",
+  "Fx Noah til fødselsdag hos Alma": "E.g. birthday party at Alma's",
   "For hvem": "For whom",
   Dag: "Day",
   Til: "To",
@@ -919,7 +919,7 @@ const en = {
   "Indkøbslisten bygges af Middagsros madplan. Alle andre lister er hver en to-do-liste i Home Assistant. Ønskesedler hentes fra Ønskeskyen. Kun forældre kan oprette og slette lister.": "The shopping list is built from Middagsro's meal plan. All other lists are each a to-do list in Home Assistant. Wish lists come from Ønskeskyen. Only parents can create and delete lists.",
   "Venner og familie": "Friends and family",
   Navn: "Name",
-  "Fx Elmers fødselsdag": "E.g. Tom's birthday",
+  "Fx Noahs fødselsdag": "E.g. Tom's birthday",
   Slags: "Kind",
   Liste: "List",
   Ønskeseddel: "Wish list",
