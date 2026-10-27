@@ -17,6 +17,7 @@ from .const import (
     MAX_HOUSE_BYTES,
     MAX_MEMBERS,
     MAX_MISSIONS,
+    MAX_PLAYROOM_BYTES,
     MAX_QUICK,
     MAX_REWARDS,
     MAX_ROUTINES_BYTES,
@@ -124,6 +125,20 @@ def text_list(max_items: int, max_len: int) -> Any:
 PET = vol.Schema({vol.Required("name"): text(20, 1), vol.Optional("kind", default="hund"): vol.In(PET_KINDS)})
 
 
+def _playroom(value: Any) -> dict[str, Any] | None:
+    """A child's own room (Mit værelse): walls, floor, furniture, avatar and pet. Checked loosely, with a size limit."""
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise vol.Invalid("expected an object")
+    items = value.get("items", [])
+    if not isinstance(items, list) or len(items) > 150 or not all(isinstance(i, dict) for i in items):
+        raise vol.Invalid("items must be a list of objects")
+    if len(json.dumps(value, separators=(",", ":"))) > MAX_PLAYROOM_BYTES:
+        raise vol.Invalid("the room is too big")
+    return value
+
+
 MEMBER = vol.Schema(
     {
         vol.Required("id"): ident,
@@ -150,6 +165,7 @@ MEMBER = vol.Schema(
         vol.Optional("quick_hide", default=[]): id_list,
         vol.Optional("msg_off", default=[]): text_list(20, 40),
         vol.Optional("goal", default=None): vol.Any(None, ident),
+        vol.Optional("playroom", default=None): _playroom,
     }
 )
 

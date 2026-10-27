@@ -5,6 +5,14 @@ All notable changes to Hverdagsro. The version is the one in `custom_components/
 ## [0.4.0] - 2026-10-27
 
 ### Added
+- **Mit værelse, the children's own room** (their start page now):
+  - A little doll's house they build themselves: drag furniture, toys, lamps and wall things in from a drawer, then move, flip, resize, recolour or remove them.
+  - Wallpaper patterns and floors.
+  - Their own avatar to dress (skin, hair, hair colour, top, trousers and an extra like a crown or glasses). Tap the floor to walk, tap the avatar to wave and jump.
+  - Their pet lives in the room, wags when the day goes well, and can be moved.
+  - The routine cards for this part of the day, the day's missions and homework float as bubbles to tap when done.
+  - The window shows the real sky, the switch on the wall turns the real lights in their room on and off, and the room gets dark at night when the lights are off.
+- **Routines and homework among the missions, without points:** each part of the routine board shows as one mission (done when all its cards are), and homework from Aula (Min Uddannelse via the Aula integration) shows on its weekday.
 - **Husbyggeren, much easier to build with:**
   - The keyboard works anywhere on the page: undo and redo, Delete, Esc, arrows to nudge (Shift for long steps, Alt for fine ones), `,` and `.` to turn, Ctrl/⌘ D to duplicate.
   - Choose several things with Shift-click, a Shift-drag frame or the "Markér flere" button, then move, duplicate, turn or delete them together.

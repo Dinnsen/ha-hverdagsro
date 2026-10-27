@@ -171,7 +171,12 @@ function tasksFor(ctx, m, date = today0()) {
     time: x.time,
     rep: daysText(ctx, x.days),
     extra: (x.days || []).length === 1 && date.getTime() === today0().getTime() ? false : false,
-  }));
+  })).concat(m.role === "child" ? schoolAndRoutines(ctx, m, date, done) : []);
+}
+/* The routine board and homework show among the child's missions, without points. */
+function schoolAndRoutines(ctx, m, date, done) {
+  const extra = [...(typeof Kids.routineMissions === "function" ? Kids.routineMissions(ctx, m.id, date) : []), ...(typeof Kids.homeworkFor === "function" ? Kids.homeworkFor(ctx, m.id, date) : [])];
+  return extra.map((x) => ({ id: x.id, who: m.id, t: x.t, em: x.em, pts: 0, done: x.kind === "homework" ? `${x.id}:${m.id}` in done : x.done, due: "", time: x.kind === "routine" ? x.time : "", rep: x.sub, kind: x.kind, slot: x.slot }));
 }
 function streak(ctx, m) {
   const t = today0();
@@ -1185,7 +1190,28 @@ const acts = {
   },
   async "home-task"(el, ev, ctx) {
     const member = ctx.member(el.dataset.member);
-    const mission = (ctx.data.missions || []).find((x) => x.id === el.dataset.id);
+    // A part of the routine board: tick (or untick) all its cards.
+    if (el.dataset.id.startsWith("rb:") && member) {
+      if (ctx.isKid && ctx.me?.id !== member.id) return ctx.toast(ctx.t("Det kan kun far eller mor"));
+      const slot = el.dataset.id.slice(3), cards = ctx.data.routines?.boards?.[member.id]?.[slot] || [];
+      const D = (ctx.data.board_done ||= {}), mine = D[member.id] || [];
+      const all = cards.every((c, i) => mine.includes(`${slot}:${i}`));
+      if (!all) {
+        const r = el.getBoundingClientRect();
+        burst(ctx, r.left + r.width / 2, r.top + r.height / 2, member.color);
+      }
+      for (let i = 0; i < cards.length; i++) {
+        if (mine.includes(`${slot}:${i}`) === !all) continue;
+        try {
+          const res = await ctx.ws("board", { member: member.id, slot, index: i, done: !all });
+          D[member.id] = res.done;
+        } catch (err) {
+          return ctx.toast(String(err?.message || err));
+        }
+      }
+      return ctx.render();
+    }
+    const mission = el.dataset.id.startsWith("lektie:") ? { id: el.dataset.id, points: 0, title: "" } : (ctx.data.missions || []).find((x) => x.id === el.dataset.id);
     if (!member || !mission) return;
     if (ctx.isKid && ctx.me?.id !== member.id) return ctx.toast(ctx.t("Det kan kun far eller mor"));
     const key = `${mission.id}:${member.id}`;

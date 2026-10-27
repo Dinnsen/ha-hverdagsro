@@ -133,6 +133,43 @@ const hbTrips = (ctx, id) => ctx.children().reduce((n, k) => {
   return n + K.bring.filter((r) => r[0] === id).length + K.hent.filter((r) => r[0] === id).length;
 }, 0);
 
+/* The routine board as missions without points: one per part of the day, done when every card is done. Today only. */
+export function routineMissions(ctx, kid, date = new Date()) {
+  const m = ctx.member(kid);
+  if (!m || !ctx.on("board") || !ctx.feature(m, "board") || startOfDay(date).getTime() !== startOfDay(new Date()).getTime()) return [];
+  const B = boardOf(ctx, kid), done = doneOf(ctx, kid);
+  return RSLOTS.filter(([slot]) => B[slot]?.length).map(([slot, name, , span, h0]) => {
+    const n = B[slot].filter((c, i) => done.includes(`${slot}:${i}`)).length;
+    return { id: `rb:${slot}`, kind: "routine", t: ctx.t({ morgen: "Morgenrutinen", eftermiddag: "Rutinen efter skole", aften: "Aftenrutinen" }[slot]), em: rcard(ctx, B[slot][0])[2], done: n === B[slot].length, sub: ctx.t("{n} af {total} kort", { n, total: B[slot].length }), time: `${String(Math.floor(h0 + 1)).padStart(2, "0")}:00`, cards: B[slot].length, slot };
+  });
+}
+/* Homework from Aula (Min Uddannelse's "opgaver", via the Aula integration) as missions without points. */
+export function homeworkFor(ctx, kid, date = new Date()) {
+  const m = ctx.member(kid);
+  if (!m) return [];
+  const name = slug(m.name), first = m.name.split(/\s+/)[0].toLowerCase();
+  const id = Object.keys(ctx.hass?.states || {}).find((e) => {
+    const s = ctx.hass.states[e];
+    return e.startsWith("sensor.") && s.attributes.mu_opgaver != null && (e.includes(name) || String(s.attributes.friendly_name || "").toLowerCase().includes(first));
+  });
+  if (!id) return [];
+  const wd = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"][date.getDay()];
+  const html = String(ctx.hass.states[id].attributes.mu_opgaver || "");
+  if (!html.includes("<h2")) return [];
+  const text = (h) => h.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim();
+  return html
+    .split(/<h2>/i)
+    .slice(1)
+    .map((part) => {
+      const title = text(part.split(/<\/h2>/i)[0]);
+      const day = (part.match(/Ugedag:\s*([^<]+)/i)?.[1] || "").trim().toLowerCase();
+      const hold = (part.match(/Hold:\s*([^<]+)/i)?.[1] || "").trim();
+      return { title, day, hold };
+    })
+    .filter((x) => x.title && (!x.day || x.day === wd))
+    .map((x) => ({ id: `lektie:${weekKey(date)}:${slug(x.title).slice(0, 60)}`, kind: "homework", t: x.title, em: "✏️", done: false, sub: x.hold ? ctx.t("Lektier · {hold}", { hold: x.hold }) : ctx.t("Lektier") }));
+}
+
 /* Who brings and picks up a child on a day: { bring: {who, name, at}, hent: {who, name, at} } or null. */
 export function pickupFor(ctx, kidId, date = new Date()) {
   const R = routines(ctx), wd = String(((date.getDay() + 6) % 7) + 1), own = R.weeks[weekKey(date)]?.[kidId]?.[wd];
@@ -999,6 +1036,7 @@ canvas.hk-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; poi
 `;
 
 const en = {
+  Morgenrutinen: "Morning routine", "Rutinen efter skole": "After-school routine", Aftenrutinen: "Evening routine", "{n} af {total} kort": "{n} of {total} cards", "Lektier · {hold}": "Homework · {hold}",
   "Fast plan": "Fixed plan", "kun denne uge": "this week only", "denne uge": "this week", "næste uge": "next week", "sidste uge": "last week", "Ugen før": "Week before", "Ugen efter": "Week after",
   "Ugen følger den faste plan, undtagen {n} ændringer, der kun gælder denne uge.": "The week follows the fixed plan, except {n} changes for this week only.",
   "Ugen følger den faste plan. Ændringer her gælder kun denne uge.": "The week follows the fixed plan. Changes here are for this week only.",

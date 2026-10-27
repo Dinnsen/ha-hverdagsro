@@ -955,7 +955,8 @@ const views = {
     render: (ctx) => roomPage(ctx, ctx.arg),
     title: (ctx) => findRoom(ctx, ctx.arg)?.name || ctx.t("Rum"),
   },
-  vaerelse: {
+  // The lights and their moods in the child's real room (opened from Mit værelse).
+  mitlys: {
     kidOnly: true,
     module: "house",
     render(ctx) {
@@ -964,11 +965,11 @@ const views = {
       const r = (houseOf(ctx).rooms || []).find((x) => ctx.me && meta(ctx, x).kid === ctx.me.id);
       if (r) {
         const room = meta(ctx, r);
-        return lightsCard(ctx, room, roomLights(ctx, room), "s12");
+        return `<button class="back" data-go="vaerelse">${svg("back")}${esc(t("Mit værelse"))}</button>${lightsCard(ctx, room, roomLights(ctx, room), "s12")}`;
       }
       return `<section class="card hv-empty rm-none"><span class="rm-none-ic">${svg("room", "ic big")}</span><h2>${esc(t("Dit værelse er ikke sat op endnu"))}</h2><p class="t-sub">${esc(t("Bed far eller mor om at vælge dit værelse, når de tegner huset i Hverdagsro."))}</p></section>`;
     },
-    title: (ctx) => ctx.t("Mit værelse"),
+    title: (ctx) => ctx.t("Lys og stemning"),
   },
 };
 

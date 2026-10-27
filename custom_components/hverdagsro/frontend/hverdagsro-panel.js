@@ -19,8 +19,9 @@ import settings from "./hv-settings.js";
 import energy, { evTimeline, hasStatus, priceColor, statusHtml } from "./hv-energy.js";
 import quick, { alarmLabel, alarmState, bindFab, buildFab } from "./hv-quick.js";
 import kids from "./hv-kids.js";
+import play from "./hv-play.js";
 
-const MODULES = [home, lists, music, appliances, security, house, rooms, settings, energy, quick, kids];
+const MODULES = [home, lists, music, appliances, security, house, rooms, settings, energy, quick, kids, play];
 
 /* The tabs, in order. [view, label, icon, module flag (or null), who] */
 const PARENT_TABS = [
@@ -342,7 +343,8 @@ class HverdagsroPanel extends HTMLElement {
 
   _homeView() {
     const ctx = this.ctx;
-    return ctx.isKid ? (ctx.feature(ctx.me, "board") && ctx.views.tavle ? "tavle" : "dag") : "hjem";
+    // A child starts in their own room, like in a game.
+    return ctx.isKid ? (ctx.feature(ctx.me, "room") && ctx.views.vaerelse ? "vaerelse" : ctx.feature(ctx.me, "board") && ctx.views.tavle ? "tavle" : "dag") : "hjem";
   }
 
   // ------------------------------------------------------------------ tabs and views (the prototype's tabsFor/validView)
@@ -352,9 +354,9 @@ class HverdagsroPanel extends HTMLElement {
     if (ctx.isKid) {
       const m = ctx.me;
       list = [
+        ...(ctx.feature(m, "room") ? [["vaerelse", "Mit værelse", "home"]] : []),
         ...(ctx.feature(m, "board") ? [["tavle", "Rutine", "star"]] : []),
-        ["dag", "Min dag", "home"],
-        ...(ctx.feature(m, "room") ? [["vaerelse", "Værelse", "bulb"]] : []),
+        ["dag", "Min dag", "calendar2"],
         ...(ctx.feature(m, "shop") ? [["shop", "Shop", "shop"]] : []),
         ...(ctx.feature(m, "skema") ? [["skema", "Skema", "school"]] : []),
         ...(ctx.feature(m, "wish") ? [["onsker", "Ønsker", "gift"]] : []),
@@ -374,6 +376,7 @@ class HverdagsroPanel extends HTMLElement {
     if (v === "person") return ctx.isKid ? "dag" : v;
     if (["indstillinger", "rutiner", "husbygger", "guide"].includes(v)) return ctx.isKid || !ctx.isParent ? this._homeView() : v;
     if (v === "mig" || v === "rum") return v;
+    if (v === "mitlys") return ctx.isKid && ctx.feature(ctx.me, "room") ? v : this._homeView();
     if (!this._tabs().some((t) => t[0] === v)) return this._homeView();
     return v;
   }

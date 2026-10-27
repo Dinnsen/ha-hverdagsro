@@ -64,6 +64,9 @@ def default_data() -> dict[str, Any]:
     }
 
 
+HOMEWORK_PREFIX = "lektie:"
+
+
 class Family:
     """Runtime data of the Hverdagsro config entry."""
 
@@ -254,12 +257,12 @@ class Family:
         return bool({**DEFAULT_KID_FEATURES, **member.get("features", {})}.get(feature, True))
 
     async def async_set_prefs(self, user: User | None, member_id: str, prefs: dict[str, Any]) -> None:
-        """A member's own settings: the + menu, messages, picture and theme. Children may not change messages."""
+        """A member's own settings: the + menu, messages, picture, theme and own room. Children may not change messages."""
         self._check_member_access(user, member_id)
         member = self.require_member(member_id)
         if "msg_off" in prefs and user is not None and not self.can_manage(user):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
-        allowed = {"quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal"}
+        allowed = {"quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal", "playroom"}
         family = copy.deepcopy(self.members)
         for item in family:
             if item["id"] == member["id"]:
@@ -340,7 +343,9 @@ class Family:
     ) -> bool:
         """Mark a mission done or not; gives or takes back its points."""
         self._check_member_access(user, member_id)
-        mission = self.mission(mission_id)
+        # Homework from the school (Aula) shows as a mission without points: "lektie:<id>".
+        virtual = mission_id.startswith(HOMEWORK_PREFIX) and 0 < len(mission_id) <= 120
+        mission = {"id": mission_id, "title": "", "points": 0} if virtual else self.mission(mission_id)
         member = self.require_member(member_id)
         day = day or dt_util.now().date()
         key = f"{mission['id']}:{member['id']}"
@@ -350,7 +355,8 @@ class Family:
         by = self.member_for_user(user)
         if done:
             today[key] = {"at": dt_util.now().isoformat(), "by": by["id"] if by else None}
-            self._emit("mission", {"member": member["id"], "mission": mission})
+            if not virtual:
+                self._emit("mission", {"member": member["id"], "mission": mission})
         else:
             today.pop(key, None)
         if self.data["modules"].get("points", True) and mission["points"]:

@@ -98,3 +98,14 @@ async def test_unknown_section(hass: HomeAssistant, init_integration: MockConfig
     family = _family(init_integration)
     with pytest.raises(ServiceValidationError):
         await family.async_save_section("points", {})
+
+
+async def test_homework_is_a_mission_without_points(hass: HomeAssistant, init_integration: MockConfigEntry) -> None:
+    family = _family(init_integration)
+    before = family.points("ida")
+    assert await family.async_set_mission_done("lektie:2026-W44:dansk", "ida", True) is True
+    assert family.is_done("lektie:2026-W44:dansk", "ida", date.fromisoformat(TODAY))
+    assert family.points("ida") == before
+    assert await family.async_set_mission_done("lektie:2026-W44:dansk", "ida", False) is False
+    with pytest.raises(ServiceValidationError):
+        await family.async_set_mission_done("nope", "ida", True)
