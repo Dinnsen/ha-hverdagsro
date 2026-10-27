@@ -117,7 +117,7 @@ def test_nav() -> None:
     assert validate_section("family", [{**member, "nav": nav}])[0]["nav"] == nav
     assert validate_section("family", [member])[0]["nav"] is None
     with pytest.raises(vol.Invalid):
-        validate_section("family", [{**member, "nav": {"order": "dag"}}])
+        validate_section("family", [{**member, "nav": {"order": ["x" * 40]}}])
 
 
 def test_playroom() -> None:
