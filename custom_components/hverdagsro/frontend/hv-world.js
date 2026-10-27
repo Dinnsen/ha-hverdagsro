@@ -214,7 +214,7 @@ const guessType = (n) => {
 const ROOMLOOK = {
   living: { wall: "#F2E3CF", floor: "#C98B55", decor: [["sofa", 300, 560], ["sofabord", 320, 610], ["tv", 760, 520], ["gulvtaeppe", 420, 610], ["stueplante", 920, 520], ["maleri", 300, 240], ["familiefoto", 560, 230]] },
   kitchen: { wall: "#E8F6FF", floor: "#E8E8E8", tiles: "#C7E6FF", decor: [["koekken", 300, 470], ["komfur", 520, 470], ["koeleskab", 660, 470], ["spisebord", 820, 600], ["chair", 720, 600], ["chair", 930, 600]] },
-  bath: { wall: "#E8F6FF", floor: "#FFFFFF", tiles: "#BFE6FF", decor: [["badekar", 260, 560], ["toilet", 600, 520], ["haandvask", 760, 470], ["vaskemaskine", 900, 520]] },
+  bath: { wall: "#E8F6FF", floor: "#FFFFFF", tiles: "#BFE6FF", decor: [["badekar", 220, 560], ["bruser", 440, 500], ["toilet", 600, 520], ["haandvask", 760, 470], ["vaskemaskine", 900, 520]] },
   bed: { wall: "#E2D5FF", floor: "#C98B55", decor: [["dobbeltseng", 380, 560], ["natbord", 160, 520], ["natbord", 600, 520], ["wardrobe", 860, 470], ["maleri", 380, 230]] },
   office: { wall: "#F2E3CF", floor: "#A9764C", decor: [["desk", 400, 520], ["gamerstol", 420, 580], ["shelf", 800, 470], ["skaerm", 400, 390]] },
   hall: { wall: "#FFF0B8", floor: "#A9764C", decor: [["knager", 300, 240], ["skoreol", 300, 520], ["stueplante", 800, 520], ["familiefoto", 640, 230]] },
@@ -231,9 +231,54 @@ function roomBackdrop(look, s0, s1, tod) {
   const window = look === "garage" ? "" : `${skyDef(s0, s1)}<rect x="${look === "kitchen" ? 760 : 620}" y="70" width="200" height="170" rx="12" fill="#fff" ${out()}/><rect x="${look === "kitchen" ? 774 : 634}" y="84" width="172" height="142" rx="6" fill="url(#pl-sky)"/>${tod === "night" ? `<circle cx="${look === "kitchen" ? 900 : 760}" cy="130" r="14" fill="#FFF6C9"/>` : `<circle cx="${look === "kitchen" ? 900 : 760}" cy="130" r="18" fill="#FFE066"/>`}<path d="M${look === "kitchen" ? 860 : 720} 84 V226 M${look === "kitchen" ? 774 : 634} 155 H${look === "kitchen" ? 946 : 806}" stroke="${OL}" stroke-width="5"/>`;
   return `${rect(0, 0, W, FLOOR, L.wall)}${tiles}${garage}${window}${rect(0, FLOOR - 16, W, 16, "#fff", 0, out())}${rect(0, FLOOR, W, H - FLOOR, L.floor)}${rep(6, (i) => `<path d="M0 ${FLOOR + 30 * (i + 1)} H${W}" stroke="${shade(L.floor, 0.88)}" stroke-width="3"/>`)}`;
 }
+/* A family house for the game when no floor plan has been drawn in Husbyggeren yet: a long house with the bedrooms
+   along the back, the kitchen and the living room in the middle, and a terrace and a garden in front. In metres. */
+const FB_ROOMS = [
+  ["v1", "Værelse", "kid", [[0, 0], [4.5, 0], [4.5, 5.5], [0, 5.5]]],
+  ["v2", "Værelse", "kid", [[0, 5.5], [4.5, 5.5], [4.5, 10.5], [0, 10.5]]],
+  ["toilet", "Toilet", "toilet", [[4.5, 0], [7, 0], [7, 3.5], [4.5, 3.5]]],
+  ["gang", "Gang", "hall", [[4.5, 3.5], [7, 3.5], [7, 8], [4.5, 8]]],
+  ["gaeste", "Gæsteværelse", "guest", [[7, 0], [12, 0], [12, 5], [7, 5]]],
+  ["bad", "Badeværelse", "bath", [[12, 0], [16.5, 0], [16.5, 5], [12, 5]]],
+  ["walkin", "Walk-in", "walkin", [[16.5, 0], [19, 0], [19, 5], [16.5, 5]]],
+  ["sove", "Soveværelse", "bed", [[19, 0], [25, 0], [25, 5], [19, 5]]],
+  ["entre", "Entré", "hall", [[0, 10.5], [4.5, 10.5], [4.5, 13.5], [0, 13.5]]],
+  ["bryggers", "Bryggers", "utility", [[0, 13.5], [4.5, 13.5], [4.5, 18], [0, 18]]],
+  ["kokken", "Køkken", "kitchen", [[4.5, 8], [7, 8], [7, 5], [12, 5], [12, 18], [4.5, 18]]],
+  ["stue", "Stue", "living", [[12, 5], [25, 5], [25, 11], [12, 11]]],
+];
+const FB_FURN = [
+  ["bed1", 2.2, 2.6, 0.9, 2], ["desk", 3.4, 4.6, 1.2, 0.6], ["bed1", 2.2, 8, 0.9, 2], ["toybox", 3.6, 9.8, 0.7, 0.4], ["toilet", 5.4, 1, 0.4, 0.65], ["sink", 6.3, 2.8, 0.6, 0.45],
+  ["bed2", 9.5, 2.2, 1.8, 2], ["tub", 14.2, 1, 1.7, 0.75], ["sink", 15.6, 4.2, 0.6, 0.45], ["shower", 13, 4.2, 0.9, 0.9], ["wardrobe", 17.7, 2.5, 0.6, 1.8], ["bed2", 22, 2.2, 1.8, 2], ["nightstand", 20.6, 1, 0.45, 0.4],
+  ["counter", 8.2, 17.4, 4, 0.62], ["island", 8.2, 14.6, 2.2, 1], ["table", 8.6, 10, 1, 2.6], ["chair", 7.7, 9.3, 0.48, 0.5], ["chair", 9.5, 10.7, 0.48, 0.5], ["fridgec", 11.4, 17.3, 0.6, 0.65], ["hobc", 6.4, 17.4, 0.6, 0.6],
+  ["wm", 1, 17.3, 0.6, 0.6], ["td", 1.7, 17.3, 0.6, 0.6], ["shoes", 2.2, 13.2, 0.8, 0.3], ["hooks", 0.3, 12, 0.12, 1],
+  ["sofa", 18, 10.2, 3, 0.95], ["coffee", 18, 8.8, 1.2, 0.6], ["tvbench", 18, 5.4, 1.8, 0.4], ["arm", 15, 8.6, 0.85, 0.85], ["plant", 24.4, 5.6, 0.5, 0.5], ["rug", 18, 8.6, 3.2, 2.2],
+  ["gset", 16, 13.4, 2.4, 1.8], ["parasol", 19.5, 13.4, 3, 3], ["tramp", 25, 20, 3.6, 3.6], ["sandbox", 17, 21.5, 1.5, 1.5],
+];
+const FB_AREAS = [
+  ["terr", "deck", [[12, 11], [25, 11], [25, 16], [12, 16]]],
+  ["have", "lawn", [[12, 16], [29, 16], [29, 24], [12, 24]]],
+  ["indk", "drive", [[-6, 6], [-1.5, 6], [-1.5, 22], [-6, 22]]],
+];
+const M2U = (pts) => pts.map(([x, y]) => [Math.round(x * 60), Math.round(y * 60)]);
+/* The house the game uses: the family's own floor plan, or the house above with the children's rooms given to the
+   children. */
+export function houseData(ctx) {
+  const h = ctx.data?.house;
+  if ((h?.rooms || []).some((r) => r && r.id && r.name && Array.isArray(r.pts) && r.pts.length >= 3)) return h;
+  const kids = ctx.children ? ctx.children() : [];
+  let k = 0;
+  return {
+    fallback: true,
+    rooms: FB_ROOMS.map(([id, name, rtype, pts]) => ({ id, name, rtype, pts: M2U(pts), kid: rtype === "kid" ? kids[k++]?.id || "" : "" })).filter((r) => r.rtype !== "kid" || r.kid),
+    walls: [],
+    items: FB_FURN.map(([fk, x, y, w, d], i) => ({ type: "furn", id: `fb${i}`, fk, x: Math.round(x * 60), y: Math.round(y * 60), w: Math.round(w * 60), h: Math.round(d * 60), rot: 0 })),
+    areas: FB_AREAS.map(([id, kind, pts]) => ({ id, kind, pts: M2U(pts) })),
+  };
+}
 /* The rooms of the family's house as places: "h:<room id>". A child's room is that child's own room. */
 export function houseRooms(ctx) {
-  const rooms = (ctx.data?.house?.rooms || []).filter((r) => r && r.id && r.name);
+  const rooms = (houseData(ctx).rooms || []).filter((r) => r && r.id && r.name);
   return rooms.map((r) => {
     const kid = r.kid || (ctx.children ? ctx.children() : []).find((c) => c.name && new RegExp(`(^|[^a-zæøå])${c.name.split(" ")[0]}`, "i").test(r.name))?.id || "";
     const look = r.rtype && ROOMLOOK[r.rtype] ? r.rtype : r.rtype === "smallbath" || r.rtype === "toilet" ? "bath" : r.rtype === "guest" ? "bed" : r.rtype === "walkin" ? "bed" : guessType(r.name);
@@ -250,7 +295,7 @@ const FURN_GAME = {
   fridgec: "koeleskab", table: "spisebord", tround: "spisebord", chair: "chair", stool: "chair", bench: "baenk",
   bed2: "dobbeltseng", bed1: "bed", nightstand: "natbord", wardrobe: "wardrobe", dresser: "natbord", vanity: "sminkebord", bbench: "baenk",
   bunk: "bunk", crib: "dukkeseng", desk: "desk", standd: "desk", ochair: "gaming", cabinet: "shelf", toybox: "blocks", playk: "minikokken", tipi: "tipi", beanbag: "beanbag",
-  tub: "badekar", toilet: "toilet", sink: "haandvask", vanityb: "haandvask", usink: "haandvask", mirror: "mirror", mirrorw: "mirror",
+  tub: "badekar", shower: "bruser", toilet: "toilet", sink: "haandvask", vanityb: "haandvask", usink: "haandvask", mirror: "mirror", mirrorw: "mirror",
   wm: "vaskemaskine", td: "vaskemaskine", tower: "vaskemaskine", clean: "wardrobe", hooks: "knager", shoes: "skoreol",
   work: "vaerktoejskasse", gshelf: "shelf", bike: "cykel", bins: "skraldespand", tools: "vaerktoejsvaeg",
   gset: "havemoebel", gtable: "havemoebel", lounge: "havemoebel", lounger: "baenk", parasol: "parasol", firepit: "baal", tramp: "trampolinhave",
@@ -272,7 +317,7 @@ export function houseDecor(ctx, room) {
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const out = [];
-  for (const it of ctx.data?.house?.items || []) {
+  for (const it of houseData(ctx).items || []) {
     if (typeof it.x !== "number" || typeof it.y !== "number" || !inside(it.x, it.y, pts)) continue;
     const k = it.type === "furn" ? FURN_GAME[it.fk] : it.type === "light" ? LIGHT_GAME[it.lk] : it.type === "tv" ? "tv" : it.type === "washer" || it.type === "dryer" ? "vaskemaskine" : null;
     if (!k) continue;

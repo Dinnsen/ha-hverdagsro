@@ -2,6 +2,20 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.10.0] - 2026-10-27
+
+### Added
+- **Verden and Huset:** the map now has three tabs: Verden (the whole world, with Centrum and the house in it), Centrum, and Huset. In Verden the house stands closed with its roof on; tap it, and Huset opens as a big doll's house in 3D perspective, drawn from the floor plan in Husbyggeren: floors with boards and tiles, the walls cut low at the front, the windows, the furniture, the terrace, the garden and the drive. Tap a room to go into it. A family without a floor plan gets a house laid out like a real family house, with the children's rooms given to the children.
+- **Things on things:** put things on tables, desks, beds, sofas, kitchen counters and on the shelves of a bookcase or a wall shelf. They stay there and go along when the table or the shelf is moved, and fall to the floor when it is taken away.
+- **Something in the hand:** drag a small thing onto your own figure to hold it. It goes along everywhere; tap it to use it (eat it, play it), or drag it out to put it down.
+- **Things that work:** the tap runs, the toilet flushes, the bath and the new shower fill with water, the stove burns, the washing machine and the microwave run, the kettle and the coffee maker steam, and the tv, the game screens, the computer, the tablet and the phone have five channels (cartoons, the sea, football, music and space). With sounds.
+- **Everybody looks their age:** the figures follow the birthday, automatically for the whole family. Small children are small with short legs, grown-ups are taller with longer legs and wear grown-up clothes until they dress themselves.
+
+### Changed
+- **Move things without Byg:** tap a thing to use it, drag it to move it. Byg is for new things and for changing them. The fixed things (the kitchen, the stove, the fridge, the toilet, the bath, the sink, the shower, the washing machine) stay where they are while playing.
+- **The signs in Verden** sit right over their own building, with the name of the part of town, NEW or explored, and who is there. Today's gift is a bubble beside the house.
+- **Full screen:** the pocket opens as a small tray in the corner of the game instead of a bar under it, and the family bar lies over the bottom of the game, so the game no longer grows or slides under the buttons.
+
 ## [0.9.0] - 2026-10-27
 
 ### Added

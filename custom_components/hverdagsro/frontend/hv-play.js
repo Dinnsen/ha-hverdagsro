@@ -9,6 +9,7 @@ import { occasions, dayNumber } from "./hv-decor.js";
 import * as World from "./hv-world.js";
 import { charSvg } from "./hv-chars.js";
 import { townSvg, MAP_EN } from "./hv-map.js";
+import { houseSvg, HOUSE3D_CSS, HOUSE3D_EN } from "./hv-house3d.js";
 import { WORLD_THINGS, WORLD_NAMES_EN } from "./hv-worlditems.js";
 import { THINGS2, PACKS2, PACKS2_EN } from "./hv-packs2.js";
 import { THINGS3, PACKS3, PACKS3_EN } from "./hv-packs3.js";
@@ -16,6 +17,7 @@ import * as Sound from "./hv-sound.js";
 import * as Fun from "./hv-fun.js";
 import * as Toys from "./hv-toys.js";
 import * as Life from "./hv-life.js";
+import * as Fix from "./hv-fixtures.js";
 import { HOME_THINGS, HOME_ACT, HOME_EN } from "./hv-homethings.js";
 import { CITY_THINGS, CITY_PACKS, CITY_EN } from "./hv-citythings.js";
 import { citySvg, CITY_MAP_EN, placePrice } from "./hv-city.js";
@@ -105,8 +107,23 @@ export const BOTTOMS = { bukser: "Bukser", shorts: "Shorts", nederdel: "Nederdel
 export const SHOES = { sneakers: "Sneakers", stovler: "Støvler", sandaler: "Sandaler", gummistovler: "Gummistøvler" };
 export const EYES = ["#2B2340", "#5B3A21", "#2F6FED", "#3F9E5A", "#7A6A8A"];
 export const MOUTHS = { smil: "Smil", grin: "Stort grin", tunge: "Tunge", o: "Åh!" };
-/* The child's avatar: big head, small body. pose: "" (standing) or "sit" (on a chair, a sofa or a bed). */
+/* Everybody's figure follows their age (from the birthday): small children are small with short legs, grown-ups
+   are tall with longer legs and a smaller head. sc: size, leg: leg length, head: head size. */
+export const AGES = { toddler: { sc: 0.7, leg: 0.6, head: 1.06 }, small: { sc: 0.84, leg: 0.8, head: 1 }, kid: { sc: 1, leg: 1, head: 1 }, tween: { sc: 1.06, leg: 1.15, head: 0.96 }, teen: { sc: 1.12, leg: 1.3, head: 0.9 }, adult: { sc: 1.2, leg: 1.5, head: 0.84 } };
+export function ageGroup(m) {
+  if (!m) return "kid";
+  const b = m.birthday ? new Date(m.birthday) : null, y = b && !isNaN(b) ? (Date.now() - b.getTime()) / 31557600000 : m.role === "child" ? 8 : 40;
+  return y < 3.5 ? "toddler" : y < 7 ? "small" : y < 11 ? "kid" : y < 13 ? "tween" : y < 18 ? "teen" : "adult";
+}
+/* Where the name goes over a figure of that age. */
+export const nameY = (age) => {
+  const P = AGES[age] || AGES.kid;
+  return Math.round(-P.sc * (262 + (P.leg - 1) * 56 - (1 - P.head) * 118));
+};
+/* The child's avatar: big head, small body. pose: "" (standing) or "sit" (on a chair, a sofa or a bed). me.age: the
+   age group (see AGES). */
 export function avatarSvg(me, mood = "", pose = "") {
+  const P = AGES[me.age] || AGES.kid;
   const sk = me.skin || SKINS[1], hc = me.hairc || HAIRC[1], top = me.top || "#FF6B6B", bot = me.bottom || "#4D96FF", shoe = me.shoec || "#3A3A55", eye = me.eyec || OL;
   const tk = me.topk || "tshirt", bk = me.botk || "bukser", shk = me.shoek || "sneakers";
   const dress = tk === "kjole" || tk === "gallakjole";
@@ -167,7 +184,7 @@ export function avatarSvg(me, mood = "", pose = "") {
   const eyes = mood === "sleep" ? `<path d="M-30 -180 q8 6 16 0 M14 -180 q8 6 16 0" fill="none" ${S("stroke-width=\"3.5\"")}/>` : `<ellipse cx="-22" cy="-180" rx="7" ry="9" fill="${eye}"/><ellipse cx="22" cy="-180" rx="7" ry="9" fill="${eye}"/><circle cx="-19" cy="-184" r="2.6" fill="#fff"/><circle cx="25" cy="-184" r="2.6" fill="#fff"/>`;
   // Legs, standing or sitting.
   const sit = pose === "sit";
-  const L = sit ? 26 : 56;
+  const L = Math.round((sit ? 26 : 56) * P.leg);
   const legsFill = bk === "leggings" ? shade(bot, 0.9) : bot;
   const legs = bk === "shorts"
     ? `<path d="M-30 -70 v${L - 30} h22 v${-(L - 30)}z M8 -70 v${L - 30} h22 v${-(L - 30)}z" fill="${bot}" ${S()}/><path d="M-26 ${-70 + L - 30} v30 h14 v-30z M12 ${-70 + L - 30} v30 h14 v-30z" fill="${sk}" ${S("stroke-width=\"3\"")}/>`
@@ -212,10 +229,13 @@ export function avatarSvg(me, mood = "", pose = "") {
     const sx = side * 44, ex = side * (sit ? 66 : 72), ey = sit ? -86 : -76;
     return `<g class="pl-arm ${side < 0 ? "l" : "r"}"><path d="M${sx} -128 L${ex} ${ey}" stroke="${OL}" stroke-width="22" stroke-linecap="round"/><path d="M${sx} -128 L${ex} ${ey}" stroke="${sleeve}" stroke-width="14" stroke-linecap="round"/>${tk === "tshirt" || tk === "sport" ? `<path d="M${sx} -128 L${sx + side * 10} -112" stroke="${top}" stroke-width="16" stroke-linecap="round"/>` : ""}<circle cx="${ex + side * 2}" cy="${ey + 4}" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/></g>`;
   };
-  const inner = `${cape}${accBack}${hairBack}${legs}${shoes}${body}${me.acc === "bamse" ? "" : acc}${arm(-1)}${arm(1)}${me.acc === "bamse" ? acc : ""}
-    <circle cx="0" cy="-184" r="62" fill="${sk}" ${S()}/><circle cx="-60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/><circle cx="60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/>
-    ${hairFront}${brows}${eyes}<circle cx="-36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/><circle cx="36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/>${mouth}${face}${extra}`;
-  return sit ? `<g transform="translate(0 30)">${inner}</g>` : inner;
+  const Hd = (x) => (P.head === 1 || !x ? x : `<g transform="translate(0 -128) scale(${P.head}) translate(0 128)">${x}</g>`);
+  const inner = `${cape}${accBack}${Hd(hairBack)}${legs}${shoes}${body}${me.acc === "bamse" ? "" : acc}${arm(-1)}${arm(1)}${me.acc === "bamse" ? acc : ""}
+    ${Hd(`<circle cx="0" cy="-184" r="62" fill="${sk}" ${S()}/><circle cx="-60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/><circle cx="60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/>
+    ${hairFront}${brows}${eyes}<circle cx="-36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/><circle cx="36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/>${mouth}${face}${extra}`)}`;
+  // Longer legs lift the figure, so the feet stay on the floor.
+  const lift = sit ? 30 - (L - 26) : -(L - 56);
+  return P.sc === 1 && !lift ? inner : `<g transform="scale(${P.sc}) translate(0 ${lift})">${inner}</g>`;
 }
 
 /* The pet in the room: the family's dog, cat or little dragon, drawn like the avatar. */
@@ -424,7 +444,7 @@ function people(ctx, m, sid, room, pl) {
   for (const [pid, pe] of Object.entries(ST.peers || {})) {
     if (pid === m.id || pe.space !== key || Date.now() - (pe.seen || 0) > 45000) continue;
     live.add(pid);
-    out.push([pe.y || 560, `<g class="pl-peer" data-pl="peer" data-id="${esc(pid)}" transform="translate(${pe.x || 500} ${pe.y || 560})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body${pe.emote ? " jump wave" : ""}">${avatarSvg(pe.me || defaults(ctx.member(pid) || { name: "x" }).me, pe.mood || "")}</g><text y="-262" text-anchor="middle" class="pl-petname">${esc(ctx.member(pid)?.name || "")}</text></g>`]);
+    out.push([pe.y || 560, `<g class="pl-peer" data-pl="peer" data-id="${esc(pid)}" transform="translate(${pe.x || 500} ${pe.y || 560})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body${pe.emote ? " jump wave" : ""}">${avatarSvg({ ...(pe.me || defaults(ctx.member(pid) || { name: "x" }).me), age: ageGroup(ctx.member(pid)) }, pe.mood || "")}</g><text y="${nameY(ageGroup(ctx.member(pid)))}" text-anchor="middle" class="pl-petname">${esc(ctx.member(pid)?.name || "")}</text></g>`]);
   }
   // A sibling at home in their own room, and the family in the house's living rooms.
   const vk = visitKid(sid);
@@ -435,14 +455,14 @@ function people(ctx, m, sid, room, pl) {
     const px = pos ? pos[0] : vk ? x.playroom?.ax || 640 : 700 + i * 140, py = pos ? pos[1] : vk ? x.playroom?.ay || 590 : 600;
     const st = pos && pos[2] ? seated(room, pos[2]) : null;
     const tf = st ? st[3] : `translate(${px} ${py})`;
-    out.push([st ? st[2] : py, `<g class="pl-npc pl-fam${st ? " seated" : ""}" data-pl="${vk ? "fam" : "npc"}" data-id="${vk ? esc(x.id) : `fam:${esc(x.id)}`}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body">${avatarSvg(me, st?.[4] === "lie" ? "sleep" : "", st?.[4] === "sit" ? "sit" : "")}</g>${st ? "" : `<text y="-262" text-anchor="middle" class="pl-petname">${esc(x.name)}</text>`}</g>${blanket(st)}`]);
+    out.push([st ? st[2] : py, `<g class="pl-npc pl-fam${st ? " seated" : ""}" data-pl="${vk ? "fam" : "npc"}" data-id="${vk ? esc(x.id) : `fam:${esc(x.id)}`}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body">${avatarSvg({ ...me, age: ageGroup(x) }, st?.[4] === "lie" ? "sleep" : "", st?.[4] === "sit" ? "sit" : "")}</g>${st ? "" : `<text y="${nameY(ageGroup(x))}" text-anchor="middle" class="pl-petname">${esc(x.name)}</text>`}</g>${blanket(st)}`]);
   });
   return out;
 }
 /* A grown-up's look, made from their colour until they have dressed their own avatar. */
 function familyLook(x) {
   const n = [...String(x.name || "x")].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7) >>> 0;
-  return { skin: SKINS[n % 3], hair: ["kort", "lang", "pjusk", "hale", "knold", "kroller"][(n >> 3) % 6], hairc: HAIRC[(n >> 6) % 5], top: x.color || "#6E4AFF", bottom: ["#3A3A55", "#4D96FF", "#5B3A21"][(n >> 9) % 3], extra: (n >> 11) % 3 ? "ingen" : "briller" };
+  return { skin: SKINS[n % 3], hair: ["kort", "lang", "pjusk", "hale", "knold", "kroller"][(n >> 3) % 6], hairc: HAIRC[(n >> 6) % 5], top: x.color || "#6E4AFF", bottom: ["#3A3A55", "#4D96FF", "#5B3A21"][(n >> 9) % 3], extra: (n >> 11) % 3 ? "ingen" : "briller", topk: x.role === "child" ? "tshirt" : ["skjorte", "jakke", "cardigan", "stribet"][(n >> 13) % 4], botk: x.role === "child" ? "bukser" : "jeans", shoek: "sneakers" };
 }
 function stage(ctx, m) {
   const d = ST.d, room = R(), sid = spaceId(), [s0, s1, tod] = sky(ctx), lights = sid === "vaerelse" ? realLights(ctx, m) : [], lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
@@ -463,26 +483,34 @@ function stage(ctx, m) {
     World.BG.look = {};
   }
   else s += backdrop(sid, s0, s1, tod);
+  // Things put up on a table or a shelf before tops existed stand on them now.
+  if (!room.settled) {
+    for (const it of room.items || []) if (!it.at && !wallK(it.k) && it.y < FLOOR && CAT[it.k]) {
+      const top = Fix.topNear(room.items, CAT, it, it.x, it.y);
+      if (top) it.at = top.id;
+    }
+    Object.defineProperty(room, "settled", { value: true, enumerable: false, configurable: true });
+  }
   // things, back to front
   const drawItem = (it) => {
     const T = CAT[it.k];
     if (!T) return "";
-    const sc = it.s || 1, sel = ST.build && ST.sel === it.id;
-    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
+    const sc = it.s || 1, sel = ST.build && ST.sel === it.id, fixed = Fix.FIXED.has(it.k) || room.ro;
+    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}${fixed ? " fixed" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${Fix.onSvg(it)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
   };
   const items = room.items || [];
   const isWall = (it) => wallK(it.k);
-  const wallIt = items.filter(isWall), flat = items.filter((it) => !isWall(it) && CAT[it.k]?.flat === 1);
+  const wallIt = items.filter(isWall), flat = items.filter((it) => !isWall(it) && CAT[it.k]?.flat === 1 && !it.at);
   s += wallIt.map(drawItem).join("") + flat.map(drawItem).join("");
   // Everyday life: the shelf of knowledge, the plant, a little mess, the dinner sign, the building site.
   s += Life.shelfSvg(ctx) + Life.roomSvg(ctx) + Life.dinnerSvg(ctx, pl) + Life.siteSvg(ctx);
   const actors = [
-    ...items.filter((it) => CAT[it.k] && !isWall(it) && CAT[it.k].flat !== 1).map((it) => [it.y, drawItem(it)]),
+    ...items.filter((it) => CAT[it.k] && !isWall(it) && (CAT[it.k].flat !== 1 || it.at)).map((it) => [it.at ? Fix.depthOf(items, it, wallK) : it.y, drawItem(it)]),
     (() => {
       const st = d.seat && d.seat.space === sid ? seated(room, d.seat) : null;
       const mood = ST.mood || (st?.[4] === "lie" || (tod === "night" && !lit && sid === "vaerelse") ? "sleep" : "");
-      if (st) return [st[2], `<g class="pl-me seated" data-pl="me" transform="${st[3]}"><g class="pl-body">${avatarSvg(Life.nightLook(d.me, sid), mood, st[4] === "sit" ? "sit" : "")}</g></g>${blanket(st)}${st[4] === "lie" ? `<g transform="translate(${st[0] - 150} ${st[1] - 110})" pointer-events="none"><text class="pl-zzz">z</text><text class="pl-zzz" x="18" y="-22" style="animation-delay:.5s">z</text><text class="pl-zzz" x="36" y="-44" style="animation-delay:1s">Z</text></g>` : ""}`];
-      return [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body">${avatarSvg(Life.nightLook(d.me, sid), mood)}</g></g>`];
+      if (st) return [st[2], `<g class="pl-me seated" data-pl="me" transform="${st[3]}"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood, st[4] === "sit" ? "sit" : "")}${handSvg(d, st[4] === "sit", ageGroup(ctx.member(ST.kid)))}</g></g>${blanket(st)}${st[4] === "lie" ? `<g transform="translate(${st[0] - 150} ${st[1] - 110})" pointer-events="none"><text class="pl-zzz">z</text><text class="pl-zzz" x="18" y="-22" style="animation-delay:.5s">z</text><text class="pl-zzz" x="36" y="-44" style="animation-delay:1s">Z</text></g>` : ""}`];
+      return [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood)}${handSvg(d, false, ageGroup(ctx.member(ST.kid)))}</g></g>`];
     })(),
     ...people(ctx, m, sid, room, pl),
     ...(m.pet && ctx.feature(m, "pet") ? [[d.py, `<g class="pl-pet${happy ? " happy" : ""}" data-pl="pet" transform="translate(${d.px} ${d.py}) scale(.8)"><ellipse cx="0" cy="0" rx="60" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-petb">${petInRoom(m, happy)}</g><text y="-150" text-anchor="middle" class="pl-petname">${esc(m.pet.name || "")}</text></g>`]] : []),
@@ -501,10 +529,19 @@ function stage(ctx, m) {
   // the bubbles to tap
   const B = ST.build ? [] : bubbles(ctx, m);
   s += B.map((b, i) => {
-    const x = 72 + (i % 5) * 106 + (i >= 5 ? 52 : 0), y = 66 + (i >= 5 ? 124 : 0), col = b.kind === "card" ? "#4D96FF" : b.kind === "homework" ? "#6BCB77" : "#FFB347";
-    return `<g class="pl-bub" data-pl="bub" data-kind="${b.kind}" data-id="${esc(b.id)}" role="button" aria-label="${esc(b.label)}" style="animation-delay:${-i * 0.7}s" transform="translate(${x} ${y})"><circle r="40" fill="#fff" stroke="${col}" stroke-width="7"/><text y="14" text-anchor="middle" font-size="38">${esc(b.em)}</text><text y="64" text-anchor="middle" class="pl-bl">${esc(b.label.length > 11 ? b.label.slice(0, 10) + "…" : b.label)}</text>${b.pts ? `<g transform="translate(30 -30)"><circle r="15" fill="#FFD93D" ${S("stroke-width=\"3\"")}/><text y="6" text-anchor="middle" class="pl-pts">${b.pts}</text></g>` : ""}</g>`;
+    const x = 72 + (i % 5) * 122 + (i >= 5 ? 60 : 0), y = 66 + (i >= 5 ? 124 : 0), col = b.kind === "card" ? "#4D96FF" : b.kind === "homework" ? "#6BCB77" : "#FFB347";
+    return `<g class="pl-bub" data-pl="bub" data-kind="${b.kind}" data-id="${esc(b.id)}" role="button" aria-label="${esc(b.label)}" style="animation-delay:${-i * 0.7}s" transform="translate(${x} ${y})"><circle r="40" fill="#fff" stroke="${col}" stroke-width="7"/><text y="14" text-anchor="middle" font-size="38">${esc(b.em)}</text><text y="64" text-anchor="middle" class="pl-bl">${esc(b.label.length > 12 ? b.label.slice(0, 11) + "…" : b.label)}</text>${b.pts ? `<g transform="translate(30 -30)"><circle r="15" fill="#FFD93D" ${S("stroke-width=\"3\"")}/><text y="6" text-anchor="middle" class="pl-pts">${b.pts}</text></g>` : ""}</g>`;
   }).join("");
   return s + Life.gateSvg(ctx, ST.gate);
+}
+/* The thing the child holds: in the right hand, a bit smaller. It goes along everywhere. */
+function handSvg(d, sit = false, age = "kid") {
+  const it = d.hand, T = it && CAT[it.k];
+  if (!T) return "";
+  // The hand is where the figure's right hand is: higher up on a grown-up, lower on a small child.
+  const P = AGES[age] || AGES.kid, L = (sit ? 26 : 56) * P.leg, lift = sit ? 30 - (L - 26) : -(L - 56);
+  const f = Math.min(0.8, 110 / T.h, 120 / T.w) * (it.s || 1), hx = (sit ? 70 : 78) * P.sc, hy = ((sit ? -64 : -54) + lift) * P.sc;
+  return `<g class="pl-hand" data-pl="hand" transform="translate(${hx.toFixed(1)} ${hy.toFixed(1)}) scale(${it.f ? -f : f} ${f})">${T.d(it.c || T.c)}${Fix.onSvg(it)}</g>`;
 }
 const ITEMW = (k) => ({ bed: 300, bunk: 230, desk: 220, chair: 72, shelf: 180, wardrobe: 170, beanbag: 140, rug: 340, floorlamp: 90, tablelamp: 60, plant: 100, teddy: 64, ball: 52, tipi: 220, aquarium: 132, guitar: 80, dollhouse: 192, car: 96, blocks: 84, gaming: 100, poster: 100, rainbow: 124, clock: 72, garland: 320, wallshelf: 160, mirror: 80, photo: 92, moon: 80 })[k] || 100;
 const ITEMH = (k) => ({ bed: 150, bunk: 330, desk: 130, chair: 130, shelf: 240, wardrobe: 290, beanbag: 96, rug: 40, floorlamp: 236, tablelamp: 80, plant: 150, teddy: 112, ball: 52, tipi: 246, aquarium: 90, guitar: 180, dollhouse: 190, car: 52, blocks: 80, gaming: 170, poster: 130, rainbow: 92, clock: 72, garland: 60, wallshelf: 66, mirror: 140, photo: 70, moon: 80 })[k] || 100;
@@ -530,6 +567,7 @@ for (const pk of ALLPACKS) for (const k of pk.items) if (ALLTHINGS[k] && !CAT[k]
 // The everyday things of the home: free for everybody.
 for (const [k, v] of Object.entries(HOME_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "home" };
 for (const [k, v] of Object.entries(WORLD_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "world" };
+for (const [k, v] of Object.entries(Fix.FIX_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: 0, pack: "home" };
 const LOOKS = { p: [PATTERNS_X, 25], f: [FLOORS_X, 20], x: [EXTRAS_X, 30] };
 /* A thing or a look ("p:…" wallpaper, "f:…" floor, "x:…" to wear): its name and price. */
 function info(id) {
@@ -623,7 +661,7 @@ function render(ctx) {
     ST = { kid: m.id, d: JSON.parse(JSON.stringify(m.playroom || defaults(m))), sel: null, build: false, shop: false, tab: "mob", peers: {} };
     // Back where the child left off: the map, or the place they were in, with their own sound choice.
     ST.map = !!ST.d.onMap;
-    ST.mapPage = ST.d.mapPage || "town";
+    ST.mapPage = ["town", "city", "house"].includes(ST.d.mapPage) ? ST.d.mapPage : "town";
     if (ST.d.sound) for (const k of ["music", "sfx"]) if (k in ST.d.sound) Sound.setSound(k, ST.d.sound[k]);
   }
   ST.ctx = ctx;
@@ -649,11 +687,11 @@ function render(ctx) {
   if (ST.map) {
     const peers = Object.entries(ST.peers || {}).filter(([id, pe]) => id !== m.id && Date.now() - (pe.seen || 0) < 45000).map(([id, pe]) => ({ ...pe, color: ctx.member(id)?.color }));
     const sibs = ctx.children().filter((k) => k.id !== m.id);
-    return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox pl-mapbox"><div class="pl-maptabs"><button data-pl="town" aria-pressed="${ST.mapPage !== "city"}">🏘️ ${esc(t("Byen"))}</button><button data-pl="city" aria-pressed="${ST.mapPage === "city"}">🏙️ ${esc(t("Centrum"))}</button></div><svg id="pl-stage" class="pl-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Kort"))}">${ST.mapPage === "city" ? citySvg(ctx, sid, peers, t, { seen: ST.d.seen || [], open: (id) => placeOpen(ctx, id), gift: postGift(), quests: Life.questPlaces(ctx) }) : townSvg(ctx, lv, sid, peers, t, { gift: !!ctx.data.today && g.daily !== ctx.data.today, seen: ST.d.seen || [] })}</svg></div>
+    return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox pl-mapbox"><div class="pl-maptabs"><button data-pl="town" aria-pressed="${ST.mapPage === "town"}">🌍 ${esc(t("Verden"))}</button><button data-pl="city" aria-pressed="${ST.mapPage === "city"}">🏙️ ${esc(t("Centrum"))}</button><button data-pl="house" aria-pressed="${ST.mapPage === "house"}">🏠 ${esc(t("Huset"))}</button></div><svg id="pl-stage" class="pl-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Kort"))}">${ST.mapPage === "city" ? citySvg(ctx, sid, peers, t, { seen: ST.d.seen || [], open: (id) => placeOpen(ctx, id), gift: postGift(), quests: Life.questPlaces(ctx) }) : ST.mapPage === "house" ? houseSvg(ctx, sid, peers, t, { hint: esc(t("Tryk på et rum for at gå derind")) }) : townSvg(ctx, lv, sid, peers, t, { gift: !!ctx.data.today && g.daily !== ctx.data.today, seen: ST.d.seen || [] })}</svg></div>
       <div class="pl-mine"><b>${esc(t("Mine rum"))}</b>${[["vaerelse", "🛏️", t("Mit værelse"), 1], ...SPACES.filter((x) => x.id !== "vaerelse").map((x) => [x.id, x.em, t(x.n), x.lvl])].map(([id, em, n, l]) => `<button data-pl="go" data-k="${id}" aria-pressed="${sid === id}"${lv < l ? ` class="locked"` : ""}><span>${em}</span>${esc(n)}${lv < l ? `<small>🔒 ${l}</small>` : ""}</button>`).join("")}${sibs.map((k) => `<button data-pl="go" data-k="visit:${esc(k.id)}" aria-pressed="${sid === "visit:" + k.id}"><span>👋</span>${esc(t("Besøg {name}", { name: k.name }))}${Object.values(ST.peers || {}).some((pe) => pe.space === "room:" + k.id && Date.now() - (pe.seen || 0) < 45000) ? `<i class="pl-live"></i>` : ""}</button>`).join("")}${Toys.secretRooms(ST).map(([id, r]) => `<button data-pl="go" data-k="${id}" aria-pressed="${sid === id}"><span>${r.em}</span>${esc(t(r.n))}</button>`).join("")}<span class="pl-secrets">🔍 ${esc(t("Hemmeligheder"))} ${Toys.secretCount(ST)}</span></div></div>`;
   }
   const glow = lit || sid !== "vaerelse";
-  return `<div class="pl${ST.full ? " full" : ""}" style="--pc:${esc(m.color)}">${ST.full && !ST.turnOk ? `<button class="pl-turn" data-pl="turnok"><i>📱</i>${esc(t("Vend skærmen, så er der mere plads til at lege"))}<small>${esc(t("Tryk for at spille på langs alligevel"))}</small></button>` : ""}${head}${ST.build ? "" : Fun.banner(ctx)}<div class="pl-stagebox${ST.build ? " build" : ""}"><svg id="pl-stage" class="${glow ? "on" : ""}${Toys.partySong() ? " party" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Dit værelse"))}">${stage(ctx, m)}</svg>${ST.build ? selTools(ctx) : ""}</div>${Toys.pocketBar(ctx, pocketDraw)}${ST.build ? drawer(ctx, m) : ""}</div>`;
+  return `<div class="pl${ST.full ? " full" : ""}" style="--pc:${esc(m.color)}">${ST.full && !ST.turnOk ? `<button class="pl-turn" data-pl="turnok"><i>📱</i>${esc(t("Vend skærmen, så er der mere plads til at lege"))}<small>${esc(t("Tryk for at spille på langs alligevel"))}</small></button>` : ""}${head}${ST.build || ST.full ? "" : Fun.banner(ctx)}<div class="pl-stagebox${ST.build ? " build" : ""}"><svg id="pl-stage" class="${glow ? "on" : ""}${Toys.partySong() ? " party" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Dit værelse"))}">${stage(ctx, m)}</svg>${ST.build ? selTools(ctx) : ""}${Toys.pocketBar(ctx, pocketDraw)}${ST.full && !ST.build ? Fun.banner(ctx) : ""}</div>${ST.build ? drawer(ctx, m) : ""}</div>`;
 }
 /* The name of where the child is. */
 function placeName(ctx, id) {
@@ -756,7 +794,7 @@ function drawer(ctx, m) {
     const chips = (key, map, def) => Object.entries(map).map(([k, n]) => `<button class="pl-chip" data-pl="me" data-f="${key}" data-k="${k}" aria-pressed="${(me[key] || def) === k}">${esc(t(n))}</button>`).join("");
     const extras = { ...EXTRAS, ...Object.fromEntries(Object.entries(EXTRAS_X).filter(([k]) => owned.has("x:" + k)).map(([k, v]) => [k, v[0]])) };
     const saved = ST.d.outfits || [];
-    body = `${who}<div class="pl-wardrobe"><div class="pl-me-pv"><svg viewBox="-120 -330 240 350" aria-hidden="true">${avatarSvg(me, "")}</svg>
+    body = `${who}<div class="pl-wardrobe"><div class="pl-me-pv"><svg viewBox="-120 -330 240 350" aria-hidden="true">${avatarSvg(fig ? me : { ...me, age: ageGroup(ctx.member(ST.kid)) }, "")}</svg>
         ${fig ? `<div class="pl-out-b"><button class="pl-chip" data-pl="fig-place" data-k="${esc(fig.id)}">📍 ${esc(t("Sæt ind her"))}</button><button class="pl-chip" data-pl="fig-name" data-k="${esc(fig.id)}">✏️ ${esc(t("Navn"))}</button><button class="pl-chip" data-pl="fig-del" data-k="${esc(fig.id)}">🗑️ ${esc(t("Slet"))}</button></div>` : `<div class="pl-out-b"><button class="pl-chip" data-pl="outfit-rand">🎲 ${esc(t("Tilfældigt"))}</button><button class="pl-chip" data-pl="outfit-save">💾 ${esc(t("Gem outfit"))}</button><button class="pl-chip" data-pl="outfit-reset">↺ ${esc(t("Nulstil"))}</button></div>`}
         ${!fig && saved.length ? `<div class="pl-outfits">${saved.map((o, i) => `<span class="pl-out"><button data-pl="outfit-wear" data-k="${i}" aria-label="${esc(o.n)}"><svg viewBox="-110 -320 220 330" aria-hidden="true">${avatarSvg(o.me, "")}</svg><small>${esc(o.n)}</small></button><button class="pl-out-x" data-pl="outfit-del" data-k="${i}" aria-label="${esc(t("Fjern"))}">×</button><button class="pl-out-n" data-pl="outfit-name" data-k="${i}" aria-label="${esc(t("Giv det et navn"))}">✏️</button></span>`).join("")}</div>` : ""}</div>
       <div class="pl-wd-rows">
@@ -936,7 +974,7 @@ async function tapBubble(ctx, el) {
 }
 /* The tune for where the child is: their own rooms, the house, or the part of town the place is in. */
 function themeFor(ctx) {
-  if (ST.map) return [ST.mapPage === "city" ? "centrum" : "kort", 0];
+  if (ST.map) return [ST.mapPage === "city" ? "centrum" : ST.mapPage === "house" ? "hjem" : "kort", 0];
   if (Toys.partySong()) return [Toys.partySong(), 0];
   const sid = spaceId();
   if (sid === "vaerelse") return ["vaerelse", 0];
@@ -993,9 +1031,10 @@ function bindStage(ctx, svgEl) {
     const t = e.target.closest("[data-pl]"), p = toSvg(svgEl, e);
     if (t?.dataset.pl === "go") return goTo(ctx, t.dataset.k);
     if (ST.map) {
-      if (t?.dataset.pl === "town" || t?.dataset.pl === "city") {
+      if (t?.dataset.pl === "town" || t?.dataset.pl === "city" || t?.dataset.pl === "house") {
         ST.mapPage = ST.d.mapPage = t.dataset.pl;
         Sound.sfx("whoosh");
+        Sound.playTheme(...themeFor(ctx));
         save(ctx);
         return redraw(ctx);
       }
@@ -1033,7 +1072,29 @@ function bindStage(ctx, svgEl) {
         return;
       }
       if (t?.dataset.pl === "fam" || t?.dataset.pl === "peer") return hello(ctx, t);
-      if (t?.dataset.pl === "item") return itemTap(ctx, t);
+      // A thing: tap to use it, drag to move it (not the fixed things: the kitchen, the toilet, the bath …).
+      if (t?.dataset.pl === "item") {
+        const room = R(), it = room.items.find((x) => x.id === t.dataset.id);
+        if (!it || room.ro || Fix.FIXED.has(it.k)) return itemTap(ctx, t);
+        drag = grab(it, t, p, true);
+        try {
+          svgEl.setPointerCapture(e.pointerId);
+        } catch (err) {
+          /* synthetic */
+        }
+        e.preventDefault();
+        return;
+      }
+      if (t?.dataset.pl === "hand") {
+        drag = { kind: "hand", el: t, sx: p.x, sy: p.y };
+        try {
+          svgEl.setPointerCapture(e.pointerId);
+        } catch (err) {
+          /* synthetic */
+        }
+        e.preventDefault();
+        return;
+      }
       if (t?.dataset.pl === "bub") return tapBubble(ctx, t);
       if (t?.dataset.pl === "daily") return openChest(ctx, t);
       if (t?.dataset.pl === "light") return toggleLight(ctx);
@@ -1066,7 +1127,7 @@ function bindStage(ctx, svgEl) {
     if (t?.dataset.pl === "item") {
       ST.sel = t.dataset.id;
       const it = R().items.find((x) => x.id === ST.sel);
-      drag = { kind: "item", it, sx: p.x, sy: p.y, ox: it.x, oy: it.y, el: t };
+      drag = grab(it, t, p, false);
       try {
         svgEl.setPointerCapture(e.pointerId);
       } catch (err) {
@@ -1100,9 +1161,18 @@ function bindStage(ctx, svgEl) {
       const it = drag.it, wall = wallK(it.k);
       drag.fx = p.x;
       drag.fy = p.y;
+      // Things can be lifted up over the floor (onto a table, a bed or a shelf); the wall things stay on the wall.
       it.x = Math.round(Math.max(30, Math.min(W - 30, drag.ox + dx)));
-      it.y = Math.round(wall ? Math.max(40, Math.min(FLOOR - 20, drag.oy + dy)) : Math.max(FLOOR + 10, Math.min(H - 4, drag.oy + dy)));
+      it.y = Math.round(wall ? Math.max(40, Math.min(FLOOR - 20, drag.oy + dy)) : Math.max(60, Math.min(H - 4, drag.oy + dy)));
       drag.el.setAttribute("transform", `translate(${it.x} ${it.y}) scale(${it.f ? -(it.s || 1) : it.s || 1} ${it.s || 1})`);
+      drag.el.classList.add("held");
+      moveRiders(drag);
+    } else if (drag.kind === "hand") {
+      drag.fx = p.x;
+      drag.fy = p.y;
+      drag.el.style.visibility = "hidden";
+      drag.ghost ||= ghostOf(svgEl, ST.d.hand);
+      drag.ghost?.setAttribute("transform", `translate(${p.x} ${p.y + 40}) scale(${ST.d.hand?.s || 1})`);
     } else {
       const x = Math.max(60, Math.min(W - 60, drag.ox + dx)), y = Math.max(FLOOR + 40, Math.min(H - 8, drag.oy + dy));
       if (drag.kind === "me") {
@@ -1143,8 +1213,13 @@ function bindStage(ctx, svgEl) {
       publish(ctx);
       return redraw(ctx);
     }
-    if (d.kind === "item" && d.moved && Toys.pocketHit(d.fx, d.fy) && Toys.toPocket(ctx, "item", d.it.id)) return;
-    if (d.moved || d.kind === "item") {
+    if (d.kind === "hand") return dropHand(ctx, d);
+    if (d.kind === "item") {
+      d.el.classList.remove("held");
+      if (!d.moved) return d.play ? itemTap(ctx, d.el) : redraw(ctx);
+      return dropItem(ctx, d);
+    }
+    if (d.moved) {
       save(ctx);
       redraw(ctx);
     }
@@ -1152,12 +1227,121 @@ function bindStage(ctx, svgEl) {
   svgEl.addEventListener("pointerup", up);
   svgEl.addEventListener("pointercancel", up);
 }
+/* ------------------------------------------------------------------ moving things, things on things, the hand */
+/* Start moving a thing: it and what stands on it. */
+function grab(it, el, p, play) {
+  const riders = Fix.ridersOf(R().items, it.id).map((r) => [r, r.x, r.y]);
+  return { kind: "item", it, el, sx: p.x, sy: p.y, ox: it.x, oy: it.y, play, riders };
+}
+/* What stands on a thing moves with it. */
+function moveRiders(drag) {
+  const ddx = drag.it.x - drag.ox, ddy = drag.it.y - drag.oy, svgEl = ST.ctx.$("pl-stage");
+  for (const [r, x0, y0] of drag.riders || []) {
+    r.x = Math.round(x0 + ddx);
+    r.y = Math.round(y0 + ddy);
+    svgEl?.querySelector(`.pl-it[data-id="${CSS.escape(r.id)}"]`)?.setAttribute("transform", `translate(${r.x} ${r.y}) scale(${r.f ? -(r.s || 1) : r.s || 1} ${r.s || 1})`);
+  }
+}
+/* Things standing on a thing that goes away fall down to the floor. */
+function fallDown(room, id) {
+  for (const r of Fix.ridersOf(room.items, id)) {
+    if (r.at === id) delete r.at;
+    if (!wallK(r.k) && !r.at) r.y = Math.max(r.y, FLOOR + 24);
+  }
+}
+/* Is a point on our own figure? */
+const onMe = (x, y) => !ST.d.seat && Math.abs(x - ST.d.ax) < 80 && y > ST.d.ay - 300 && y < ST.d.ay + 20;
+/* A thing let go: into the bag, into the hand, onto a top, or down on the floor. */
+function dropItem(ctx, d) {
+  const room = R(), it = d.it;
+  if (Toys.pocketHit(d.fx, d.fy)) {
+    fallDown(room, it.id);
+    if (Toys.toPocket(ctx, "item", it.id)) return;
+  }
+  if (d.play && onMe(d.fx, d.fy) && Fix.holdable(it.k, CAT[it.k]) && !Fix.ridersOf(room.items, it.id).length) return takeInHand(ctx, it);
+  if (!wallK(it.k)) {
+    const top = Fix.topNear(room.items, CAT, it, it.x, it.y), y0 = it.y;
+    if (top) {
+      it.y = top.y;
+      it.at = top.id;
+      Sound.sfx("pop");
+    } else {
+      delete it.at;
+      if (CAT[it.k]?.flat !== 1 || it.y < FLOOR) it.y = Math.max(it.y, FLOOR + 24);
+    }
+    // What stands on it lands with it.
+    for (const [r] of d.riders || []) r.y += it.y - y0;
+  }
+  save(ctx);
+  redraw(ctx);
+}
+/* Take a thing in the hand: it leaves the room and goes along with the child. */
+function takeInHand(ctx, it) {
+  const room = R();
+  if (ST.d.hand) {
+    // The thing already in the hand is put down by the feet.
+    const old = { ...ST.d.hand, id: "i" + Math.random().toString(36).slice(2, 7), x: Math.max(40, Math.min(W - 40, ST.d.ax + 110)), y: Math.min(H - 8, ST.d.ay) };
+    room.items.push(old);
+  }
+  room.items = room.items.filter((x) => x !== it);
+  const { x, y, at, ...rest } = it;
+  void x, void y, void at;
+  ST.d.hand = rest;
+  Sound.sfx("pop");
+  save(ctx);
+  redraw(ctx);
+}
+/* A copy of the thing in the hand, to drag around. */
+function ghostOf(svgEl, it) {
+  const T = it && CAT[it.k];
+  if (!T) return null;
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("class", "pl-ghost");
+  g.setAttribute("pointer-events", "none");
+  g.innerHTML = T.d(it.c || T.c) + Fix.onSvg(it);
+  svgEl.appendChild(g);
+  return g;
+}
+/* The thing in the hand let go: tapped, it is used; dragged out, it is put down where it is let go. */
+function dropHand(ctx, d) {
+  d.ghost?.remove();
+  const it = ST.d.hand, room = R();
+  if (!it) return;
+  if (!d.moved) return useHand(ctx, d.el);
+  if (room.ro || onMe(d.fx, d.fy)) return redraw(ctx);
+  const id = "i" + Math.random().toString(36).slice(2, 7), x = Math.round(Math.max(30, Math.min(W - 30, d.fx))), y = Math.round(Math.max(60, Math.min(H - 4, d.fy + 40)));
+  const put = { ...it, id, x, y };
+  ST.d.hand = null;
+  room.items.push(put);
+  if (Toys.pocketHit(d.fx, d.fy) && Toys.toPocket(ctx, "item", id)) return;
+  const top = Fix.topNear(room.items, CAT, put, x, y);
+  if (top) {
+    put.y = top.y;
+    put.at = top.id;
+  } else if (wallK(put.k)) put.y = Math.max(40, Math.min(FLOOR - 20, put.y));
+  else put.y = Math.max(put.y, FLOOR + 24);
+  Sound.sfx("pop");
+  save(ctx);
+  redraw(ctx);
+}
+/* Use what is in the hand: eat it, play it, throw it up in the air. */
+function useHand(ctx, el) {
+  const it = ST.d.hand;
+  if (!it) return;
+  const k = it.k, kind = Object.keys(ACT).find((a) => ACT[a].includes(k)) || "wiggle", x = ST.d.ax + 78, y = ST.d.ay - 160;
+  Sound.sfx(kind === "read" ? "page" : kind === "open" ? "chest" : kind === "screen" ? "screen" : kind);
+  el.classList.remove("pl-do", "do-bounce");
+  void el.getBBox();
+  el.classList.add("pl-do", "do-bounce");
+  setTimeout(() => el.classList.remove("pl-do", "do-bounce"), 1000);
+  floatIcons(ctx, x, y, kind === "music" ? ["♪", "♫"] : kind === "yum" ? ["😋", "✨"] : kind === "read" ? ["📖", "✨"] : kind === "open" ? OPEN[k] || ["✨"] : ["✨", "💫"]);
+}
 function bindButtons(ctx, box) {
   box.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-pl]");
     if (!b) return;
     const a = b.dataset.pl, k = b.dataset.k, room = R(), it = room.items.find((x) => x.id === ST.sel);
-    if (ST.gate?.blocked && ["map", "shop", "build", "go", "city", "town", "story", "space"].includes(a)) return ctx.toast(ST.gate.text);
+    if (ST.gate?.blocked && ["map", "shop", "build", "go", "city", "town", "house", "story", "space"].includes(a)) return ctx.toast(ST.gate.text);
     if (a !== "sound") Sound.sfx(a === "add" ? "pop" : a === "t-del" ? "whoosh" : "tap");
     if (a === "build") {
       ST.build = !ST.build;
@@ -1179,9 +1363,9 @@ function bindButtons(ctx, box) {
     else if (a === "turnok") ST.turnOk = true;
     else if (a === "fun") return Fun.openSheet(ctx);
     else if (a === "unpocket") return Toys.fromPocket(ctx, +k);
-    else if (a === "town" || a === "city") {
+    else if (a === "town" || a === "city" || a === "house") {
       ST.mapPage = ST.d.mapPage = a;
-      Sound.playTheme(a === "city" ? "centrum" : "kort");
+      Sound.playTheme(...themeFor(ctx));
     }
     else if (a === "story") return storySheet(ctx);
     else if (a === "sound") {
@@ -1269,6 +1453,7 @@ function bindButtons(ctx, box) {
     else if (it && a === "t-small") it.s = Math.max(0.5, Math.round(((it.s || 1) - 0.15) * 100) / 100);
     else if (it && a === "t-color") it.c = PAL[(PAL.indexOf(it.c || CAT[it.k].c) + 1) % PAL.length];
     else if (it && a === "t-del") {
+      fallDown(room, it.id);
       room.items = room.items.filter((x) => x !== it);
       ST.sel = null;
     } else return;
@@ -1492,7 +1677,33 @@ ACT.open = Object.keys(OPEN);
 function itemTap(ctx, el) {
   const room = R(), it = room.items.find((x) => x.id === el.dataset.id);
   if (!it || !CAT[it.k]) return;
-  const k = it.k, kind = Object.keys(ACT).find((a) => ACT[a].includes(k)) || (CAT[k].cat === "lys" ? "light" : "wiggle");
+  const k = it.k, fx = Fix.fxOf(k), T0 = CAT[k];
+  // Things that work: the tv changes channel, the bath fills, the tap runs, the toilet flushes.
+  if (fx) {
+    const t = ctx.t, top0 = it.y - T0.h * (it.s || 1);
+    if (fx.tv) {
+      if (!it.on) [it.on, it.ch] = [1, 1];
+      else if ((it.ch || 1) >= Fix.CHANNELS.length) [it.on, it.ch] = [0, 0];
+      else it.ch = (it.ch || 1) + 1;
+      floatIcons(ctx, it.x, top0, [it.on ? `📺 ${t(Fix.CHANNELS[it.ch - 1])}` : `⏻ ${t("Slukket")}`]);
+    } else if (fx.toggle) it.on = it.on ? 0 : 1;
+    if (fx.tv || fx.toggle) {
+      Sound.sfx(fx.tv ? "tv" : it.on ? fx.sound : "tap");
+      el.innerHTML = T0.d(it.c || T0.c) + Fix.onSvg(it);
+      if (!room.ro) save(ctx);
+    } else {
+      Sound.sfx(fx.sound);
+      if (el.querySelector(".fx-once")) return;
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("class", "fx-once");
+      g.innerHTML = Fix.onceSvg(it);
+      el.appendChild(g);
+      setTimeout(() => g.remove(), fx.ms || 2000);
+      if (fx.after) setTimeout(() => Sound.sfx(fx.after), (fx.ms || 2000) - 200);
+    }
+    return Toys.special(ctx, it);
+  }
+  const kind = Object.keys(ACT).find((a) => ACT[a].includes(k)) || (CAT[k].cat === "lys" ? "light" : "wiggle");
   Sound.sfx(kind === "screen" ? "screen" : kind === "read" ? "page" : kind === "open" ? "chest" : kind);
   if (kind === "light") {
     it.on = !it.on;
@@ -1744,6 +1955,7 @@ Fun.init({
   draw: (k) => (CAT[k] ? CAT[k].d(CAT[k].c) : ""),
 });
 
+export { CAT as PLAY_CAT };
 export default {
   id: "play",
   views: {
@@ -1819,6 +2031,11 @@ export default {
 .pl-stagebox { position: relative; border-radius: 28px; overflow: hidden; box-shadow: 0 0 0 4px #2B2340, var(--shadow); background: #2B2340; }
 #pl-stage { display: block; width: 100%; height: auto; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .pl-stagebox.build #pl-stage { touch-action: none; }
+#pl-stage .pl-it:not(.fixed), #pl-stage .pl-me, #pl-stage .pl-npc, #pl-stage .pl-hand { touch-action: none; }
+#pl-stage .pl-it:not(.fixed) { cursor: grab; }
+#pl-stage .pl-it.held { cursor: grabbing; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
+.pl-hand { cursor: grab; }
+.pl-ghost { opacity: .9; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
 .pl-me, .pl-pet { transition: transform .7s cubic-bezier(.3,.9,.4,1); cursor: pointer; }
 .pl-me .pl-body { animation: plbob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 .pl-me.walking .pl-body { animation: plwalk .35s ease-in-out infinite; }
@@ -1908,8 +2125,11 @@ export default {
 .tm-lbl { font: 900 11px var(--font-body, sans-serif); fill: #fff; text-anchor: middle; paint-order: stroke; stroke: #2B2340; stroke-width: 3px; letter-spacing: .04em; }
 .tm-room { font-size: 15px; text-anchor: middle; }
 .tm-area { font: 800 13px var(--font-body, sans-serif); fill: #2B2340; text-anchor: middle; }
-.tm-name.locked .tm-area { fill: #7A6A8A; }
-.tm-name { pointer-events: none; }
+.tm-pin { cursor: pointer; }
+.tm-pin.locked .tm-area { fill: #7A6A8A; }
+.tm-pin.locked > circle { fill: #E8E4F0; }
+.tm-pin:hover > circle { fill: #FFF3B0; }
+.tm-pin.here > circle { stroke: var(--pc); stroke-width: 5; }
 .tm-gt { font: 800 15px var(--font-body, sans-serif); fill: #2B2340; text-anchor: middle; }
 .tm-gift { cursor: pointer; animation: plchest 2s ease-in-out infinite; }
 .tm-place { cursor: pointer; }
@@ -1962,11 +2182,12 @@ export default {
 @keyframes plnote { from { transform: translateY(0); opacity: 1 } to { transform: translateY(-90px); opacity: 0 } }
 /* full screen, lying down */
 .pl-fs { position: fixed; inset: 0; z-index: 400; background: #2B2340; display: grid; overflow: hidden; }
-.pl-fs .pl { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); gap: 6px; color: #fff; }
+.pl-fs .pl { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); gap: 6px; color: #fff; }
 .pl-fs .pl-head { display: none; }
 .pl-fs .pl-bar { margin: 0; }
 .pl-fs .pl-here { color: #fff; }
-.pl-fs .pl-stagebox { align-self: center; justify-self: center; width: min(100%, calc((100dvh - 80px) * 1000 / 620)); box-shadow: 0 0 0 4px #000; }
+.pl-fs .pl-stagebox { grid-row: 2; align-self: center; justify-self: center; width: min(100%, calc((100dvh - 90px) * 1000 / 620)); max-height: 100%; box-shadow: 0 0 0 4px #000; }
+.pl-fs .pl-stagebox .fun-bar { position: absolute; left: 10px; bottom: 10px; z-index: 2; margin: 0; max-width: calc(100% - 20px); }
 .pl-fs .pl-drawer { position: fixed; right: 10px; top: 64px; bottom: 10px; width: min(340px, 40vw); overflow: auto; z-index: 3; margin: 0; color: var(--ink); }
 .pl-fs .pl-mine { color: #fff; margin: 0; }
 .pl-fs .pl-shop { overflow: auto; max-height: calc(100dvh - 70px); color: var(--ink); }
@@ -2062,7 +2283,7 @@ export default {
 @media (max-width: 640px) { .pl-hide-s { display: none; } .pl-lv { min-width: 80px; } .pl-buys { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pl-packs { grid-template-columns: minmax(0, 1fr); } .pl-packs.small { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .pl-tools { top: 8px; bottom: auto; gap: 4px; padding: 4px 6px 4px 12px; } .pl-tools button { width: 38px; height: 38px; font-size: 18px; } .pl-tools b { font-size: 12px; } .pl-stagebox { border-radius: 20px; } .pl-th svg { width: 60px; height: 52px; } }
 @media (prefers-reduced-motion: reduce) { .pl-me .pl-body, .pl-pet .pl-petb, .pl-bub, .pl-cloud, .pl-fish, .pl-twinkle, .pl-chest, .pl-sparkle, .pl-blink, .pl-beam, .pl-pop-c { animation: none !important; } }
-` + Fun.FUN_CSS + Toys.TOYS_CSS + Life.LIFE_CSS,
+` + Fun.FUN_CSS + Toys.TOYS_CSS + Life.LIFE_CSS + Fix.FIX_CSS + HOUSE3D_CSS,
   en: {
     "Mit værelse": "My room", "Hej {name}!": "Hi {name}!", "Tryk på boblerne, når du har gjort det.": "Tap the bubbles when you have done it.", "Alt er klaret lige nu. Godt gået!": "All done for now. Well done!",
     "Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.": "Drag things where they should go. Tap something to change it.", "Byg dit værelse": "Build your room", "Lys og stemning": "Lights and mood", Færdig: "Done", "Dit værelse": "Your room", "Lyset i dit værelse": "The light in your room",
@@ -2300,6 +2521,9 @@ export default {
     ...HOME_EN,
     ...Toys.TOYS_EN,
     ...Life.LIFE_EN,
+    ...Fix.FIX_EN,
+    ...HOUSE3D_EN,
+    Verden: "World",
     "Spilletid tilbage i dag": "Play time left today",
     ...CITY_EN,
     ...CITY_MAP_EN,
