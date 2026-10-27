@@ -143,7 +143,7 @@ class HverdagsroPanel extends HTMLElement {
     const link = (rel) => () => Object.assign(document.createElement("link"), { rel });
     const meta = (name) => () => Object.assign(document.createElement("meta"), { name });
     set('link[rel="apple-touch-icon"]', link("apple-touch-icon"), "href", `${base}/icons/apple-180.png`);
-    set('link[rel="manifest"]', link("manifest"), "href", `${base}/manifest.json`);
+    set('link[rel="manifest"]', link("manifest"), "href", `${base}/app.webmanifest`);
     set('meta[name="apple-mobile-web-app-title"]', meta("apple-mobile-web-app-title"), "content", "Hverdagsro");
     set('meta[name="application-name"]', meta("application-name"), "content", "Hverdagsro");
   }
