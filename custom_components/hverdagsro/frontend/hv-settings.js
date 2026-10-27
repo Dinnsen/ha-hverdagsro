@@ -585,6 +585,22 @@ function custodyField(ctx, k) {
     <div class="cu-grid">${grid}</div><small class="t-sub">${esc(t("Tryk på en dag for at skifte. 🏠 = sover her, 🚗 = hos {away}.", { away: c.away || t("det andet hjem") }))}</small>
     <b class="cu-h2">${esc(t("De næste fire uger"))}</b><div class="cu-next">${next}</div><small class="t-sub">${esc(t("Tryk på en dato for at bytte netop den dag, fx i ferier. Byttede dage har en ring om."))}</small></div>`;
 }
+/* When the child may play the game (Mit værelse). */
+const GATES = [
+  ["off", "Altid", "🎮"],
+  ["morning", "Efter morgenrutinen", "🌅"],
+  ["homework", "Efter lektierne", "✏️"],
+  ["missions", "Når dagens opgaver er klaret", "✅"],
+  ["earn", "Spilletid for hjælp", "⏳"],
+];
+const gateOf = (k) => ({ mode: "off", per: 10, base: 15, ...(k.game_gate || {}) });
+function gateField(ctx, k) {
+  if (!ctx.on("house")) return "";
+  const g = gateOf(k), t = ctx.t, id = esc(k.id);
+  return `<div class="cu gate"><div class="cu-h"><span class="bd-ic">🎮</span><div><b>${esc(t("Spillet"))}</b><small>${esc(t("Hvornår må {name} spille i Mit værelse? Spillet viser, hvad der mangler.", { name: k.name }))}</small></div></div>
+    <div class="cu-pre">${GATES.map(([mode, n, em]) => `<button data-act="set-gate" data-kid="${id}" data-id="${mode}" aria-pressed="${g.mode === mode}">${em} ${esc(t(n))}</button>`).join("")}</div>
+    ${g.mode === "earn" ? `<div class="cu-start"><label><span>${esc(t("Minutter for hver ting"))}</span><input type="number" min="1" max="60" data-in="set-gate-num" data-kid="${id}" data-f="per" value="${g.per}"></label><label><span>${esc(t("Minutter fra start hver dag"))}</span><input type="number" min="0" max="240" data-in="set-gate-num" data-kid="${id}" data-f="base" value="${g.base}"></label></div><small class="t-sub">${esc(t("En ting er en opgave, en lektie eller et rutinekort, der er klaret i dag."))}</small>` : ""}</div>`;
+}
 function setCustody(ctx, kidId, change) {
   const k = ctx.member(kidId);
   if (!k) return;
@@ -604,6 +620,7 @@ function kidsSection(ctx) {
           ${bdayField(ctx, k)}
           <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${mods.map(([m, n]) => `<span>${esc(ctx.t(n))}</span><button class="toggle" data-act="set-kmod" data-kid="${esc(k.id)}" data-mod="${m}" aria-pressed="${ctx.feature(k, m)}" aria-label="${esc(ctx.t("{what} for {name}", { what: ctx.t(n), name: k.name }))}" style="--tc:${esc(k.color)}"></button>`).join("")}</div>
           ${custodyField(ctx, k)}
+          ${gateField(ctx, k)}
           ${kidLinks(ctx, k)}</div>`;
       })
       .join("")}</div>` : `<p class="t-sub">${esc(ctx.t("Der er ingen børn i familien endnu."))} <button class="lnk" data-act="set-tab" data-id="familie">${esc(ctx.t("Tilføj under Familien"))}</button></p>`}
@@ -1309,6 +1326,10 @@ const acts = {
       ctx.render(true);
     }
   },
+  "set-gate": (el, e, ctx) => {
+    const k = ctx.member(el.dataset.kid);
+    if (k) return saveMember(ctx, k.id, { game_gate: { ...gateOf(k), mode: el.dataset.id } });
+  },
   "set-cu-on": (el, e, ctx) => setCustody(ctx, el.dataset.kid, (c) => ({ ...c, enabled: !c.enabled })),
   "set-cu-day": (el, e, ctx) =>
     setCustody(ctx, el.dataset.kid, (c) => {
@@ -1518,6 +1539,12 @@ const acts = {
 };
 
 const inputs = {
+  "set-gate-num": (el, e, ctx) => {
+    const k = ctx.member(el.dataset.kid), n = Math.round(Number(el.value));
+    if (e.type !== "change" || !k || !Number.isFinite(n)) return;
+    const max = el.dataset.f === "per" ? 60 : 240, min = el.dataset.f === "per" ? 1 : 0;
+    return saveMember(ctx, k.id, { game_gate: { ...gateOf(k), [el.dataset.f]: Math.max(min, Math.min(max, n)) } });
+  },
   "set-cu-name": (el, e, ctx) => e.type === "change" && setCustody(ctx, el.dataset.kid, (c) => ({ ...c, [el.dataset.f]: el.value.trim().slice(0, 24) })),
   "set-cu-start": (el, e, ctx) => e.type === "change" && el.value && setCustody(ctx, el.dataset.kid, (c) => ({ ...c, start: mondayIso(new Date(el.value + "T12:00:00")) })),
   "set-cu-switch": (el, e, ctx) => e.type === "change" && setCustody(ctx, el.dataset.kid, (c) => ({ ...c, switch: el.value || null })),
@@ -1863,6 +1890,9 @@ const en = {
   "Oplæsning": "Read aloud",
   "Vælg højttaleren på værelset": "Choose the speaker in the room",
   "Børnene": "The children",
+  "Spillet": "The game", "Hvornår må {name} spille i Mit værelse? Spillet viser, hvad der mangler.": "When may {name} play in My room? The game shows what is missing.",
+  Altid: "Always", "Efter morgenrutinen": "After the morning routine", "Efter lektierne": "After homework", "Når dagens opgaver er klaret": "When today's tasks are done", "Spilletid for hjælp": "Play time for helping",
+  "Minutter for hver ting": "Minutes for each thing", "Minutter fra start hver dag": "Minutes to start with each day", "En ting er en opgave, en lektie eller et rutinekort, der er klaret i dag.": "A thing is a task, homework or a routine card done today.",
   "To hjem": "Two homes", "Opgaver, rutiner og Hent og bring følger, hvor {name} er.": "Tasks, routines and pickups follow where {name} is.", "Slå til, hvis {name} bor skiftevis hos mor og far.": "Turn on if {name} lives with mum and dad in turns.",
   "Her hos os hedder det": "Here it's called", "Det andet hjem": "The other home", "Hos far": "At dad's", "Hos mor": "At mum's", "Uge for uge": "Week on, week off", "2-2-3": "2-2-3", "Hver anden weekend ude": "Every other weekend away", "Hver anden weekend her": "Every other weekend here", "9/5": "9/5",
   "{n} uge": "{n} wk", "Uge 1 begynder mandag": "Week 1 starts on Monday", "Skifter kl.": "Switches at", Her: "Here", Ude: "Away", "Tryk på en dag for at skifte. 🏠 = sover her, 🚗 = hos {away}.": "Tap a day to switch. 🏠 = sleeps here, 🚗 = at {away}.", "det andet hjem": "the other home",

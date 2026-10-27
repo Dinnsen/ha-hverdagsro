@@ -365,6 +365,8 @@ main { padding-block: 22px 40px; }
 
 /* Madplan */
 .meals { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.votes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.votes li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--card2, #F6F3FA); }
 .meal { border-radius: 16px; padding: 14px; background: var(--surface); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .meal.tonight { background: linear-gradient(140deg, #6E4AFF, #FF7A59); color: #fff; }
 .meal.tonight .eyebrow, .meal.tonight .m-sub { color: rgba(255,255,255,.85); }

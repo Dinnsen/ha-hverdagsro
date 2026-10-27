@@ -205,6 +205,16 @@ MEMBER = vol.Schema(
         vol.Optional("playroom", default=None): _playroom,
         vol.Optional("room_prefs", default=None): _room_prefs,
         vol.Optional("custody", default=None): _custody,
+        # When a child may play the game (Mit værelse): always, after a routine, the homework or the missions, or
+        # for time they earn by helping (minutes per thing done, plus a start).
+        vol.Optional("game_gate", default=None): vol.Any(
+            None,
+            {
+                vol.Optional("mode", default="off"): vol.In(("off", "morning", "homework", "missions", "earn")),
+                vol.Optional("per", default=10): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
+                vol.Optional("base", default=15): vol.All(vol.Coerce(int), vol.Range(min=0, max=240)),
+            },
+        ),
         # The member's own menu: the tabs in their order, and the ones moved to "Mere".
         vol.Optional("nav", default=None): vol.Any(
             None,

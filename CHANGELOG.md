@@ -2,6 +2,21 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.9.0] - 2026-10-27
+
+### Added
+- **Everyday life in the game:** the play world and Hverdagsro's own days hang together.
+  - **The characters ask for help** with the real tasks of the day: the cook with the kitchen, the neighbour with tidying, the café cat with the pets, the scout with the garden, the owl with homework. A red "!" shows who needs help, on the map too. When the task is really done, the child says "Done!" in the game, it is ticked off in Hverdagsro, and the character says thank you. Every five thank-yous bring a present.
+  - **The grown-ups at home** show a "?" when they have a task of their own: the child can offer to help.
+  - **The room mirrors the day:** a little mess on the floor while tidying waits, sparkles when it is done, and a plant on the window sill that grows with every good day of the week.
+  - **Tonight's dinner** from the meal plan is on the wall of the house kitchen and the café. The children vote for next week's dinners in the game, and the grown-ups see the votes on the meal plan page.
+  - **Homework becomes knowledge:** a book on the shelf for every piece of homework, stamps for every five in a subject, and things to discover (telescope, microscope, globe, crystal ball, blackboard).
+  - **The routines are the game's day:** before the morning routine the child wakes in bed, every routine card done shows above the avatar, pyjamas in the evening, and a bedtime story by the moon (read aloud if the device can).
+  - **The family's building site** in Centrum: everything real that anyone in the family does lays a brick (counted in Home Assistant), and together you build a playground, a tree house, a zoo, an observatory and more, with coins for the builders and a party.
+  - **Help each other:** say you helped a sibling or a grown-up with their task; when they say yes, you both get coins.
+  - **The postman brings the day:** a letter in the room with today's and tomorrow's plans, pickups, tonight's dinner and rain or snow tomorrow.
+  - **When the game may be played** (per child, under Familieindstillinger › Børnene): always, after the morning routine, after homework, when today's tasks are done, or minutes earned for each thing done. The game shows what is missing, and the time left.
+
 ## [0.8.0] - 2026-10-27
 
 ### Added

@@ -181,6 +181,10 @@ export function demoData(setupDone = true) {
       hunt: { id: "h1", by: "anna", who: ["anna", "ida", "oskar"], stars: [{ id: "s0", space: "room:ida", x: 300, y: 470 }, { id: "s1", space: "have", x: 600, y: 520 }, { id: "s2", space: "room:oskar", x: 500, y: 500 }], found: { s2: "oskar" }, at: iso(day(0, 16)), done: false },
       hide: { id: "x1", by: "oskar", space: "room:ida", x: 820, y: 560, thing: "teddy", at: iso(day(0, 16)), found_by: null },
       party: null,
+      build: { i: 0, bricks: 12, who: { ida: 7, oskar: 5 }, built: [] },
+      helps: [{ id: "h1", by: "oskar", for: "ida", task: "teeth", title: "Børst tænder", at: iso(day(0, 17)), ok: false }],
+      votes: {},
+      played: {},
     },
     requests: [{ id: "r1", member: "ida", reward: "film", at: iso(day(0, 8, 2)), status: "pending" }],
     ledger: [{ at: iso(day(0, 7, 20)), member: "ida", delta: 5, reason: "Børst tænder", by: null }],
@@ -413,6 +417,24 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
           f.party = { id: "p" + Date.now(), at: iso(new Date()), reason: "hide", who: [msg.member, f.hide.by] };
         }
       } else if (a === "hide_stop") f.hide = null;
+      else if (a === "help_ask") (f.helps ||= []).push({ id: "h" + Date.now(), by: msg.member, for: msg.helped, task: msg.task, title: msg.title, at: iso(new Date()), ok: false });
+      else if (a === "help_ok") {
+        const h = f.helps.find((x) => x.id === msg.help);
+        if (h && !h.ok) {
+          h.ok = true;
+          coin(h.by, 3);
+          coin(h.for, 3);
+        }
+      } else if (a === "vote") {
+        const d = new Date();
+        d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        const wk = ymd(d);
+        ((f.votes ||= {})[wk] ||= {})[msg.member] = msg.dish;
+      } else if (a === "tick") {
+        const p = (f.played ||= {})[msg.member] || { date: store.today, min: 0 };
+        p.min += 1;
+        f.played[msg.member] = p;
+      }
       setTimeout(push, 10);
       return JSON.parse(JSON.stringify(f));
     }

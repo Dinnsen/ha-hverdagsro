@@ -11,7 +11,7 @@ Everything lives in data["fun"] and goes to the panel with the rest of the famil
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 import random
 from typing import TYPE_CHECKING, Any
 import uuid
@@ -33,6 +33,20 @@ COINS_MISSION_DAY = 8
 MAX_TASKS = 30
 MAX_STARS = 12
 MAX_KID_COINS = 10
+COINS_HELP = 3
+COINS_BUILT = 5
+MAX_HELPS = 30
+# The family's building site in Centrum: what is built next, and how many bricks (things done) it takes.
+BUILDS: list[tuple[str, int]] = [
+    ("legeplads", 20),
+    ("traehule", 25),
+    ("zoo", 30),
+    ("observatorium", 35),
+    ("karrusel", 35),
+    ("badesoe", 40),
+    ("borg", 45),
+    ("raketbase", 50),
+]
 FIND_RADIUS = 80
 
 # The missions of the day, one per day in turn: kind, how many, the words the panel shows (it translates them).
@@ -54,8 +68,36 @@ def fun(family: Family) -> dict[str, Any]:
     state.setdefault("hunt", None)
     state.setdefault("hide", None)
     state.setdefault("party", None)
+    state.setdefault("build", {"i": 0, "bricks": 0, "who": {}, "built": []})
+    state.setdefault("helps", [])
+    state.setdefault("votes", {})
+    state.setdefault("played", {})
     _day(state)
     return state
+
+
+def brick(family: Family, member_id: str, delta: int) -> None:
+    """Something real was done (a mission, homework, a routine card): a brick on the family's building site.
+    Taken back again, the brick goes too; what is built stays built."""
+    build = fun(family)["build"]
+    build["bricks"] = max(0, int(build["bricks"]) + delta)
+    who: dict[str, int] = build["who"]
+    who[member_id] = max(0, int(who.get(member_id, 0)) + delta)
+    name, need = BUILDS[int(build["i"]) % len(BUILDS)]
+    if build["bricks"] >= need:
+        builders = sorted(k for k, n in who.items() if n > 0)
+        build["built"] = [*build["built"], name][-20:]
+        build["i"] = int(build["i"]) + 1
+        build["bricks"] = int(build["bricks"]) - need
+        build["who"] = {}
+        for builder in builders:
+            family.add_coins(builder, COINS_BUILT)
+        _party(fun(family), "build", builders)
+
+
+def _week(today: date | None = None) -> str:
+    today = today or dt_util.now().date()
+    return (today - timedelta(days=today.weekday())).isoformat()
 
 
 def _day(state: dict[str, Any], today: date | None = None) -> dict[str, Any]:
@@ -105,7 +147,7 @@ async def async_fun(family: Family, user: User | None, action: str, msg: dict[st
     """One thing happens in Familieleg. Returns the new state."""
     state = fun(family)
     member_id = msg.get("member") or ""
-    if action not in ("task_add", "task_approve", "task_remove", "hunt_stop", "hide_stop"):
+    if action not in ("task_add", "task_approve", "task_remove", "hunt_stop", "hide_stop", "help_ok"):
         family.check_member_access(user, member_id)
         member_id = family.require_member(member_id)["id"]
 
@@ -221,6 +263,58 @@ async def async_fun(family: Family, user: User | None, action: str, msg: dict[st
             family.add_coins(member_id, COINS_FOUND)
             family.add_coins(hide["by"], COINS_HIDDEN)
             _party(state, "hide", [member_id, hide["by"]])
+    elif action == "help_ask":
+        # "I helped": with a sibling's task or a grown-up's. The one who was helped (or a grown-up) says yes.
+        helped = family.require_member(msg.get("helped") or "")["id"]
+        if helped == member_id:
+            raise _bad("not_for_you")
+        helps = [
+            h
+            for h in state["helps"]
+            if not (h["by"] == member_id and h["task"] == msg.get("task") and h["for"] == helped)
+        ]
+        helps.append(
+            {
+                "id": uuid.uuid4().hex[:8],
+                "by": member_id,
+                "for": helped,
+                "task": str(msg.get("task") or "")[:80],
+                "title": str(msg.get("title") or "")[:80],
+                "at": dt_util.now().isoformat(),
+                "ok": False,
+            }
+        )
+        state["helps"] = helps[-MAX_HELPS:]
+    elif action == "help_ok":
+        help_ = next((h for h in state["helps"] if h["id"] == msg.get("help")), None)
+        if help_ is None:
+            raise _bad("no_task")
+        if not _is_parent(family, user):
+            family.check_member_access(user, help_["for"])
+        if not help_["ok"]:
+            help_["ok"] = True
+            for who in (help_["by"], help_["for"]):
+                family.add_coins(who, COINS_HELP)
+            _party(state, "help", [help_["by"], help_["for"]])
+    elif action == "vote":
+        week = _week()
+        votes: dict[str, dict[str, str]] = {
+            k: v for k, v in state["votes"].items() if k >= _week(dt_util.now().date() - timedelta(days=14))
+        }
+        votes.setdefault(week, {})[member_id] = str(msg.get("dish") or "")[:40]
+        state["votes"] = votes
+    elif action == "tick":
+        # A minute of play (the game sends one a minute while it is on the screen). Not more than one a minute.
+        now = dt_util.now()
+        today = now.date().isoformat()
+        played: dict[str, Any] = state["played"].get(member_id) or {}
+        last = played.get("at")
+        if played.get("date") != today:
+            played = {"date": today, "min": 0, "at": None}
+        if not last or (now - datetime.fromisoformat(last)).total_seconds() >= 50:
+            played["min"] = int(played["min"]) + 1
+            played["at"] = now.isoformat()
+        state["played"][member_id] = played
     elif action == "hide_stop":
         hide = state.get("hide")
         me = family.member_for_user(user)

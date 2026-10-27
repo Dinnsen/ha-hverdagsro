@@ -111,6 +111,16 @@ def test_custody() -> None:
         validate_section("missions", [{**mission, "where": "moon"}])
 
 
+def test_game_gate() -> None:
+    member = {"id": "ida", "name": "Ida", "role": "child"}
+    assert validate_section("family", [member])[0]["game_gate"] is None
+    out = validate_section("family", [{**member, "game_gate": {"mode": "earn"}}])[0]["game_gate"]
+    assert out == {"mode": "earn", "per": 10, "base": 15}
+    for bad in ({"mode": "never"}, {"per": 0}, {"base": 999}):
+        with pytest.raises(vol.Invalid):
+            validate_section("family", [{**member, "game_gate": bad}])
+
+
 def test_nav() -> None:
     member = {"id": "ida", "name": "Ida", "role": "child"}
     nav = {"order": ["dag", "vaerelse"], "hide": ["skema"]}

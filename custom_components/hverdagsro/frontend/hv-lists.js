@@ -335,7 +335,7 @@ function pMeals(ctx) {
   return `<section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${esc(ctx.t("Ugens madplan"))}</h2><span class="meta">${esc(mid ? ctx.t("Fra Middagsro") : ctx.name(id))}</span></div>${
     b ? `<div class="budget"><span class="num" style="font-weight:700">${ctx.fmt.num(b.left, 2)} ${esc(b.unit)}</span>${b.frac != null ? `<div class="bar"><i style="width:${Math.round(b.frac * 100)}%"></i></div>` : `<div class="bar"></div>`}<span class="t-sub">${esc(ctx.t("tilbage i ugen"))}</span></div>` : ""
   }</section>
-  <div class="meals">${meals === null ? `<div class="ls-skel"><i></i><i></i><i></i></div>` : cards}</div>
+  <div class="meals">${meals === null ? `<div class="ls-skel"><i></i><i></i><i></i></div>` : cards}</div>${kidsVotes(ctx)}
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">${shop ? `<button class="btn" data-act="lists-openlist" data-id="${esc(shop)}">${svg("cart")}${esc(ctx.t("Indkøbslisten"))}</button>` : ""}${mPanel ? `<button class="btn soft" data-act="lists-panel" data-id="${esc(mPanel)}">${esc(ctx.t("Åbn i Middagsro"))}</button>` : ""}</div>
   <p class="foot">${esc(mid ? ctx.t("Fanen viser Middagsros madplan direkte. Skift ret, bedøm og lav ny plan sker i Middagsro, så de to apps aldrig er uenige.") : ctx.t("Madplanen er kalenderen {name}. Tryk på en dag for at sætte aftensmaden.", { name: ctx.name(id) }))}</p>`;
 }
@@ -358,6 +358,18 @@ function mealSheet(ctx, i) {
     ctx.render();
     ctx.toast(ctx.t("{name} er sat på madplanen", { name: title }));
   });
+}
+
+/* The children's votes for next week's dinners (they vote in the game, Mit værelse). */
+function kidsVotes(ctx) {
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  const week = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const votes = ctx.data.fun?.votes?.[week] || {}, by = {};
+  for (const [id, dish] of Object.entries(votes)) (by[dish] ||= []).push(ctx.member(id)?.name || id);
+  const list = Object.entries(by).sort((a, b) => b[1].length - a[1].length);
+  if (!list.length) return "";
+  return `<section class="card" style="margin-top:16px"><div class="card-head"><h2>${esc(ctx.t("Børnenes ønsker"))}</h2><span class="meta">${esc(ctx.t("Stemt i spillet"))}</span></div><ul class="votes">${list.map(([dish, names]) => `<li><b>${esc(ctx.t(dish))}</b><span class="t-sub">${esc(names.join(", "))}</span></li>`).join("")}</ul></section>`;
 }
 
 /* ---------------------------------------------------------------- Lister (pLists) */
@@ -847,6 +859,8 @@ const en = {
   "Gemt. {name} står som den, der henter.": "Saved. {name} is down as picking up.",
   "Aftalen er gemt": "The appointment is saved",
   "Ingen madplan endnu": "No meal plan yet",
+  "Børnenes ønsker": "The children's wishes",
+  "Stemt i spillet": "Voted in the game",
   "Vælg den kalender, der har aftensmaden, fx Middagsros madplan.": "Choose the calendar with the dinners, e.g. Middagsro's meal plan.",
   "Vælg kalender": "Choose calendar",
   "I aften": "Tonight",
@@ -959,3 +973,6 @@ export default {
   css,
   en,
 };
+
+/* For the game (hv-life): tonight's dinner and the week's events. */
+export { mealsFor, dinnerOn, weekEvents };

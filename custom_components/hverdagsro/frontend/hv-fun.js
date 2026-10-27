@@ -5,6 +5,7 @@
 import { esc } from "./hv-core.js";
 import * as World from "./hv-world.js";
 import * as Sound from "./hv-sound.js";
+import * as Life from "./hv-life.js";
 
 let A = null; // the game: { st, presenceKey, goTo, say, confetti, floatIcons, redraw, placeName, publish, coinPop, draw }
 export function init(api) {
@@ -202,6 +203,8 @@ function body(ctx) {
     const [em, text] = MISSION[day.kind];
     h += `<div class="fun-sec"><b>${esc(t("Dagens familiemission"))}</b><div class="fun-mission"><span class="fun-em">${em}</span><div><div>${esc(t(text, { n: day.need }))}</div><i class="fun-prog" style="--p:${Math.round((day.count / day.need) * 100)}%"></i><small>${esc(day.paid ? t("Klaret! Alle der hjalp, fik mønter.") : day.who.length ? t("Hjælper: {names}", { names: day.who.map((id) => nameOf(ctx, id)).join(", ") }) : t("Alle kan hjælpe. Når I når målet, får alle der hjalp, mønter."))}</small></div></div></div>`;
   }
+  // The family's building site, and helping each other (hv-life).
+  h += Life.siteSection(ctx) + Life.helpSection(ctx);
   // The star hunt.
   const hunt = f.hunt;
   h += `<div class="fun-sec"><b>⭐ ${esc(t("Stjernejagt"))}</b>`;

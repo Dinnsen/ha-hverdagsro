@@ -98,6 +98,12 @@ export const CITY_PLACES = {
     decor: [["storsofa", 260, 590], ["langbord", 720, 600], ["chair", 580, 610], ["chair", 860, 610], ["bunk", 960, 470], ["klodsborg", 460, 620], ["gulvtaeppe", 300, 620]],
     npcs: [["bedste", 160, 600], ["morfar", 640, 590], ["vuffe", 420, 610]],
   },
+  "by-byg": {
+    n: "Familiens byggeplads", area: "centrum", em: "🧱",
+    bg: (s0, s1, tod) => `${outdoor(s0, s1, tod, "#C9E8B8", "#B5D99C")}${ground("#D9C29A")}${rep(14, (i) => `<rect x="${i * 74}" y="${FLOOR - 70}" width="64" height="70" fill="#FF8A3C" ${out(T3)}/><path d="M${i * 74} ${FLOOR - 50} h64 M${i * 74} ${FLOOR - 20} h64" stroke="#fff" stroke-width="6"/>`)}`,
+    decor: [["hejsekran", 140, 470], ["murstensstak", 820, 610], ["trillebor", 700, 620], ["kegle", 60, 620], ["kegle", 960, 620]],
+    npcs: [["frida", 330, 610]],
+  },
 };
 
 /* What a place costs to open (coins), when it is not free. */
@@ -120,6 +126,7 @@ export const CITY_NPCS = {
   sam: ["Skater Sam", "centrum", "Skater med hættetrøje, kasket bagfrem og plaster på knæet. Laver kolbøtter i rampen.", person("#F6C9A3", "pjusk", "#E9B65A", "#FF8A3C", "#3A3A55", "kasket"), ["Se mig lave et trick!", "Kolbøtte!", "Rampen er vild!"]],
   kolboette: ["Kolbøtte", "centrum", "En orange ræv med striber på halen, der går på hænder og elsker at stå på hovedet.", { kind: "fox", fur: "#FF8A3C", belly: "#FFFFFF", ears: "point", snout: "dog", tail: "bushy", tailc: "#FF8A3C", acc: "star", accc: "#FFD93D" }, ["Verden ser sjov ud på hovedet!", "Kolbøtte, kolbøtte!", "Kan du stå på hænder?"]],
   pling: ["Pling", "centrum", "En lille grøn klat med en propel på hovedet, der svæver rundt i parken og siger pling.", { kind: "blob", fur: "#6BCB77", hat: "antenna", hatc: "#FFD93D" }, ["Pling!", "Pling pling!", "Vil du lege fangeleg?"]],
+  frida: ["Formand Frida", "centrum", "Formand på familiens byggeplads med gul hjelm, orange vest og en tegning under armen. Tæller murstenene.", person("#E3A87C", "hale", "#A8642A", "#FF8A3C", "#2B3A6E", "ingen", [["helmet", "#FFD93D"], ["vest", "#FF8A3C"]]), ["Hver ting I klarer derhjemme, er en mursten!", "Vi bygger noget stort sammen!", "Se hvor langt vi er nået!"]],
   bent: ["Borgmester Bent", "centrum", "Byens rare borgmester med hvidt overskæg, høj hat og en guldkæde om halsen.", person("#F6C9A3", "skaldet", "#FFFFFF", "#2B3A6E", "#2B3A6E", "ingen", [["vest", "#E9C46A"]]), ["Velkommen til Centrum!", "Byen er jeres!", "Hvad skal vi bygge næste gang?"]],
   dagny: ["Due Dagny", "centrum", "En grå og lilla due, der går rundt på torvet og samler krummer.", { kind: "hen", fur: "#B9BED0", belly: "#E2D5FF", hat: "none" }, ["Kurr kurr!", "Har du en krumme?", "Jeg kender alle tagene."]],
   sif: ["Spejder Sif", "centrum", "Spejder med grøn skjorte, tørklæde og mange mærker. Kan tænde bål og finde vej.", person("#E3A87C", "hale", "#5B3A21", "#3F9E5A", "#8B5A3C", "ingen", [["scarf", "#FFD93D"], ["bag", "#8B5A3C"]]), ["Skal vi riste skumfiduser?", "Jeg kan finde nordstjernen!", "Alle teltene er sat op."]],
@@ -220,16 +227,20 @@ const CB = {
   "by-indkob": (bx, by) => `${box(bx + 0.6, by + 1, 10.8, 8, 4.4, "#E2D5FF")}${windows(bx + 0.6, by + 1, 10.8, 8, 4.4, 1, 5, 4, "#FFF6E6")}${box(bx + 0.6, by + 8.6, 10.8, 0.4, 0.8, "#9B5DE5", 3.2)}${label(bx + 6, by + 9, 3.7, "SHOPPING")}${door(bx + 5, by + 1, 8, 2, 2.4, "#BFE6FF")}${sign(bx + 6, by + 5, 4.6, "🛍️")}`,
   "by-uni": (bx, by) => `${box(bx + 1, by + 1, 10, 7, 5, "#E6DCC8")}${rep(5, (i) => box(bx + 1.6 + i * 2, by + 7.6, 0.6, 0.6, 3.6, "#FFFFFF"))}${gable(bx + 1, by + 1, 10, 7, 5, 2.4, "#2B3A6E", "#E6DCC8")}${door(bx + 5.2, by + 1, 7, 1.6, 2.6)}${sign(bx + 6, by + 4.5, 7.4, "🎓")}`,
   "by-villa": (bx, by) => `${box(bx + 1, by + 1, 7, 5, 3, "#FFFFFF")}${box(bx + 3, by + 1, 5, 5, 2.4, "#F2EDE6", 3)}${windows(bx + 1, by + 1, 7, 5, 3, 1, 3, 2, "#9FD4FF")}${flat([[bx + 2, by + 7.2, 0.45], [bx + 10, by + 7.2, 0.45], [bx + 10, by + 10.6, 0.45], [bx + 2, by + 10.6, 0.45]], "#4FB3FF", `stroke="${OL}" stroke-width="2"`)}${tree(bx + 10.6, by + 2, 0.8, "#6BCB77")}${sign(bx + 4.5, by + 3.5, 5.6, "🏝️")}`,
+  "by-byg": (bx, by) => `${flat([[bx + 0.6, by + 0.6, 0.4], [bx + 11.4, by + 0.6, 0.4], [bx + 11.4, by + 6.4, 0.4], [bx + 0.6, by + 6.4, 0.4]], "#D9C29A", `stroke="${OL}" stroke-width="1.5"`)}${box(bx + 3, by + 1.4, 4, 3.4, 2.2, "#C2502A")}${(() => {
+    const [a, b] = Pp(bx + 9.5, by + 2, 0.4), [, c] = Pp(bx + 9.5, by + 2, 8);
+    return `<path d="M${a} ${b} V${c} h-46" stroke="#FFD93D" stroke-width="5" fill="none"/><path d="M${a - 40} ${c} v18" stroke="${OL}" stroke-width="2"/>`;
+  })()}${sign(bx + 5, by + 3, 2.6, "🧱")}`,
   "by-familiehus": (bx, by) => `${box(bx + 1.5, by + 1.5, 8, 6, 3.6, "#FFF0D6")}${gable(bx + 1.5, by + 1.5, 8, 6, 3.6, 2.6, "#C2502A", "#FFF0D6")}${windows(bx + 1.5, by + 1.5, 8, 6, 3.6, 1, 4, 3, "#C7E6FF")}${door(bx + 5, by + 1.5, 6)}${tree(bx + 10.5, by + 9, 0.8)}${sign(bx + 5.5, by + 4.5, 6.4, "🏡")}`,
 };
 /* Which block each place stands in (blocks are 12 x 12 with roads between). */
 const CBLOCK = {
   "by-cafe": [0, 0], "by-frisor": [0, 0], "by-lejlighed": [14, 0], "by-tag": [14, 0], "by-post": [28, 0], "by-park": [42, 0],
   "by-camping": [0, 14], "by-torv": [14, 14], "by-hospital": [28, 14], "by-indkob": [42, 14],
-  "by-uni": [0, 28], "by-villa": [14, 28], "by-familiehus": [28, 28],
+  "by-uni": [0, 28], "by-villa": [14, 28], "by-familiehus": [28, 28], "by-byg": [42, 28],
 };
 /* Where a place's badge (new, explored, locked, live players) goes. */
-const BADGE = { "by-cafe": [3.3, 3.5, 3.4], "by-frisor": [9, 3.5, 3.8], "by-lejlighed": [4.5, 4, 9.2], "by-tag": [9.9, 2.5, 5.7], "by-post": [5.5, 4.5, 3.8], "by-park": [6, 6, 4], "by-camping": [6.5, 6.5, 4.6], "by-torv": [6, 6, 3.4], "by-hospital": [5.5, 4.5, 6.2], "by-indkob": [6, 5, 4.6], "by-uni": [6, 4.5, 7.4], "by-villa": [4.5, 3.5, 5.6], "by-familiehus": [5.5, 4.5, 6.4] };
+const BADGE = { "by-cafe": [3.3, 3.5, 3.4], "by-frisor": [9, 3.5, 3.8], "by-lejlighed": [4.5, 4, 9.2], "by-tag": [9.9, 2.5, 5.7], "by-post": [5.5, 4.5, 3.8], "by-park": [6, 6, 4], "by-camping": [6.5, 6.5, 4.6], "by-torv": [6, 6, 3.4], "by-hospital": [5.5, 4.5, 6.2], "by-indkob": [6, 5, 4.6], "by-uni": [6, 4.5, 7.4], "by-villa": [4.5, 3.5, 5.6], "by-familiehus": [5.5, 4.5, 6.4], "by-byg": [5, 3, 2.6] };
 
 /* Centrum seen from above. opts: { seen, open(id) → bool, price(id), gift: the post office has a gift today }. */
 export function citySvg(ctx, here, peers, t, opts = {}) {
@@ -243,11 +254,11 @@ export function citySvg(ctx, here, peers, t, opts = {}) {
   const roads = `${road(12, 0, 2, 42)}${road(26, 0, 2, 42)}${road(40, 0, 2, 42)}${road(0, 12, 56, 2)}${road(0, 26, 56, 2)}`;
   const plots = [[0, 0], [14, 0], [28, 0], [42, 0], [0, 14], [14, 14], [28, 14], [42, 14], [0, 28], [14, 28], [28, 28], [42, 28]].map(([x, y], i) => box(x + 0.4, y + 0.4, 11.2, 11.2, 0.35, ["#FBE3EC", "#E2F0FB", "#FFF6D6", "#DFF3D8"][i % 4])).join("");
   // The bus back to the town (the corner block).
-  const [bx2, by2] = Pp(48, 34, 0.5);
-  const bus = `<g class="tm-place" data-pl="town" role="button" aria-label="${t("Til byen")}">${box(43.5, 31, 8, 3, 2.6, "#FFD93D", 0.4)}${windows(43.5, 31, 8, 3, 2.6, 1, 5, 1, "#C7E6FF", 0.4)}${(() => {
-    const [a, b] = Pp(44.5, 34, 0.4), [c, d] = Pp(50.5, 34, 0.4);
+  const [bx2, by2] = Pp(48, 39.5, 0.5);
+  const bus = `<g class="tm-place" data-pl="town" role="button" aria-label="${t("Til byen")}">${box(43.5, 36.6, 8, 2.6, 2.4, "#FFD93D", 0.4)}${windows(43.5, 36.6, 8, 2.6, 2.4, 1, 5, 1, "#C7E6FF", 0.4)}${(() => {
+    const [a, b] = Pp(44.5, 39.2, 0.4), [c, d] = Pp(50.5, 39.2, 0.4);
     return `<circle cx="${a}" cy="${b}" r="6" fill="${OL}"/><circle cx="${c}" cy="${d}" r="6" fill="${OL}"/>`;
-  })()}<rect x="${bx2 - 46}" y="${by2 + 12}" width="92" height="26" rx="13" fill="#fff" stroke="${OL}" stroke-width="2"/><text x="${bx2}" y="${by2 + 30}" class="tm-area">🚌 ${t("Til byen")}</text></g>${tree(44, 40, 0.8)}${tree(53, 29.5, 0.8, "#8FD08A")}`;
+  })()}<rect x="${bx2 - 46}" y="${by2 + 12}" width="92" height="26" rx="13" fill="#fff" stroke="${OL}" stroke-width="2"/><text x="${bx2}" y="${by2 + 30}" class="tm-area">🚌 ${t("Til byen")}</text></g>${tree(52.6, 40.6, 0.7)}`;
   const items = [];
   for (const [id, pl] of Object.entries(CITY_PLACES)) {
     const blk = CBLOCK[id];
@@ -263,7 +274,9 @@ export function citySvg(ctx, here, peers, t, opts = {}) {
         ? `<g class="tm-seen" pointer-events="none"><circle cx="${sx}" cy="${sy}" r="11" fill="#6BCB77" stroke="#fff" stroke-width="3"/><path d="M${sx - 5} ${sy} l4 4 l7 -8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></g>`
         : `<g class="tm-new" pointer-events="none"><rect x="${sx - 19}" y="${sy - 11}" width="38" height="22" rx="11" fill="#FFD93D" stroke="${OL}" stroke-width="2"/><text x="${sx}" y="${sy + 5}" class="tm-newt">${t("NY")}</text></g>`;
     const gift = id === "by-post" && opts.gift ? `<g class="tm-gift" pointer-events="none"><rect x="${sx - 52}" y="${sy - 62}" width="104" height="30" rx="12" fill="#fff" stroke="${OL}" stroke-width="2.5"/><text x="${sx}" y="${sy - 42}" class="tm-area">🎁 ${t("Fredagsgave")}</text></g>` : "";
-    items.push([blk[0] + blk[1] + (id === "by-tag" || id === "by-frisor" ? 0.5 : 0), `<g class="tm-place${open ? "" : " locked"}${id === here ? " here" : ""}" data-pl="go" data-k="${id}" role="button" aria-label="${t(pl.n)}">${CB[id](blk[0] + 0.4, blk[1] + 0.4)}${badge}${gift}${who.map((pe, j) => `<circle cx="${sx + 22 - j * 12}" cy="${sy - 22}" r="9" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="3"/>`).join("")}</g>`]);
+    // A character here needs help with a real task today.
+    const quest = (opts.quests || []).includes(id) ? `<g pointer-events="none" class="lf-quest"><circle cx="${sx - 52}" cy="${sy}" r="13" fill="#E5484D" stroke="#fff" stroke-width="3"/><text x="${sx - 52}" y="${sy + 6}" text-anchor="middle" class="tm-newt" fill="#fff" style="fill:#fff">!</text></g>` : "";
+    items.push([blk[0] + blk[1] + (id === "by-tag" || id === "by-frisor" ? 0.5 : 0), `<g class="tm-place${open ? "" : " locked"}${id === here ? " here" : ""}" data-pl="go" data-k="${id}" role="button" aria-label="${t(pl.n)}">${CB[id](blk[0] + 0.4, blk[1] + 0.4)}${badge}${gift}${quest}${who.map((pe, j) => `<circle cx="${sx + 22 - j * 12}" cy="${sy - 22}" r="9" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="3"/>`).join("")}</g>`]);
   }
   items.sort((a, b) => a[0] - b[0]);
   const deco = [[13, 6], [27, 6], [41, 6], [13, 20], [27, 20], [41, 20], [6, 13], [20, 13], [34, 13], [48, 13], [6, 27], [20, 27], [34, 27]].map(([a, b], i) => {
@@ -276,5 +289,5 @@ export function citySvg(ctx, here, peers, t, opts = {}) {
 export const CITY_MAP_EN = {
   Centrum: "Downtown", "Til byen": "To the town", "Til Centrum": "To downtown", Fredagsgave: "Friday gift", "Caféen": "The café", "Frisørsalonen": "The hair salon", Posthuset: "The post office",
   Lejlighederne: "The apartments", Tagterrassen: "The rooftop", "Kolbøtteparken": "Somersault Park", Torvet: "The square", Campingpladsen: "The campsite", Hospitalet: "The hospital",
-  "Indkøbscentret": "The mall", Universitetet: "The university", "Villaen med pool": "The pool villa", "Det store familiehus": "The big family house",
+  "Indkøbscentret": "The mall", Universitetet: "The university", "Villaen med pool": "The pool villa", "Det store familiehus": "The big family house", "Familiens byggeplads": "The family's building site",
 };

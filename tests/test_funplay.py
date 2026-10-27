@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 from unittest.mock import patch
 
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
@@ -229,3 +230,77 @@ async def test_childrens_challenges(
     assert msg["error"]["code"] == "not_allowed"
     msg = await _ws(child, 10, type="hverdagsro/fun", action="task_remove", task=task["id"], approver="ida")
     assert [t["id"] for t in msg["result"]["tasks"]] == [grown["id"]]
+
+
+async def test_building_site(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+) -> None:
+    """Everything real that is done lays a brick; enough bricks build the next thing, with coins for the builders."""
+    family = init_integration.runtime_data
+    child = await hass_ws_client(hass, hass_read_only_access_token)
+    await _ws(child, 1, type="hverdagsro/mission", mission="teeth", member="ida", done=True)
+    build = funplay.fun(family)["build"]
+    assert (build["bricks"], build["who"]) == (1, {"ida": 1})
+    await _ws(child, 2, type="hverdagsro/mission", mission="teeth", member="ida", done=False)
+    assert funplay.fun(family)["build"]["bricks"] == 0
+    await family.async_save_section("routines", {"boards": {"ida": {"morgen": ["op"]}}})
+    await _ws(child, 3, type="hverdagsro/board", member="ida", slot="morgen", index=0, done=True)
+    await _ws(child, 4, type="hverdagsro/board", member="ida", slot="morgen", index=0, done=False)
+    assert funplay.fun(family)["build"]["bricks"] == 0
+    coins = family.game("ida")["coins"]
+    need = funplay.BUILDS[0][1]
+    for _ in range(need + 2):
+        funplay.brick(family, "ida", 1)
+    build = funplay.fun(family)["build"]
+    assert build["built"] == [funplay.BUILDS[0][0]] and build["i"] == 1 and build["bricks"] == 2
+    assert build["who"] == {"ida": 2}
+    assert family.game("ida")["coins"] == coins + funplay.COINS_BUILT
+    assert funplay.fun(family)["party"]["reason"] == "build"
+
+
+async def test_help_votes_and_play_time(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A child says they helped; the one helped (or a grown-up) says yes, and both get coins. Votes and minutes."""
+    family = init_integration.runtime_data
+    parent = await hass_ws_client(hass)
+    child = await hass_ws_client(hass, hass_read_only_access_token)
+    msg = await _ws(child, 1, type="hverdagsro/fun", action="help_ask", member="ida", helped="ida", task="x")
+    assert msg["error"]["code"] == "not_for_you"
+    msg = await _ws(
+        child, 2, type="hverdagsro/fun", action="help_ask", member="ida", helped="anna", task="mad", title="Lave mad"
+    )
+    help_ = msg["result"]["helps"][0]
+    assert (help_["by"], help_["for"], help_["ok"]) == ("ida", "anna", False)
+    msg = await _ws(child, 3, type="hverdagsro/fun", action="help_ok", help=help_["id"])
+    assert msg["error"]["code"] == "not_allowed"
+    msg = await _ws(child, 4, type="hverdagsro/fun", action="help_ok", help="nope")
+    assert msg["error"]["code"] == "no_task"
+    for msg_id in (5, 6):
+        msg = await _ws(parent, msg_id, type="hverdagsro/fun", action="help_ok", help=help_["id"])
+    assert msg["result"]["helps"][0]["ok"]
+    assert family.game("ida")["coins"] == funplay.COINS_HELP == family.game("anna")["coins"]
+    # Votes for the dinners of the week.
+    msg = await _ws(child, 7, type="hverdagsro/fun", action="vote", member="ida", dish=" Pizza ")
+    assert msg["result"]["votes"] == {"2026-10-26": {"ida": "Pizza"}}
+    # Minutes of play: one a minute at most, and a new count each day.
+    await _ws(child, 8, type="hverdagsro/fun", action="tick", member="ida")
+    msg = await _ws(child, 9, type="hverdagsro/fun", action="tick", member="ida")
+    assert msg["result"]["played"]["ida"]["min"] == 1
+    freezer.tick(timedelta(seconds=61))
+    msg = await _ws(child, 10, type="hverdagsro/fun", action="tick", member="ida")
+    assert msg["result"]["played"]["ida"]["min"] == 2
+    freezer.tick(timedelta(days=1))
+    msg = await _ws(child, 11, type="hverdagsro/fun", action="tick", member="ida")
+    assert msg["result"]["played"]["ida"] == {
+        "date": "2026-10-27",
+        "min": 1,
+        "at": msg["result"]["played"]["ida"]["at"],
+    }
