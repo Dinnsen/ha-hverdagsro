@@ -192,7 +192,7 @@ async def test_childrens_challenges(
         action="task_add",
         title="Find min bamse",
         approver="ida",
-        coins=50,
+        coins=51,
         **{"for": ["oskar"]},
     )
     assert msg["error"]["code"] == "invalid_format"
