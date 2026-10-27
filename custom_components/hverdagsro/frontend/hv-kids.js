@@ -136,7 +136,7 @@ const hbTrips = (ctx, id) => ctx.children().reduce((n, k) => {
 /* The routine board as missions without points: one per part of the day, done when every card is done. Today only. */
 export function routineMissions(ctx, kid, date = new Date()) {
   const m = ctx.member(kid);
-  if (!m || !ctx.on("board") || !ctx.feature(m, "board") || startOfDay(date).getTime() !== startOfDay(new Date()).getTime()) return [];
+  if (!m || !ctx.on("board") || !ctx.feature(m, "board") || startOfDay(date).getTime() !== startOfDay(new Date()).getTime() || !ctx.atHome(m, date)) return [];
   const B = boardOf(ctx, kid), done = doneOf(ctx, kid);
   return RSLOTS.filter(([slot]) => B[slot]?.length).map(([slot, name, , span, h0]) => {
     const n = B[slot].filter((c, i) => done.includes(`${slot}:${i}`)).length;
@@ -172,6 +172,8 @@ export function homeworkFor(ctx, kid, date = new Date()) {
 
 /* Who brings and picks up a child on a day: { bring: {who, name, at}, hent: {who, name, at} } or null. */
 export function pickupFor(ctx, kidId, date = new Date()) {
+  // A child at their other home is not brought or picked up from here.
+  if (!ctx.atHome(ctx.member(kidId), date)) return null;
   const R = routines(ctx), wd = String(((date.getDay() + 6) % 7) + 1), own = R.weeks[weekKey(date)]?.[kidId]?.[wd];
   const day = own || R.pickups[kidId]?.[wd] ? { ...(R.pickups[kidId]?.[wd] || {}), ...(own || {}) } : null;
   if (!day) return null;
@@ -420,17 +422,19 @@ function pRoutines(ctx) {
 }
 
 // ---------------------------------------------------------------- faste opgaver (missions with days)
+/* For a child with two homes: in which home a fixed task applies. */
+const whereText = (ctx, p, w) => (w === "always" ? `🏠🚗 ${ctx.t("Begge hjem")}` : w === "away" ? `🚗 ${p.custody?.away || ctx.t("Det andet hjem")}` : `🏠 ${p.custody?.here || ctx.t("Hjemme hos os")}`);
 function rChores(ctx) {
   const people = ctx.members();
   if (!people.length) return `<section class="card"><p class="t-sub">${esc(ctx.t("Tilføj familien først."))}</p></section>`;
   if (!people.some((p) => p.id === rWho)) rWho = (ctx.children()[0] || people[0]).id;
   const p = ctx.member(rWho), all = ctx.data.missions || [], mine = all.filter((r) => r.member === rWho);
-  const pts = p.role === "child" && ctx.feature(p, "points");
+  const pts = p.role === "child" && ctx.feature(p, "points"), two = !!p.custody?.enabled;
   return `<section class="card"><div class="card-head"><h2>${esc(ctx.t("Hvem?"))}</h2><span class="meta">${esc(ctx.t("{n} faste opgaver i familien", { n: all.length }))}</span></div>
     <div class="filters">${people.map((x) => `<button class="fchip" data-act="kids-rwho" data-id="${esc(x.id)}" aria-pressed="${x.id === rWho}" style="--fc:${esc(x.color)}">${ctx.avatar(x.id)}${esc(x.name)}<small class="num" style="opacity:.6">${all.filter((r) => r.member === x.id).length}</small></button>`).join("")}</div></section>
   <div class="grid" style="margin-top:16px">
   <section class="card s7"><div class="card-head"><h2>${esc(ctx.t("{name}s faste opgaver", { name: p.name }))}</h2><span class="meta">${esc(ctx.t("Tryk på dagene"))}</span></div>
-    <div class="rc-list">${mine.map((r) => `<div class="rcr" style="--pc:${esc(p.color)}"><span class="rc-em">${esc(r.emoji || "⭐")}</span><div class="rcr-t"><b>${esc(r.title)}</b><span class="wd">${WD.map((d, k) => `<button data-act="kids-rday" data-id="${esc(r.id)}" data-d="${k}" aria-pressed="${r.days.includes(k)}" aria-label="${esc(ctx.t(WD_LONG[k]))}">${esc(ctx.t(d))}</button>`).join("")}</span></div>
+    <div class="rc-list">${mine.map((r) => `<div class="rcr" style="--pc:${esc(p.color)}"><span class="rc-em">${esc(r.emoji || "⭐")}</span><div class="rcr-t"><b>${esc(r.title)}</b><span class="wd">${WD.map((d, k) => `<button data-act="kids-rday" data-id="${esc(r.id)}" data-d="${k}" aria-pressed="${r.days.includes(k)}" aria-label="${esc(ctx.t(WD_LONG[k]))}">${esc(ctx.t(d))}</button>`).join("")}</span>${two ? `<button class="rc-where" data-act="kids-rwhere" data-id="${esc(r.id)}">${esc(whereText(ctx, p, r.where || "here"))}</button>` : ""}</div>
       ${pts ? `<span class="step"><button data-act="kids-rpts" data-id="${esc(r.id)}" data-d="-5" aria-label="${esc(ctx.t("Færre point"))}">−</button><b class="num">${r.points}</b>${STAR}<button data-act="kids-rpts" data-id="${esc(r.id)}" data-d="5" aria-label="${esc(ctx.t("Flere point"))}">+</button></span>` : "<span></span>"}
       <button class="iconbtn" data-act="kids-rdel" data-id="${esc(r.id)}" aria-label="${esc(ctx.t("Fjern {what}", { what: r.title }))}">${svg("x")}</button></div>`).join("") || `<p class="t-sub">${esc(ctx.t("Ingen faste opgaver endnu. Tryk på en opgave til højre."))}</p>`}</div>
     <div class="t-sub" style="margin-top:12px">${esc(pts ? ctx.t("Faste opgaver dukker selv op på de valgte dage og giver point, når de er klaret.") : ctx.t("Faste opgaver dukker selv op på de valgte dage."))} ${esc(ctx.t("Genvej:"))} <button class="lnk" data-act="kids-rall" data-d="hverdage">${esc(ctx.t("alle på hverdage"))}</button> · <button class="lnk" data-act="kids-rall" data-d="hver">${esc(ctx.t("alle hver dag"))}</button></div></section>
@@ -463,9 +467,9 @@ function rPickup(ctx) {
   const sec = (t, title, sub, ic) => `<section class="hb-sec hb-${t}"><div class="hb-sh"><span class="hb-si">${svg(ic)}</span><div><h3>${esc(title)}</h3><small>${esc(sub)}</small></div></div>
     <div class="hb-rows">${K[t].map(([who, tm], d) => {
       const w = hbWho(ctx, who), mor = who === "mor";
-      const own = K[t][d][2];
-      return `<button class="hb-row${mor ? " mor" : ""}${who ? "" : " none"}${own ? " own" : ""}" data-act="kids-hbday" data-t="${t}" data-d="${d}" ${mor ? "disabled" : ""} style="--hc:${esc(w.c)};animation-delay:${d * 40}ms">
-      <span class="hb-day"><b>${esc(ctx.t(HB_DAYS[d]).slice(0, 3))}</b>${wk ? `<small>${ddmm(addDays(mon, d))}</small>` : ""}</span>${hbAv(ctx, who)}<span class="hb-nm">${esc(w.name)}${mor ? `<small>${esc(ctx.t("fra kalenderen"))}</small>` : own ? `<small>${esc(ctx.t("kun denne uge"))}</small>` : ""}</span><span class="hb-tm num">${mor || !who ? "" : hhmmDot(tm)}</span>${mor ? "" : svg("chev")}</button>`;
+      const own = K[t][d][2], away = wk && !ctx.atHome(kid, addDays(mon, d));
+      return `<button class="hb-row${mor ? " mor" : ""}${who ? "" : " none"}${own ? " own" : ""}${away ? " away" : ""}" data-act="kids-hbday" data-t="${t}" data-d="${d}" ${mor ? "disabled" : ""} style="--hc:${esc(w.c)};animation-delay:${d * 40}ms">
+      <span class="hb-day"><b>${esc(ctx.t(HB_DAYS[d]).slice(0, 3))}</b>${wk ? `<small>${ddmm(addDays(mon, d))}</small>` : ""}</span>${hbAv(ctx, who)}<span class="hb-nm">${esc(w.name)}${away ? `<small>${esc(ctx.homeLabel(kid, addDays(mon, d)))}</small>` : mor ? `<small>${esc(ctx.t("fra kalenderen"))}</small>` : own ? `<small>${esc(ctx.t("kun denne uge"))}</small>` : ""}</span><span class="hb-tm num">${mor || !who ? "" : hhmmDot(tm)}</span>${mor ? "" : svg("chev")}</button>`;
     }).join("")}</div>
     <div class="hb-week"><small>${esc(ctx.t("Hele ugen:"))}</small>${H.map((h) => `<button data-act="kids-hbweek" data-t="${t}" data-id="${esc(h.id)}" style="--hc:${esc(hbWho(ctx, h.id).c)}" title="${esc(ctx.t("{name} alle dage", { name: h.name }))}">${hbAv(ctx, h.id, "sm")}</button>`).join("")}</div></section>`;
   const instName = ctx.t(INST[kid.institution] || INST.none).toLowerCase();
@@ -818,6 +822,10 @@ const acts = {
     ctx.data.missions = list;
     ctx.save("missions", list);
   },
+  "kids-rwhere": (el, e, ctx) => {
+    const next = { here: "away", away: "always", always: "here" };
+    saveMissions(ctx, (ctx.data.missions || []).map((r) => (r.id === el.dataset.id ? { ...r, where: next[r.where || "here"] } : r)));
+  },
   "kids-rpts": (el, e, ctx) => {
     const list = (ctx.data.missions || []).map((r) => (r.id === el.dataset.id ? { ...r, points: Math.max(0, Math.min(50, r.points + +el.dataset.d)) } : r));
     saveMissions(ctx, list);
@@ -1033,9 +1041,12 @@ canvas.hk-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; poi
 .hk-wk { padding: 0 4px !important; gap: 0 !important; }
 .hk-wk .iconbtn { width: 28px; height: 28px; }
 .hb-row.none .hb-nm { color: var(--muted); }
+.rc-where { justify-self: start; margin-top: 4px; border: 0; border-radius: 999px; padding: 5px 10px; font: 700 12px var(--font-body); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+.hb-row.away { opacity: .5; background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--muted) 10%, transparent) 8px 16px); }
 `;
 
 const en = {
+  "Begge hjem": "Both homes", "Det andet hjem": "The other home", "Hjemme hos os": "At home with us", "Hos den anden forælder": "With the other parent",
   Morgenrutinen: "Morning routine", "Rutinen efter skole": "After-school routine", Aftenrutinen: "Evening routine", "{n} af {total} kort": "{n} of {total} cards", "Lektier · {hold}": "Homework · {hold}",
   "Fast plan": "Fixed plan", "kun denne uge": "this week only", "denne uge": "this week", "næste uge": "next week", "sidste uge": "last week", "Ugen før": "Week before", "Ugen efter": "Week after",
   "Ugen følger den faste plan, undtagen {n} ændringer, der kun gælder denne uge.": "The week follows the fixed plan, except {n} changes for this week only.",

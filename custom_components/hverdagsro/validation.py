@@ -151,6 +151,31 @@ def _room_prefs(value: Any) -> dict[str, Any] | None:
     return value
 
 
+def _custody(value: Any) -> dict[str, Any] | None:
+    """A child with two homes: which days of a repeating cycle they are here, plus single dates the other way."""
+    if value is None:
+        return None
+    plan = CUSTODY(value)
+    if len(plan["except"]) > 200:
+        raise vol.Invalid("too many single dates")
+    return plan
+
+
+CUSTODY = vol.Schema(
+    {
+        vol.Optional("enabled", default=False): cv.boolean,
+        vol.Optional("start", default=None): iso_date,
+        vol.Optional("cycle", default=[1] * 14): vol.All(
+            cv.ensure_list, [vol.All(vol.Coerce(int), vol.In((0, 1)))], vol.Length(min=1, max=28)
+        ),
+        vol.Optional("except", default={}): {iso_date: vol.All(vol.Coerce(int), vol.In((0, 1)))},
+        vol.Optional("here", default=""): text(24),
+        vol.Optional("away", default=""): text(24),
+        vol.Optional("switch", default=None): hhmm,
+    }
+)
+
+
 MEMBER = vol.Schema(
     {
         vol.Required("id"): ident,
@@ -179,6 +204,12 @@ MEMBER = vol.Schema(
         vol.Optional("goal", default=None): vol.Any(None, ident),
         vol.Optional("playroom", default=None): _playroom,
         vol.Optional("room_prefs", default=None): _room_prefs,
+        vol.Optional("custody", default=None): _custody,
+        # The member's own menu: the tabs in their order, and the ones moved to "Mere".
+        vol.Optional("nav", default=None): vol.Any(
+            None,
+            {vol.Optional("order", default=[]): text_list(30, 30), vol.Optional("hide", default=[]): text_list(30, 30)},
+        ),
     }
 )
 
@@ -194,6 +225,8 @@ MISSION = vol.Schema(
         vol.Optional("time", default=None): hhmm,
         vol.Optional("emoji", default=""): text(8),
         vol.Optional("part", default="day"): vol.In(("morning", "day", "afternoon", "evening")),
+        # For a child with two homes: only when here (default), only at the other home, or always.
+        vol.Optional("where", default="here"): vol.In(("here", "away", "always")),
     }
 )
 

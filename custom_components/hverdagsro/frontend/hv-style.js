@@ -387,6 +387,10 @@ main { padding-block: 22px 40px; }
 .lchip.new .ic { width: 16px; height: 16px; }
 .items { display: flex; flex-direction: column; gap: 6px; }
 .item { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 6px 8px 10px; border-radius: 14px; background: var(--surface-2); transition: opacity .3s, transform .3s; }
+.item.li { grid-template-columns: 30px minmax(0, 1fr) auto; }
+.li-txt { display: grid; gap: 2px; min-width: 0; }
+.li-txt .t-ttl { overflow-wrap: anywhere; }
+.li-txt .t-sub { font-size: 12.5px; overflow-wrap: anywhere; }
 .item.done { opacity: .55; }
 .item.done .t-ttl { text-decoration: line-through; }
 .item.gone { opacity: 0; transform: translateX(30px); }

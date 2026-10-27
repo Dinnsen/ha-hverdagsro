@@ -240,13 +240,14 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
   for (const [k, v] of Object.entries({ quick: [], routines: { helpers: [], pickups: {}, boards: {}, cards: [] }, pins: {}, board_done: {}, game: {}, osky: { accounts: {}, lists: [] } })) if (!(k in store)) store[k] = v;
   const calls = [];
   const listeners = new Set();
+  const playListeners = new Set();
   const users = seed?.users || USERS;
   const u = users[user] || Object.values(users)[0];
   const todoItems = seed?.todoItems || {
     "todo.indkob": [
       { uid: "1", summary: "Mælk", status: "needs_action" },
       { uid: "2", summary: "Rugbrød", status: "needs_action" },
-      { uid: "3", summary: "Bananer", status: "needs_action" },
+      { uid: "3", summary: "Rosiner", status: "needs_action", description: "250 GR. / REMA 1000 ØKOLOGISKE · 13,95 kr." },
       { uid: "4", summary: "Kaffe", status: "completed" },
     ],
     "todo.huskeliste": [{ uid: "5", summary: "Madpakke fredag", status: "needs_action", due: ymd(day(4)) }],
@@ -334,11 +335,17 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
       check(msg.member);
       if ("msg_off" in msg.prefs && !canManage()) throw { code: "not_allowed", message: "Ikke tilladt" };
       const m = store.family.find((x) => x.id === msg.member);
-      for (const k of ["quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal", "playroom", "room_prefs"]) if (k in msg.prefs) m[k] = msg.prefs[k];
+      for (const k of ["quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal", "playroom", "room_prefs", "nav"]) if (k in msg.prefs) m[k] = msg.prefs[k];
       setTimeout(push, 10);
       return null;
     }
     if (t === "hverdagsro/pin") return { ok: !store.family.find((x) => x.id === msg.member)?.has_pin || msg.pin === "1234" };
+    if (t === "hverdagsro/play") {
+      check(msg.member);
+      const player = msg.space ? { member: msg.member, space: msg.space, x: msg.x, y: msg.y, me: msg.me || {} } : { member: msg.member, space: "" };
+      setTimeout(() => playListeners.forEach((cb) => cb({ player })), 10);
+      return null;
+    }
     if (t === "hverdagsro/game") {
       check(msg.member);
       const g = (store.game[msg.member] ||= { coins: 0, xp: 0, owned: [] });
@@ -474,6 +481,13 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
           listeners.add(cb);
           setTimeout(() => cb(panelState()), 30);
           return () => listeners.delete(cb);
+        }
+        if (msg.type === "hverdagsro/play_subscribe") {
+          // A sibling who is playing too: Oskar in the park, and he walks about.
+          const oskar = { member: "oskar", space: "park-plads", x: 640, y: 590, me: { skin: "#F6C9A3", hair: "pjusk", hairc: "#A8642A", top: "#4D96FF", bottom: "#3A3A55", extra: "kasket" } };
+          playListeners.add(cb);
+          setTimeout(() => cb({ players: [oskar] }), 30);
+          return () => playListeners.delete(cb);
         }
         if (msg.type === "weather/subscribe_forecast") {
           const f =

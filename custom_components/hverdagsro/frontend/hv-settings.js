@@ -548,6 +548,51 @@ function skemaHide(ctx) {
     <div class="skh-chips">${titles.map((n) => `<button data-act="set-skhide" data-w="${esc(n)}" aria-pressed="${isHidden(n)}">${isHidden(n) ? svg("eye") : ""}${esc(n)}</button>`).join("") || `<span class="t-sub">${esc(ctx.t("Ingen timer i skemaet i denne uge"))}</span>`}</div>
     <div class="skh-add"><input id="skh-in" maxlength="60" placeholder="${esc(ctx.t("Eller skriv et ord, fx Pædagog"))}"><button class="btn soft sm" data-act="set-skhide-add">${svg("plus")}${esc(ctx.t("Skjul"))}</button></div></div>`;
 }
+/* A child with two homes (Mor og far bor hver for sig): which days they are here, in a cycle of 1–4 weeks, plus single
+   dates the other way. Missions, routines and Hent og bring follow it. */
+const CUSTODY_PRESETS = [
+  ["uge", "Uge for uge", [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]],
+  ["223", "2-2-3", [1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0]],
+  ["weekend", "Hver anden weekend ude", [1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]],
+  ["weekendher", "Hver anden weekend her", [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
+  ["95", "9/5", [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]],
+];
+const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const mondayIso = (d) => isoOf(addDays(startOfDay(d), -((d.getDay() + 6) % 7)));
+const custodyOf = (k) => ({ enabled: false, start: null, cycle: [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0], except: {}, here: "", away: "", switch: null, ...(k.custody || {}) });
+function custodyField(ctx, k) {
+  const c = custodyOf(k), t = ctx.t, id = esc(k.id);
+  const head = `<div class="cu-h"><span class="bd-ic">🏠</span><div><b>${esc(t("To hjem"))}</b><small>${esc(c.enabled ? t("Opgaver, rutiner og Hent og bring følger, hvor {name} er.", { name: k.name }) : t("Slå til, hvis {name} bor skiftevis hos mor og far.", { name: k.name }))}</small></div><button class="toggle" data-act="set-cu-on" data-kid="${id}" aria-pressed="${!!c.enabled}" aria-label="${esc(t("To hjem"))}" style="--tc:${esc(k.color)}"></button></div>`;
+  if (!c.enabled) return `<div class="cu">${head}</div>`;
+  const start = c.start ? new Date(c.start + "T12:00:00") : new Date();
+  const weeks = Math.max(1, Math.ceil(c.cycle.length / 7)), cyc = Array.from({ length: weeks * 7 }, (_, i) => c.cycle[i] ?? 1);
+  const preset = CUSTODY_PRESETS.find((p) => p[2].length === cyc.length && p[2].every((v, i) => v === cyc[i]));
+  const WDS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
+  const grid = Array.from({ length: weeks }, (_, w) => `<div class="cu-wk"><small>${esc(t("Uge {n}", { n: w + 1 }))}</small>${WDS.map((d, i) => {
+    const n = w * 7 + i, here = !!cyc[n];
+    return `<button data-act="set-cu-day" data-kid="${id}" data-n="${n}" aria-pressed="${here}" title="${esc(here ? c.here || t("Her") : c.away || t("Ude"))}"><b>${esc(t(d))}</b><i>${here ? "🏠" : "🚗"}</i></button>`;
+  }).join("")}</div>`).join("");
+  // The next four weeks, from this Monday: tap a day to swap just that date.
+  const mon = addDays(startOfDay(new Date()), -((new Date().getDay() + 6) % 7));
+  const next = Array.from({ length: 28 }, (_, i) => {
+    const d = addDays(mon, i), iso = isoOf(d), here = ctx.atHome({ custody: c }, d), ex = iso in (c.except || {});
+    return `<button data-act="set-cu-ex" data-kid="${id}" data-d="${iso}" aria-pressed="${here}" class="${ex ? "ex" : ""}${iso === isoOf(new Date()) ? " today" : ""}" title="${esc(ctx.fmt.date(d, { weekday: "long", day: "numeric", month: "long" }))}"><small>${d.getDate()}</small><i>${here ? "🏠" : "🚗"}</i></button>`;
+  }).join("");
+  return `<div class="cu on">${head}
+    <div class="cu-names"><label><span>🏠 ${esc(t("Her hos os hedder det"))}</span><input data-in="set-cu-name" data-kid="${id}" data-f="here" maxlength="24" value="${esc(c.here)}" placeholder="${esc(t("Hos far"))}"></label><label><span>🚗 ${esc(t("Det andet hjem"))}</span><input data-in="set-cu-name" data-kid="${id}" data-f="away" maxlength="24" value="${esc(c.away)}" placeholder="${esc(t("Hos mor"))}"></label></div>
+    <div class="cu-pre">${CUSTODY_PRESETS.map(([pid, n]) => `<button data-act="set-cu-pre" data-kid="${id}" data-id="${pid}" aria-pressed="${preset?.[0] === pid}">${esc(t(n))}</button>`).join("")}<span class="cu-len">${[1, 2, 3, 4].map((w) => `<button data-act="set-cu-len" data-kid="${id}" data-w="${w}" aria-pressed="${weeks === w}">${esc(t("{n} uge", { n: w }))}</button>`).join("")}</span></div>
+    <div class="cu-start"><label><span>${esc(t("Uge 1 begynder mandag"))}</span><input type="date" data-in="set-cu-start" data-kid="${id}" value="${esc(c.start || mondayIso(new Date()))}"></label><label><span>${esc(t("Skifter kl."))}</span><input type="time" data-in="set-cu-switch" data-kid="${id}" value="${esc(c.switch || "")}"></label></div>
+    <div class="cu-grid">${grid}</div><small class="t-sub">${esc(t("Tryk på en dag for at skifte. 🏠 = sover her, 🚗 = hos {away}.", { away: c.away || t("det andet hjem") }))}</small>
+    <b class="cu-h2">${esc(t("De næste fire uger"))}</b><div class="cu-next">${next}</div><small class="t-sub">${esc(t("Tryk på en dato for at bytte netop den dag, fx i ferier. Byttede dage har en ring om."))}</small></div>`;
+}
+function setCustody(ctx, kidId, change) {
+  const k = ctx.member(kidId);
+  if (!k) return;
+  const c = custodyOf(k);
+  const next = change(c) || c;
+  if (!next.start) next.start = mondayIso(new Date());
+  return saveMember(ctx, k.id, { custody: next });
+}
 function kidsSection(ctx) {
   const kids = ctx.children();
   return `<section class="card" data-st="born"><div class="card-head"><h2>${esc(ctx.t("Børnene"))}</h2>${lockTag(ctx)}</div>
@@ -558,6 +603,7 @@ function kidsSection(ctx) {
           <div class="inst">${KINST.map(([i, n, em]) => `<button data-act="set-kinst" data-kid="${esc(k.id)}" data-id="${i}" aria-pressed="${k.institution === i}"><span>${em}</span>${esc(ctx.t(n))}</button>`).join("")}</div>
           ${bdayField(ctx, k)}
           <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${mods.map(([m, n]) => `<span>${esc(ctx.t(n))}</span><button class="toggle" data-act="set-kmod" data-kid="${esc(k.id)}" data-mod="${m}" aria-pressed="${ctx.feature(k, m)}" aria-label="${esc(ctx.t("{what} for {name}", { what: ctx.t(n), name: k.name }))}" style="--tc:${esc(k.color)}"></button>`).join("")}</div>
+          ${custodyField(ctx, k)}
           ${kidLinks(ctx, k)}</div>`;
       })
       .join("")}</div>` : `<p class="t-sub">${esc(ctx.t("Der er ingen børn i familien endnu."))} <button class="lnk" data-act="set-tab" data-id="familie">${esc(ctx.t("Tilføj under Familien"))}</button></p>`}
@@ -1263,6 +1309,29 @@ const acts = {
       ctx.render(true);
     }
   },
+  "set-cu-on": (el, e, ctx) => setCustody(ctx, el.dataset.kid, (c) => ({ ...c, enabled: !c.enabled })),
+  "set-cu-day": (el, e, ctx) =>
+    setCustody(ctx, el.dataset.kid, (c) => {
+      const cyc = Array.from({ length: Math.max(1, Math.ceil(c.cycle.length / 7)) * 7 }, (_, i) => c.cycle[i] ?? 1);
+      cyc[+el.dataset.n] = cyc[+el.dataset.n] ? 0 : 1;
+      return { ...c, cycle: cyc };
+    }),
+  "set-cu-pre": (el, e, ctx) => setCustody(ctx, el.dataset.kid, (c) => ({ ...c, cycle: [...(CUSTODY_PRESETS.find((p) => p[0] === el.dataset.id)?.[2] || c.cycle)] })),
+  "set-cu-len": (el, e, ctx) =>
+    setCustody(ctx, el.dataset.kid, (c) => {
+      const n = +el.dataset.w * 7;
+      return { ...c, cycle: Array.from({ length: n }, (_, i) => c.cycle[i % c.cycle.length] ?? 1) };
+    }),
+  "set-cu-ex": (el, e, ctx) =>
+    setCustody(ctx, el.dataset.kid, (c) => {
+      const iso = el.dataset.d, except = { ...(c.except || {}) };
+      if (iso in except) delete except[iso];
+      else except[iso] = ctx.atHome({ custody: c }, new Date(iso + "T12:00:00")) ? 0 : 1;
+      // Old single dates are not needed any more.
+      const old = isoOf(addDays(new Date(), -60));
+      for (const d of Object.keys(except)) if (d < old) delete except[d];
+      return { ...c, except };
+    }),
   "set-kinst": (el, e, ctx) => {
     const m = ctx.member(el.dataset.kid);
     if (!m) return;
@@ -1449,6 +1518,9 @@ const acts = {
 };
 
 const inputs = {
+  "set-cu-name": (el, e, ctx) => e.type === "change" && setCustody(ctx, el.dataset.kid, (c) => ({ ...c, [el.dataset.f]: el.value.trim().slice(0, 24) })),
+  "set-cu-start": (el, e, ctx) => e.type === "change" && el.value && setCustody(ctx, el.dataset.kid, (c) => ({ ...c, start: mondayIso(new Date(el.value + "T12:00:00")) })),
+  "set-cu-switch": (el, e, ctx) => e.type === "change" && setCustody(ctx, el.dataset.kid, (c) => ({ ...c, switch: el.value || null })),
   "set-m": (el, e, ctx) => {
     const m = fam(ctx)[famIdx(el)];
     if (!m) return;
@@ -1557,6 +1629,26 @@ const css = `
 .set-m-cols button, .set-w-cols button { width: 20px; height: 20px; border-radius: 50%; border: 0; background: var(--sw); cursor: pointer; transition: transform .2s cubic-bezier(.2,.8,.2,1.4), box-shadow .2s; padding: 0; }
 .set-m-cols button[aria-pressed="true"], .set-w-cols button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--sw); transform: scale(1.1); }
 .set-m-cols button:hover, .set-w-cols button:hover { transform: scale(1.18); }
+.cu { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.cu-h { display: grid; grid-template-columns: auto minmax(0, 1fr) 64px; gap: 10px; align-items: center; }
+.cu-h b { display: block; font-size: 14px; } .cu-h small { color: var(--muted); font-size: 12.5px; }
+.cu-names, .cu-start { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.cu-names label, .cu-start label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.cu-names input, .cu-start input { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.cu-pre { display: flex; flex-wrap: wrap; gap: 6px; }
+.cu-pre button, .cu-len button { border: 0; border-radius: 999px; padding: 7px 12px; font: 700 12.5px var(--font-body); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+.cu-pre button[aria-pressed="true"], .cu-len button[aria-pressed="true"] { background: var(--pc, var(--ink)); color: #fff; }
+.cu-len { display: inline-flex; gap: 4px; margin-left: auto; }
+.cu-grid { display: grid; gap: 6px; }
+.cu-wk { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; }
+.cu-wk small { font-size: 11.5px; font-weight: 800; color: var(--muted); }
+.cu-wk button, .cu-next button { display: grid; justify-items: center; gap: 2px; border: 0; border-radius: 10px; padding: 6px 0; background: var(--surface-2); font: 700 11px var(--font-body); color: var(--muted); cursor: pointer; min-height: 44px; }
+.cu-wk button[aria-pressed="true"], .cu-next button[aria-pressed="true"] { background: color-mix(in srgb, var(--pc, var(--violet)) 18%, var(--surface)); color: var(--ink); }
+.cu-wk i, .cu-next i { font-style: normal; font-size: 15px; }
+.cu-h2 { font-size: 13px; }
+.cu-next { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cu-next button.ex { box-shadow: inset 0 0 0 2px var(--pc, var(--violet)); }
+.cu-next button.today small { color: var(--pc, var(--violet)); font-weight: 900; }
 .set-inst { display: flex; flex-wrap: wrap; gap: 5px; }
 .set-inst button { cursor: pointer; flex-direction: row; gap: 5px; padding: 5px 10px 5px 7px; font-size: 12.5px; border-radius: 999px; }
 .set-inst button span { font-size: 15px; }
@@ -1771,6 +1863,10 @@ const en = {
   "Oplæsning": "Read aloud",
   "Vælg højttaleren på værelset": "Choose the speaker in the room",
   "Børnene": "The children",
+  "To hjem": "Two homes", "Opgaver, rutiner og Hent og bring følger, hvor {name} er.": "Tasks, routines and pickups follow where {name} is.", "Slå til, hvis {name} bor skiftevis hos mor og far.": "Turn on if {name} lives with mum and dad in turns.",
+  "Her hos os hedder det": "Here it's called", "Det andet hjem": "The other home", "Hos far": "At dad's", "Hos mor": "At mum's", "Uge for uge": "Week on, week off", "2-2-3": "2-2-3", "Hver anden weekend ude": "Every other weekend away", "Hver anden weekend her": "Every other weekend here", "9/5": "9/5",
+  "{n} uge": "{n} wk", "Uge 1 begynder mandag": "Week 1 starts on Monday", "Skifter kl.": "Switches at", Her: "Here", Ude: "Away", "Tryk på en dag for at skifte. 🏠 = sover her, 🚗 = hos {away}.": "Tap a day to switch. 🏠 = sleeps here, 🚗 = at {away}.", "det andet hjem": "the other home",
+  "De næste fire uger": "The next four weeks", "Tryk på en dato for at bytte netop den dag, fx i ferier. Byttede dage har en ring om.": "Tap a date to swap just that day, e.g. in holidays. Swapped days have a ring.", Man: "Mon", Tir: "Tue", Ons: "Wed", Tor: "Thu", Fre: "Fri", Lør: "Sat", Søn: "Sun",
   "{what} for {name}": "{what} for {name}",
   "Der er ingen børn i familien endnu.": "There are no children in the family yet.",
   "Tilføj under Familien": "Add under Family",

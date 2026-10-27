@@ -2,6 +2,25 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.5.0] - 2026-10-27
+
+### Added
+- **Mit værelse grows into a whole play world:**
+  - A map with the family's own house in the middle, drawn from its floor plan in Husbyggeren. Every room of the house is a place to play, the garden too, and a sibling's room can be visited.
+  - Seven areas open one level at a time, each with two places: Rescue Town (station and harbour), Forest Town (clearing and farm), Pop Town (dance studio and concert stage), the Adventure Park (rides and water park), Sweet Town (bakery and sweet shop), Tech Town (lab and roof terrace) and Night Town (street and secret cave).
+  - 70 characters of our own, ten per area: rescue dogs with a job each, forest creatures, the pop group Stjerneskud with dancers, a producer and a stylist, sweet little figures, park mascots, inventor heroes and heroes of the night. Tap them to hear what they say, drag them anywhere.
+  - The grown-ups of the family are at home in the living room and kitchen, and a sibling is in their own room.
+  - 60 new things for the house and the town: sofa, TV, kitchen, bathroom, car, swings, lamp posts, a fountain, a market stall, rides, a cake counter, a lab, and more.
+  - Things do something when tapped: lamps turn on, screens switch, music plays, balls bounce, cars drive off, wheels spin, the rest wiggles.
+  - Each child's own copy of every place keeps where they put things and characters.
+- **Play together, live:** siblings who play at the same time see each other in the same place, walk about, and wave to each other. It runs through Home Assistant's own connection; where they are is only kept in memory and is never stored.
+- **Full screen, lying down:** the game fills the screen on phones, tablets and computers, with a hint to turn a phone on its side. Building has its drawer at the side.
+- **Two homes:** a child who lives with mum and dad in turns gets a plan under Familieindstillinger › Børnene: week on week off, 2-2-3, every other weekend, 9/5 or their own cycle of up to four weeks, plus single dates swapped for holidays. Fixed tasks belong to this home, the other home or both, the routine board and Hent og bring follow the plan, and the child's page says where they sleep tonight.
+- **My menu:** everyone puts the tabs in their own order under Mine indstillinger and moves the ones they rarely use to "Mere". The first tab is their start page.
+
+### Fixed
+- **Lists:** a long description (like the Rema 1000 items from Middagsro) no longer squeezes the item's name into one letter per line. The name and the description are stacked.
+
 ## [0.4.0] - 2026-10-27
 
 ### Added

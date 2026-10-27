@@ -195,6 +195,10 @@ class Family:
             return bool(member["role"] == ROLE_PARENT)
         return bool(user.is_admin)
 
+    def check_member_access(self, user: User | None, member_id: str) -> None:
+        """Raise unless the user may act for the member (themselves, or a parent for anyone)."""
+        self._check_member_access(user, member_id)
+
     def _check_member_access(self, user: User | None, member_id: str) -> None:
         """A child may only act for itself.
 
@@ -273,7 +277,18 @@ class Family:
         member = self.require_member(member_id)
         if "msg_off" in prefs and user is not None and not self.can_manage(user):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
-        allowed = {"quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal", "playroom", "room_prefs"}
+        allowed = {
+            "quick_order",
+            "quick_hide",
+            "msg_off",
+            "photo",
+            "skin",
+            "mode",
+            "goal",
+            "playroom",
+            "room_prefs",
+            "nav",
+        }
         family = copy.deepcopy(self.members)
         for item in family:
             if item["id"] == member["id"]:
@@ -327,15 +342,19 @@ class Family:
     # ------------------------------------------------------------------ missions
 
     def missions_for(self, member_id: str, day: date | None = None) -> list[dict[str, Any]]:
-        """The member's missions on a day, in the order they were made."""
+        """The member's missions on a day, in the order they were made. A child with two homes only gets the
+        missions for the home they are in that day."""
         day = day or dt_util.now().date()
         member = self.member(member_id)
         # Missions for everyone are the children's.
         wanted = (member_id, EVERYONE) if member is not None and member["role"] == ROLE_CHILD else (member_id,)
+        here = at_home(member, day) if member is not None else True
         return [
             mission
             for mission in self.data["missions"]
-            if mission["member"] in wanted and day.weekday() in mission["days"]
+            if mission["member"] in wanted
+            and day.weekday() in mission["days"]
+            and (mission.get("where", "here") == "always" or (mission.get("where", "here") == "away") != here)
         ]
 
     def is_done(self, mission_id: str, member_id: str, day: date | None = None) -> bool:
@@ -549,6 +568,26 @@ class Family:
 
     def subscribe(self, listener: Callable[[], None]) -> CALLBACK_TYPE:
         return async_dispatcher_connect(self.hass, self.signal, listener)
+
+
+def at_home(member: dict[str, Any] | None, day: date) -> bool:
+    """Whether a child is with this family on a day (sleeps here). Children with one home always are.
+
+    The custody plan repeats a cycle of days from its start (1 = here, 0 = at the other home); single dates can be
+    set the other way (holidays, swapped weekends)."""
+    plan = (member or {}).get("custody") or {}
+    if not plan.get("enabled") or not plan.get("start"):
+        return True
+    iso = day.isoformat()
+    exceptions = plan.get("except") or {}
+    if iso in exceptions:
+        return bool(exceptions[iso])
+    cycle = plan.get("cycle") or [1]
+    try:
+        start = date.fromisoformat(str(plan["start"]))
+    except ValueError:
+        return True
+    return bool(cycle[(day - start).days % len(cycle)])
 
 
 def _week_start() -> str:

@@ -6,6 +6,9 @@ import { esc } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 import * as Kids from "./hv-kids.js";
 import { occasions, dayNumber } from "./hv-decor.js";
+import * as World from "./hv-world.js";
+import { charSvg } from "./hv-chars.js";
+import { WORLD_THINGS, WORLD_NAMES_EN } from "./hv-worlditems.js";
 import { OL, S, shade, THINGS, PATTERNS_X, FLOORS_X, EXTRAS_X, PACKS, SPACES, FEST_WALL, LEVELS, LEVEL_GIFTS, LEVEL_THINGS, levelOf, SEASON_DAYS } from "./hv-playcat.js";
 
 const W = 1000, H = 620, FLOOR = 440;
@@ -75,7 +78,7 @@ function defaults(m) {
 }
 
 /* ------------------------------------------------------------------ the avatar (our own figure: big head, small body) */
-function avatarSvg(me, mood = "") {
+export function avatarSvg(me, mood = "") {
   const sk = me.skin || SKINS[1], hc = me.hairc || HAIRC[1], top = me.top || "#FF6B6B", bot = me.bottom || "#4D96FF";
   const hairBack = {
     lang: `<path d="M-62 -196 C-70 -120 -60 -96 -40 -92 L40 -92 C60 -96 70 -120 62 -196 Z" fill="${hc}" ${S()}/>`,
@@ -166,10 +169,9 @@ function bubbles(ctx, m) {
       });
   }
   const iso = new Date().toISOString().slice(0, 10), dt = ctx.data.done_today || {};
-  const wd = (new Date().getDay() + 6) % 7;
   if (ctx.feature(m, "missions"))
-    for (const x of ctx.data.missions || [])
-      if ((x.member === m.id || x.member === "all") && (x.days || []).includes(wd) && !(`${x.id}:${m.id}` in dt)) out.push({ kind: "mission", id: x.id, em: x.emoji || "⭐", label: x.title, pts: x.points });
+    for (const x of ctx.missionsOn(m))
+      if (!(`${x.id}:${m.id}` in dt)) out.push({ kind: "mission", id: x.id, em: x.emoji || "⭐", label: x.title, pts: x.points });
   for (const x of Kids.homeworkFor ? Kids.homeworkFor(ctx, m.id) : []) if (!(`${x.id}:${m.id}` in dt)) out.push({ kind: "homework", id: x.id, em: "✏️", label: x.t });
   void iso;
   return out.slice(0, 9);
@@ -180,11 +182,42 @@ const hourIn = (slot) => {
 };
 
 /* The room the child is in: the bedroom itself (the playroom data), or one of the rooms they have opened. */
-const spaceId = () => (ST.d.space && SPACES.some((x) => x.id === ST.d.space) ? ST.d.space : "vaerelse");
+const isSpace = (id) => SPACES.some((x) => x.id === id);
+const visitKid = (id) => (String(id).startsWith("visit:") ? id.slice(6) : "");
+/* Where the child is: their room, one of their own rooms (hule …), a sibling's room (visit:<id>) or a place of the
+   world (the house's rooms h:<id>, the garden, the areas). */
+function spaceId() {
+  const id = ST.d.space || "vaerelse", ctx = ST.ctx;
+  if (id === "vaerelse" || isSpace(id)) return id;
+  if (ctx && visitKid(id) && ctx.member(visitKid(id)) && visitKid(id) !== ST.kid) return id;
+  if (ctx && World.place(ctx, id)) return id;
+  return "vaerelse";
+}
+const placeOf = (ctx, id) => (isSpace(id) || id === "vaerelse" || visitKid(id) ? null : World.place(ctx, id));
+/* The level a place opens at. */
+function levelFor(id) {
+  const sp = SPACES.find((x) => x.id === id);
+  if (sp) return sp.lvl;
+  const pl = World.PLACES[id];
+  return pl ? World.AREAS.find((a) => a.id === pl.area)?.lvl || 1 : 1;
+}
+/* The key others see us at (live play): our own rooms are ours, the world's places are shared. */
+function presenceKey(id = spaceId()) {
+  if (id === "vaerelse") return `room:${ST.kid}`;
+  if (visitKid(id)) return `room:${visitKid(id)}`;
+  if (isSpace(id)) return `${id}:${ST.kid}`;
+  return id;
+}
 function R() {
   const id = spaceId();
   if (id === "vaerelse") return ST.d;
+  if (visitKid(id)) {
+    const sib = ST.ctx.member(visitKid(id));
+    return { ...(sib.playroom || defaults(sib)), ro: true };
+  }
   const all = (ST.d.spaces ||= {});
+  const pl = placeOf(ST.ctx, id);
+  if (pl && !all[id]) all[id] = { items: (pl.decor || []).map(([k, x, y], i) => ({ id: `w${i}`, k, x, y })), npc: Object.fromEntries((pl.npcs || []).map(([n, x, y]) => [n, [x, y]])) };
   // A new room comes with a few things from the start pack.
   const start = { hule: [["rug", 500, 600], ["beanbag", 250, 580], ["teddy", 330, 590], ["moon", 160, 300]], trae: [["rug", 520, 600], ["plant", 120, 590], ["wallshelf", 300, 250], ["ball", 760, 600]], rumstation: [["moon", 240, 320], ["blocks", 820, 600]], scene: [["guitar", 820, 600]] }[id] || [];
   const r = (all[id] ||= { items: start.map(([k, x, y], i) => ({ id: `${id}${i}`, k, x, y })) });
@@ -222,12 +255,43 @@ function backdrop(id, s0, s1, tod) {
   return "";
 }
 
+/* The others in the place: its characters, the family at home, a sibling in their own room, and the siblings who
+   are playing right now (live). Each is [y, svg] to sort with the things. */
+function people(ctx, m, sid, room, pl) {
+  const out = [];
+  const npcAt = room.npc || {};
+  for (const [id, pos] of Object.entries(npcAt)) {
+    const N = World.NPCS[id];
+    if (!N) continue;
+    out.push([pos[1], `<g class="pl-npc" data-pl="npc" data-id="${esc(id)}" transform="translate(${pos[0]} ${pos[1]}) scale(.82)"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body" style="animation-delay:${-(id.length % 5) * 0.4}s">${charSvg(N[3], ST.npcMood?.[id] || "", avatarSvg)}</g></g>`]);
+  }
+  const key = presenceKey(sid), live = new Set();
+  for (const [pid, pe] of Object.entries(ST.peers || {})) {
+    if (pid === m.id || pe.space !== key || Date.now() - (pe.seen || 0) > 45000) continue;
+    live.add(pid);
+    out.push([pe.y || 560, `<g class="pl-peer" data-pl="peer" data-id="${esc(pid)}" transform="translate(${pe.x || 500} ${pe.y || 560})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body${pe.emote ? " jump wave" : ""}">${avatarSvg(pe.me || defaults(ctx.member(pid) || { name: "x" }).me, pe.mood || "")}</g><text y="-262" text-anchor="middle" class="pl-petname">${esc(ctx.member(pid)?.name || "")}</text></g>`]);
+  }
+  // A sibling at home in their own room, and the family in the house's living rooms.
+  const vk = visitKid(sid);
+  const fam = vk ? [ctx.member(vk)].filter(Boolean) : pl && pl.area === "hjem" && ["living", "kitchen"].includes(pl.look) ? ctx.members().filter((x) => x.id !== m.id && x.role !== "child") : [];
+  fam.forEach((x, i) => {
+    if (live.has(x.id)) return;
+    const me = x.playroom?.me || familyLook(x), px = vk ? x.playroom?.ax || 640 : 700 + i * 140, py = vk ? x.playroom?.ay || 590 : 600;
+    out.push([py, `<g class="pl-npc pl-fam" data-pl="fam" data-id="${esc(x.id)}" transform="translate(${px} ${py})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body">${avatarSvg(me, "")}</g><text y="-262" text-anchor="middle" class="pl-petname">${esc(x.name)}</text></g>`]);
+  });
+  return out;
+}
+/* A grown-up's look, made from their colour until they have dressed their own avatar. */
+function familyLook(x) {
+  const n = [...String(x.name || "x")].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7) >>> 0;
+  return { skin: SKINS[n % 3], hair: ["kort", "lang", "pjusk", "hale", "knold", "kroller"][(n >> 3) % 6], hairc: HAIRC[(n >> 6) % 5], top: x.color || "#6E4AFF", bottom: ["#3A3A55", "#4D96FF", "#5B3A21"][(n >> 9) % 3], extra: (n >> 11) % 3 ? "ingen" : "briller" };
+}
 function stage(ctx, m) {
   const d = ST.d, room = R(), sid = spaceId(), [s0, s1, tod] = sky(ctx), lights = sid === "vaerelse" ? realLights(ctx, m) : [], lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
-  const happy = bubbles(ctx, m).length < 3;
-  let s = patternDefs(d);
-  if (sid === "vaerelse") {
-    s += `<rect width="${W}" height="${FLOOR}" fill="${d.wall?.p && d.wall.p !== "ren" ? "url(#pl-wp)" : wallFill(d)}"/><rect y="${FLOOR - 16}" width="${W}" height="16" fill="#fff" ${S()}/>`;
+  const happy = bubbles(ctx, m).length < 3, pl = placeOf(ctx, sid), vk = visitKid(sid), dd = vk ? room : d;
+  let s = patternDefs(dd);
+  if (sid === "vaerelse" || vk) {
+    s += `<rect width="${W}" height="${FLOOR}" fill="${dd.wall?.p && dd.wall.p !== "ren" ? "url(#pl-wp)" : wallFill(dd)}"/><rect y="${FLOOR - 16}" width="${W}" height="16" fill="#fff" ${S()}/>`;
     s += `<rect y="${FLOOR}" width="${W}" height="${H - FLOOR}" fill="url(#pl-fl)"/>`;
     // the window shows the real sky
     s += `<g class="pl-win"><rect x="560" y="70" width="230" height="200" rx="14" fill="#fff" ${S()}/><linearGradient id="pl-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s0}"/><stop offset="1" stop-color="${s1}"/></linearGradient><rect x="574" y="84" width="202" height="172" rx="6" fill="url(#pl-sky)"/>${
@@ -235,13 +299,14 @@ function stage(ctx, m) {
     }<path d="M675 84 v172 M574 170 h202" ${S()} fill="none"/><path d="M560 60 h230" stroke="#FF6B6B" stroke-width="16" stroke-linecap="round"/></g>`;
     // the light switch for the real lights
     if (lights.length) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset i dit værelse"))}"><rect x="500" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="510" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
-  } else s += backdrop(sid, s0, s1, tod);
+  } else if (pl) s += pl.bg(s0, s1, tod);
+  else s += backdrop(sid, s0, s1, tod);
   // things, back to front
   const drawItem = (it) => {
     const T = CAT[it.k];
     if (!T) return "";
     const sc = it.s || 1, sel = ST.build && ST.sel === it.id;
-    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${sel ? " sel" : ""}" data-pl="item" data-id="${esc(it.id)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
+    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}" data-pl="item" data-id="${esc(it.id)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
   };
   const items = room.items || [];
   const isWall = (it) => wallK(it.k);
@@ -250,11 +315,12 @@ function stage(ctx, m) {
   const actors = [
     ...items.filter((it) => CAT[it.k] && !isWall(it) && CAT[it.k].flat !== 1).map((it) => [it.y, drawItem(it)]),
     [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body">${avatarSvg(d.me, ST.mood || (tod === "night" && !lit && sid === "vaerelse" ? "sleep" : ""))}</g></g>`],
+    ...people(ctx, m, sid, room, pl),
     ...(m.pet && ctx.feature(m, "pet") ? [[d.py, `<g class="pl-pet${happy ? " happy" : ""}" data-pl="pet" transform="translate(${d.px} ${d.py}) scale(.8)"><ellipse cx="0" cy="0" rx="60" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-petb">${petInRoom(m, happy)}</g><text y="-150" text-anchor="middle" class="pl-petname">${esc(m.pet.name || "")}</text></g>`]] : []),
   ].sort((a, b) => a[0] - b[0]);
   s += actors.map((a) => a[1]).join("");
   // night: dark unless the lights are on (the bedroom and the tree house have real windows)
-  const dark = sid === "vaerelse" || sid === "trae";
+  const dark = sid === "vaerelse" || sid === "trae" || !!vk || (pl && pl.area === "hjem");
   s += `<rect width="${W}" height="${H}" class="pl-dark" fill="#0B1030" opacity="${dark && tod === "night" && !lit ? 0.42 : dark && tod === "dusk" && !lit ? 0.18 : 0}" pointer-events="none"/>`;
   if (lit) s += `<rect width="${W}" height="${H}" fill="#FFD27A" opacity=".08" pointer-events="none"/>`;
   // the treasure chest with the coins of the day
@@ -280,6 +346,7 @@ for (const pk of PACKS) for (const k of pk.items) if (THINGS[k]) {
   const v = THINGS[k];
   CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: v[6] || 20, flat: v[7] || 0, pack: pk.id };
 }
+for (const [k, v] of Object.entries(WORLD_THINGS)) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "world" };
 const LOOKS = { p: [PATTERNS_X, 25], f: [FLOORS_X, 20], x: [EXTRAS_X, 30] };
 /* A thing or a look ("p:…" wallpaper, "f:…" floor, "x:…" to wear): its name and price. */
 function info(id) {
@@ -335,7 +402,9 @@ const COIN = `<svg viewBox="0 0 24 24" class="pl-coin" aria-hidden="true"><circl
 function render(ctx) {
   const m = ctx.me;
   if (!m) return `<section class="card"><p class="t-sub">${esc(ctx.t("Vælg, hvem du er."))}</p></section>`;
-  if (!ST || ST.kid !== m.id) ST = { kid: m.id, d: JSON.parse(JSON.stringify(m.playroom || defaults(m))), sel: null, build: false, shop: false, tab: "mob" };
+  if (!ST || ST.kid !== m.id) ST = { kid: m.id, d: JSON.parse(JSON.stringify(m.playroom || defaults(m))), sel: null, build: false, shop: false, tab: "mob", peers: {} };
+  ST.ctx = ctx;
+  if (visitKid(spaceId())) ST.build = false;
   const t = ctx.t, B = bubbles(ctx, m), pts = ctx.points(m.id), sid = spaceId(), lights = sid === "vaerelse" ? realLights(ctx, m) : [], lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
   const g = game(ctx, m), lv = levelOf(g.xp), lo = LEVELS[lv - 1] || 0, hi = LEVELS[lv];
   const prog = hi ? Math.round(((g.xp - lo) / (hi - lo)) * 100) : 100;
@@ -344,14 +413,41 @@ function render(ctx) {
     <div class="pl-acts"><span class="pl-pill pl-coins" title="${esc(t("Mønter"))}">${COIN}<b class="num">${g.coins}</b></span>
       <span class="pl-lv" title="${esc(hi ? t("{n} XP til næste niveau", { n: hi - g.xp }) : t("Højeste niveau"))}"><b>${esc(t("Niveau {n}", { n: lv }))}</b><i style="--p:${prog}%"></i></span>
       ${ctx.feature(m, "points") ? `<span class="pl-pill pl-pts-pill" title="${esc(t("Point"))}">${svg("pstar")}<b class="num">${pts}</b></span>` : ""}</div></div>
-    <div class="pl-bar">${ST.shop ? `<button class="btn soft" data-pl="shop">${svg("back")}${esc(t("Tilbage til værelset"))}</button>` : `<div class="pl-spaces" role="tablist">${SPACES.map((x) => {
-      const open = lv >= x.lvl;
-      return `<button role="tab" data-pl="space" data-k="${x.id}" aria-selected="${sid === x.id}"${open ? "" : ` class="locked" title="${esc(t("Åbner på niveau {n}", { n: x.lvl }))}"`}><span>${x.em}</span>${esc(t(x.n))}${open ? "" : `<small>🔒 ${x.lvl}</small>`}</button>`;
-    }).join("")}</div>
-      <div class="pl-bar-b">${lights.length && !ST.build ? `<button class="btn soft" data-go="mitlys" aria-label="${esc(t("Lys og stemning"))}">${svg("bulb")}<span class="pl-hide-s">${esc(t("Lys og stemning"))}</span></button>` : ""}<button class="btn soft pl-shopb" data-pl="shop">${COIN}${esc(t("Butikken"))}</button><button class="btn${ST.build ? "" : " soft"}" data-pl="build">${svg(ST.build ? "check" : "edit")}${esc(ST.build ? t("Færdig") : t("Byg"))}</button></div>`}</div>`;
+    <div class="pl-bar">${ST.shop ? `<button class="btn soft" data-pl="shop">${svg("back")}${esc(t("Tilbage til værelset"))}</button>` : `<div class="pl-where"><button class="btn${ST.map ? "" : " soft"} pl-mapb" data-pl="map">${ST.map ? svg("back") : "🗺️"}${esc(ST.map ? t("Tilbage") : t("Kort"))}</button>${ST.map ? "" : `<span class="pl-here">${esc(placeName(ctx, sid))}</span>`}</div>
+      <div class="pl-bar-b">${lights.length && !ST.build && !ST.map ? `<button class="btn soft" data-go="mitlys" aria-label="${esc(t("Lys og stemning"))}">${svg("bulb")}<span class="pl-hide-s">${esc(t("Lys og stemning"))}</span></button>` : ""}<button class="btn soft pl-shopb" data-pl="shop">${COIN}<span class="pl-hide-s">${esc(t("Butikken"))}</span></button>${visitKid(sid) || ST.map ? "" : `<button class="btn${ST.build ? "" : " soft"}" data-pl="build">${svg(ST.build ? "check" : "edit")}${esc(ST.build ? t("Færdig") : t("Byg"))}</button>`}<button class="btn soft pl-fullb" data-pl="full" aria-label="${esc(ST.full ? t("Luk fuld skærm") : t("Fuld skærm"))}">${ST.full ? "✕" : "⛶"}</button></div>`}</div>`;
   if (ST.shop) return `<div class="pl" style="--pc:${esc(m.color)}">${head}${shop(ctx, m, g, lv)}</div>`;
+  if (ST.map) {
+    const peers = Object.entries(ST.peers || {}).filter(([id, pe]) => id !== m.id && Date.now() - (pe.seen || 0) < 45000).map(([id, pe]) => ({ ...pe, color: ctx.member(id)?.color }));
+    const sibs = ctx.children().filter((k) => k.id !== m.id);
+    return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox pl-mapbox"><svg id="pl-stage" class="pl-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Kort"))}">${World.mapSvg(ctx, lv, sid, peers, t)}</svg></div>
+      <div class="pl-mine"><b>${esc(t("Mine rum"))}</b>${[["vaerelse", "🛏️", t("Mit værelse"), 1], ...SPACES.filter((x) => x.id !== "vaerelse").map((x) => [x.id, x.em, t(x.n), x.lvl])].map(([id, em, n, l]) => `<button data-pl="go" data-k="${id}" aria-pressed="${sid === id}"${lv < l ? ` class="locked"` : ""}><span>${em}</span>${esc(n)}${lv < l ? `<small>🔒 ${l}</small>` : ""}</button>`).join("")}${sibs.map((k) => `<button data-pl="go" data-k="visit:${esc(k.id)}" aria-pressed="${sid === "visit:" + k.id}"><span>👋</span>${esc(t("Besøg {name}", { name: k.name }))}${Object.values(ST.peers || {}).some((pe) => pe.space === "room:" + k.id && Date.now() - (pe.seen || 0) < 45000) ? `<i class="pl-live"></i>` : ""}</button>`).join("")}</div></div>`;
+  }
   const glow = lit || sid !== "vaerelse";
-  return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox${ST.build ? " build" : ""}"><svg id="pl-stage" class="${glow ? "on" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Dit værelse"))}">${stage(ctx, m)}</svg>${ST.build ? selTools(ctx) : ""}</div>${ST.build ? drawer(ctx, m) : ""}</div>`;
+  return `<div class="pl${ST.full ? " full" : ""}" style="--pc:${esc(m.color)}">${ST.full && !ST.turnOk ? `<button class="pl-turn" data-pl="turnok"><i>📱</i>${esc(t("Vend skærmen, så er der mere plads til at lege"))}<small>${esc(t("Tryk for at spille på langs alligevel"))}</small></button>` : ""}${head}<div class="pl-stagebox${ST.build ? " build" : ""}"><svg id="pl-stage" class="${glow ? "on" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Dit værelse"))}">${stage(ctx, m)}</svg>${ST.build ? selTools(ctx) : ""}</div>${ST.build ? drawer(ctx, m) : ""}</div>`;
+}
+/* The name of where the child is. */
+function placeName(ctx, id) {
+  if (id === "vaerelse") return ctx.t("Mit værelse");
+  if (visitKid(id)) return ctx.t("{name}s værelse", { name: ctx.member(visitKid(id))?.name || "" });
+  const sp = SPACES.find((x) => x.id === id);
+  if (sp) return `${sp.em} ${ctx.t(sp.n)}`;
+  const pl = placeOf(ctx, id);
+  return pl ? `${pl.em || ""} ${ctx.t(pl.n)}` : "";
+}
+/* Go somewhere: from the map or the room list. */
+function goTo(ctx, key) {
+  const lv = levelOf(game(ctx, ctx.me).xp), need = levelFor(key);
+  if (lv < need) return ctx.toast(ctx.t("Det åbner på niveau {n}. Klar rutiner og opgaver for at komme dertil.", { n: need }));
+  ST.d.space = key;
+  ST.map = false;
+  ST.build = false;
+  ST.sel = null;
+  // Arrive at the edge of the place, like walking in.
+  ST.d.ax = 140;
+  ST.d.ay = 590;
+  save(ctx);
+  redraw(ctx);
+  publish(ctx);
 }
 /* The big moments: a new level, or a new thing bought. Shown once, as a sheet over the page. */
 function showPop(ctx) {
@@ -455,7 +551,7 @@ function packPage(ctx, m, g, lv, owned, pk) {
 
 /* ------------------------------------------------------------------ doing things */
 function redraw(ctx) {
-  const box = ctx.root.querySelector(".pl");
+  const box = ctx.root.querySelector(".pl-fs .pl") || ctx.root.querySelector(".pl");
   if (!box) return;
   const tmp = document.createElement("div");
   tmp.innerHTML = render(ctx);
@@ -496,6 +592,7 @@ function confetti(ctx, x, y, color, big = false) {
 }
 function walk(ctx, x, y) {
   const d = ST.d;
+  setTimeout(() => publish(ctx), 50);
   d.ax = Math.max(60, Math.min(W - 60, x));
   d.ay = Math.max(FLOOR + 40, Math.min(H - 8, y));
   const me = ctx.root.querySelector(".pl-me");
@@ -532,7 +629,7 @@ async function tapBubble(ctx, el) {
   }
 }
 function bind(ctx) {
-  const svgEl = ctx.$("pl-stage"), box = ctx.root.querySelector(".pl");
+  const svgEl = ctx.$("pl-stage"), box = ctx.root.querySelector(".pl-fs .pl") || ctx.root.querySelector(".pl");
   if (!box || box._hv) return;
   box._hv = 1;
   // The shop has no room to drag in; its buttons are handled below.
@@ -543,7 +640,23 @@ function bindStage(ctx, svgEl) {
   let drag = null;
   svgEl.addEventListener("pointerdown", (e) => {
     const t = e.target.closest("[data-pl]"), p = toSvg(svgEl, e);
+    if (t?.dataset.pl === "go") return goTo(ctx, t.dataset.k);
+    if (ST.map) return;
     if (!ST.build) {
+      if (t?.dataset.pl === "npc") {
+        const id = t.dataset.id, at = R().npc?.[id];
+        if (!at) return;
+        drag = { kind: "npc", id, el: t, sx: p.x, sy: p.y, ox: at[0], oy: at[1] };
+        try {
+          svgEl.setPointerCapture(e.pointerId);
+        } catch (err) {
+          /* synthetic */
+        }
+        e.preventDefault();
+        return;
+      }
+      if (t?.dataset.pl === "fam" || t?.dataset.pl === "peer") return hello(ctx, t);
+      if (t?.dataset.pl === "item") return itemTap(ctx, t);
       if (t?.dataset.pl === "bub") return tapBubble(ctx, t);
       if (t?.dataset.pl === "daily") return openChest(ctx, t);
       if (t?.dataset.pl === "light") return toggleLight(ctx);
@@ -590,7 +703,13 @@ function bindStage(ctx, svgEl) {
     const p = toSvg(svgEl, e), dx = p.x - drag.sx, dy = p.y - drag.sy;
     if (Math.hypot(dx, dy) < 4 && !drag.moved) return;
     drag.moved = true;
-    if (drag.kind === "item") {
+    if (drag.kind === "npc") {
+      const x = Math.round(Math.max(60, Math.min(W - 60, drag.ox + dx))), y = Math.round(Math.max(FLOOR + 40, Math.min(H - 8, drag.oy + dy)));
+      drag.x = x;
+      drag.y = y;
+      drag.el.setAttribute("transform", `translate(${x} ${y}) scale(.82)`);
+      drag.el.classList.add("held");
+    } else if (drag.kind === "item") {
       const it = drag.it, wall = wallK(it.k);
       it.x = Math.round(Math.max(30, Math.min(W - 30, drag.ox + dx)));
       it.y = Math.round(wall ? Math.max(40, Math.min(FLOOR - 20, drag.oy + dy)) : Math.max(FLOOR + 10, Math.min(H - 4, drag.oy + dy)));
@@ -606,6 +725,12 @@ function bindStage(ctx, svgEl) {
     if (!drag) return;
     const d = drag;
     drag = null;
+    if (d.kind === "npc") {
+      d.el.classList.remove("held");
+      if (!d.moved) return npcTap(ctx, d.el, d.id);
+      (R().npc ||= {})[d.id] = [d.x, d.y];
+      return save(ctx);
+    }
     if (d.moved || d.kind === "item") {
       save(ctx);
       redraw(ctx);
@@ -630,7 +755,13 @@ function bindButtons(ctx, box) {
       ST.ask = null;
       ST.sel = null;
       ctx.root.querySelector(".pl")?.scrollIntoView?.({ block: "start", behavior: "smooth" });
-    } else if (a === "pack") {
+    } else if (a === "map") {
+      ST.map = !ST.map;
+      ST.build = false;
+    } else if (a === "go") return goTo(ctx, k);
+    else if (a === "turnok") ST.turnOk = true;
+    else if (a === "full") return toggleFull(ctx);
+    else if (a === "pack") {
       ST.pack = k;
       ST.ask = null;
     } else if (a === "packs") {
@@ -665,7 +796,7 @@ function bindButtons(ctx, box) {
       room.items = room.items.filter((x) => x !== it);
       ST.sel = null;
     } else return;
-    if (!["tab", "build", "shop", "pack", "packs"].includes(a)) save(ctx);
+    if (!["tab", "build", "shop", "pack", "packs", "map"].includes(a)) save(ctx);
     redraw(ctx);
   });
 }
@@ -742,6 +873,189 @@ async function openChest(ctx, el) {
   }
   setTimeout(() => redraw(ctx), 1100);
 }
+/* ------------------------------------------------------------------ the characters and the things come alive */
+/* A speech bubble over someone. */
+function say(ctx, x, y, text) {
+  const svgEl = ctx.$("pl-stage");
+  if (!svgEl) return;
+  svgEl.querySelectorAll(".pl-say").forEach((n) => n.remove());
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  const w = Math.min(440, 40 + text.length * 13), bx = Math.max(10, Math.min(W - w - 10, x - w / 2)), by = Math.max(10, y - 300);
+  g.setAttribute("class", "pl-say");
+  g.innerHTML = `<rect x="${bx}" y="${by}" width="${w}" height="58" rx="22" fill="#fff" stroke="#2B2340" stroke-width="4"/><path d="M${Math.max(bx + 24, Math.min(bx + w - 24, x)) - 12} ${by + 56} l12 20 l12 -20z" fill="#fff" stroke="#2B2340" stroke-width="4" stroke-linejoin="round"/><rect x="${Math.max(bx + 24, Math.min(bx + w - 24, x)) - 14}" y="${by + 50}" width="28" height="8" fill="#fff"/><text x="${bx + w / 2}" y="${by + 37}" text-anchor="middle" class="pl-sayt">${esc(text)}</text>`;
+  svgEl.appendChild(g);
+  setTimeout(() => g.remove(), 2600);
+}
+function npcTap(ctx, el, id) {
+  const N = World.NPCS[id], at = R().npc?.[id];
+  if (!N || !at) return;
+  const body = el.querySelector(".pl-body");
+  body?.classList.add("jump");
+  setTimeout(() => body?.classList.remove("jump"), 700);
+  const lines = N[4] || ["Hej!"];
+  say(ctx, at[0], at[1], `${N[0]}: ${ctx.t(lines[Math.floor(Math.random() * lines.length)])}`);
+}
+/* Wave to a sibling (live) or to the family. */
+function hello(ctx, el) {
+  const id = el.dataset.id, body = el.querySelector(".pl-body");
+  body?.classList.add("wave", "jump");
+  setTimeout(() => body?.classList.remove("wave", "jump"), 900);
+  const tr = el.getAttribute("transform").match(/translate\(([\d.]+) ([\d.]+)\)/);
+  if (tr) say(ctx, +tr[1], +tr[2], el.dataset.pl === "peer" ? `👋 ${ctx.t("Hej {name}!", { name: ctx.member(id)?.name || "" })}` : `${ctx.member(id)?.name || ""}: ${ctx.t(["Hej skat!", "Hvad leger du?", "Godt gået i dag!"][Math.floor(Math.random() * 3)])}`);
+  if (el.dataset.pl === "peer") publish(ctx, { emote: "wave", to: id });
+}
+/* Things do something when tapped: lamps turn on, music plays, balls bounce, cars drive, the rest wiggles. */
+const ACT = {
+  music: ["guitar", "keyboard", "mikrofon", "hoejttaler", "lysstav", "bandplakat", "guldplade", "headset"],
+  bounce: ["ball", "pudebjerg", "trampolin", "trampolinhave", "boeje", "knoglepude", "soestjerne", "beanbag", "teddy", "hjertepude", "hvalpebamse", "abebamse", "dragebamse", "enhjoerning", "rumvaesen", "blaeksprutte", "krokodille", "paaskehare", "kylling", "nisse", "snemand"],
+  drive: ["car", "brandbil", "politibil", "redningsbaad", "helikopter", "loebecykel", "skateboard", "bil", "cykel", "traktor", "raket"],
+  spin: ["discokugle", "globus", "pariserhjul", "karrusel", "vaskemaskine", "uro", "fiskeuro", "planetlampe", "ufolampe"],
+  screen: ["tv", "skaerm", "dobbeltskaerm", "konsol", "arkade", "kontrolpult"],
+  yum: ["lagkage", "slikskaal", "madskaal", "slikautomat", "kagedisk", "isbod", "koeleskab", "komfur", "bagerovn"],
+};
+function itemTap(ctx, el) {
+  const room = R(), it = room.items.find((x) => x.id === el.dataset.id);
+  if (!it || !CAT[it.k]) return;
+  const k = it.k, kind = Object.keys(ACT).find((a) => ACT[a].includes(k)) || (CAT[k].cat === "lys" ? "light" : "wiggle");
+  if (kind === "light") {
+    it.on = !it.on;
+    el.classList.toggle("lit", !!it.on);
+    if (!room.ro) save(ctx);
+    return;
+  }
+  if (kind === "screen") {
+    it.on = !it.on;
+    el.classList.toggle("off", !it.on);
+  }
+  el.classList.remove("pl-do", "do-music", "do-bounce", "do-drive", "do-spin", "do-wiggle", "do-yum");
+  void el.getBBox();
+  el.classList.add("pl-do", `do-${kind === "screen" ? "wiggle" : kind}`);
+  setTimeout(() => el.classList.remove("pl-do", `do-${kind === "screen" ? "wiggle" : kind}`), 1400);
+  const T = CAT[k], top = it.y - T.h * (it.s || 1);
+  if (kind === "music") floatIcons(ctx, it.x, top, ["♪", "♫", "♪"]);
+  if (kind === "yum") floatIcons(ctx, it.x, top, ["😋", "✨"]);
+  if (kind === "bounce") floatIcons(ctx, it.x, top, ["💫"]);
+}
+function floatIcons(ctx, x, y, list) {
+  const svgEl = ctx.$("pl-stage");
+  if (!svgEl) return;
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("class", "pl-notes");
+  g.innerHTML = list.map((n, i) => `<text x="${x - 30 + i * 30}" y="${y - 10}" class="pl-note" style="animation-delay:${i * 0.15}s">${n}</text>`).join("");
+  svgEl.appendChild(g);
+  setTimeout(() => g.remove(), 1600);
+}
+
+/* ------------------------------------------------------------------ playing together (live, through Home Assistant) */
+/* Where we are goes to Home Assistant, which passes it on to the siblings who are playing. Nothing is stored. */
+let pubT = 0, pubWait = null;
+function publish(ctx, extra = {}) {
+  if (!ST || !ctx.me || !ctx.hass?.connection) return;
+  const send = () => {
+    pubT = Date.now();
+    pubWait = null;
+    ctx.ws("play", { member: ST.kid, space: presenceKey(), x: Math.round(ST.d.ax || 500), y: Math.round(ST.d.ay || 590), me: ST.d.me, ...extra }).catch(() => {});
+  };
+  if (extra.emote || Date.now() - pubT > 300) return send();
+  clearTimeout(pubWait);
+  pubWait = setTimeout(send, 300);
+}
+let presenceUnsub = null, presenceFor = "", beat = null;
+function presence(ctx) {
+  if (!ctx.me || !ctx.hass?.connection || presenceFor === ctx.me.id) return;
+  stopPresence();
+  presenceFor = ctx.me.id;
+  ctx.hass.connection
+    .subscribeMessage((msg) => peerUpdate(ctx, msg), { type: "hverdagsro/play_subscribe" })
+    .then((un) => {
+      presenceUnsub = un;
+    })
+    .catch(() => {
+      presenceFor = "";
+    });
+  clearInterval(beat);
+  beat = setInterval(() => {
+    if (!ctx.host?.isConnected || ctx.view !== "vaerelse") return stopPresence(ctx);
+    publish(ctx);
+  }, 15000);
+  publish(ctx);
+}
+function stopPresence(ctx) {
+  clearInterval(beat);
+  if (presenceUnsub) presenceUnsub();
+  presenceUnsub = null;
+  if (ctx && presenceFor && ctx.hass?.connection) ctx.ws("play", { member: presenceFor, space: "" }).catch(() => {});
+  presenceFor = "";
+}
+function peerUpdate(ctx, msg) {
+  if (!ST) return;
+  const list = msg.players || (msg.player ? [msg.player] : []);
+  for (const pe of list) {
+    if (!pe.member || pe.member === ST.kid) continue;
+    if (!pe.space) delete ST.peers[pe.member];
+    else ST.peers[pe.member] = { ...ST.peers[pe.member], ...pe, seen: Date.now() };
+    if (pe.emote === "wave" && pe.to === ST.kid) {
+      const el = ctx.root.querySelector(`.pl-peer[data-id="${CSS.escape(pe.member)}"]`);
+      if (el) say(ctx, pe.x, pe.y, `👋 ${ctx.member(pe.member)?.name || ""}`);
+    }
+  }
+  // Move the ones we can see; draw again when someone comes or goes.
+  const key = presenceKey(), shown = new Set([...ctx.root.querySelectorAll(".pl-peer")].map((n) => n.dataset.id));
+  const here = new Set(Object.entries(ST.peers).filter(([, pe]) => pe.space === key).map(([id]) => id));
+  const same = shown.size === here.size && [...here].every((id) => shown.has(id));
+  if (same && !ST.map) {
+    for (const id of here) {
+      const pe = ST.peers[id], el = ctx.root.querySelector(`.pl-peer[data-id="${CSS.escape(id)}"]`);
+      el?.setAttribute("transform", `translate(${pe.x} ${pe.y})`);
+    }
+  } else if (!ST.build && !ST.shop) redraw(ctx);
+}
+
+/* ------------------------------------------------------------------ full screen, lying down */
+function toggleFull(ctx) {
+  const box = ctx.root.querySelector(".pl-fs .pl") || ctx.root.querySelector(".pl");
+  if (!box) return;
+  if (!ST.full) {
+    ST.full = true;
+    ST.home = box.parentElement;
+    const fs = document.createElement("div");
+    fs.className = "pl-fs";
+    ctx.root.appendChild(fs);
+    fs.appendChild(box);
+    const el = fs;
+    if (el.requestFullscreen) el.requestFullscreen({ navigationUI: "hide" }).then(() => screen.orientation?.lock?.("landscape").catch(() => {})).catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    const onFs = () => {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement && ST.full && ST.fsApi) exitFull(ctx);
+      ST.fsApi = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFs);
+    document.addEventListener("webkitfullscreenchange", onFs);
+    ST.fsOff = () => {
+      document.removeEventListener("fullscreenchange", onFs);
+      document.removeEventListener("webkitfullscreenchange", onFs);
+    };
+    redraw(ctx);
+  } else exitFull(ctx);
+}
+function exitFull(ctx) {
+  if (!ST.full) return;
+  ST.full = false;
+  ST.fsApi = false;
+  ST.fsOff?.();
+  try {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.webkitFullscreenElement) document.webkitExitFullscreen();
+    screen.orientation?.unlock?.();
+  } catch (err) {
+    /* not in full screen */
+  }
+  const fs = ctx.root.querySelector(".pl-fs"), box = fs?.querySelector(".pl");
+  if (box && ST.home?.isConnected) ST.home.appendChild(box);
+  fs?.remove();
+  redraw(ctx);
+}
+
 async function toggleLight(ctx) {
   const lights = realLights(ctx, ctx.me);
   if (!lights.length) return;
@@ -765,6 +1079,7 @@ export default {
       after(ctx) {
         bind(ctx);
         showPop(ctx);
+        presence(ctx);
         clearInterval(tick);
         // The sky, the lights and the bubbles follow along, but never in the middle of building.
         tick = setInterval(() => {
@@ -844,6 +1159,64 @@ export default {
 @keyframes plcloud { from { transform: translateX(-40px) } to { transform: translateX(120px) } }
 @keyframes plfish { 0%, 100% { transform: translateX(-14px) } 50% { transform: translateX(18px) } }
 .pl-glow.on { opacity: .85; }
+/* the map and the places */
+.pl-where { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 200px; }
+.pl-here { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-map text { pointer-events: none; }
+.wm-name { font: 800 21px var(--font-display, sans-serif); text-anchor: middle; fill: #2B2340; paint-order: stroke; stroke: #fff; stroke-width: 6px; }
+.wm-big { font-size: 46px; text-anchor: middle; }
+.wm-em { font-size: 26px; text-anchor: middle; }
+.wm-rt { font-size: 22px; text-anchor: middle; }
+.wm-pin, .wm-room { cursor: pointer; transition: transform .15s; transform-box: fill-box; transform-origin: center; }
+.wm-pin:hover, .wm-room:hover { transform: scale(1.08); }
+.wm-pin.here circle:first-child, .wm-room.here polygon { stroke: var(--pc); stroke-width: 7; }
+.wm-area.locked > circle, .wm-pin.locked { opacity: .55; }
+.pl-mine { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
+.pl-mine b { font-size: 14px; margin-right: 4px; }
+.pl-mine button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--line); font: 800 13.5px var(--font-body); color: var(--ink); cursor: pointer; position: relative; }
+.pl-mine button[aria-pressed="true"] { background: var(--pc); color: #fff; box-shadow: none; }
+.pl-mine button.locked { opacity: .55; }
+.pl-mine small { font-size: 11px; }
+.pl-live { position: absolute; top: 4px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 0 2px var(--surface); }
+.pl-npc, .pl-peer, .pl-fam { cursor: pointer; }
+.pl-npc .pl-body, .pl-peer .pl-body, .pl-fam .pl-body { animation: plbob 2.8s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.pl-npc.held { filter: drop-shadow(0 12px 8px rgba(0,0,0,.25)); }
+.pl-peer { transition: transform .45s linear; }
+.pl-npc .pl-body.jump, .pl-peer .pl-body.jump, .pl-fam .pl-body.jump { animation: pljump .7s cubic-bezier(.3,1.6,.5,1); }
+.pl-say { pointer-events: none; animation: plin .25s ease-out; }
+.pl-sayt { font: 800 24px var(--font-body, sans-serif); fill: #2B2340; }
+.pl-it.lit .pl-glow { opacity: .85; }
+.pl-it.off .pl-screen { opacity: .15; }
+.pl-it { transform-box: fill-box; }
+.pl-it.do-wiggle > * { animation: plwig .6s ease-in-out; transform-box: fill-box; transform-origin: 50% 100%; }
+.pl-it.do-bounce > * { animation: pljump .8s cubic-bezier(.3,1.6,.5,1); transform-box: fill-box; transform-origin: 50% 100%; }
+.pl-it.do-music > * { animation: plwig .4s ease-in-out 3; transform-box: fill-box; transform-origin: 50% 100%; }
+.pl-it.do-yum > * { animation: plwig .5s ease-in-out 2; transform-box: fill-box; transform-origin: 50% 100%; }
+.pl-it.do-drive > * { animation: pldrive 1.3s ease-in-out; transform-box: fill-box; }
+.pl-it.do-spin > * { animation: plspin 1s ease-in-out; transform-box: fill-box; transform-origin: 50% 50%; }
+.pl-spin, .pl-wheel { animation: plspin 8s linear infinite; transform-box: view-box; }
+.pl-bob { animation: plbob 2.4s ease-in-out infinite; }
+.pl-note { font-size: 40px; font-weight: 900; fill: #9B5DE5; paint-order: stroke; stroke: #fff; stroke-width: 5px; animation: plnote 1.4s ease-out forwards; }
+@keyframes plwig { 0%, 100% { transform: rotate(0) } 25% { transform: rotate(-6deg) } 75% { transform: rotate(6deg) } }
+@keyframes pldrive { 0%, 100% { transform: translateX(0) } 45% { transform: translateX(160px) } 55% { transform: translateX(160px) scaleX(-1) } }
+@keyframes plspin { to { transform: rotate(360deg) } }
+@keyframes plnote { from { transform: translateY(0); opacity: 1 } to { transform: translateY(-90px); opacity: 0 } }
+/* full screen, lying down */
+.pl-fs { position: fixed; inset: 0; z-index: 400; background: #2B2340; display: grid; overflow: hidden; }
+.pl-fs .pl { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); gap: 6px; color: #fff; }
+.pl-fs .pl-head { display: none; }
+.pl-fs .pl-bar { margin: 0; }
+.pl-fs .pl-here { color: #fff; }
+.pl-fs .pl-stagebox { align-self: center; justify-self: center; width: min(100%, calc((100dvh - 80px) * 1000 / 620)); box-shadow: 0 0 0 4px #000; }
+.pl-fs .pl-drawer { position: fixed; right: 10px; top: 64px; bottom: 10px; width: min(340px, 40vw); overflow: auto; z-index: 3; margin: 0; color: var(--ink); }
+.pl-fs .pl-mine { color: #fff; margin: 0; }
+.pl-fs .pl-shop { overflow: auto; max-height: calc(100dvh - 70px); color: var(--ink); }
+.pl-fs .pl-sh, .pl-fs .pl-back { color: #fff; }
+.pl-turn { display: none; }
+.pl-turn small { font-size: 14px; font-weight: 600; opacity: .8; }
+.pl-fs .pl-stagebox.build { justify-self: start; width: min(calc(100% - min(350px, 41vw)), calc((100dvh - 80px) * 1000 / 620)); }
+@media (orientation: portrait) and (max-width: 700px) { .pl-fs .pl-turn { display: grid; position: fixed; inset: 0; z-index: 5; place-items: center; align-content: center; gap: 14px; border: 0; background: rgba(27,21,48,.92); color: #fff; text-align: center; padding: 24px; font: 800 20px var(--font-body); } .pl-fs .pl-drawer { left: 10px; right: 10px; width: auto; top: auto; height: 46dvh; } .pl-turn i { font-style: normal; font-size: 64px; animation: plturn 1.6s ease-in-out infinite; } }
+@keyframes plturn { 0%, 30% { transform: rotate(0) } 60%, 100% { transform: rotate(90deg) } }
 .pl-coin { width: 20px; height: 20px; flex: none; }
 .pl-coins { background: #FFF3B0; }
 .pl-pts-pill { background: var(--surface-2); color: var(--ink); }
@@ -948,6 +1321,12 @@ export default {
     "Pakken kommer i butikken igen til {name}.": "The pack comes back to the shop for {name}.", "I butikken til og med {date}.": "In the shop until {date}.", "Den første ting er en gave.": "The first thing is a gift.",
     "Alle pakker": "All packs", "Køb hele pakken?": "Buy the whole pack?", "Hele pakken": "The whole pack", "spar {n}": "save {n}", "{name} åbner på niveau {n}. Få flere mønter for at komme dertil.": "{name} opens at level {n}. Get more coins to get there.",
     "Du mangler {n} mønter. Klar en rutine eller en opgave, så kommer de.": "You need {n} more coins. Do a routine or a mission and they'll come.", "Dagens mønter": "Today's coins",
+    Kort: "Map", Tilbage: "Back", "Mine rum": "My rooms", "Besøg {name}": "Visit {name}", "{name}s værelse": "{name}'s room", "Det åbner på niveau {n}. Klar rutiner og opgaver for at komme dertil.": "That opens at level {n}. Do routines and missions to get there.",
+    "Luk fuld skærm": "Close full screen", "Fuld skærm": "Full screen", "Vend skærmen, så er der mere plads til at lege": "Turn the screen for more room to play", "Tryk for at spille på langs alligevel": "Tap to play upright anyway",
+    "Hej skat!": "Hi sweetie!", "Hvad leger du?": "What are you playing?", "Godt gået i dag!": "Well done today!", "Vores hus": "Our house", Haven: "The garden", "niv. {n}": "lvl {n}",
+    Huset: "The house", Redningsbyen: "Rescue Town", Skovbyen: "Forest Town", Popbyen: "Pop Town", Eventyrparken: "The Adventure Park", Slikbyen: "Sweet Town", Teknobyen: "Tech Town", Natbyen: "Night Town",
+    Redningsstationen: "The rescue station", Havnen: "The harbour", Skovlysningen: "The forest clearing", Bondegården: "The farm", Dansestudiet: "The dance studio", Koncertscenen: "The concert stage", Bageriet: "The bakery", Slikbutikken: "The sweet shop",
+    Vandlandet: "The water park", Laboratoriet: "The lab", "Heltenes tagterrasse": "The heroes' roof terrace", "Natbyens gade": "Night Town's street", "Den hemmelige hule": "The secret cave",
     // the things, looks and packs (hv-playcat.js)
     "Pudefort": "Pillow fort",
     "Sengehimmel": "Bed canopy",
@@ -1149,5 +1528,6 @@ export default {
     "Flag og r\u00f8d-hvid guirlande.": "Flags and a red and white garland.",
     Værelset: "The room", Hulen: "The den", Trætophuset: "The tree house", Rumstationen: "The space station", "Den store scene": "The big stage",
     Hud: "Skin", Hår: "Hair", Hårfarve: "Hair colour", Trøje: "Top", Bukser: "Trousers", Ekstra: "Extra", "Der er ikke plads til mere": "There's no room for more", "Vælg, hvem du er.": "Choose who you are.",
+    ...WORLD_NAMES_EN,
   },
 };

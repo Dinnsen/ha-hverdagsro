@@ -109,3 +109,41 @@ async def test_homework_is_a_mission_without_points(hass: HomeAssistant, init_in
     assert await family.async_set_mission_done("lektie:2026-W44:dansk", "ida", False) is False
     with pytest.raises(ServiceValidationError):
         await family.async_set_mission_done("nope", "ida", True)
+
+
+async def test_two_homes(hass: HomeAssistant, init_integration: MockConfigEntry) -> None:
+    """A child with two homes only gets this home's missions on the days they are here."""
+    from custom_components.hverdagsro.family import at_home
+
+    family = _family(init_integration)
+    monday = date.fromisoformat(TODAY)
+    plan = {"enabled": True, "start": TODAY, "cycle": [1] * 7 + [0] * 7, "except": {}}
+    members = [{**m, "custody": plan} if m["id"] == "ida" else m for m in family.members]
+    await family.async_save_section("family", members)
+    await hass.async_block_till_done()
+    family = hass.config_entries.async_get_entry(init_integration.entry_id).runtime_data
+    ida = family.member("ida")
+    assert at_home(ida, monday) is True
+    assert at_home(ida, monday + timedelta(days=7)) is False
+    assert at_home(ida, monday + timedelta(days=14)) is True
+    assert at_home(ida, monday - timedelta(days=1)) is False
+    assert at_home(family.member("oskar"), monday + timedelta(days=7)) is True
+    assert at_home(None, monday) is True
+    assert [m["id"] for m in family.missions_for("ida", monday)] == ["teeth", "bed"]
+    assert family.missions_for("ida", monday + timedelta(days=7)) == []
+    # A mission for the other home, and one for always.
+    missions = [
+        {**m, "where": "away"} if m["id"] == "bed" else {**m, "where": "always"} if m["id"] == "teeth" else m
+        for m in family.data["missions"]
+    ]
+    await family.async_save_section("missions", missions)
+    assert [m["id"] for m in family.missions_for("ida", monday)] == ["teeth"]
+    assert [m["id"] for m in family.missions_for("ida", monday + timedelta(days=7))] == ["teeth", "bed"]
+    # A single date the other way.
+    members = [{**m, "custody": {**plan, "except": {TODAY: 0}}} if m["id"] == "ida" else m for m in family.members]
+    await family.async_save_section("family", members)
+    await hass.async_block_till_done()
+    family = hass.config_entries.async_get_entry(init_integration.entry_id).runtime_data
+    assert at_home(family.member("ida"), monday) is False
+    broken = {**plan, "start": "not a date"}
+    assert at_home({"custody": broken}, monday) is True
