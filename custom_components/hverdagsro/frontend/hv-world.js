@@ -224,7 +224,8 @@ const ROOMLOOK = {
   other: { wall: "#F2E3CF", floor: "#C98B55", decor: [["shelf", 260, 470], ["stueplante", 800, 520], ["baenk", 520, 600]] },
 };
 function roomBackdrop(look, s0, s1, tod) {
-  const L = ROOMLOOK[look] || ROOMLOOK.other;
+  // The family may have painted the room (Byg › Væg og gulv): BG.look has their colours.
+  const L = { ...(ROOMLOOK[look] || ROOMLOOK.other), ...(BG.look?.wall ? { wall: BG.look.wall } : {}), ...(BG.look?.floor ? { floor: BG.look.floor } : {}) };
   const tiles = L.tiles ? rep(25, (i) => rep(6, (j) => `<rect x="${i * 40}" y="${FLOOR - 180 + j * 30}" width="40" height="30" fill="none" stroke="${L.tiles}" stroke-width="3"/>`)) : "";
   const garage = look === "garage" ? `<rect x="560" y="80" width="380" height="${FLOOR - 80}" fill="#B9BED0" ${out()}/>${rep(8, (i) => `<path d="M560 ${110 + i * 40} H940" stroke="#9AA4BA" stroke-width="5"/>`)}` : "";
   const window = look === "garage" ? "" : `${skyDef(s0, s1)}<rect x="${look === "kitchen" ? 760 : 620}" y="70" width="200" height="170" rx="12" fill="#fff" ${out()}/><rect x="${look === "kitchen" ? 774 : 634}" y="84" width="172" height="142" rx="6" fill="url(#pl-sky)"/>${tod === "night" ? `<circle cx="${look === "kitchen" ? 900 : 760}" cy="130" r="14" fill="#FFF6C9"/>` : `<circle cx="${look === "kitchen" ? 900 : 760}" cy="130" r="18" fill="#FFE066"/>`}<path d="M${look === "kitchen" ? 860 : 720} 84 V226 M${look === "kitchen" ? 774 : 634} 155 H${look === "kitchen" ? 946 : 806}" stroke="${OL}" stroke-width="5"/>`;
@@ -327,4 +328,13 @@ export function mapSvg(ctx, lv, here, peers, t) {
   const gw = peers.filter((pe) => pe.space === "have");
   const garden = `<g class="wm-pin${here === "have" ? " here" : ""}" data-pl="go" data-k="have" role="button" aria-label="${t("Haven")}"><circle cx="608" cy="388" r="26" fill="#fff" ${out(T3)}/><text x="608" y="397" class="wm-em">🌳</text>${gw.map((pe, j) => `<circle cx="${628 - j * 12}" cy="366" r="10" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="3"/>`).join("")}</g>`;
   return `<rect width="${W}" height="${H}" fill="#9BD7A0"/>${rep(30, (i) => `<circle cx="${(i * 137) % 1000}" cy="${(i * 211) % 620}" r="${6 + (i % 4) * 3}" fill="#8BC98F"/>`)}<path d="M0 580 Q200 550 400 600 T1000 590 V620 H0Z" fill="#4FB3FF" opacity=".7"/>${roads}<circle cx="500" cy="290" r="128" fill="#B5E3A8" ${out(T3)}/>${plan}<text x="500" y="186" class="wm-name">${t("Vores hus")}</text>${garden}${areas}`;
+}
+
+/* ------------------------------------------------------------------ more of the world (hv-city.js and later) */
+/* The drawing helpers for backdrops, and a way to add places, areas and characters from other files. */
+export const BG = { W, H, FLOOR, T3, rect, out, rep, skyDef, sunMoon, cloud, hills, ground, outdoor, house, look: {} };
+export function addWorld({ places = {}, areas = [], npcs = {} }) {
+  Object.assign(P, places);
+  for (const a of areas) if (!AREAS.some((x) => x.id === a.id)) AREAS.push(a);
+  Object.assign(NPCS, npcs);
 }

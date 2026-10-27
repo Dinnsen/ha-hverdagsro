@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 from custom_components.hverdagsro import funplay
 
-from .test_websocket import _ws
+from .test_websocket import _tablet_token, _ws
 
 
 async def test_mission_of_the_day(
@@ -169,3 +169,63 @@ async def test_hide_and_seek(
     # Hugs and high fives go through the live relay.
     msg = await _ws(child, 10, type="hverdagsro/play", member="ida", space="have", emote="highfive", to="anna")
     assert msg["success"]
+
+
+async def test_childrens_challenges(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+) -> None:
+    """A child makes a challenge for a sibling and pays the coins from their own; only they (or a grown-up) approve."""
+    family = init_integration.runtime_data
+    parent = await hass_ws_client(hass)
+    child = await hass_ws_client(hass, hass_read_only_access_token)
+    tablet = await hass_ws_client(hass, await _tablet_token(hass))
+    family.game("ida")["coins"] = 2
+    msg = await _ws(child, 1, type="hverdagsro/fun", action="task_add", title="Find min bamse", approver="oskar")
+    assert msg["error"]["code"] == "not_allowed"
+    msg = await _ws(
+        child,
+        2,
+        type="hverdagsro/fun",
+        action="task_add",
+        title="Find min bamse",
+        approver="ida",
+        coins=51,
+        **{"for": ["oskar"]},
+    )
+    assert msg["error"]["code"] == "invalid_format"
+    msg = await _ws(
+        child,
+        3,
+        type="hverdagsro/fun",
+        action="task_add",
+        title="Find min bamse",
+        approver="ida",
+        coins=3,
+        **{"for": ["oskar"]},
+    )
+    task = msg["result"]["tasks"][0]
+    assert (task["by"], task["kid"], task["coins"], task["real"]) == ("ida", True, 3, False)
+    msg = await _ws(child, 4, type="hverdagsro/fun", action="task_done", member="ida", task=task["id"])
+    assert msg["error"]["code"] == "not_for_you"
+    await _ws(tablet, 5, type="hverdagsro/fun", action="task_done", member="oskar", task=task["id"])
+    msg = await _ws(
+        tablet, 6, type="hverdagsro/fun", action="task_approve", member="oskar", task=task["id"], approver="oskar"
+    )
+    assert msg["error"]["code"] == "not_allowed"
+    msg = await _ws(
+        child, 7, type="hverdagsro/fun", action="task_approve", member="oskar", task=task["id"], approver="ida"
+    )
+    assert msg["result"]["tasks"][0]["done"] == {"oskar": "ok"}
+    # Ida only had 2 coins: Oskar gets 2, and her experience stays.
+    assert family.game("ida")["coins"] == 0 and family.game("oskar")["coins"] == 2
+    # A grown-up's task: the child can neither approve nor remove it; the grown-up's own challenge has no cap.
+    msg = await _ws(parent, 8, type="hverdagsro/fun", action="task_add", title="Ryd op", coins=20)
+    grown = msg["result"]["tasks"][1]
+    assert grown["coins"] == 20 and not grown["kid"]
+    msg = await _ws(child, 9, type="hverdagsro/fun", action="task_remove", task=grown["id"], approver="ida")
+    assert msg["error"]["code"] == "not_allowed"
+    msg = await _ws(child, 10, type="hverdagsro/fun", action="task_remove", task=task["id"], approver="ida")
+    assert [t["id"] for t in msg["result"]["tasks"]] == [grown["id"]]
