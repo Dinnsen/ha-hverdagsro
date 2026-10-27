@@ -2,6 +2,17 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.6.0] - 2026-10-27
+
+### Added
+- **The map is a little town:** a bright isometric town in the style of a toy world, with streets, zebra crossings, cars, a bus stop, trees and lamp posts. The family's house sits in the middle as a doll's house drawn from its floor plan in Husbyggeren, with low walls so you can look into every room. Each area has its own buildings, the shop has its own house, and the daily gift waits on the map.
+- **38 new theme packs (58 in all) with 168 new things:** fire station, air rescue, builders, mountain rescue, robot rescue, the cosy bear, the little elephant, the worm garden, forest friends, the farm, dolls and toys, the fantasy forest, dance academy, backstage, streetwear, photo studio, music producer, fashion shop, beauty salon, festival, bake shop, sweet kingdom, miniature house, cute animal friends, gift shop, tea party, water park, ice cream stand, animal clinic, camping trip, summer house, at our home, vegetable garden, hero academy, the secret base, inventor's workshop, cosmic heroes and magic school. Everything is drawn here, our own designs.
+- **Music and sounds:** every kind of place has its own little theme tune, and every place in a part of town plays its own version of it. Characters have voices by what they are (dogs, cats, owls, robots, sweet figures, people), and things make sounds when tapped: music, bouncing, engines, spinning, screens, eating. Coins, buying, the gift chest and a new level have their own sounds. All of it is made in the browser, with no sound files.
+- **Mute:** the speaker button in the game goes from music and sounds, to sounds only, to quiet. It is remembered on the device. Nothing plays before the child has touched the screen, and the music stops when the game is not on screen.
+- **Sit and sleep:** the avatar sits on sofas, chairs and benches, and lies down under the duvet in a bed.
+- **Outfits:** more tops, trousers, shoes, hairstyles, eye colours and mouths. Save up to eight outfits, put one on with a tap, or roll a random one.
+- **The game for grown-ups:** parents get a "Spillet" tab to see and play in the world too.
+
 ## [0.5.0] - 2026-10-27
 
 ### Added

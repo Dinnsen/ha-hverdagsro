@@ -33,6 +33,7 @@ const PARENT_TABS = [
   ["musik", "Musik", "music", "music"],
   ["apparater", "Apparater", "plug", "appliances"],
   ["sikkerhed", "Sikkerhed", "shield", "security"],
+  ["vaerelse", "Spillet", "star", null],
 ];
 const WX_ICON = { rain: "rain", snow: "snow", cloudy: "cloudy", partly: "partly", sun: "sun" };
 const TL0 = 6, TL1 = 24;
@@ -377,7 +378,7 @@ class HverdagsroPanel extends HTMLElement {
         ...(ctx.feature(m, "wish") ? [["onsker", "Ønsker", "gift"]] : []),
       ];
     } else {
-      list = PARENT_TABS.filter(([v]) => (v !== "madplan" || ctx.on("meals")) && (v !== "musik" || ctx.on("music")) && (v !== "apparater" || ctx.on("appliances")) && (v !== "sikkerhed" || ctx.on("security")) && (v !== "lister" || ctx.on("lists")) && (v !== "kalender" || ctx.on("calendar")));
+      list = PARENT_TABS.filter(([v]) => (v !== "madplan" || ctx.on("meals")) && (v !== "musik" || ctx.on("music")) && (v !== "apparater" || ctx.on("appliances")) && (v !== "sikkerhed" || ctx.on("security")) && (v !== "lister" || ctx.on("lists")) && (v !== "kalender" || ctx.on("calendar")) && (v !== "vaerelse" || (!!ctx.me && ctx.on("house"))));
     }
     return list.filter(([v]) => ctx.views[v]).map(([v, label, icon]) => [v, ctx.t(label), icon]);
   }
@@ -392,6 +393,8 @@ class HverdagsroPanel extends HTMLElement {
     if (["indstillinger", "rutiner", "husbygger", "guide"].includes(v)) return ctx.isKid || !ctx.isParent ? this._homeView() : v;
     if (v === "mig" || v === "rum") return v;
     if (v === "mitlys") return ctx.isKid && ctx.feature(ctx.me, "room") ? v : this._homeView();
+    // The grown-ups may play too (from Mere), with their own avatar and room.
+    if (v === "vaerelse" && ctx.me && !ctx.isKid && ctx.views.vaerelse) return v;
     if (!this._tabs().some((t) => t[0] === v)) return this._homeView();
     return v;
   }
