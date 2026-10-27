@@ -208,7 +208,7 @@ async def async_fun(family: Family, user: User | None, action: str, msg: dict[st
 
 
 def _task(state: dict[str, Any], msg: dict[str, Any]) -> dict[str, Any]:
-    task = next((t for t in state["tasks"] if t["id"] == msg.get("task")), None)
+    task: dict[str, Any] | None = next((t for t in state["tasks"] if t["id"] == msg.get("task")), None)
     if task is None:
         raise _bad("no_task")
     return task
