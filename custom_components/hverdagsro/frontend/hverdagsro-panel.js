@@ -19,8 +19,9 @@ import settings from "./hv-settings.js";
 import energy, { evTimeline, hasStatus, priceColor, statusHtml } from "./hv-energy.js";
 import quick, { alarmLabel, alarmState, bindFab, buildFab } from "./hv-quick.js";
 import kids from "./hv-kids.js";
+import play from "./hv-play.js";
 
-const MODULES = [home, lists, music, appliances, security, house, rooms, settings, energy, quick, kids];
+const MODULES = [home, lists, music, appliances, security, house, rooms, settings, energy, quick, kids, play];
 
 /* The tabs, in order. [view, label, icon, module flag (or null), who] */
 const PARENT_TABS = [
@@ -118,16 +119,45 @@ class HverdagsroPanel extends HTMLElement {
   }
   set panel(panel) {
     this.ctx.config = panel?.config || {};
+    if (this.isConnected) this._homeScreen(true);
   }
   set route(_route) {}
 
+  /* While Hverdagsro is open, "Add to Home Screen" gets Hverdagsro's own name, icon and start page. */
+  _homeScreen(on) {
+    const base = this.ctx.config?.static_url;
+    if (!base) return;
+    const head = document.head, keep = (this._headWas ||= {});
+    const set = (sel, make, attr, value) => {
+      let el = head.querySelector(sel);
+      if (!on) {
+        if (el && keep[sel] !== undefined) keep[sel] === null ? el.remove() : el.setAttribute(attr, keep[sel]);
+        return;
+      }
+      if (!el) {
+        el = make();
+        head.appendChild(el);
+        if (!(sel in keep)) keep[sel] = null;
+      } else if (!(sel in keep)) keep[sel] = el.getAttribute(attr);
+      el.setAttribute(attr, value);
+    };
+    const link = (rel) => () => Object.assign(document.createElement("link"), { rel });
+    const meta = (name) => () => Object.assign(document.createElement("meta"), { name });
+    set('link[rel="apple-touch-icon"]', link("apple-touch-icon"), "href", `${base}/icons/apple-180.png`);
+    set('link[rel="manifest"]', link("manifest"), "href", `${base}/app.webmanifest`);
+    set('meta[name="apple-mobile-web-app-title"]', meta("apple-mobile-web-app-title"), "content", "Hverdagsro");
+    set('meta[name="application-name"]', meta("application-name"), "content", "Hverdagsro");
+  }
+
   connectedCallback() {
+    this._homeScreen(true);
     if (this.ctx.hass && !this._unsubs.length && this._booted) this._subscribe();
     this._sky?.start();
     this._tick = setInterval(() => this._header(), 30000);
   }
 
   disconnectedCallback() {
+    this._homeScreen(false);
     for (const u of this._unsubs) {
       try {
         u();
@@ -272,6 +302,12 @@ class HverdagsroPanel extends HTMLElement {
     }
     ctx._watch = new Set();
     const view = ctx.views[ctx.view] || { render: () => `<section class="card hv-empty">${svg("more", "ic big")}<h2>${esc(ctx.t("Siden findes ikke"))}</h2></section>` };
+    // A page that draws itself (Husbyggeren) is left alone while it is open.
+    if (view.keep && this._shown === `${ctx.view}:${ctx.arg}` && ctx.$("main").firstElementChild && !this._forceKeep) {
+      this._buildTabs();
+      this._header();
+      return;
+    }
     let html;
     try {
       setModule(this._viewModule[ctx.view] || null);
@@ -307,7 +343,8 @@ class HverdagsroPanel extends HTMLElement {
 
   _homeView() {
     const ctx = this.ctx;
-    return ctx.isKid ? (ctx.feature(ctx.me, "board") && ctx.views.tavle ? "tavle" : "dag") : "hjem";
+    // A child starts in their own room, like in a game.
+    return ctx.isKid ? (ctx.feature(ctx.me, "room") && ctx.views.vaerelse ? "vaerelse" : ctx.feature(ctx.me, "board") && ctx.views.tavle ? "tavle" : "dag") : "hjem";
   }
 
   // ------------------------------------------------------------------ tabs and views (the prototype's tabsFor/validView)
@@ -317,9 +354,9 @@ class HverdagsroPanel extends HTMLElement {
     if (ctx.isKid) {
       const m = ctx.me;
       list = [
+        ...(ctx.feature(m, "room") ? [["vaerelse", "Mit værelse", "home"]] : []),
         ...(ctx.feature(m, "board") ? [["tavle", "Rutine", "star"]] : []),
-        ["dag", "Min dag", "home"],
-        ...(ctx.feature(m, "room") ? [["vaerelse", "Værelse", "bulb"]] : []),
+        ["dag", "Min dag", "calendar2"],
         ...(ctx.feature(m, "shop") ? [["shop", "Shop", "shop"]] : []),
         ...(ctx.feature(m, "skema") ? [["skema", "Skema", "school"]] : []),
         ...(ctx.feature(m, "wish") ? [["onsker", "Ønsker", "gift"]] : []),
@@ -339,6 +376,7 @@ class HverdagsroPanel extends HTMLElement {
     if (v === "person") return ctx.isKid ? "dag" : v;
     if (["indstillinger", "rutiner", "husbygger", "guide"].includes(v)) return ctx.isKid || !ctx.isParent ? this._homeView() : v;
     if (v === "mig" || v === "rum") return v;
+    if (v === "mitlys") return ctx.isKid && ctx.feature(ctx.me, "room") ? v : this._homeView();
     if (!this._tabs().some((t) => t[0] === v)) return this._homeView();
     return v;
   }

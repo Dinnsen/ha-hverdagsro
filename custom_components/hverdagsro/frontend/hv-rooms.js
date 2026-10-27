@@ -198,8 +198,10 @@ function genDraw(k, r, W) {
   const wallCol = t === "kid" ? pal.wall : wet ? "#E9EEF0" : t === "kitchen" ? "#F1EEE9" : t === "office" ? "#E6E8E3" : t === "garage" || t === "utility" ? "#E3E1DC" : "#EEE9E2";
   const floor = wet || t === "utility" ? ["#B9B7B2", "#CFCDC8"] : t === "garage" ? ["#9E9C98", "#B2B0AB"] : ["#B07E4F", "#C99A68"];
   let s = shell3({ k, ceil: "#E7E1D8", ceil2: "#D7CFC3", floor: floor[0], floor2: floor[1], left: mixHex(wallCol, "#000000", 0.05), right: t === "kid" ? pal.side : mixHex(wallCol, "#000000", 0.1), back: wallCol, plank: floor[0] === "#B07E4F" ? "rgba(90,55,25,.26)" : "rgba(0,0,0,.08)", seam: "rgba(120,110,95,.35)", seed: (hashStr(k) % 9) + 1 });
-  const small = wet || t === "walkin" || t === "hall";
-  s += window3(small ? 0.55 : 0.3, small ? 0.8 : 0.7, small ? 0.5 : 0.38, 0.82, k, W);
+  // Each room type has its own window, placed so nothing stands in front of it.
+  const WIN = { kid: [0.3, 0.7, 0.38, 0.82], living: [0.48, 0.92, 0.3, 0.86], kitchen: [0.06, 0.4, 0.47, 0.84], bed: [0.64, 0.92, 0.36, 0.84], guest: [0.64, 0.9, 0.38, 0.82], office: [0.55, 0.9, 0.4, 0.84], bath: [0.64, 0.9, 0.6, 0.86], smallbath: [0.58, 0.8, 0.62, 0.86], toilet: [0.58, 0.8, 0.62, 0.86], utility: [0.58, 0.86, 0.45, 0.84], hall: [0.68, 0.88, 0.45, 0.82], walkin: null, garage: null, other: [0.3, 0.7, 0.38, 0.82] };
+  const win = t in WIN ? WIN[t] : WIN.other;
+  if (win) s += window3(win[0], win[1], win[2], win[3], k, W);
   const rug = (u0, u1, t0, t1, c) => poly3([P3(u0, t0, 0.002), P3(u1, t0, 0.002), P3(u1, t1, 0.002), P3(u0, t1, 0.002)], c) + poly3([P3(u0 + 0.02, t0 + 0.03, 0.003), P3(u1 - 0.02, t0 + 0.03, 0.003), P3(u1 - 0.02, t1 - 0.03, 0.003), P3(u0 + 0.02, t1 - 0.03, 0.003)], "none", `stroke="rgba(255,255,255,.5)" stroke-width="1.2" stroke-dasharray="4 3"`);
   const frame = (u0, u1, v0, v1, f) => poly3(qBack(u0, u1, v0, v1), "#2B2F38") + poly3(qBack(u0 + 0.006, u1 - 0.006, v0 + 0.012, v1 - 0.012), f);
   const plant = (u, tt, v = 0) => {
@@ -251,7 +253,7 @@ function genDraw(k, r, W) {
         s += shelf(0.72, 0.96, 0.7, 0.96, 0.35, 1) + `<path d="M${pt3(P3(0.68, 0.45, 0))} L${pt3(P3(0.78, 0.5, 0.45))} L${pt3(P3(0.88, 0.45, 0))}Z" fill="${mixHex(pal.acc2, "#FFFFFF", 0.4)}" stroke="${wood}" stroke-width="1.5"/>`;
       } else {
         const teen = age === "teen" || age === "young" || age === "preteen";
-        s += bed(0.03, teen ? 0.34 : 0.3, 0.4, 0.86, pal.bed, !teen) + desk(0.62, 0.95, 0.78, 0.96, teen ? (age === "young" ? 2 : 1) : 0) + shelf(0.38, 0.55, 0.88, 0.97, teen ? 0.5 : 0.6, !teen);
+        s += bed(0.03, teen ? 0.34 : 0.3, 0.4, 0.86, pal.bed, !teen) + desk(0.62, 0.95, 0.78, 0.96, teen ? (age === "young" ? 2 : 1) : 0) + shelf(0.86, 0.99, 0.3, 0.56, teen ? 0.5 : 0.6, !teen);
         const [x, y] = P3(0.76, 0.66, 0.2), q = sc3(0.66);
         s += teen ? `<rect x="${x - 12 * q}" y="${y - 4 * q}" width="${24 * q}" height="${30 * q}" rx="${6 * q}" fill="#2B2F38"/><rect x="${x - 10 * q}" y="${y - 26 * q}" width="${20 * q}" height="${24 * q}" rx="${5 * q}" fill="${pal.acc}"/>` : `<rect x="${x - 10 * q}" y="${y}" width="${20 * q}" height="${24 * q}" rx="${3 * q}" fill="${wood}"/>`;
         [[0.1, 0.22, 0.55, 0.72, pal.acc2], [0.25, 0.33, 0.5, 0.64, "#F2B01E"]].forEach(([a, b, c, d, f]) => (s += frame(a, b, c, d, f)));
@@ -260,48 +262,164 @@ function genDraw(k, r, W) {
       break;
     }
     case "bed":
-    case "guest":
-      s += rug(0.22, 0.78, 0.2, 0.6, "#D9CBB8") + bed(0.24, 0.76, 0.45, 0.97, t === "bed" ? "#9DB7D5" : "#E8DCC8") + box3(0.12, 0.22, 0.82, 0.97, 0, 0.2, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + box3(0.78, 0.88, 0.82, 0.97, 0, 0.2, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + (t === "bed" ? box3(0.9, 1, 0.3, 0.8, 0, 0.78, "#EEEAE4", "#F5F2EE", "#E0DBD4") : shelf(0.9, 1, 0.4, 0.7, 0.4)) + frame(0.32, 0.68, 0.6, 0.76, "#E8DFD2");
-      break;
-    case "office": {
-      s += rug(0.25, 0.75, 0.2, 0.55, "#C9CED6") + desk(0.25, 0.78, 0.8, 0.97, 2) + shelf(0.82, 1, 0.55, 0.95, 0.7) + plant(0.12, 0.85);
-      const [x, y] = P3(0.5, 0.62, 0.2), q = sc3(0.62);
-      s += `<rect x="${x - 13 * q}" y="${y}" width="${26 * q}" height="${22 * q}" rx="${5 * q}" fill="#2B2F38"/><rect x="${x - 11 * q}" y="${y - 26 * q}" width="${22 * q}" height="${26 * q}" rx="${5 * q}" fill="#3A3F48"/>`;
+    case "guest": {
+      const guest = t === "guest", duvet = guest ? "#E8DCC8" : "#9DB7D5";
+      // The bed against the back wall, left of the window; a nightstand each side; the wardrobe along the right wall.
+      s += poly3(qBack(0.07, 0.56, 0.02, 0.55), mixHex(wallCol, "#000000", 0.035));
+      s += rug(0.04, 0.6, 0.22, 0.62, "#D9CBB8") + bed(0.1, 0.52, 0.42, 0.98, duvet);
+      s += box3(0.01, 0.09, 0.86, 0.98, 0, 0.2, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + box3(0.53, 0.61, 0.86, 0.98, 0, 0.2, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15));
+      s += frame(0.18, 0.44, 0.58, 0.76, guest ? "#D9E4D2" : "#E8DFD2");
+      if (guest) s += shelf(0.84, 0.99, 0.14, 0.34, 0.42) + plant(0.93, 0.9);
+      else s += poly3(qRight(0.12, 0.62, 0, 0.82), "#EEEAE4") + [0.29, 0.45].map((tt) => ln3(P3(1, tt, 0.02), P3(1, tt, 0.8), "#D8D2CA", 1.2)).join("") + [0.27, 0.31, 0.43, 0.47].map((tt) => `<circle cx="${P3(0.995, tt, 0.42)[0].toFixed(1)}" cy="${P3(0.995, tt, 0.42)[1].toFixed(1)}" r="1.8" fill="#8E8579"/>`).join("") + box3(0.66, 0.92, 0.9, 0.99, 0, 0.12, "#C9B8A6", "#D9CBB8", "#B9A896");
+      W.lamps = [[0.05, 0.93, "lamp"], [0.57, 0.93, "lamp"]];
+      W.ceil = [0.32, 0.55];
       break;
     }
-    case "living":
-      s += rug(0.2, 0.8, 0.18, 0.62, "#D9CBB8") + sofa(0.22, 0.78, 0.7, 0.95, "#8E9AAF") + box3(0.38, 0.62, 0.32, 0.48, 0.12, 0.15, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + box3(0.02, 0.1, 0.3, 0.7, 0, 0.16, "#E2D3BE", "#EDE2D2", "#D6C6AF") + poly3([P3(0.012, 0.36, 0.3), P3(0.012, 0.64, 0.3), P3(0.012, 0.64, 0.55), P3(0.012, 0.36, 0.55)], "#1B1E25", `id="${k}-tv"`) + plant(0.9, 0.4);
+    case "office": {
+      s += rug(0.15, 0.7, 0.2, 0.6, "#C9CED6") + desk(0.05, 0.5, 0.82, 0.98, 2) + shelf(0.87, 1, 0.35, 0.8, 0.72) + plant(0.62, 0.93);
+      const [x, y] = P3(0.28, 0.66, 0.2), q = sc3(0.66);
+      s += `<rect x="${x - 13 * q}" y="${y}" width="${26 * q}" height="${22 * q}" rx="${5 * q}" fill="#2B2F38"/><rect x="${x - 11 * q}" y="${y - 26 * q}" width="${22 * q}" height="${26 * q}" rx="${5 * q}" fill="#3A3F48"/>`;
+      s += frame(0.1, 0.24, 0.6, 0.78, "#D7E3EE") + frame(0.28, 0.38, 0.62, 0.76, "#F2E3C9");
+      W.lamps = [[0.42, 0.9, "lamp"], [0.75, 0.4, "lamp"]];
       break;
-    case "kitchen":
-      s += counter(0, 0.58, 0.86) + counter(0.58, 1, 0.86) + poly3(qBack(0.02, 0.56, 0.58, 0.82), "#F7F5F2") + box3(0.3, 0.7, 0.35, 0.55, 0, 0.3, white, "#D9D6D1", "#E8E4DE") + box3(0.3, 0.7, 0.34, 0.56, 0.3, 0.32, "#BFB9B0", "#CFCAC2", "#B5AFA6");
-      [0.36, 0.5, 0.64].forEach((u) => {
+    }
+    case "living": {
+      // Sofa along the left wall, the TV on the right wall, the window free at the back.
+      s += frame(0.08, 0.36, 0.5, 0.76, "#E3D3BE") + frame(0.12, 0.22, 0.55, 0.7, "#C9D8C2");
+      s += rug(0.22, 0.78, 0.16, 0.66, "#D9CBB8");
+      s += box3(0.01, 0.2, 0.28, 0.86, 0, 0.15, "#8E9AAF", mixHex("#8E9AAF", "#FFFFFF", 0.15), mixHex("#8E9AAF", "#000000", 0.12));
+      s += box3(0.0, 0.05, 0.28, 0.86, 0, 0.34, mixHex("#8E9AAF", "#000000", 0.06), mixHex("#8E9AAF", "#FFFFFF", 0.1), mixHex("#8E9AAF", "#000000", 0.16));
+      s += box3(0.01, 0.2, 0.84, 0.9, 0, 0.25, "#8E9AAF", mixHex("#8E9AAF", "#FFFFFF", 0.12), mixHex("#8E9AAF", "#000000", 0.15)) + box3(0.01, 0.2, 0.24, 0.3, 0, 0.25, "#8E9AAF", mixHex("#8E9AAF", "#FFFFFF", 0.12), mixHex("#8E9AAF", "#000000", 0.15));
+      [[0.05, 0.4, "#E8DCC8"], [0.05, 0.68, "#C9A27A"]].forEach(([u, tt, c]) => (s += box3(u, u + 0.03, tt, tt + 0.1, 0.15, 0.26, c, mixHex(c, "#FFFFFF", 0.2), mixHex(c, "#000000", 0.12))));
+      s += box3(0.36, 0.6, 0.36, 0.54, 0.1, 0.13, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15));
+      s += box3(0.88, 1, 0.3, 0.72, 0, 0.14, "#E2D3BE", "#EDE2D2", "#D6C6AF") + poly3(qRight(0.38, 0.64, 0.3, 0.56), "#1B1E25", `id="${k}-tv"`) + poly3(qRight(0.39, 0.63, 0.31, 0.55), "#272B34");
+      const ac = "#C9B79C";
+      s += box3(0.66, 0.82, 0.16, 0.3, 0.02, 0.13, ac, mixHex(ac, "#FFFFFF", 0.2), mixHex(ac, "#000000", 0.12)) + box3(0.66, 0.82, 0.12, 0.16, 0.02, 0.28, mixHex(ac, "#000000", 0.06), mixHex(ac, "#FFFFFF", 0.15), mixHex(ac, "#000000", 0.15)) + box3(0.66, 0.69, 0.12, 0.3, 0.02, 0.2, ac, mixHex(ac, "#FFFFFF", 0.12), mixHex(ac, "#000000", 0.15)) + box3(0.79, 0.82, 0.12, 0.3, 0.02, 0.2, ac, mixHex(ac, "#FFFFFF", 0.12), mixHex(ac, "#000000", 0.15));
+      s += plant(0.95, 0.93);
+      W.psl = [[0.42, 0.46]];
+      W.lamps = [[0.06, 0.94, "lamp"], [0.9, 0.82, "lamp"]];
+      W.ceil = [0.4, 0.55];
+      break;
+    }
+    case "kitchen": {
+      // Worktop along the back with the sink under the window, wall cupboards to the right of it, a tall fridge
+      // column in the corner, an island with stools in the middle and the pendants over the island.
+      s += poly3(qBack(0.42, 0.85, 0.34, 0.6), "#F2EEE8") + [0.48, 0.54, 0.6, 0.66, 0.72, 0.78].map((u) => ln3(P3(u, 1, 0.34), P3(u, 1, 0.6), "rgba(0,0,0,.05)", 0.8)).join("");
+      s += counter(0, 0.85, 0.86);
+      s += box3(0.42, 0.85, 0.9, 1, 0.62, 0.9, white, "#FFFFFF", "#E4E0DA") + [0.53, 0.64, 0.75].map((u) => ln3(P3(u, 0.9, 0.62), P3(u, 0.9, 0.9), "#DAD5CE", 1)).join("");
+      s += box3(0.85, 1, 0.82, 1, 0, 0.9, "#EFEDEA", "#FFFFFF", "#DEDAD4") + ln3(P3(0.86, 0.82, 0.45), P3(0.99, 0.82, 0.45), "#D2CDC6", 1) + ln3(P3(0.87, 0.82, 0.5), P3(0.87, 0.82, 0.7), "#B5AFA6", 2);
+      const [sx, sy] = P3(0.23, 0.93, 0.33), q9 = sc3(0.93);
+      s += `<ellipse cx="${sx}" cy="${sy}" rx="${16 * q9}" ry="${3.5 * q9}" fill="#C9CED6"/><path d="M${sx},${sy - 2} v${-10 * q9} q0,-4 ${5 * q9},-4" stroke="#9AA3AE" stroke-width="${2 * q9}" fill="none"/>`;
+      s += poly3([P3(0.6, 0.88, 0.322), P3(0.74, 0.88, 0.322), P3(0.74, 0.97, 0.322), P3(0.6, 0.97, 0.322)], "#2B2F38");
+      s += box3(0.38, 0.78, 0.36, 0.56, 0, 0.3, white, "#D9D6D1", "#E8E4DE") + box3(0.37, 0.79, 0.35, 0.57, 0.3, 0.32, "#BFB9B0", "#CFCAC2", "#B5AFA6");
+      [0.45, 0.58, 0.71].forEach((u) => {
         const [x, y] = P3(u, 0.3, 0.22), q = sc3(0.3);
         s += `<path d="M${x},${y} v${16 * q}" stroke="#2B2F38" stroke-width="${2 * q}"/><ellipse cx="${x}" cy="${y}" rx="${7 * q}" ry="${2.5 * q}" fill="#2B2F38"/>`;
       });
+      s += plant(0.04, 0.4);
+      W.psl = [[0.47, 0.46], [0.58, 0.46], [0.69, 0.46]];
+      W.lamps = [[0.3, 0.88, "lamp"], [0.92, 0.6, "lamp"]];
+      W.ceil = [0.6, 0.4];
       break;
+    }
     case "bath":
-      s += box3(0.02, 0.45, 0.7, 0.97, 0, 0.22, "#FDFDFC", "#FFFFFF", "#E7EAEC") + poly3([P3(0.05, 0.73, 0.222), P3(0.42, 0.73, 0.222), P3(0.42, 0.94, 0.222), P3(0.05, 0.94, 0.222)], "#BFE3F2") + box3(0.6, 0.85, 0.9, 0.99, 0.26, 0.32, white, "#FFFFFF", "#E7EAEC") + poly3(qBack(0.62, 0.83, 0.45, 0.75), "#DCE6EE") + poly3(qRight(0.3, 0.6, 0, 0.9), "rgba(200,225,240,.35)");
-      break;
     case "smallbath":
-      s += poly3(qRight(0.55, 0.95, 0, 0.95), "rgba(200,225,240,.45)") + box3(0.05, 0.2, 0.82, 0.99, 0, 0.14, "#FDFDFC", "#FFFFFF", "#E7EAEC") + box3(0.25, 0.48, 0.9, 0.99, 0.26, 0.32, white, "#FFFFFF", "#E7EAEC") + poly3(qBack(0.27, 0.46, 0.45, 0.72), "#DCE6EE");
+    case "toilet": {
+      // Tiles halfway up, the toilet and the vanity with its mirror along the walls, the window high and free.
+      const tile = "#DDE5E8", big = t === "bath";
+      s += poly3(qBack(0, 1, 0, 0.5), tile) + poly3(qLeft(0, 1, 0, 0.5), mixHex(tile, "#000000", 0.04)) + poly3(qRight(0, 1, 0, 0.5), mixHex(tile, "#000000", 0.07));
+      for (let v = 0.1; v < 0.5; v += 0.1) s += ln3(P3(0, 1, v), P3(1, 1, v), "rgba(255,255,255,.7)", 0.8) + ln3(P3(0, 0, v), P3(0, 1, v), "rgba(255,255,255,.6)", 0.8) + ln3(P3(1, 0, v), P3(1, 1, v), "rgba(255,255,255,.6)", 0.8);
+      for (let u = 0.1; u < 1; u += 0.1) s += ln3(P3(u, 1, 0), P3(u, 1, 0.5), "rgba(255,255,255,.7)", 0.8);
+      if (big) s += box3(0.02, 0.5, 0.72, 0.98, 0, 0.22, "#FDFDFC", "#FFFFFF", "#E7EAEC") + poly3([P3(0.05, 0.75, 0.222), P3(0.47, 0.75, 0.222), P3(0.47, 0.95, 0.222), P3(0.05, 0.95, 0.222)], "#BFE3F2");
+      else s += poly3(qBack(0.02, 0.36, 0, 0.92), "rgba(200,225,240,.28)") + ln3(P3(0.36, 1, 0), P3(0.36, 0.72, 0), "#B9C4CC", 1.4) + poly3([P3(0.36, 0.72, 0), P3(0.36, 1, 0), P3(0.36, 1, 0.92), P3(0.36, 0.72, 0.92)], "rgba(200,225,240,.35)") + `<circle cx="${P3(0.18, 1, 0.82)[0]}" cy="${P3(0.18, 1, 0.82)[1]}" r="6" fill="#C9CED6"/>`;
+      // vanity and mirror on the right wall
+      s += box3(0.84, 1, 0.42, 0.68, 0.24, 0.32, "#C9A27A", "#FFFFFF", "#B48A5A") + poly3(qRight(0.44, 0.66, 0.42, 0.72), "#DCE6EE") + poly3(qRight(0.46, 0.64, 0.44, 0.7), "#E9F1F6");
+      // the toilet on the left wall
+      s += box3(0.02, 0.12, 0.4, 0.5, 0.14, 0.3, "#FDFDFC", "#FFFFFF", "#E7EAEC") + box3(0.02, 0.17, 0.36, 0.54, 0, 0.14, "#FDFDFC", "#FFFFFF", "#E7EAEC");
+      if (big) s += box3(0.62, 0.66, 0.94, 0.99, 0.3, 0.55, "#C9CED6", null, "#B5BCC4") + poly3(qBack(0.55, 0.62, 0.3, 0.52), "#F2B6C6");
+      s += plant(0.93, 0.92) + box3(0.4, 0.62, 0.08, 0.3, 0, 0.01, "#BFD3DC", "#C9DCE4", "#BFD3DC");
+      W.lamps = [[0.92, 0.55, "lamp"], [0.2, 0.9, "lamp"]];
+      W.ceil = [0.45, 0.5];
       break;
-    case "toilet":
-      s += box3(0.38, 0.55, 0.8, 0.99, 0, 0.14, "#FDFDFC", "#FFFFFF", "#E7EAEC") + box3(0.4, 0.53, 0.95, 0.99, 0.14, 0.3, "#FDFDFC", "#FFFFFF", "#E7EAEC") + box3(0.1, 0.3, 0.92, 0.99, 0.26, 0.32, white, "#FFFFFF", "#E7EAEC") + poly3(qBack(0.12, 0.28, 0.45, 0.7), "#DCE6EE");
+    }
+    case "utility": {
+      // Washer and dryer stacked at the left, the sink under the window, shelves high on the right wall.
+      s += box3(0.01, 0.2, 0.76, 0.98, 0, 0.36, "#FBFBFA", "#FFFFFF", "#E2E0DC") + box3(0.01, 0.2, 0.76, 0.98, 0.37, 0.72, "#FBFBFA", "#FFFFFF", "#E2E0DC");
+      [[0.18], [0.54]].forEach(([v]) => {
+        const [x, y] = P3(0.105, 0.76, v), q = sc3(0.76);
+        s += `<circle cx="${x}" cy="${y}" r="${11 * q}" fill="#3A4150" stroke="#C9CDD3" stroke-width="${3 * q}"/>`;
+      });
+      s += counter(0.22, 0.98, 0.86) + box3(0.6, 0.84, 0.88, 0.97, 0.3, 0.33, "#C9CED6", "#D7DCE2", "#B5BCC4");
+      s += [0.42, 0.62].map((v) => poly3([P3(1, 0.2, v), P3(1, 0.7, v), P3(0.94, 0.7, v), P3(0.94, 0.2, v)], "#FFFFFF")).join("");
+      [[0.3, 0.42, "#7FB9E8"], [0.42, 0.42, "#F5D08A"], [0.55, 0.62, "#C9A4E8"], [0.32, 0.62, "#E5484D"]].forEach(([tt, v, c]) => {
+        const [x, y] = P3(0.975, tt, v);
+        s += `<rect x="${(x - 4).toFixed(1)}" y="${(y - 10).toFixed(1)}" width="8" height="10" rx="2" fill="${c}"/>`;
+      });
+      s += box3(0.42, 0.6, 0.3, 0.44, 0, 0.12, "#D8C7A8", "#E6D8BE", "#C9B793") + box3(0.62, 0.95, 0.12, 0.2, 0.3, 0.32, "#C9CED6", null, "#B5BCC4");
+      W.lamps = [[0.5, 0.9, "lamp"], [0.95, 0.4, "lamp"]];
       break;
-    case "utility":
-      s += counter(0, 0.6, 0.86) + box3(0.62, 0.8, 0.84, 0.99, 0, 0.32, "#FBFBFA", "#FFFFFF", "#E2E0DC") + box3(0.62, 0.8, 0.84, 0.99, 0.32, 0.64, "#FBFBFA", "#FFFFFF", "#E2E0DC") + `<circle cx="${P3(0.71, 0.84, 0.16)[0]}" cy="${P3(0.71, 0.84, 0.16)[1]}" r="11" fill="#3A4150" stroke="#C9CDD3" stroke-width="3"/>`;
+    }
+    case "hall": {
+      const entre = /entr|vindfang|hall/i.test(r.name || "");
+      if (entre) s += poly3(qBack(0.32, 0.58, 0, 0.78), "#5B4632") + poly3(qBack(0.35, 0.55, 0.42, 0.72), "#DCE6EE") + `<circle cx="${P3(0.54, 1, 0.38)[0]}" cy="${P3(0.54, 1, 0.38)[1]}" r="2.6" fill="#D9B45A"/>`;
+      else s += poly3(qBack(0.36, 0.56, 0, 0.78), "#F4F1EC") + ln3(P3(0.36, 1, 0), P3(0.36, 1, 0.78), "#D8D2CA", 1.4) + ln3(P3(0.56, 1, 0), P3(0.56, 1, 0.78), "#D8D2CA", 1.4);
+      // bench and hooks with coats on the left wall, shoes below; a mirror on the right wall
+      s += box3(0.01, 0.12, 0.45, 0.8, 0.18, 0.22, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + box3(0.01, 0.12, 0.45, 0.8, 0, 0.06, "#E9E4DC", "#F2EEE8", "#DAD4CB");
+      [0.5, 0.6, 0.7].forEach((tt, i) => {
+        const [x, y] = P3(0, tt, 0.72), q = sc3(tt);
+        s += `<circle cx="${x + 2}" cy="${y}" r="${2.2 * q}" fill="#2B2F38"/>` + (entre || i < 2 ? `<path d="M${x + 2},${y} l${8 * q},${2 * q} l${2 * q},${34 * q} l${-14 * q},${2 * q} z" fill="${["#5E6A75", "#C2703D", "#7FA36A"][i]}" opacity=".9"/>` : "");
+        const [bx, by] = P3(0.06, tt + 0.03, 0);
+        s += `<ellipse cx="${bx}" cy="${by - 2}" rx="${6 * q}" ry="${2.4 * q}" fill="${["#2B2F38", "#8A6440", "#E5484D"][i]}"/>`;
+      });
+      s += poly3(qRight(0.4, 0.62, 0.28, 0.85), "#C9B8A6") + poly3(qRight(0.42, 0.6, 0.3, 0.83), "#DCE6EE");
+      s += rug(0.25, 0.75, 0.08, entre ? 0.5 : 0.92, entre ? "#B9A896" : "#C9B8A6") + (entre ? "" : frame(0.1, 0.24, 0.5, 0.7, "#E8DFD2"));
+      W.lamps = [[0.08, 0.9, "lamp"], [0.92, 0.3, "lamp"]];
+      W.ceil = [0.5, 0.45];
       break;
-    case "hall":
-      s += box3(0.05, 0.35, 0.85, 0.97, 0, 0.14, wood, mixHex(wood, "#FFFFFF", 0.2), mixHex(wood, "#000000", 0.15)) + [0.12, 0.22, 0.32].map((u) => `<circle cx="${P3(u, 1, 0.66)[0]}" cy="${P3(u, 1, 0.66)[1]}" r="3" fill="#2B2F38"/>`).join("") + frame(0.4, 0.52, 0.5, 0.78, "#DCE6EE") + rug(0.3, 0.7, 0.1, 0.5, "#C9B8A6");
+    }
+    case "walkin": {
+      // Hanging rails with clothes on both side walls, drawers and a mirror at the back.
+      const rail = (side) => {
+        let o = "";
+        const u = side ? 0.995 : 0.005, uu = side ? 0.86 : 0.14;
+        o += poly3(side ? qRight(0.15, 0.98, 0.88, 0.9) : qLeft(0.15, 0.98, 0.88, 0.9), "#F2EEE8");
+        o += ln3(P3(uu, 0.15, 0.82), P3(uu, 0.98, 0.82), "#9AA3AE", 1.6);
+        const rr = prng((hashStr(k) % 999) + (side ? 7 : 3)), cols = ["#2B2F38", "#5E6A75", "#C2703D", "#E8DCC8", "#7FA36A", "#9DB7D5", "#F2B6C6", "#FBFAF7"];
+        for (let tt = 0.2; tt < 0.95; tt += 0.045) {
+          const L = 0.36 + rr() * 0.22, c = cols[Math.floor(rr() * cols.length)];
+          o += poly3([P3(uu, tt, 0.81), P3(uu, tt + 0.035, 0.81), P3(uu, tt + 0.035, 0.81 - L), P3(uu, tt, 0.81 - L)], c, 'stroke="rgba(0,0,0,.12)" stroke-width=".6"');
+        }
+        o += box3(side ? 0.84 : 0, side ? 1 : 0.16, 0.15, 0.98, 0, 0.12, "#EEEAE4", "#F5F2EE", "#E0DBD4");
+        return o;
+      };
+      s += rail(0) + rail(1) + box3(0.2, 0.8, 0.9, 1, 0, 0.35, "#EEEAE4", "#F5F2EE", "#E0DBD4") + [0.12, 0.24].map((v) => ln3(P3(0.2, 0.9, v), P3(0.8, 0.9, v), "#D8D2CA", 1)).join("") + poly3(qBack(0.38, 0.62, 0.42, 0.88), "#C9B8A6") + poly3(qBack(0.4, 0.6, 0.44, 0.86), "#DCE6EE");
+      s += rug(0.3, 0.7, 0.2, 0.7, "#D9CBB8");
+      W.lamps = [[0.5, 0.9, "lamp"], [0.3, 0.6, "lamp"]];
       break;
-    case "walkin":
-      s += shelf(0, 0.3, 0.5, 1, 0.9) + shelf(0.7, 1, 0.5, 1, 0.9) + box3(0.32, 0.68, 0.9, 0.99, 0, 0.9, "#EEEAE4", "#F5F2EE", "#E0DBD4");
+    }
+    case "garage": {
+      // The garage door at the back, a car seen from behind, shelves and bikes along the sides.
+      s += poly3(qBack(0.18, 0.82, 0, 0.78), "#C9CCD1");
+      for (let v = 0.08; v < 0.78; v += 0.08) s += ln3(P3(0.18, 1, v), P3(0.82, 1, v), "#AEB3BA", 1.2);
+      s += poly3(qBack(0.24, 0.76, 0.62, 0.7), "#DCE6EE");
+      s += box3(0, 0.12, 0.3, 0.9, 0, 0.7, "#8E9196", "#A3A6AB", "#7D8085") + [0.18, 0.36, 0.54].map((v) => poly3([P3(0, 0.3, v), P3(0.12, 0.3, v), P3(0.12, 0.9, v), P3(0, 0.9, v)], "#6E7176")).join("");
+      [[0.04, 0.5, 0.18, "#E5484D"], [0.06, 0.7, 0.36, "#2F6FD6"], [0.05, 0.6, 0.54, "#F2B01E"]].forEach(([u, tt, v, c]) => (s += box3(u, u + 0.05, tt, tt + 0.08, v, v + 0.1, c, mixHex(c, "#FFFFFF", 0.2), mixHex(c, "#000000", 0.2))));
+      const car = (cx, tt, col) => {
+        const [x, y] = P3(cx, tt, 0), q = sc3(tt), w = 120 * q, h = 62 * q;
+        return `<g><ellipse cx="${x}" cy="${y}" rx="${w * 0.58}" ry="${8 * q}" fill="rgba(0,0,0,.25)"/><rect x="${x - w / 2 - 2 * q}" y="${y - 18 * q}" width="${14 * q}" height="${18 * q}" rx="${3 * q}" fill="#1E1F24"/><rect x="${x + w / 2 - 12 * q}" y="${y - 18 * q}" width="${14 * q}" height="${18 * q}" rx="${3 * q}" fill="#1E1F24"/><path d="M${x - w / 2},${y - 14 * q} v${-h * 0.42} q0,${-8 * q} ${10 * q},${-10 * q} l${12 * q},${-h * 0.36} q${4 * q},${-6 * q} ${12 * q},${-6 * q} h${w - 68 * q} q${8 * q},0 ${12 * q},${6 * q} l${12 * q},${h * 0.36} q${10 * q},${2 * q} ${10 * q},${10 * q} v${h * 0.42} z" fill="${col}"/><path d="M${x - w / 2 + 26 * q},${y - h * 0.62} l${8 * q},${-h * 0.3} h${w - 68 * q} l${8 * q},${h * 0.3} z" fill="#2B3440"/><rect x="${x - w / 2 + 6 * q}" y="${y - h * 0.5}" width="${20 * q}" height="${7 * q}" rx="${3 * q}" fill="#E5484D"/><rect x="${x + w / 2 - 26 * q}" y="${y - h * 0.5}" width="${20 * q}" height="${7 * q}" rx="${3 * q}" fill="#E5484D"/><rect x="${x - 14 * q}" y="${y - h * 0.38}" width="${28 * q}" height="${8 * q}" rx="${1.5 * q}" fill="#F2F2F2"/></g>`;
+      };
+      s += car(0.5, 0.5, "#C9CED6");
+      const bike = (tt) => {
+        const [x, y] = P3(0.97, tt, 0.18), q = sc3(tt);
+        return `<g stroke="#2B2F38" stroke-width="${1.6 * q}" fill="none"><circle cx="${x - 2 * q}" cy="${y}" r="${12 * q}"/><circle cx="${x - 2 * q}" cy="${y - 42 * q}" r="${12 * q}"/><path d="M${x - 2 * q},${y} l${-4 * q},${-21 * q} l${4 * q},${-21 * q}" stroke="#2F6FD6" stroke-width="${2.2 * q}"/></g>`;
+      };
+      s += bike(0.35) + bike(0.6);
+      W.lamps = [[0.5, 0.9, "lamp"], [0.9, 0.85, "lamp"]];
+      W.ceil = [0.5, 0.5];
       break;
-    case "garage":
-      s += box3(0.6, 1, 0.6, 1, 0, 0.5, "#B8B5AF", "#C9C6C0", "#A9A6A0") + `<path d="M${pt3(P3(0.1, 0.3, 0.02))} L${pt3(P3(0.5, 0.3, 0.02))} L${pt3(P3(0.5, 0.75, 0.02))} L${pt3(P3(0.1, 0.75, 0.02))}Z" fill="rgba(0,0,0,.15)"/>`;
-      break;
+    }
     default:
-      s += rug(0.3, 0.7, 0.25, 0.6, "#D9CBB8") + plant(0.85, 0.8) + shelf(0.05, 0.25, 0.8, 0.97, 0.5);
+      s += rug(0.25, 0.75, 0.2, 0.6, "#D9CBB8") + plant(0.9, 0.9) + shelf(0.02, 0.2, 0.84, 0.97, 0.5) + frame(0.76, 0.88, 0.55, 0.72, "#E8DFD2");
   }
   return s;
 }
@@ -309,10 +427,12 @@ function genDraw(k, r, W) {
 /* Where the lamps sit in the picture. */
 const GSLOTS = [[0.5, 0.5, "ceil"], [0.18, 0.8, "lamp"], [0.82, 0.7, "lamp"], [0.5, 0.9, "strip"]];
 const PSL = [[0.36, 0.45], [0.5, 0.45], [0.64, 0.45], [0.43, 0.6], [0.57, 0.6]];
-function slotsFor(lights) {
-  let pn = 0;
+function slotsFor(lights, W = {}) {
+  // The room's drawing says where its lamps go (clear of the window); otherwise the usual places.
+  const psl = W.psl || PSL, ceil = W.ceil ? [...W.ceil, "ceil"] : GSLOTS[0], lamps = W.lamps || [GSLOTS[1], GSLOTS[2]];
+  let pn = 0, ln = 0;
   return lights.map((l, i) =>
-    l.lk === "pendant" ? [...PSL[pn++ % PSL.length], "pend"] : l.lk === "strip" ? GSLOTS[3] : l.lk === "floor" || l.lk === "table" || l.lk === "wall" ? GSLOTS[1 + (i % 2)] : i === 0 ? GSLOTS[0] : GSLOTS[1 + (i % 2)]
+    l.lk === "pendant" ? [...psl[pn++ % psl.length], "pend"] : l.lk === "strip" ? GSLOTS[3] : l.lk === "floor" || l.lk === "table" || l.lk === "wall" ? lamps[ln++ % lamps.length] : i === 0 ? ceil : lamps[ln++ % lamps.length]
   );
 }
 function genLamps(k, lights, slots) {
@@ -382,21 +502,20 @@ function lightModel(ctx, id, extra = {}) {
 const noEntity = (it) => ({ id: "i-" + it.id, ent: "", name: it.name || "", type: it.rgb ? "color" : "ct", on: false, bri: 80, col: WARM, lk: it.lk || "", off: true, noent: true });
 /* Like the prototype's genRoom: the light sources placed in the room in Husbyggeren. Without any, the room's own
    light (as "Loftlampe"), or the lights in the room's area in Home Assistant. */
-function roomLights(ctx, r) {
+function roomLights(ctx, r, all = false) {
   const placed = typeof House.roomLightItems === "function" ? House.roomLightItems(ctx, r.id) : [];
   const seen = new Set();
+  const isGroup = (id) => Array.isArray(ctx.hass.states[id]?.attributes?.entity_id);
   let lights = [];
+  // The light sources drawn in Husbyggeren first (they have a place in the picture) ...
   for (const it of placed) {
-    if (it.ent && ctx.hass.states[it.ent]) {
-      if (seen.has(it.ent)) continue;
-      seen.add(it.ent);
-      lights.push(lightModel(ctx, it.ent, { name: it.name, lk: it.lk }));
-    } else lights.push(noEntity(it));
+    if (!it.ent || !ctx.hass.states[it.ent] || seen.has(it.ent)) continue;
+    seen.add(it.ent);
+    lights.push(lightModel(ctx, it.ent, { name: it.name, lk: it.lk }));
   }
   r._placed = lights.length > 0;
-  // A child's room (and a hand-drawn one) shows all the lights of its area, but not a group of them as well.
-  const isGroup = (id) => Array.isArray(ctx.hass.states[id]?.attributes?.entity_id);
-  if ((r.rtype === "kid" || hasArt(r)) && r.area) {
+  // ... then every other light in the room's area, but not a group of them as well.
+  if (r.area) {
     const inArea = ctx.entities("light").filter((id) => ctx.area(id) === r.area);
     const single = inArea.filter((id) => !isGroup(id));
     for (const id of single.length ? single : inArea)
@@ -413,10 +532,18 @@ function roomLights(ctx, r) {
         lights.push(lightModel(ctx, id));
       }
   if (!lights.length && r.light && ctx.hass.states[r.light]) lights.push(lightModel(ctx, r.light, { name: ctx.t("Loftlampe") }));
-  if (!lights.length && r.area) for (const id of ctx.entities("light")) if (ctx.area(id) === r.area) lights.push(lightModel(ctx, id));
-  lights.sort((a, b) => (a.lk === "strip") - (b.lk === "strip"));
+  // Drawn lamps without a light in Home Assistant are shown in the picture, but last and switched off.
+  for (const it of placed) if (!it.ent || !ctx.hass.states[it.ent]) lights.push(noEntity(it));
+  lights.sort((a, b) => (a.lk === "strip") - (b.lk === "strip") || !!a.noent - !!b.noent);
+  // The names and hidden lamps chosen in "Tilpas rummet".
+  const cfg = roomCfg(ctx, r);
+  lights.forEach((l) => {
+    l.base = l.name;
+    if (cfg.names[l.id]) l.name = cfg.names[l.id];
+  });
+  if (!all && cfg.hide.length) lights = lights.filter((l) => !cfg.hide.includes(l.id));
   const w = lights.length === 1 ? 0.85 : 0;
-  lights.forEach((l, i) => (l.w = w || (l.lk === "strip" || l.lk === "rgb" ? 0.3 : i === 0 ? 0.7 : 0.45)));
+  lights.forEach((l, i) => (l.w = w || (l.lk === "strip" || l.lk === "rgb" ? 0.3 : i === 0 ? 0.7 : Math.max(0.15, 0.45 - i * 0.04))));
   return lights;
 }
 function areaEntities(ctx, r) {
@@ -525,7 +652,7 @@ function scene(ctx, room, lights, prefix = "") {
   const W = {};
   const art = hasArt(room) ? drawArt(ARTH(), room.art, k, W, lights, room.lamps || {}) : null;
   const draw = art ? art.draw : genDraw(k, room, W);
-  const slots = slotsFor(lights);
+  const slots = slotsFor(lights, W);
   const sc = PRESETS(room, lights, slots).find((p) => p[0] === scenes[room.id]);
   const E = env(ctx);
   const svg = `<svg class="rm-svg" id="${k}" viewBox="0 0 480 270" role="img" aria-label="${ctx.esc(room.name)}">
@@ -547,7 +674,7 @@ function repaint(ctx, room) {
     const W = {};
     if (hasArt(room)) drawArt(ARTH(), room.art, k, W, lights, room.lamps || {});
     else genDraw(k, room, W);
-    const sc = PRESETS(room, lights, slotsFor(lights)).find((p) => p[0] === scenes[room.id]);
+    const sc = PRESETS(room, lights, slotsFor(lights, W)).find((p) => p[0] === scenes[room.id]);
     el.textContent = lookCss(k, lights, W, env(ctx), sc?.[3]);
   }
 }
@@ -601,7 +728,7 @@ function lightsCard(ctx, room, lights, cls = "s8") {
   const foot = kid
     ? ""
     : `<p class="t-sub rm-foot">${esc(room._placed ? t("Scenerne er Hverdagsros egne, og lyskilderne er dem, der står i rummet i Husbyggeren.") : t("Scenerne er Hverdagsros egne, og lyset er rummets lys i Home Assistant."))}${haScenes.length ? ` ${esc(t("Scenerne i Home Assistant ligger til sidst."))}` : ""}${offline.length ? ` ${esc(t("{names} er utilgængelig i HA i dag.", { names: offline.join(t(" og ")) }))}` : ""}</p>`;
-  return `<section class="card ${cls} rm-card" data-room="${esc(room.id)}" style="--pc:${color}"><div class="card-head"><h2>${esc((room.rtype === "kid" && room.area && ctx.hass.areas?.[room.area]?.name) || room.name)}</h2><span class="meta">${lights.length ? (on ? esc(t("{n} af {total} lys tændt", { n: on, total: lights.length })) : esc(t("Alt er slukket"))) : esc(t("Ingen lys i rummet"))}${temp != null ? ` · ${ctx.fmt.num(temp, 1)} °C` : ""}</span></div>
+  return `<section class="card ${cls} rm-card" data-room="${esc(room.id)}" style="--pc:${color}"><div class="card-head"><h2>${esc((room.rtype === "kid" && room.area && ctx.hass.areas?.[room.area]?.name) || room.name)}</h2><span class="meta">${lights.length ? (on ? esc(t("{n} af {total} lys tændt", { n: on, total: lights.filter((l) => !l.noent).length })) : esc(t("Alt er slukket"))) : esc(t("Ingen lys i rummet"))}${temp != null ? ` · ${ctx.fmt.num(temp, 1)} °C` : ""}</span></div>
     <div class="rm-wrap"><div class="rm-pic">${sc.svg}${lights.length ? `<span class="rm-hint">${svg("bulb")}${esc(t("Tryk på en lampe"))}</span>` : ""}</div>
     <div class="rm-side">${
       lights.length
@@ -609,6 +736,7 @@ function lightsCard(ctx, room, lights, cls = "s8") {
             .map((p) => `<button data-act="room-scene" data-id="${esc(room.id)}" data-scene="${p[0]}" aria-pressed="${scenes[room.id] === p[0]}"><i style="background:${grad(p)}"></i>${esc(t(p[1]))}</button>`)
             .join("")}${haScenes.map((id) => `<button data-act="room-ha" data-id="${esc(id)}"><i style="background:var(--surface-2)">${svg(id.startsWith("script.") ? "play" : "sparkle")}</i>${esc(ctx.name(id))}</button>`).join("")}</div>
       <div class="rm-lights">${lights
+        .filter((l) => !l.noent)
         .map(
           (l) => `<div class="rm-l${l.on ? " on" : ""}" data-id="${esc(l.id)}" style="--lc:${l.col}"><button class="rm-tg" data-act="room-lamp" data-k="${sc.k}" data-id="${esc(l.id)}" aria-pressed="${l.on}" aria-label="${esc(l.name)}"${l.off ? " disabled" : ""}>${svg("bulb")}</button>
         <div class="rm-ln"><b>${esc(l.name)}</b><small><span class="rm-pct">${l.noent ? esc(t("Slukket")) : l.off ? esc(t("Svarer ikke")) : l.on ? `${l.bri} %` : esc(t("Slukket"))}</span> · ${esc(l.ent || t("Ingen entitet"))}</small></div>
@@ -637,7 +765,7 @@ export function roomCard(ctx, room) {
   const lights = roomLights(ctx, r);
   const sc = scene(ctx, r, lights, "c");
   const on = lights.filter((l) => l.on).length;
-  return `<button class="card rm-mini" data-go="rum:${ctx.esc(r.id)}" style="--pc:${(r.kid && ctx.member(r.kid)?.color) || "var(--violet)"}"><span class="rm-pic">${sc.svg.replace(/data-act="room-lamp"/g, "")}</span><span class="rm-mini-t"><b>${ctx.esc(r.name)}</b><small>${lights.length ? (on ? ctx.esc(ctx.t("{n} af {total} lys tændt", { n: on, total: lights.length })) : ctx.esc(ctx.t("Alt er slukket"))) : ctx.esc(typeName(ctx, r))}</small></span>${ctx.svg("go", "ic rm-mini-go")}</button>`;
+  return `<button class="card rm-mini" data-go="rum:${ctx.esc(r.id)}" style="--pc:${(r.kid && ctx.member(r.kid)?.color) || "var(--violet)"}"><span class="rm-pic">${sc.svg.replace(/data-act="room-lamp"/g, "")}</span><span class="rm-mini-t"><b>${ctx.esc(r.name)}</b><small>${lights.length ? (on ? ctx.esc(ctx.t("{n} af {total} lys tændt", { n: on, total: lights.filter((l) => !l.noent).length })) : ctx.esc(ctx.t("Alt er slukket"))) : ctx.esc(typeName(ctx, r))}</small></span>${ctx.svg("go", "ic rm-mini-go")}</button>`;
 }
 const typeName = (ctx, r) => ctx.t((RTYPES().find((x) => x[0] === r.rtype) || [, "Rum"])[1]);
 
@@ -707,26 +835,173 @@ function thingRow(ctx, id) {
   return `<div class="rp-row st-${unav ? "warn" : cls || "none"}" style="--hc:${col}"><span class="rp-ic">${svg(ic)}</span><div><b>${esc(name)}</b><small>${esc(txt)}</small></div>${ctl}</div>`;
 }
 
-/* ------------------------------------------------------------------ pages (the prototype's pRoomPage and kRoom) */
+/* ------------------------------------------------------------------ the room page (layout A: the picture first) */
+/* What a room page shows, and how. The family's choice is stored on the room in the house (room.page); a member's
+   own choice ("kun for mig") in their prefs (room_prefs[room id]) and wins over the family's. */
+const SHOW = [["pic", "Billede af rummet"], ["scenes", "Stemninger"], ["lights", "Lys"], ["climate", "Klima"], ["media", "Musik og TV"], ["security", "Døre, vinduer og kamera"], ["other", "Andet i rummet"]];
+const sel = {}; // room id → the lamp in the drawer
+const allOpen = {}; // room id → the list of all lamps is open
+const famCfg = (r) => (r && r.page && typeof r.page === "object" ? r.page : {});
+const myCfg = (ctx, r) => (r && ctx.me?.room_prefs && typeof ctx.me.room_prefs === "object" ? ctx.me.room_prefs[r.id] || {} : {});
+function roomCfg(ctx, r, scope = "") {
+  const f = famCfg(r), m = scope === "family" ? {} : myCfg(ctx, r);
+  const pick = (k, d) => (Array.isArray(m[k]) || typeof m[k] === "boolean" ? m[k] : Array.isArray(f[k]) || typeof f[k] === "boolean" ? f[k] : d);
+  return {
+    show: { pic: true, scenes: true, lights: true, climate: true, media: true, security: true, other: true, ...(f.show || {}), ...(m.show || {}) },
+    fav: pick("fav", []),
+    hide: pick("hide", []),
+    names: { ...(f.names || {}), ...(m.names || {}) },
+    pin: pick("pin", false),
+  };
+}
+const hasMine = (ctx, r) => Object.keys(myCfg(ctx, r)).length > 0;
+/* What else is in the room, sorted into the page's groups. */
+function roomEntities(ctx, room) {
+  const ids = new Set(areaEntities(ctx, room));
+  if (typeof House.roomItemEntities === "function") for (const id of House.roomItemEntities(ctx, room.id)) if (ctx.hass.states[id] && !id.startsWith("light.")) ids.add(id);
+  return [...ids];
+}
+function groupOf(ctx, id) {
+  const d = id.split(".")[0], dc = ctx.hass.states[id]?.attributes?.device_class;
+  if (d === "media_player") return "media";
+  if (d === "climate" || d === "fan" || d === "humidifier" || (d === "sensor" && ["temperature", "humidity", "co2", "carbon_dioxide", "pm25", "illuminance"].includes(dc))) return "climate";
+  if (d === "lock" || d === "camera" || d === "cover" || d === "binary_sensor" || d === "alarm_control_panel") return "security";
+  return "other";
+}
+const GROUPS = [["climate", "Klima", "heat"], ["media", "Musik og TV", "speaker"], ["security", "Døre, vinduer og kamera", "door"], ["other", "Andet i rummet", "plug"]];
+/* The drawer for one lamp: on and off, brightness and colour. */
+function lampSheet(ctx, room, l, k) {
+  const { t, esc, svg } = ctx;
+  return `<section class="card ra-sheet${l.on ? " on" : ""}" data-id="${esc(l.id)}" style="--lc:${l.col}">
+    <div class="ra-sh-top"><span class="ra-sh-ic">${svg("bulb")}</span><div class="ra-sh-t"><b>${esc(l.name)}</b><small class="rm-pct">${l.off ? esc(t("Svarer ikke")) : l.on ? (l.type === "onoff" ? esc(t("Tændt")) : `${esc(t("Tændt"))} · ${l.bri} %`) : esc(t("Slukket"))}</small></div>
+    <button class="btn ${l.on ? "soft" : ""} ra-sh-tg" data-act="room-lamp" data-k="${k}" data-id="${esc(l.id)}" data-sheet="1" aria-pressed="${l.on}"${l.off ? " disabled" : ""}>${esc(l.on ? t("Sluk") : t("Tænd"))}</button></div>
+    ${l.type === "onoff" ? "" : `<label class="ra-bri"><span>${esc(t("Lysstyrke"))}</span><input type="range" min="1" max="100" value="${l.bri}" data-in="room-bri" data-id="${esc(l.id)}" data-room="${esc(room.id)}" aria-label="${esc(t("Lysstyrke {name}", { name: l.name }))}"${l.off ? " disabled" : ""}></label>`}
+    ${l.type === "color" || l.type === "ct" ? `<div class="rm-cols ra-cols">${(l.type === "color" ? SW_COLOR : SW_CT).map((c) => `<button data-act="room-col" data-id="${esc(l.id)}" data-room="${esc(room.id)}" data-col="${c}" style="--sw:${c}" aria-label="${esc(t("Farve"))}" aria-pressed="${c === l.col}"></button>`).join("")}</div>` : ""}
+  </section>`;
+}
 function roomPage(ctx, id) {
   const { t, esc, svg } = ctx;
   const raw = (houseOf(ctx).rooms || []).find((x) => x.id === id);
-  if (!raw) return `<section class="card"><h2>${esc(t("Rummet findes ikke længere"))}</h2><button class="btn soft" data-go="${ctx.isParent && ctx.on("security") ? "sikkerhed" : "hjem"}">${esc(t("Til Huset"))}</button></section>`;
-  const room = meta(ctx, raw);
-  const lights = roomLights(ctx, room);
-  const plan = typeof House.roomPlan === "function" ? House.roomPlan(ctx, room.id) : null;
-  let things = typeof House.roomThings === "function" ? House.roomThings(ctx, room.id) : [];
-  if (!things.length) things = areaEntities(ctx, room).map((x) => thingRow(ctx, x)).filter(Boolean);
-  const ag = AGES().find((a) => a[0] === room.age), st = GSTYLES().find((s) => s[0] === (room.style || "neutral"));
-  const area = room.area && (ctx.hass.areas?.[room.area]?.name || room.area);
   const back = ctx.isParent && ctx.on("security") ? "sikkerhed" : "hjem";
-  return `<button class="back" data-go="${back}">${svg("back")}${esc(back === "sikkerhed" ? t("Huset") : t("Hjem"))}</button>
-  <section class="rp-head"><div><span class="eyebrow">${esc(typeName(ctx, room))}${room.rtype === "kid" && ag ? ` · ${esc(t(ag[1]))} · ${esc(t(st ? st[1] : ""))}` : ""}${area ? ` · ${esc(t("område {name}", { name: area }))}` : ""}</span><h2 class="h2">${esc(room.name)}</h2></div>
-    ${ctx.isKid || !ctx.isParent || !ctx.on("house") ? "" : `<button class="btn soft" data-act="house-redit" data-id="${esc(room.id)}">${svg("edit")}${esc(t("Redigér rummet"))}</button>`}</section>
-  <div class="grid rp-grid">${lightsCard(ctx, room, lights, "s8")}
-    <aside class="rp-side s4">${plan ? `<section class="card rp-mini"><div class="card-head"><h2>${esc(t("På tegningen"))}</h2><span class="meta">${esc(t("{n} møbler", { n: plan.furn }))}</span></div>${plan.svg}</section>` : ""}
-      <section class="card"><div class="card-head"><h2>${esc(t("I rummet"))}</h2><span class="meta">${esc(t("{n} ting", { n: things.length }))}</span></div>${things.length ? `<div class="rp-list">${things.join("")}</div>` : `<p class="t-sub">${esc(t("Der er ikke sat enheder i rummet endnu. Det gøres i Husbyggeren."))}</p>`}</section></aside></div>
-  <p class="foot">${esc(room.img ? t("Billedet er jeres eget.") : hasArt(room) ? t("Værelset er håndtegnet.") : room.rtype === "kid" ? t("Billedet er tegnet ud fra rumtypen, alder og stil.") : t("Billedet er tegnet ud fra rumtypen."))} ${esc(t("Lamperne i billedet er lyskilderne, I har sat i rummet i Husbyggeren."))}</p>`;
+  if (!raw) return `<section class="card"><h2>${esc(t("Rummet findes ikke længere"))}</h2><button class="btn soft" data-go="${back}">${esc(t("Til Huset"))}</button></section>`;
+  const room = meta(ctx, raw);
+  const cfg = roomCfg(ctx, room);
+  const lights = roomLights(ctx, room);
+  const real = lights.filter((l) => !l.noent);
+  const on = real.filter((l) => l.on).length;
+  const temp = roomTemp(ctx, room);
+  const color = (room.kid && ctx.member(room.kid)?.color) || "var(--violet)";
+  const sc = scene(ctx, room, lights);
+  const ag = AGES().find((a) => a[0] === room.age);
+  const count = lights.length ? (on ? t("{n} af {total} lys tændt", { n: on, total: real.length }) : t("Alt er slukket")) : t("Ingen lys i rummet");
+  const eyebrow = [typeName(ctx, room), room.rtype === "kid" && ag ? t(ag[1]) : "", temp != null ? `${ctx.fmt.num(temp, 1)} °C` : ""].filter(Boolean).join(" · ");
+  const tools = `<button class="ra-back" data-go="${back}">${svg("back")}${esc(back === "sikkerhed" ? t("Huset") : t("Hjem"))}</button>
+    <button class="ra-tune" data-act="room-tune" data-id="${esc(room.id)}" aria-label="${esc(t("Tilpas rummet"))}">${svg("sliders")}</button>`;
+  const head = cfg.show.pic
+    ? `<div class="ra-hero">${sc.svg}${tools}<div class="ra-cap"><div><span>${esc(eyebrow)}</span><h2>${esc(room.name)}</h2></div><em>${esc(count)}</em></div></div>`
+    : `<div class="ra-flat">${tools}<div class="ra-cap"><div><span>${esc(eyebrow)}</span><h2>${esc(room.name)}</h2></div><em>${esc(count)}</em></div></div>`;
+  // The moods: favourites first, then Hverdagsro's own, then the room's scenes in Home Assistant.
+  const haScenes = room.area ? Object.keys(ctx.hass.states).filter((x) => (x.startsWith("scene.") || x.startsWith("script.")) && ctx.area(x) === room.area) : [];
+  const chips = [
+    ...PRESETS(room, lights, sc.slots).map((p) => ({ id: p[0], html: `<button class="ra-chip" data-act="room-scene" data-id="${esc(room.id)}" data-scene="${p[0]}" aria-pressed="${scenes[room.id] === p[0]}">${cfg.fav.includes(p[0]) ? `${svg("pstar")}` : ""}${esc(t(p[1]))}</button>` })),
+    ...haScenes.map((x) => ({ id: x, html: `<button class="ra-chip ha" data-act="room-ha" data-id="${esc(x)}">${cfg.fav.includes(x) ? svg("pstar") : svg(x.startsWith("script.") ? "play" : "sparkle")}${esc(ctx.name(x))}</button>` })),
+  ].sort((a, b) => (cfg.fav.includes(b.id) ? 1 : 0) - (cfg.fav.includes(a.id) ? 1 : 0) || (cfg.fav.indexOf(a.id) - cfg.fav.indexOf(b.id)));
+  const scenesRow = cfg.show.scenes && lights.length
+    ? `<div class="ra-chips" role="group" aria-label="${esc(t("Stemninger"))}"><button class="ra-chip off" data-act="room-off" data-id="${esc(room.id)}">${svg("power")}${esc(t("Sluk alt"))}</button>${chips.map((c) => c.html).join("")}</div>`
+    : "";
+  // The lamp in the drawer: the one tapped last, else the first one that is on, else the first.
+  let cur = real.find((l) => l.id === sel[room.id]) || real.find((l) => l.on) || real[0];
+  const lightsPart = cfg.show.lights && real.length
+    ? `${cfg.show.pic ? `<p class="ra-hint">${esc(t("Tryk på en lampe i billedet, eller vælg en stemning."))}</p>` : ""}
+      ${cur ? lampSheet(ctx, room, cur, sc.k) : ""}
+      ${real.length > 1 ? `<button class="ra-all" data-act="room-all" data-id="${esc(room.id)}" aria-expanded="${!!allOpen[room.id]}">${esc(t("Alle {n} lamper i rummet", { n: real.length }))}${svg("go", "ic")}</button>` : ""}
+      ${allOpen[room.id] && real.length > 1 ? `<div class="ra-list">${real.map((l) => `<button class="ra-li${l.on ? " on" : ""}${cur && l.id === cur.id ? " cur" : ""}" data-act="room-pick" data-room="${esc(room.id)}" data-id="${esc(l.id)}" style="--lc:${l.col}"><i></i><b>${esc(l.name)}</b><small>${esc(l.off ? t("Svarer ikke") : l.on ? (l.type === "onoff" ? t("Tændt") : `${l.bri} %`) : t("Slukket"))}</small></button>`).join("")}</div>` : ""}`
+    : cfg.show.lights && !lights.length ? `<p class="t-sub">${esc(t("Der er ikke koblet lys til rummet. Sæt lyskilder i rummet i Husbyggeren, eller vælg rummets område i Home Assistant."))}</p>` : "";
+  // Everything else in the room, as small cards per group.
+  const ents = roomEntities(ctx, room);
+  const groups = GROUPS.filter(([g]) => cfg.show[g]).map(([g, name, ic]) => {
+    const rows = ents.filter((x) => groupOf(ctx, x) === g).map((x) => thingRow(ctx, x)).filter(Boolean);
+    return rows.length ? `<section class="card ra-group"><div class="card-head"><h2>${svg(ic, "ic")}${esc(t(name))}</h2></div><div class="rp-list">${rows.join("")}</div></section>` : "";
+  }).filter(Boolean);
+  const plan = ctx.isParent && cfg.show.other && typeof House.roomPlan === "function" ? House.roomPlan(ctx, room.id) : null;
+  if (plan) groups.push(`<section class="card ra-group rp-mini"><div class="card-head"><h2>${esc(t("På tegningen"))}</h2><span class="meta">${esc(t("{n} møbler", { n: plan.furn }))}</span></div>${plan.svg}</section>`);
+  return `<div class="ra rm-card" data-room="${esc(room.id)}" style="--pc:${color}">
+    <div class="ra-main">${head}${scenesRow}</div>
+    <div class="ra-side">${lightsPart}</div>
+    ${groups.length ? `<div class="ra-groups">${groups.join("")}</div>` : ""}
+  </div>
+  <p class="foot">${esc(room.img ? t("Billedet er jeres eget.") : hasArt(room) ? t("Værelset er håndtegnet.") : room.rtype === "kid" ? t("Billedet er tegnet ud fra rumtypen, alder og stil.") : t("Billedet er tegnet ud fra rumtypen."))} ${esc(t("Tryk på knappen øverst til højre for at vælge, hvad siden viser."))}</p>`;
+}
+
+/* "Tilpas rummet": what the page shows, favourite moods, lamps (rename, hide) and the front page. For the whole
+   family (parents) or only for me. */
+const tune = { s: null, id: "", scope: "" };
+function tuneHtml(ctx, room) {
+  const { t, esc, svg } = ctx;
+  const fam = ctx.isParent, mine = !!ctx.me;
+  if (!tune.scope) tune.scope = fam ? "family" : "me";
+  const scope = tune.scope;
+  const cfg = roomCfg(ctx, room, scope);
+  const all = roomLights(ctx, room, true).filter((l) => !l.noent);
+  const sc = PRESETS(room, all, []).map((p) => [p[0], t(p[1])]);
+  const ha = room.area ? Object.keys(ctx.hass.states).filter((x) => (x.startsWith("scene.") || x.startsWith("script.")) && ctx.area(x) === room.area).map((x) => [x, ctx.name(x)]) : [];
+  const d = `data-room="${esc(room.id)}"`;
+  return `<div class="ra-tn"><span class="eyebrow">${esc(room.name)}</span><h2>${esc(t("Tilpas rummet"))}</h2>
+    ${fam && mine ? `<div class="seg ra-scope" role="tablist"><button data-act="room-scope" data-v="family" aria-pressed="${scope === "family"}">${esc(t("For hele familien"))}</button><button data-act="room-scope" data-v="me" aria-pressed="${scope === "me"}">${esc(t("Kun for mig"))}</button></div>` : ""}
+    <p class="t-sub">${esc(scope === "family" ? t("Det, du vælger her, gælder for alle i familien, som ikke har valgt selv.") : t("Det, du vælger her, gælder kun for dig."))}${scope === "me" && hasMine(ctx, room) ? ` <button class="lnk" data-act="room-reset" ${d}>${esc(t("Brug familiens igen"))}</button>` : ""}</p>
+    <div class="ra-tn-list">${SHOW.map(([k, name]) => `<label class="ra-tn-row"><span>${esc(t(name))}</span><input type="checkbox" data-in="room-cfg" ${d} data-k="show.${k}" ${cfg.show[k] ? "checked" : ""}></label>`).join("")}</div>
+    ${sc.length || ha.length ? `<b class="ra-tn-h">${esc(t("Favoritstemninger"))}</b><div class="ra-tn-chips">${[...sc, ...ha].map(([id, name]) => `<button class="ra-chip${cfg.fav.includes(id) ? " fav" : ""}" data-act="room-fav" ${d} data-v="${esc(id)}" aria-pressed="${cfg.fav.includes(id)}">${cfg.fav.includes(id) ? svg("pstar") : ""}${esc(name)}</button>`).join("")}</div>` : ""}
+    ${all.length ? `<b class="ra-tn-h">${esc(t("Lamper"))}</b><div class="ra-tn-lamps">${all.map((l) => {
+      const hidden = cfg.hide.includes(l.id);
+      return `<div class="ra-tn-lamp${hidden ? " hid" : ""}" style="--lc:${l.col}"><i></i><input type="text" maxlength="40" value="${esc(cfg.names[l.id] || "")}" placeholder="${esc(l.base || l.name)}" data-in="room-name" ${d} data-id="${esc(l.id)}" aria-label="${esc(t("Navn på {name}", { name: l.base || l.name }))}"><button class="btn soft sm" data-act="room-hide" ${d} data-id="${esc(l.id)}">${esc(hidden ? t("Vis") : t("Skjul"))}</button></div>`;
+    }).join("")}</div>` : ""}
+    <label class="ra-tn-row ra-tn-pin"><span>${esc(t("Vis på forsiden"))}</span><input type="checkbox" data-in="room-cfg" ${d} data-k="pin" ${cfg.pin ? "checked" : ""}></label>
+    <div class="sheet-actions">${fam && ctx.on("house") ? `<button class="btn soft" data-act="house-redit" data-id="${esc(room.id)}" data-close>${svg("edit")}${esc(t("Billede, type og område"))}</button>` : ""}<button class="btn" data-close>${esc(t("Færdig"))}</button></div></div>`;
+}
+function openTune(ctx, id) {
+  const raw = findRoom(ctx, id);
+  if (!raw) return;
+  tune.id = id;
+  tune.scope = "";
+  tune.s = ctx.sheet(tuneHtml(ctx, meta(ctx, raw)), { cls: "ra-tune-sheet" });
+}
+function redrawTune(ctx) {
+  const raw = findRoom(ctx, tune.id);
+  if (!raw || !tune.s?.el?.isConnected) return;
+  const at = tune.s.el.scrollTop;
+  tune.s.el.innerHTML = tuneHtml(ctx, meta(ctx, raw));
+  tune.s.el.scrollTop = at;
+}
+/* Change one setting in the chosen scope, save it and redraw. */
+async function setCfg(ctx, roomId, change) {
+  const scope = tune.scope || (ctx.isParent ? "family" : "me");
+  if (scope === "family") {
+    if (!ctx.isParent) return;
+    const house = JSON.parse(JSON.stringify(ctx.data?.house || {}));
+    const r = (house.rooms || []).find((x) => x.id === roomId);
+    if (!r) return;
+    r.page = change({ ...famCfg(r) });
+    await ctx.save("house", house);
+  } else if (ctx.me) {
+    const all = { ...(ctx.me.room_prefs || {}) };
+    const next = change({ ...(all[roomId] || {}) });
+    if (next && Object.keys(next).length) all[roomId] = next;
+    else delete all[roomId];
+    ctx.me.room_prefs = all;
+    try {
+      await ctx.ws("prefs", { member: ctx.me.id, prefs: { room_prefs: all } });
+    } catch (err) {
+      ctx.toast(String(err?.message || err));
+    }
+  }
+  redrawTune(ctx);
+  ctx.render();
+}
+/* The rooms pinned to the front page, as small living cards. */
+export function pinnedRooms(ctx) {
+  const rooms = (houseOf(ctx).rooms || []).filter((r) => roomCfg(ctx, r).pin);
+  if (!rooms.length) return "";
+  return `<section class="card s12 ra-pins"><div class="card-head"><h2>${ctx.esc(ctx.t("Rum"))}</h2></div><div class="ra-pin-grid">${rooms.map((r) => roomCard(ctx, r)).join("")}</div></section>`;
 }
 
 const findRoom = (ctx, id) => (houseOf(ctx).rooms || []).find((x) => x.id === id);
@@ -741,6 +1016,13 @@ const acts = {
     room = meta(ctx, room);
     const l = roomLights(ctx, room).find((x) => x.id === el.dataset.id);
     if (!l || l.off) return;
+    // On the room page a tap on a lamp that is on first opens it in the drawer; the next tap turns it off.
+    const page = el.closest(".ra");
+    if (page && !el.dataset.sheet) {
+      const was = sel[room.id];
+      sel[room.id] = l.id;
+      if (l.on && was !== l.id) return ctx.render();
+    }
     ctx.q(`.rm-card[data-room="${CSS.escape(room.id)}"]`)?.classList.add("touched");
     setOverride(l, { on: !l.on });
     delete scenes[room.id];
@@ -750,8 +1032,36 @@ const acts = {
       row.classList.toggle("on", !l.on);
       row.querySelector(".rm-tg")?.setAttribute("aria-pressed", String(!l.on));
     }
+    if (page) ctx.render();
     return lightCall(ctx, l, !l.on, null, null);
   },
+  "room-pick": (el, ev, ctx) => {
+    sel[el.dataset.room] = el.dataset.id;
+    ctx.render();
+  },
+  "room-all": (el, ev, ctx) => {
+    allOpen[el.dataset.id] = !allOpen[el.dataset.id];
+    ctx.render();
+  },
+  "room-tune": (el, ev, ctx) => openTune(ctx, el.dataset.id),
+  "room-scope": (el, ev, ctx) => {
+    tune.scope = el.dataset.v;
+    redrawTune(ctx);
+  },
+  "room-fav": (el, ev, ctx) => {
+    const raw = findRoom(ctx, el.dataset.room);
+    if (!raw) return;
+    const cur = roomCfg(ctx, raw, tune.scope).fav, v = el.dataset.v;
+    return setCfg(ctx, raw.id, (c) => ({ ...c, fav: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v].slice(-12) }));
+  },
+  "room-hide": (el, ev, ctx) => {
+    const raw = findRoom(ctx, el.dataset.room);
+    if (!raw) return;
+    const cur = roomCfg(ctx, raw, tune.scope).hide, v = el.dataset.id;
+    if (sel[raw.id] === v) delete sel[raw.id];
+    return setCfg(ctx, raw.id, (c) => ({ ...c, hide: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v].slice(-40) }));
+  },
+  "room-reset": (el, ev, ctx) => setCfg(ctx, el.dataset.room, () => ({})),
   "room-off": (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.id));
     const lights = roomLights(ctx, room).filter((l) => l.on && l.ent);
@@ -789,7 +1099,7 @@ const acts = {
     setOverride(l, { on: true, col });
     repaint(ctx, room);
     el.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === el)));
-    el.closest(".rm-l")?.style.setProperty("--lc", col);
+    el.closest(".rm-l, .ra-sheet")?.style.setProperty("--lc", col);
     return lightCall(ctx, l, true, null, col);
   },
   "room-toggle": (el, ev, ctx) => ctx.call("homeassistant", "toggle", { entity_id: el.dataset.id }),
@@ -811,6 +1121,21 @@ const acts = {
 };
 
 const inputs = {
+  "room-cfg": (el, ev, ctx) => {
+    if (ev.type !== "change") return;
+    const k = el.dataset.k, v = !!el.checked;
+    return setCfg(ctx, el.dataset.room, (c) => (k === "pin" ? { ...c, pin: v } : { ...c, show: { ...(c.show || {}), [k.slice(5)]: v } }));
+  },
+  "room-name": (el, ev, ctx) => {
+    if (ev.type !== "change") return;
+    const id = el.dataset.id, v = el.value.trim().slice(0, 40);
+    return setCfg(ctx, el.dataset.room, (c) => {
+      const names = { ...(c.names || {}) };
+      if (v) names[id] = v;
+      else delete names[id];
+      return { ...c, names };
+    });
+  },
   "room-bri": (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.room));
     const l = roomLights(ctx, room).find((x) => x.id === el.dataset.id);
@@ -818,10 +1143,10 @@ const inputs = {
     const bri = +el.value;
     delete scenes[room.id];
     setOverride(l, { on: true, bri });
-    const row = el.closest(".rm-l");
+    const row = el.closest(".rm-l, .ra-sheet");
     if (row) {
       row.classList.add("on");
-      row.querySelector(".rm-pct").textContent = `${bri} %`;
+      row.querySelector(".rm-pct").textContent = row.classList.contains("ra-sheet") ? `${ctx.t("Tændt")} · ${bri} %` : `${bri} %`;
       row.querySelector(".rm-tg")?.setAttribute("aria-pressed", "true");
     }
     repaint(ctx, room);
@@ -834,7 +1159,8 @@ const views = {
     render: (ctx) => roomPage(ctx, ctx.arg),
     title: (ctx) => findRoom(ctx, ctx.arg)?.name || ctx.t("Rum"),
   },
-  vaerelse: {
+  // The lights and their moods in the child's real room (opened from Mit værelse).
+  mitlys: {
     kidOnly: true,
     module: "house",
     render(ctx) {
@@ -843,11 +1169,11 @@ const views = {
       const r = (houseOf(ctx).rooms || []).find((x) => ctx.me && meta(ctx, x).kid === ctx.me.id);
       if (r) {
         const room = meta(ctx, r);
-        return lightsCard(ctx, room, roomLights(ctx, room), "s12");
+        return `<button class="back" data-go="vaerelse">${svg("back")}${esc(t("Mit værelse"))}</button>${lightsCard(ctx, room, roomLights(ctx, room), "s12")}`;
       }
       return `<section class="card hv-empty rm-none"><span class="rm-none-ic">${svg("room", "ic big")}</span><h2>${esc(t("Dit værelse er ikke sat op endnu"))}</h2><p class="t-sub">${esc(t("Bed far eller mor om at vælge dit værelse, når de tegner huset i Hverdagsro."))}</p></section>`;
     },
-    title: (ctx) => ctx.t("Mit værelse"),
+    title: (ctx) => ctx.t("Lys og stemning"),
   },
 };
 
@@ -875,6 +1201,79 @@ const css = `
 .rm-none-ic { width: 76px; height: 76px; border-radius: 26px; display: grid; place-items: center; background: color-mix(in srgb, var(--violet) 12%, var(--surface)); animation: rmbob 5s ease-in-out infinite; }
 .v-vaerelse .rp-head { margin-top: 0; }
 @media (prefers-reduced-motion: reduce) { .rm-mini:hover { transform: none; } }
+/* the room page, layout A: the picture first */
+.ra { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); margin-bottom: 8px; }
+@media (min-width: 900px) { .ra { grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); align-items: start; } .ra-groups { grid-column: 1 / -1; } }
+.ra-main, .ra-side { display: grid; gap: 12px; min-width: 0; align-content: start; }
+.ra-hero { position: relative; border-radius: 26px; overflow: hidden; background: #2A2440; box-shadow: var(--shadow); }
+.ra-hero .rm-svg { display: block; width: 100%; height: auto; }
+.ra-hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 48%; background: linear-gradient(to top, rgba(12, 10, 28, .7), transparent); pointer-events: none; }
+.ra-back, .ra-tune { position: absolute; top: 12px; z-index: 2; min-height: 44px; border: 0; border-radius: 999px; background: rgba(27, 21, 48, .55); color: #fff; font: inherit; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.ra-back { left: 12px; padding: 0 14px 0 8px; }
+.ra-tune { right: 12px; width: 44px; justify-content: center; }
+.ra-back .ic, .ra-tune .ic { width: 20px; height: 20px; }
+.ra-cap { position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; color: #fff; pointer-events: none; }
+.ra-cap span { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .9; }
+.ra-cap h2 { margin: 0; font-size: clamp(24px, 4vw, 34px); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.ra-cap em { font-style: normal; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 999px; background: rgba(27, 21, 48, .55); white-space: nowrap; }
+.ra-flat { position: relative; padding: 68px 16px 16px; border-radius: 26px; background: color-mix(in srgb, var(--pc) 80%, #1B1530); }
+.ra-flat .ra-cap { position: static; }
+.ra-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: 0 -2px; }
+.ra-chips::-webkit-scrollbar { display: none; }
+.ra-chip { flex: none; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--line); }
+.ra-chip[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--pc, var(--violet)); background: color-mix(in srgb, var(--pc, var(--violet)) 10%, var(--surface)); }
+.ra-chip.off { background: var(--ink); color: var(--surface); box-shadow: none; }
+.ra-chip .ic { width: 16px; height: 16px; }
+.ra-chip svg path[fill="currentColor"] { color: #F5B000; }
+.ra-hint { margin: 0; color: var(--muted); font-size: 13px; }
+.ra-sheet { display: grid; gap: 14px; }
+.ra-sh-top { display: flex; align-items: center; gap: 12px; }
+.ra-sh-ic { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); flex: none; transition: background .3s, box-shadow .3s; }
+.ra-sh-ic .ic { width: 22px; height: 22px; }
+.ra-sheet.on .ra-sh-ic { background: var(--lc); color: #3A2A10; box-shadow: 0 0 22px color-mix(in srgb, var(--lc) 70%, transparent); }
+.ra-sh-t { flex: 1; min-width: 0; }
+.ra-sh-t b { display: block; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ra-sh-t small { color: var(--muted); font-size: 13px; }
+.ra-bri { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.ra-bri input { width: 100%; accent-color: var(--pc, var(--violet)); min-height: 28px; }
+.ra-cols { display: flex; flex-wrap: wrap; gap: 10px; }
+.ra-cols button { width: 34px; height: 34px; }
+.ra-sh-tg { min-width: 84px; }
+.ra-all { min-height: 44px; border: 0; background: none; padding: 0 2px; font: inherit; font-size: 14px; font-weight: 700; color: var(--violet); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; justify-self: start; }
+.ra-all .ic { width: 16px; height: 16px; transition: transform .2s; }
+.ra-all[aria-expanded="true"] .ic { transform: rotate(90deg); }
+.ra-list { display: grid; gap: 6px; }
+.ra-li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 48px; padding: 0 14px; border-radius: 14px; border: 0; background: var(--surface); font: inherit; color: var(--ink); text-align: left; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--line); }
+.ra-li b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ra-li small { color: var(--muted); font-size: 12.5px; }
+.ra-li i { width: 10px; height: 10px; border-radius: 9px; background: var(--line); }
+.ra-li.on i { background: var(--lc); box-shadow: 0 0 8px var(--lc); }
+.ra-li.cur { box-shadow: inset 0 0 0 2px var(--pc, var(--violet)); }
+.ra-groups { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.ra-group .card-head h2 { display: inline-flex; align-items: center; gap: 8px; }
+.ra-group .card-head h2 .ic { width: 18px; height: 18px; color: var(--muted); }
+.ra-tn { display: grid; gap: 12px; }
+.ra-tn h2 { margin: 0; }
+.ra-tn .t-sub { margin: 0; }
+.ra-scope { display: flex; background: var(--surface-2); border-radius: 999px; padding: 4px; }
+.ra-scope button { flex: 1; min-height: 40px; border-radius: 999px; border: 0; background: transparent; font: inherit; font-weight: 700; font-size: 13px; color: var(--ink); cursor: pointer; }
+.ra-scope button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.ra-tn-list { display: grid; }
+.ra-tn-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; border-bottom: 1px solid var(--line); font-weight: 700; cursor: pointer; }
+.ra-tn-row input { width: 22px; height: 22px; accent-color: var(--violet); flex: none; }
+.ra-tn-pin { border: 0; background: var(--surface-2); border-radius: 14px; padding: 0 14px; }
+.ra-tn-h { font-size: 14px; margin-top: 4px; }
+.ra-tn-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ra-tn-chips .ra-chip { min-height: 38px; }
+.ra-tn-chips .ra-chip.fav { background: var(--ink); color: var(--surface); box-shadow: none; }
+.ra-tn-lamps { display: grid; gap: 8px; }
+.ra-tn-lamp { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.ra-tn-lamp i { width: 10px; height: 10px; border-radius: 9px; background: var(--lc); }
+.ra-tn-lamp input { font: inherit; font-size: 14px; font-weight: 600; min-width: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); color: var(--ink); }
+.ra-tn-lamp.hid { opacity: .55; }
+.ra-pin-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.ra-pin-grid .rm-pic { max-height: 180px; overflow: hidden; }
+@media (max-width: 600px) { .ra-hero, .ra-flat { border-radius: 22px; } .ra-cap em { display: none; } }
 `;
 
 const en = {
@@ -905,6 +1304,12 @@ const en = {
   "Billedet er tegnet ud fra rumtypen. Lyset følger lamperne i rummet, og vinduet følger solen og vejret.": "The picture is drawn from the room type. The light follows the lamps in the room, and the window follows the sun and the weather.",
   "{name} er sat i gang": "{name} has started", "Lås {name} op?": "Unlock {name}?", "Døren låses op med det samme.": "The door is unlocked right away.",
   "Billedet er for stort": "The photo is too large", "Billed-upload er ikke slået til i Home Assistant": "Image upload is not enabled in Home Assistant", "Billedet er lagt ind": "The photo has been added", "Billedet kunne ikke lægges op: {error}": "The photo could not be uploaded: {error}",
+  "Billede af rummet": "Picture of the room", Stemninger: "Moods", Klima: "Climate", "Musik og TV": "Music and TV", "Døre, vinduer og kamera": "Doors, windows and camera", "Andet i rummet": "Other things in the room",
+  "Tilpas rummet": "Customise the room", "For hele familien": "For the whole family", "Kun for mig": "Only for me", "Det, du vælger her, gælder for alle i familien, som ikke har valgt selv.": "What you choose here applies to everyone in the family who hasn't chosen for themselves.",
+  "Det, du vælger her, gælder kun for dig.": "What you choose here only applies to you.", "Brug familiens igen": "Use the family's again", Favoritstemninger: "Favourite moods", Lamper: "Lamps", "Navn på {name}": "Name of {name}", Vis: "Show", Skjul: "Hide",
+  "Vis på forsiden": "Show on the front page", "Billede, type og område": "Picture, type and area", Færdig: "Done", Sluk: "Turn off", Tænd: "Turn on", Lysstyrke: "Brightness",
+  "Tryk på en lampe i billedet, eller vælg en stemning.": "Tap a lamp in the picture, or pick a mood.", "Alle {n} lamper i rummet": "All {n} lamps in the room",
+  "Tryk på knappen øverst til højre for at vælge, hvad siden viser.": "Use the button at the top right to choose what the page shows.",
   "Dit værelse er ikke sat op endnu": "Your room isn't set up yet", "Bed far eller mor om at vælge dit værelse, når de tegner huset i Hverdagsro.": "Ask a parent to pick your room when they draw the house in Hverdagsro.", "Mit værelse": "My room",
 };
 

@@ -171,6 +171,7 @@ export function demoData(setupDone = true) {
         ]
       : [],
     points: { ida: 135, oskar: 48 },
+    game: { ida: { coins: 140, xp: 520, owned: ["fyrtaarn", "brandbil", "p:poter"], daily: "" } },
     requests: [{ id: "r1", member: "ida", reward: "film", at: iso(day(0, 8, 2)), status: "pending" }],
     ledger: [{ at: iso(day(0, 7, 20)), member: "ida", delta: 5, reason: "Børst tænder", by: null }],
     done_today: { "tandboerst:ida": { at: iso(day(0, 7, 20)), by: null } },
@@ -236,7 +237,7 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
   const reg = seed?.registry || demoRegistry(states);
   const store = seed?.store || demoData(setup);
   if (seed && !setup) Object.assign(store, { setup_done: false, family: [], missions: [], rewards: [] });
-  for (const [k, v] of Object.entries({ quick: [], routines: { helpers: [], pickups: {}, boards: {}, cards: [] }, pins: {}, board_done: {}, osky: { accounts: {}, lists: [] } })) if (!(k in store)) store[k] = v;
+  for (const [k, v] of Object.entries({ quick: [], routines: { helpers: [], pickups: {}, boards: {}, cards: [] }, pins: {}, board_done: {}, game: {}, osky: { accounts: {}, lists: [] } })) if (!(k in store)) store[k] = v;
   const calls = [];
   const listeners = new Set();
   const users = seed?.users || USERS;
@@ -333,11 +334,31 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
       check(msg.member);
       if ("msg_off" in msg.prefs && !canManage()) throw { code: "not_allowed", message: "Ikke tilladt" };
       const m = store.family.find((x) => x.id === msg.member);
-      for (const k of ["quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal"]) if (k in msg.prefs) m[k] = msg.prefs[k];
+      for (const k of ["quick_order", "quick_hide", "msg_off", "photo", "skin", "mode", "goal", "playroom", "room_prefs"]) if (k in msg.prefs) m[k] = msg.prefs[k];
       setTimeout(push, 10);
       return null;
     }
     if (t === "hverdagsro/pin") return { ok: !store.family.find((x) => x.id === msg.member)?.has_pin || msg.pin === "1234" };
+    if (t === "hverdagsro/game") {
+      check(msg.member);
+      const g = (store.game[msg.member] ||= { coins: 0, xp: 0, owned: [] });
+      if (msg.action === "daily") {
+        if (g.daily !== store.today) {
+          g.daily = store.today;
+          g.coins += 5;
+          g.xp += 5;
+        }
+      } else {
+        const fresh = (msg.items || []).filter((x) => !g.owned.includes(x));
+        if (fresh.length) {
+          if ((msg.cost || 0) > g.coins) throw { code: "not_enough_coins", message: "Der er ikke mønter nok." };
+          g.coins -= msg.cost || 0;
+          g.owned.push(...fresh);
+        }
+      }
+      setTimeout(push, 10);
+      return { ...g };
+    }
     if (t === "hverdagsro/board") {
       check(msg.member);
       const mine = (store.board_done[msg.member] ||= []);

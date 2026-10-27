@@ -26,7 +26,10 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Syntax
-        run: for f in custom_components/hverdagsro/frontend/*.js; do node --check "$f" || exit 1; done
+        run: for f in custom_components/hverdagsro/frontend/*.js; do node --input-type=module --check < "$f" || exit 1; done
 
       - name: Open every page with a fake Home Assistant
         run: node tests/frontend/smoke.mjs
+
+      - name: Build a house by hand in Husbyggeren
+        run: node tests/frontend/husbygger.mjs

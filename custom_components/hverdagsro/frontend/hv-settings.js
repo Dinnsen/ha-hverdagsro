@@ -1,7 +1,7 @@
 /* Hverdagsro – the setup guide and the family settings.
    The guide (view "guide") walks a parent through everything with smart defaults; each step is saved
    when the parent goes on, so it can be resumed. "indstillinger" holds the same editors as tabs. */
-import { esc, slug } from "./hv-core.js";
+import { addDays, esc, slug, startOfDay } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 import { occasions, activeDecor, dayNumber, wedName, WED, BIG } from "./hv-decor.js";
 import * as House from "./hv-house.js";
@@ -534,6 +534,20 @@ function kidLinks(ctx, k) {
   if (ctx.feature(k, "read")) rows.push(pick("speaker", "🔊", ctx.t("Oplæsning"), k.speaker ? nameOf(ctx, k.speaker) : ctx.t("Vælg højttaleren på værelset")));
   return rows.join("");
 }
+/* Lessons to leave out of the timetables (Aula has "Pædagog i skolen" and such): tap a lesson from this week, or type. */
+function skemaHide(ctx) {
+  const cals = ctx.children().filter((k) => k.skema && ctx.feature(k, "skema")).map((k) => k.skema);
+  if (!cals.length) return "";
+  const hide = ctx.data.settings.skema_hide || [];
+  const mon = addDays(startOfDay(new Date()), -((new Date().getDay() + 6) % 7));
+  const seen = new Map();
+  for (const e of ctx.events(cals, mon, addDays(mon, 7), true)) if (!e.allDay && e.title) seen.set(e.title.trim(), (seen.get(e.title.trim()) || 0) + 1);
+  const titles = [...new Set([...hide, ...[...seen.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n)])].slice(0, 24);
+  const isHidden = (n) => hide.some((w) => n.toLowerCase().includes(w.toLowerCase()));
+  return `<div class="skh"><b>${esc(ctx.t("Skjul i skoleskemaet"))}</b><small class="t-sub">${esc(ctx.t("Tryk på det, der ikke skal vises på skemaet, i kalenderen og på børnenes sider. Fx »Pædagog i skolen«."))}</small>
+    <div class="skh-chips">${titles.map((n) => `<button data-act="set-skhide" data-w="${esc(n)}" aria-pressed="${isHidden(n)}">${isHidden(n) ? svg("eye") : ""}${esc(n)}</button>`).join("") || `<span class="t-sub">${esc(ctx.t("Ingen timer i skemaet i denne uge"))}</span>`}</div>
+    <div class="skh-add"><input id="skh-in" maxlength="60" placeholder="${esc(ctx.t("Eller skriv et ord, fx Pædagog"))}"><button class="btn soft sm" data-act="set-skhide-add">${svg("plus")}${esc(ctx.t("Skjul"))}</button></div></div>`;
+}
 function kidsSection(ctx) {
   const kids = ctx.children();
   return `<section class="card" data-st="born"><div class="card-head"><h2>${esc(ctx.t("Børnene"))}</h2>${lockTag(ctx)}</div>
@@ -547,7 +561,7 @@ function kidsSection(ctx) {
           ${kidLinks(ctx, k)}</div>`;
       })
       .join("")}</div>` : `<p class="t-sub">${esc(ctx.t("Der er ingen børn i familien endnu."))} <button class="lnk" data-act="set-tab" data-id="familie">${esc(ctx.t("Tilføj under Familien"))}</button></p>`}
-    <p class="t-sub" style="margin-top:10px">${esc(ctx.t("Institutionen bestemmer, hvad barnet ser: skoleskema kun i skole, ellers dagens aflevering og afhentning fra Hent og bring."))}</p></section>`;
+    <p class="t-sub" style="margin-top:10px">${esc(ctx.t("Institutionen bestemmer, hvad barnet ser: skoleskema kun i skole, ellers dagens aflevering og afhentning fra Hent og bring."))}</p>${skemaHide(ctx)}</section>`;
 }
 
 /* Ønskeskyen: whose list is it? A guess until a parent chooses. */
@@ -1134,6 +1148,24 @@ function famChanged(ctx) {
   ctx.render(true);
 }
 const acts = {
+  "set-skhide": async (el, e, ctx) => {
+    const w = el.dataset.w, hide = ctx.data.settings.skema_hide || [];
+    const on = hide.some((x) => w.toLowerCase().includes(x.toLowerCase()));
+    const next = on ? hide.filter((x) => !w.toLowerCase().includes(x.toLowerCase())) : [...hide, w].slice(-20);
+    await ctx.save("settings", { ...ctx.data.settings, skema_hide: next });
+    ctx.drop("ev:");
+    ctx.render(true);
+    ctx.toast(on ? ctx.t("»{w}« vises igen", { w }) : ctx.t("»{w}« skjules i skemaet", { w }));
+  },
+  "set-skhide-add": async (el, e, ctx) => {
+    const inp = ctx.$("skh-in"), w = (inp?.value || "").trim();
+    if (!w) return;
+    const hide = ctx.data.settings.skema_hide || [];
+    if (!hide.some((x) => x.toLowerCase() === w.toLowerCase())) await ctx.save("settings", { ...ctx.data.settings, skema_hide: [...hide, w].slice(-20) });
+    ctx.drop("ev:");
+    ctx.render(true);
+    ctx.toast(ctx.t("»{w}« skjules i skemaet", { w }));
+  },
   "set-tab": (el, e, ctx) => {
     TAB = el.dataset.id;
     ctx.arg = TAB;
@@ -1478,6 +1510,11 @@ const inputs = {
 
 /* ------------------------------------------------------------------ styles */
 const css = `
+.skh { margin-top: 14px; padding: 12px; border-radius: 16px; background: var(--surface-2); display: grid; gap: 6px; }
+.skh-chips { display: flex; gap: 6px; flex-wrap: wrap; } .skh-chips button { border: 0; border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 12.5px; font-weight: 700; background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.skh-chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); text-decoration: line-through; } .skh-chips .ic { width: 14px; height: 14px; }
+.skh-add { display: flex; gap: 6px; } .skh-add input { flex: 1; min-width: 0; border: 1.5px solid var(--line); border-radius: 12px; padding: 7px 10px; font: inherit; background: var(--surface); color: var(--ink); }
+
 .set-p { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
 .set-lead { font-size: 15px; color: var(--muted); line-height: 1.5; margin: 0 0 18px; max-width: 70ch; }
 .set-page { max-width: 1100px; margin: 0 auto; }
@@ -1712,6 +1749,8 @@ const css = `
 
 /* ------------------------------------------------------------------ English */
 const en = {
+  "Skjul i skoleskemaet": "Hide in the timetable", "Tryk på det, der ikke skal vises på skemaet, i kalenderen og på børnenes sider. Fx »Pædagog i skolen«.": "Tap what shouldn't show on the timetable, in the calendar and on the children's pages. E.g. »Pædagog i skolen«.",
+  "Ingen timer i skemaet i denne uge": "No lessons this week", "Eller skriv et ord, fx Pædagog": "Or type a word, e.g. Pædagog", Skjul: "Hide", "»{w}« vises igen": "»{w}« shows again", "»{w}« skjules i skemaet": "»{w}« is hidden in the timetable",
   "og": "and",
   "I": "you",
   "{n} færre dage": "{n} fewer days",

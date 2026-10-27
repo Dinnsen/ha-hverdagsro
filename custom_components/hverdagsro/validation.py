@@ -17,8 +17,10 @@ from .const import (
     MAX_HOUSE_BYTES,
     MAX_MEMBERS,
     MAX_MISSIONS,
+    MAX_PLAYROOM_BYTES,
     MAX_QUICK,
     MAX_REWARDS,
+    MAX_ROOM_PREFS_BYTES,
     MAX_ROUTINES_BYTES,
     MODULES,
     PET_KINDS,
@@ -124,6 +126,31 @@ def text_list(max_items: int, max_len: int) -> Any:
 PET = vol.Schema({vol.Required("name"): text(20, 1), vol.Optional("kind", default="hund"): vol.In(PET_KINDS)})
 
 
+def _playroom(value: Any) -> dict[str, Any] | None:
+    """A child's own room (Mit værelse): walls, floor, furniture, avatar and pet. Checked loosely, with a size limit."""
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise vol.Invalid("expected an object")
+    items = value.get("items", [])
+    if not isinstance(items, list) or len(items) > 150 or not all(isinstance(i, dict) for i in items):
+        raise vol.Invalid("items must be a list of objects")
+    if len(json.dumps(value, separators=(",", ":"))) > MAX_PLAYROOM_BYTES:
+        raise vol.Invalid("the room is too big")
+    return value
+
+
+def _room_prefs(value: Any) -> dict[str, Any] | None:
+    """A member's own choices for the room pages (Tilpas rummet, kun for mig): per room id, checked loosely."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or not all(isinstance(k, str) and isinstance(v, dict) for k, v in value.items()):
+        raise vol.Invalid("expected an object of rooms")
+    if len(json.dumps(value, separators=(",", ":"))) > MAX_ROOM_PREFS_BYTES:
+        raise vol.Invalid("too many room choices")
+    return value
+
+
 MEMBER = vol.Schema(
     {
         vol.Required("id"): ident,
@@ -150,6 +177,8 @@ MEMBER = vol.Schema(
         vol.Optional("quick_hide", default=[]): id_list,
         vol.Optional("msg_off", default=[]): text_list(20, 40),
         vol.Optional("goal", default=None): vol.Any(None, ident),
+        vol.Optional("playroom", default=None): _playroom,
+        vol.Optional("room_prefs", default=None): _room_prefs,
     }
 )
 
@@ -213,6 +242,7 @@ SETTINGS = vol.Schema(
         },
         vol.Optional("osky_to", default={}): {vol.Coerce(str): text(40)},
         vol.Optional("pickup_reminder", default=True): cv.boolean,
+        vol.Optional("skema_hide", default=list): vol.All(cv.ensure_list, [text(60, 1)], vol.Length(max=20)),
         # How each to-do list looks under Lister: a shopping list or a fixed list, its colour, icon and note.
         vol.Optional("lists", default={}): {
             cv.entity_id: {
@@ -307,7 +337,14 @@ def _routines(value: Any) -> dict[str, Any]:
             key not in BOARD_SLOTS or not isinstance(v, list) for key, v in board.items()
         ):
             raise vol.Invalid("a board has morgen, eftermiddag and aften lists")
+    weeks = value.get("weeks", {})
+    if not isinstance(weeks, dict) or any(
+        not isinstance(k, str) or len(k) > 10 or not isinstance(v, dict) for k, v in weeks.items()
+    ):
+        raise vol.Invalid("weeks must be an object of weeks")
     clean = {"helpers": helpers, "pickups": pickups, "boards": boards, "cards": cards}
+    if weeks:
+        clean["weeks"] = weeks
     if len(json.dumps(clean, separators=(",", ":"))) > MAX_ROUTINES_BYTES:
         raise vol.Invalid("too much")
     return clean

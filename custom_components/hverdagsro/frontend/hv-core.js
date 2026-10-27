@@ -220,7 +220,7 @@ export function createCtx(host) {
   };
 
   // Calendar events for one or more calendars between two dates.
-  ctx.events = (calendars, start, end) => {
+  ctx.events = (calendars, start, end, all = false) => {
     const list = (calendars || []).filter(Boolean);
     const key = `ev:${list.join(",")}:${start.toISOString()}:${end.toISOString()}`;
     return (
@@ -243,7 +243,14 @@ export function createCtx(host) {
           })
           .sort((a, b) => a.start - b.start);
       }, 120000) || []
-    );
+    ).filter((e) => all || !ctx.hiddenLesson(e));
+  };
+  /* Lessons in a child's timetable the family has chosen not to see (Aula's "Pædagog i skolen" and the like). */
+  ctx.hiddenLesson = (e) => {
+    const words = ctx.data?.settings?.skema_hide || [];
+    if (!words.length || !ctx.members().some((m) => m.skema === e.calendar)) return false;
+    const t = `${e.title} ${e.description || ""}`.toLowerCase();
+    return words.some((w) => w && t.includes(String(w).toLowerCase()));
   };
 
   // ---------------------------------------------------------------- UI helpers

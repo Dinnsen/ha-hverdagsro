@@ -2,6 +2,60 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.4.0] - 2026-10-27
+
+### Added
+- **Mit værelse, the children's own room** (their start page now):
+  - A little doll's house they build themselves: drag furniture, toys, lamps and wall things in from a drawer, then move, flip, resize, recolour or remove them.
+  - Wallpaper patterns and floors.
+  - Their own avatar to dress (skin, hair, hair colour, top, trousers and an extra like a crown or glasses). Tap the floor to walk, tap the avatar to wave and jump.
+  - Their pet lives in the room, wags when the day goes well, and can be moved.
+  - The routine cards for this part of the day, the day's missions and homework float as bubbles to tap when done.
+  - The window shows the real sky, the switch on the wall turns the real lights in their room on and off, and the room gets dark at night when the lights are off.
+- **Mit værelse is a game now:**
+  - Coins for every routine card (3), a whole routine (+10), a mission (10) and homework (8), plus a treasure chest with 5 coins once a day. Ticking something off again takes its coins back.
+  - The coins buy new things in the shop, one at a time or a whole pack at a discount: 20 packs with 132 new things, 11 wallpapers, 6 floors and 10 things to wear. Among them a den (pillow fort, hammock, fairy lights), a gaming setup (screens, console, arcade machine, LED lights), rescue pups (lighthouse headquarters, fire engine, helicopter), a pop stage (lights, microphone, disco ball), space, animals, jungle, sport, a creative corner, the sea bed and a fairy-tale castle. All drawn for Hverdagsro, with no characters or brands from shows or bands.
+  - Party packs come to the shop around the occasions the family decorates for: Christmas, New Year, Shrovetide, Easter, Halloween, birthdays, Midsummer, Valentine's Day and Constitution Day. The first thing in each is a gift, and what is bought stays.
+  - Every coin also gives experience. Ten levels open the packs and four more rooms to furnish: the den, the tree house, the space station and the big stage, plus a gold wallpaper, a rainbow floor and a gold crown.
+  - A coin flies up when a bubble is tapped, and a new level or a new thing is celebrated.
+- **The room page, picture first (layout A):**
+  - The room's picture across the top with its name and temperature. Tap a lamp in the picture to open it in the drawer below (brightness, colour, on and off); tap it again to turn it off.
+  - The moods as a row of chips, favourites first, then the room's scenes from Home Assistant.
+  - "Alle N lamper i rummet" lists every lamp. Climate, music and TV, doors, windows and cameras, and the rest are small cards below.
+  - "Tilpas rummet" chooses what the page shows, the favourite moods, names for the lamps, lamps to hide, and whether the room is pinned to the front page. Parents choose for the whole family; anyone can choose only for themselves.
+- **Routines and homework among the missions, without points:** each part of the routine board shows as one mission (done when all its cards are), and homework from Aula (Min Uddannelse via the Aula integration) shows on its weekday.
+- **Husbyggeren, much easier to build with:**
+  - The keyboard works anywhere on the page: undo and redo, Delete, Esc, arrows to nudge (Shift for long steps, Alt for fine ones), `,` and `.` to turn, Ctrl/⌘ D to duplicate.
+  - Choose several things with Shift-click, a Shift-drag frame or the "Markér flere" button, then move, duplicate, turn or delete them together.
+  - Hold Alt to place freely.
+  - Walls snap to other walls' ends and corners. Drawing back to the start closes the room and adds it.
+  - Doors, windows and ports sit in their wall at any angle (also slanted walls) and move with the wall. So do TVs, wall lamps and furniture that stands against a wall, with their back to it.
+  - Moving or resizing a room takes its walls, doors and furniture along. Moving a wall end stretches the walls and rooms that meet there.
+  - Rooms get edge handles for resizing.
+  - Many more furniture, grouped by room: kitchen cabinets, sink, hob, dishwasher, fridge and wall cupboards, bathroom vanity, mirror cabinet and towel rail, washer, dryer and laundry tower, shoe rack, office chair and standing desk, workbench, bikes and bins.
+  - For the garden: hedges and fences (drawn like walls), raised beds, trampoline, garden furniture, lounge set, sun loungers, parasol, pizza oven, Weber grill, gas grill, fire pit, sandbox, swing, playhouse, and a shed/workshop.
+  - A search field for entities that finds them by name, area or id, so access points (and everything else) can be picked.
+  - Access points show whether they are online and how many devices are on them.
+- **Husbyggeren saves by itself:** every change is saved a moment later, so nothing is lost on a reload.
+- **Hent og bring:**
+  - A fixed plan plus each week's own plan.
+  - "Kopiér fra ugen før", "Brug den faste plan", "Gør ugen til fast plan", and "Samme som …" another child.
+  - Messages to the phones follow the week's plan.
+- **Hide lessons in the timetable** (e.g. Aula's "Pædagog i skolen"): tap them under Familieindstillinger › Børnene. They disappear from the timetable, the calendar and the children's pages.
+- **Hverdagsro on the home screen:** its own icon, name and start page, with steps for iPhone, Android and the desktop under Mine indstillinger.
+- **Appliances:** select all or none of an appliance's entities. The dishwasher always has a "Billigst" button, which uses the family's own "start at the cheapest hour" button when there is one.
+
+### Changed
+- **Room pictures are redrawn:** every room type has its own furnishing, and nothing stands in front of the window.
+- **A room shows all its lights** (drawn lamps first), not just the ones drawn in Husbyggeren. Lamps drawn without a light no longer sit in the list as dead buttons.
+- **Møblér rummet** only adds what the room is missing and never removes furniture.
+- Windows and doors can be much narrower (from 25 cm), with the width in centimetres.
+- Grass, tiles and gravel no longer carry a label (unless you have given them a name).
+- The cars' battery rings show the charge in green, amber or red on a faint track.
+
+### Fixed
+- Husbyggeren no longer redraws itself in the middle of a drag when something changes in Home Assistant.
+
 ## [0.3.1] - 2026-10-26
 
 ### Added

@@ -93,6 +93,9 @@
     },
     "osky_error": {
       "message": "Ønskeskyen siger: {error}"
+    },
+    "not_enough_coins": {
+      "message": "Der er ikke mønter nok."
     }
   },
   "services": {
