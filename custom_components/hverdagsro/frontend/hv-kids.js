@@ -16,7 +16,7 @@ export const RCARDS = [
   ["aftensmad", "Aftensmad", "🍝", "mad"], ["bad", "Bad", "🛁", "krop"], ["nattoj", "Nattøj på", "🌙", "toj"], ["historie", "Godnathistorie", "📚", "sove"], ["kram", "Godnatkram", "🤗", "sove"], ["sove", "Sove", "😴", "sove"],
 ];
 const RCAT = { morgen: ["#F2B01E", "Morgen"], krop: ["#2F80ED", "Krop"], toj: ["#8B5CF6", "Tøj"], mad: ["#FF7A59", "Mad"], skole: ["#1E9E62", "Skole"], leg: ["#E4568C", "Leg"], hjem: ["#11A39A", "Hjemme"], sove: ["#4A3F78", "Sove"] };
-const RSLOTS = [["morgen", "Morgen", "sunrise", "06–09", 5, 12], ["eftermiddag", "Efter skole", "sun", "13–17", 12, 17.5], ["aften", "Aften", "moon", "17.30–20.30", 17.5, 29]];
+export const RSLOTS = [["morgen", "Morgen", "sunrise", "06–09", 5, 12], ["eftermiddag", "Efter skole", "sun", "13–17", 12, 17.5], ["aften", "Aften", "moon", "17.30–20.30", 17.5, 29]];
 const CHORES = [["Tøm opvaskeren", "🍽️", 10], ["Dæk bord", "🍴", 5], ["Ryd af bordet", "🧽", 5], ["Red seng", "🛏️", 5], ["Ryd op på værelset", "🧸", 10], ["Læg tøj til vask", "🧺", 5], ["Fodr dyrene", "🐟", 5], ["Skrald ud", "🗑️", 5], ["Støvsug", "🧹", 15], ["Vand planter", "🪴", 5], ["Pak skoletasken", "🎒", 5], ["Lektier", "✏️", 10], ["Læs 20 minutter", "📖", 10], ["Bær indkøb ind", "🛍️", 5], ["Hæng vasketøj op", "👕", 10], ["Børst tænder", "🪥", 5], ["Fodr fuglene", "🐦", 5], ["Hjælp med aftensmad", "🥕", 10]];
 const WD = ["M", "T", "O", "T", "F", "L", "S"];
 const WD_LONG = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"];
@@ -290,7 +290,7 @@ function kBoard(ctx) {
 }
 
 // ================================================================== Mit skema
-function subjColor(name) {
+export function subjColor(name) {
   const key = Object.keys(SUBJ).find((k) => String(name).toLowerCase().startsWith(k.toLowerCase()));
   if (key) return SUBJ[key];
   let h = 0;

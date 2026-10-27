@@ -54,6 +54,7 @@ export function demoStates() {
   add(st("todo.huskeliste", "1", { friendly_name: "Huskeliste", supported_features: 15 }));
   add(st("calendar.familie", "off", { friendly_name: "Familie", message: "Svømning" }));
   add(st("calendar.ida", "off", { friendly_name: "Ida" }));
+  add(st("calendar.ida_skema", "off", { friendly_name: "Idas skema" }));
   add(st("calendar.madplan", "off", { friendly_name: "Madplan", message: "Lasagne" }));
   add(st("calendar.affald", "off", { friendly_name: "Affald" }));
   add(st("sensor.restaffald", ymd(day(1)), { friendly_name: "Restaffald", device_class: "date" }));
@@ -118,7 +119,7 @@ export function demoData(setupDone = true) {
   const family = [
     { id: "anna", name: "Anna", role: "parent", person: "person.anna", color: "#EE5E52", birthday: "1988-03-14", institution: "none", skin: "standard", mode: "auto", calendar: "calendar.familie", device_tracker: null },
     { id: "mads", name: "Mads", role: "parent", person: "person.mads", color: "#3B6BF5", birthday: "1986-11-02", institution: "none", skin: "standard", mode: "auto", calendar: null, device_tracker: null },
-    { id: "ida", name: "Ida", role: "child", person: "person.ida", color: "#8B5CF6", birthday: "2017-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(Math.min(28, now.getDate() + 3)).padStart(2, "0"), institution: "skole", skin: "rosa", mode: "auto", calendar: "calendar.ida", device_tracker: null },
+    { id: "ida", name: "Ida", role: "child", person: "person.ida", color: "#8B5CF6", birthday: "2017-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(Math.min(28, now.getDate() + 3)).padStart(2, "0"), institution: "skole", skin: "rosa", mode: "auto", calendar: "calendar.ida", skema: "calendar.ida_skema", features: { board: true }, pet: { name: "Bølle", kind: "hund" }, device_tracker: null },
     { id: "oskar", name: "Oskar", role: "child", person: "person.oskar", color: "#1FA36A", birthday: "2021-06-20", institution: "bornehave", skin: "skov", mode: "auto", calendar: null, device_tracker: null },
   ];
   const all = [0, 1, 2, 3, 4, 5, 6];
@@ -186,6 +187,8 @@ export function demoData(setupDone = true) {
       votes: {},
       played: {},
     },
+    routines: { helpers: [], pickups: {}, cards: [], boards: { ida: { morgen: ["op", "tis", "taend", "toj", "morgenmad", "taske"], eftermiddag: ["haand", "vand", "taske"], aften: ["taend", "tis", "ansigt"] } } },
+    board_done: { ida: ["morgen:0", "morgen:1", "morgen:2"] },
     requests: [{ id: "r1", member: "ida", reward: "film", at: iso(day(0, 8, 2)), status: "pending" }],
     ledger: [{ at: iso(day(0, 7, 20)), member: "ida", delta: 5, reason: "Børst tænder", by: null }],
     done_today: { "tandboerst:ida": { at: iso(day(0, 7, 20)), by: null } },
@@ -560,6 +563,16 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
         const ev = (title, d, h, m, dur = 60, extra = {}) => ({ summary: title, start: { dateTime: iso(day(d, h, m)) }, end: { dateTime: iso(new Date(+day(d, h, m) + dur * 60000)) }, ...extra });
         const allday = (title, d) => ({ summary: title, start: { date: ymd(day(d)) }, end: { date: ymd(day(d + 1)) } });
         if (cal === "calendar.familie") return inRange([ev("Svømning", 0, 16, 30, 60), ev("Forældremøde", 0, 19, 0, 90), ev("Fodbold", 1, 17, 0), ev("Mormor på besøg", 2, 15, 0, 180), allday("Skolefri", 4)]);
+        if (cal === "calendar.ida_skema") {
+          const L = [["Dansk", 8, 0], ["Matematik", 8, 50], ["Engelsk", 10, 0], ["Natur/teknologi", 10, 50], ["Idræt", 12, 15], ["Musik", 13, 5]];
+          const out = [];
+          for (let d = -7; d <= 14; d++) {
+            const wd = day(d).getDay();
+            if (wd === 0 || wd === 6) continue;
+            L.slice(0, 4 + ((d + 14) % 3)).forEach(([n, h, m]) => out.push(ev(n, d, h, m, 45)));
+          }
+          return inRange(out);
+        }
         if (cal === "calendar.ida") return inRange([ev("Spejder", 0, 18, 0, 90), ev("Klaver", 2, 15, 30, 45)]);
         if (cal === "calendar.madplan") return inRange([0, 1, 2, 3, 4, 5, 6].map((d, i) => allday(["Lasagne", "Fiskefrikadeller", "Kylling i karry", "Pasta med kødsovs", "Tarteletter", "Pizza", "Suppe"][i], d)));
         return [];

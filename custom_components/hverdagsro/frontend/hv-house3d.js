@@ -117,7 +117,7 @@ export function houseSvg(ctx, here, peers, t, opts = {}) {
   };
   const camAt = [(x0 + x1) / 2, (y0 + y1) / 2 + Math.max(x1 - x0, (y1 - y0) * 1.3) * 1.9 * Math.cos(PITCH)];
   // A block: a box standing on the floor, turned like the thing. Only the sides we can see.
-  const block = (cx, cy, w, d, rot, h, col, z0 = 0, top = null) => {
+  const block = (cx, cy, w, d, rot, h, col, z0 = 0, top = null, out = null) => {
     const a = (rot * Math.PI) / 180, ca = Math.cos(a), sa = Math.sin(a);
     const c = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([u, v]) => [cx + u * ca - v * sa, cy + u * sa + v * ca]);
     for (let i = 0; i < 4; i++) {
@@ -125,7 +125,9 @@ export function houseSvg(ctx, here, peers, t, opts = {}) {
       const nx = mx - cx, ny = my - cy;
       if (nx * (camAt[0] - mx) + ny * (camAt[1] - my) <= 0) continue;
       const lit = ny > Math.abs(nx) ? 0.9 : nx < 0 ? 0.82 : 0.74;
-      face([[p[0], p[1], z0], [q[0], q[1], z0], [q[0], q[1], z0 + h], [p[0], p[1], z0 + h]], shade(col, lit));
+      // The outside of an outside wall is brick.
+      const L0 = Math.hypot(nx, ny) || 1, outer = out && (nx * out[0] + ny * out[1]) / L0 > 0.5;
+      face([[p[0], p[1], z0], [q[0], q[1], z0], [q[0], q[1], z0 + h], [p[0], p[1], z0 + h]], shade(outer ? out[2] : col, lit), outer ? 'stroke-width="2"' : "");
     }
     face(c.map(([x, y]) => [x, y, z0 + h]), top || shade(col, 1.06));
   };
@@ -176,7 +178,7 @@ export function houseSvg(ctx, here, peers, t, opts = {}) {
     const front = w.ext && ny > 0.35;
     const h = !w.ext ? INNER : front ? LOW : WALL, th = w.ext ? 0.2 : 0.12;
     const col = w.ext ? (front ? "#FFFFFF" : WALLC[inRoom?.look] || "#FFF6E6") : "#FFFDF8";
-    block(mx, my, L + th * 0.6, th, (Math.atan2(dy, dx) * 180) / Math.PI, h, col, 0, "#FFFFFF");
+    block(mx, my, L + th * 0.6, th, (Math.atan2(dy, dx) * 180) / Math.PI, h, col, 0, w.ext ? "#5A5A66" : "#FFFFFF", w.ext ? [nx, ny, "#4A4A55"] : null);
   }
   // Windows on the tall outside walls.
   for (const win of M.windows) {
@@ -286,4 +288,4 @@ export const HOUSE3D_CSS = `
 @keyframes hzpulse { 50% { transform: scale(1.18); } }
 @media (prefers-reduced-motion: reduce) { .hz-you { animation: none; } }
 `;
-export const HOUSE3D_EN = { Toilet: "Toilet", Gang: "Hallway", Gæsteværelse: "Guest room", Badeværelse: "Bathroom", "Walk-in": "Walk-in", Soveværelse: "Bedroom", Entré: "Entrance", Bryggers: "Utility room", Køkken: "Kitchen", Stue: "Living room", "Tryk på et rum for at gå derind": "Tap a room to go in" };
+export const HOUSE3D_EN = { Depot: "Storeroom", Toilet: "Toilet", Gang: "Hallway", Gæsteværelse: "Guest room", Badeværelse: "Bathroom", "Walk-in": "Walk-in", Soveværelse: "Bedroom", Entré: "Entrance", Bryggers: "Utility room", Køkken: "Kitchen", Stue: "Living room", "Tryk på et rum for at gå derind": "Tap a room to go in" };

@@ -288,7 +288,8 @@ export function createCtx(host) {
     t.className = "toast";
     t.setAttribute("role", "status");
     t.textContent = msg;
-    ctx.root.appendChild(t);
+    // In the game's full screen only the full screen is shown: put it there.
+    (ctx.root.querySelector(".pl-fs") || ctx.root).appendChild(t);
     setTimeout(() => t.remove(), 3200);
   };
 
@@ -307,7 +308,7 @@ export function createCtx(host) {
       if (e.target === bg || e.target.closest("[data-close]")) close();
     });
     ctx.root.addEventListener("keydown", onKey, true);
-    ctx.root.appendChild(bg);
+    (ctx.root.querySelector(".pl-fs") || ctx.root).appendChild(bg);
     const sheet = bg.querySelector(".sheet");
     sheet.focus({ preventScroll: true });
     bg.close = close;

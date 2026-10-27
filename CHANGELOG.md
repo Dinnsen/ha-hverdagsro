@@ -2,6 +2,20 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.11.0] - 2026-10-27
+
+### Added
+- **Walk through the house:** the rooms of the house are as wide as they really are, and the picture scrolls along when the figure walks or when the room is dragged sideways. Rooms that share a wall have doors: at the ends of the room for the rooms beside it, and in the back wall for the rest. Walk out at the end, or tap a door, and you are in the next room, by its door.
+- **The arrow keys** (or W A S D) walk the figure left and right and up and down in the room, and through the doors. In Byg they move the chosen thing.
+- **The pet:** tap it for treats, ball play, cuddles and tricks (sit, paw, roll over, jump, play dead). The pet's hearts of the day show in the menu.
+- **More like a doll's house:** give food to a character and it is eaten; give them something else and they hold it (and you can take it back). Food in your own hand is eaten bite by bite. Tap your figure's head for a new face: happy, surprised, tongue out, cross or sad. The figure turns the way it walks.
+- **The timetable and the routine list on the wall** of the child's own room, with a tick over what is done. Tap them to see them big; the routine cards can be ticked off there.
+- **Tuck the bubbles away:** a little arrow folds the day's bubbles into one button with the number on it, and back.
+
+### Changed
+- **The house in Verden** is now the family's real house: a long, low L of dark brick under a slate roof, with the double garage, the front door, the wing at the back and the covered terrace by the garden. The house used when there is no floor plan follows the same drawings, and the outside walls of the 3D house are brick.
+- **Full screen:** sheets and messages now show in full screen too.
+
 ## [0.10.0] - 2026-10-27
 
 ### Added

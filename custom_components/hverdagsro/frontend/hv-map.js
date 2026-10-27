@@ -134,8 +134,39 @@ const BUILD = {
 
 /* ------------------------------------------------------------------ the family's house
    In Verden the house is closed, with its roof on. Tapped, it opens on the Huset page (hv-house3d.js). */
+/* A pitched roof along y (the ridge runs back to front). */
+function gableY(x, y, w, d, h, rh, roof, wall) {
+  return `${poly([[x, y, h], [x + w / 2, y, h + rh], [x + w / 2, y + d, h + rh], [x, y + d, h]], shade(roof, 0.8))}${poly([[x, y + d, h], [x + w, y + d, h], [x + w / 2, y + d, h + rh]], shade(wall, 0.92))}${poly([[x + w, y, h], [x + w / 2, y, h + rh], [x + w / 2, y + d, h + rh], [x + w, y + d, h]], roof)}`;
+}
+/* Rows of slates on a roof slope, from the eave (a0 → a1) up to the ridge (b0 → b1). */
+function slates(a0, a1, b0, b1, n = 5) {
+  let s = "";
+  for (let i = 1; i < n; i++) {
+    const f = i / n, q = (p, r) => p.map((v, k) => v + (r[k] - v) * f);
+    const [x1, y1] = P(...q(a0, b0)), [x2, y2] = P(...q(a1, b1));
+    s += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)}" stroke="#6E6E7A" stroke-width="1.2"/>`;
+  }
+  return s;
+}
+/* A window or a door on the front face (y = fy) from x a to b, or on the right face (x = fx) from y a to b. */
+const winY = (fy, a, b, z0, z1, col = "#BFD7EA") => flat([[a, fy, z0], [b, fy, z0], [b, fy, z1], [a, fy, z1]], col, `stroke="${OL}" stroke-width="1.5"`);
+const winX = (fx, a, b, z0, z1, col = "#A9C1D6") => flat([[fx, a, z0], [fx, b, z0], [fx, b, z1], [fx, a, z1]], col, `stroke="${OL}" stroke-width="1.5"`);
+const lampAt = (x, y, z) => {
+  const [lx, ly] = P(x, y, z);
+  return `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.4" fill="#D9773A" stroke="${OL}" stroke-width="1"/>`;
+};
+/* The family's house, as it really is: a long, low L of dark brick under a slate roof. In front the bedrooms, the
+   front door, the utility room and the double garage with its gable; the wing with the living room and the bedrooms
+   goes back on the left, with the covered terrace in the corner by the garden. (Half a town unit to the metre.) */
 function closedHouse(x0, y0) {
-  return `${box(x0, y0 + 1.2, 9.2, 4.8, 3.2, "#FFF6E6")}${windows(x0, y0 + 1.2, 9.2, 4.8, 3.2, 1, 5, 2, "#C7E6FF")}${gable(x0, y0 + 1.2, 9.2, 4.8, 3.2, 2.4, "#E5484D", "#FFF6E6")}${door(x0 + 4, y0 + 1.2, 4.8, 1.4, 2.3, "#4D96FF")}${box(x0 + 6.8, y0 + 2, 0.8, 0.8, 5.6, "#C98B55")}${box(x0 - 2.6, y0 + 1.6, 2.6, 4.4, 2.4, "#F2E3CF")}${gable(x0 - 2.6, y0 + 1.6, 2.6, 4.4, 2.4, 1.4, "#C2502A", "#F2E3CF")}${windows(x0 - 2.6, y0 + 1.6, 2.6, 4.4, 2.4, 1, 1, 2, "#C7E6FF")}`;
+  const H = 2.8, R = 2.2, brick = "#45454F", roof = "#5A5A66", fy = y0 + 9.6, fx = x0 + 10.7;
+  // The wing at the back: the bedrooms, the covered terrace in the corner, the living room's glass doors.
+  const wing = `${box(x0, y0, 2.2, 2, H, brick)}${flat([[x0 + 2.2, y0, 0.06], [x0 + 4.25, y0, 0.06], [x0 + 4.25, y0 + 2, 0.06], [x0 + 2.2, y0 + 2, 0.06]], "#C9A27A", `stroke="${OL}" stroke-width="1.2"`)}${box(x0 + 4.05, y0 + 0.05, 0.2, 0.2, H, brick)}${box(x0, y0 + 2, 4.25, 3.4, H, brick)}${winX(x0 + 4.25, y0 + 2.4, y0 + 3.3, 0.1, 2.3, "#E8D9B0")}${winX(x0 + 4.25, y0 + 3.7, y0 + 4.6, 0.1, 2.3, "#E8D9B0")}${winX(x0 + 2.2, y0 + 0.4, y0 + 1.6, 0.1, 2.3, "#E8D9B0")}${lampAt(x0 + 4.25, y0 + 3.5, 1.7)}`;
+  const wingRoof = `${gableY(x0 - 0.15, y0 - 0.2, 4.55, 5.8, H, R, roof, brick)}${slates([x0 + 4.4, y0 - 0.2, H], [x0 + 4.4, y0 + 5.6, H], [x0 + 2.125, y0 - 0.2, H + R], [x0 + 2.125, y0 + 5.6, H + R])}`;
+  // The long front: windows, the front door, the utility window, two garage doors; the garage gable to the right.
+  const front = `${box(x0, y0 + 5.35, 10.7, 4.25, H, brick)}${winY(fy, x0 + 1.25, x0 + 2.2, 1, 2.3)}${winY(fy, x0 + 2.9, x0 + 3.8, 1, 2.3)}${winY(fy, x0 + 4.7, x0 + 5.2, 0.05, 2.3, "#2B2B33")}${winY(fy, x0 + 5.7, x0 + 6.7, 1, 2.3)}${winY(fy, x0 + 7.5, x0 + 8.8, 0.05, 2.4, "#2B2B33")}${winY(fy, x0 + 9.05, x0 + 10.3, 0.05, 2.4, "#2B2B33")}${[x0 + 0.9, x0 + 4.4, x0 + 5.45, x0 + 9.0].map((x) => lampAt(x, fy, 1.7)).join("")}${winX(fx, y0 + 8.2, y0 + 8.95, 1.7, 2.4)}${winX(fx, y0 + 6.9, y0 + 7.65, 1.7, 2.4)}${winX(fx, y0 + 5.85, y0 + 6.4, 0.05, 2.3, "#2B2B33")}${lampAt(fx, y0 + 8.6, 1.1)}${lampAt(fx, y0 + 7.3, 1.1)}`;
+  const frontRoof = `${gable(x0 - 0.15, y0 + 5.2, 11, 4.55, H, R, roof, brick)}${slates([x0 - 0.15, y0 + 9.75, H], [x0 + 10.85, y0 + 9.75, H], [x0 - 0.15, y0 + 7.475, H + R], [x0 + 10.85, y0 + 7.475, H + R], 6)}`;
+  return `${wing}${wingRoof}${front}${frontRoof}`;
 }
 
 /* ------------------------------------------------------------------ the whole town */
@@ -193,16 +224,16 @@ export function townSvg(ctx, lv, here, peers, t, opts = {}) {
   const inHome = peers.filter((pe) => homeKeys.has(pe.space));
   const atHome = here === "vaerelse" || String(here).startsWith("h:") || String(here).startsWith("visit:");
   PIN = { act: "house", aria: t("Huset"), label: t("Huset"), here: atHome, who: inHome };
-  const home = `<g class="tm-place tm-home" data-pl="house" role="button" aria-label="${t("Huset")}">${closedHouse(17.2, 15.2)}${sign(20.6, 18.6, 5, "🏠")}</g>`;
+  const home = `<g class="tm-place tm-home" data-pl="house" role="button" aria-label="${t("Huset")}">${closedHouse(14.7, 15.6)}${sign(19.4, 23.1, 5.0, "🏠")}</g>`;
   const gw = peers.filter((pe) => pe.space === "have");
   PIN = { act: "go", k: "have", aria: t("Haven"), here: here === "have", who: gw };
-  const garden = `<g class="tm-place${here === "have" ? " here" : ""}" data-pl="go" data-k="have" role="button" aria-label="${t("Haven")}">${flat([[15, 22.6, 0.37], [25, 22.6, 0.37], [25, 25.6, 0.37], [15, 25.6, 0.37]], "#8FD08A", `stroke="${OL}" stroke-width="1.5"`)}${tree(16.4, 24, 0.7)}${(() => {
-    const [tx, ty] = P(21, 24.2, 0.4);
+  // The garden in the corner of the house: the lawn, a tree and the trampoline.
+  const garden = `<g class="tm-place${here === "have" ? " here" : ""}" data-pl="go" data-k="have" role="button" aria-label="${t("Haven")}">${flat([[19, 15, 0.37], [25.4, 15, 0.37], [25.4, 20.9, 0.37], [19, 20.9, 0.37]], "#8FD08A", `stroke="${OL}" stroke-width="1.5"`)}${tree(24.4, 15.9, 0.75)}${tree(20, 15.6, 0.6, "#5A9E5F")}${(() => {
+    const [tx, ty] = P(22.6, 18.2, 0.4);
     return `<ellipse cx="${tx}" cy="${ty}" rx="20" ry="8" fill="#4D96FF" stroke="${OL}" stroke-width="2"/><ellipse cx="${tx}" cy="${ty}" rx="14" ry="5" fill="#1B1530"/>`;
-  })()}${sign(16.6, 24.2, 2.6, "🌳")}</g>`;
-  // Today's gift over the house, until it is opened.
+  })()}${sign(24.4, 15.9, 3.4, "🌳")}</g>`;
   // Today's gift: a speech bubble from the house, to its left.
-  const [hx, hy] = P(20.6, 18.6, 5);
+  const [hx, hy] = P(19.4, 23.1, 5.0);
   const gx = hx - 112, gy = hy - 30;
   const gift = opts.gift ? `<g class="tm-gift" data-pl="daily" role="button" aria-label="${t("Dagens gave")}"><rect x="${gx - 72}" y="${gy - 20}" width="144" height="40" rx="14" fill="#fff" stroke="${OL}" stroke-width="2.5"/><path d="M${gx + 70} ${gy - 8} l14 8 l-14 8z" fill="#fff" stroke="${OL}" stroke-width="2.5" stroke-linejoin="round"/><rect x="${gx + 66}" y="${gy - 9}" width="6" height="18" fill="#fff"/><text x="${gx}" y="${gy + 6}" class="tm-gt">🎁 ${t("Dagens gave")}</text></g>` : "";
   PIN = null;
@@ -215,7 +246,7 @@ export function townSvg(ctx, lv, here, peers, t, opts = {}) {
   const stop = `<g class="tm-place" data-pl="city" role="button" aria-label="${t("Til Centrum")}">${box(4.5, 26.4, 3, 0.5, 2.2, "#E8F6FF", 0.05)}${box(4.5, 26.2, 3, 0.9, 0.2, "#4D96FF", 2.25)}</g>`;
   const busLabel = `<g class="tm-place" data-pl="city" role="button" aria-label="${t("Til Centrum")}"><rect x="${bsx - 62}" y="${bsy - 34}" width="124" height="26" rx="13" fill="#FFD93D" stroke="${OL}" stroke-width="2"/><text x="${bsx}" y="${bsy - 16}" class="tm-area">🚌 ${t("Til Centrum")}</text></g>`;
   items.sort((a, b) => a[0] - b[0]);
-  const body = `${home}${garden}${items.map((i) => i[1]).join("")}${shop}${fountain}`;
+  const body = `${garden}${home}${items.map((i) => i[1]).join("")}${shop}${fountain}`;
   const pins = PINS.sort((a, b) => a.sy - b.sy).map((q) => pinSvg(q, t)).join("");
   PINS = null;
   return `<defs>${sky}</defs><rect width="${W}" height="${H}" fill="url(#tm-sky)"/>${skyline}${hills}${land}${river}${roads}${zebra}${plots}${cars}${stop}${deco}${body}${pins}${busLabel}${gift}`;
