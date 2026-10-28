@@ -2,6 +2,15 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.12.0] - 2026-10-28
+
+### Changed
+- **The house is one long row of rooms**, like a doll's house seen from the front: the rooms stand side by side in the order you would walk through them, with the garden at the end. The rooms next door are already there to the left and the right; walk out at the end of one and you are in the next, without a jump. No more doors in the back wall.
+- **Walking:** hold an arrow key (or W A S D) and the figure keeps walking, with its legs swinging; drag it and it walks too, turning the way it goes.
+- **The picture is not redrawn** every time you do something: only what changed is swapped, so the tv, the water, the window and the rest keep running.
+- **The bath:** you sit in it, awake and happy, with the water on, instead of falling asleep in it.
+- **Hair** now covers the whole head on every hairstyle.
+
 ## [0.11.0] - 2026-10-27
 
 ### Added
