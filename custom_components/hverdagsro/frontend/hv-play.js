@@ -31,6 +31,7 @@ import * as Faces from "./hv-faces.js";
 import * as Art from "./hv-art.js";
 import * as Ride from "./hv-ride.js";
 import * as Salon from "./hv-salon.js";
+import * as Parent from "./hv-parent.js";
 import { HOME_THINGS, HOME_ACT, HOME_EN } from "./hv-homethings.js";
 import { CITY_THINGS, CITY_PACKS, CITY_EN } from "./hv-citythings.js";
 import { citySvg, CITY_MAP_EN, placePrice } from "./hv-city.js";
@@ -325,7 +326,7 @@ function realLights(ctx, m) {
   const rooms = ctx.data.house?.rooms || [];
   return roomLights(ctx, rooms.find((x) => x.kid === m.id) || rooms.find((x) => new RegExp(`(^|[^a-zæøå])${m.name.split(" ")[0]}`, "i").test(x.name || "")));
 }
-/* The lights where the child is: their own room, a sibling's, or a room of the house. */
+/* The lights where the child is: their own room, a sibling's, or a room of the house (shown; only the own room's can be switched). */
 function lightsAt(ctx, m, sid) {
   if (sid === "vaerelse") return realLights(ctx, m);
   if (visitKid(sid)) return realLights(ctx, ctx.member(visitKid(sid)) || m);
@@ -563,7 +564,7 @@ function stage(ctx, m) {
   }
   else s += Art.bg(`place-${sid}`, rw) ?? backdrop(sid, s0, s1, tod);
   // The light switch for the real lights of the room.
-  if (lights.length && !vk) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset her"))}"><rect x="${sid === "vaerelse" ? 500 : rw - 80}" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="${sid === "vaerelse" ? 510 : rw - 70}" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
+  if (lights.length && !vk && sid === "vaerelse") s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset her"))}"><rect x="${sid === "vaerelse" ? 500 : rw - 80}" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="${sid === "vaerelse" ? 510 : rw - 70}" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
   // The real tv: what plays on it plays in the game too.
   liveTv(ctx, sid, room);
   // Things put up on a table or a shelf before tops existed stand on them now.
@@ -693,17 +694,22 @@ Fix.registerLegacy(CAT);
 const LOOKS = { p: [PATTERNS_X, 25], f: [FLOORS_X, 20], x: [EXTRAS_X, 30] };
 /* A thing or a look ("p:…" wallpaper, "f:…" floor, "x:…" to wear): its name and price. */
 function info(id) {
-  if (CAT[id]) return { n: CAT[id].n, price: CAT[id].price };
+  const P = (base) => Parent.price(ST?.ctx, id, base, packOf(id)?.id || "");
+  if (CAT[id]) return { n: CAT[id].n, price: P(CAT[id].price) };
   const [t, k] = String(id).split(":"), L = LOOKS[t];
-  if (t === "o" && STYLE[id.slice(2)]) return { n: STYLE[id.slice(2)][0], price: STYLE[id.slice(2)][1] };
-  return L && L[0][k] ? { n: L[0][k][0], price: L[1] } : { n: id, price: 0 };
+  if (t === "o" && STYLE[id.slice(2)]) return { n: STYLE[id.slice(2)][0], price: P(STYLE[id.slice(2)][1]) };
+  return L && L[0][k] ? { n: L[0][k][0], price: P(L[1]) } : { n: id, price: 0 };
 }
+/* What a place costs, with the grown-ups' prices. */
+const placeCost = (id) => Parent.price(ST?.ctx, `place:${id}`, placePrice(id));
 const packOf = (id) => ALLPACKS.find((pk) => pk.items.includes(id));
 const game = (ctx, m) => ({ coins: 0, xp: 0, owned: [], ...(ctx.data.game?.[m.id] || {}) });
 /* What the child has: the start pack, what they have unlocked, and the gifts of their level. */
 function ownedSet(ctx, m) {
   const g = game(ctx, m), lv = levelOf(g.xp), set = new Set(g.owned);
   for (const [n, id] of Object.entries(LEVEL_THINGS)) if (lv >= +n) set.add(id);
+  // a grown-up has unlocked a whole pack
+  for (const id of g.owned) if (id.startsWith("pack:")) for (const x of ALLPACKS.find((pk) => pk.id === id.slice(5))?.items || []) set.add(x);
   return set;
 }
 const has = (owned, id) => (CAT[id] ? CAT[id].pack === "start" || CAT[id].pack === "home" || owned.has(id) : owned.has(id));
@@ -766,7 +772,7 @@ function pocketDraw(p) {
   return `<g transform="translate(0 -10) scale(${sc})">${T.d(p.it.c || T.c)}</g>`;
 }
 /* ------------------------------------------------------------------ Centrum: places to open with coins, the Friday gift */
-const placeOpen = (ctx, id) => !placePrice(id) || ownedSet(ctx, ctx.me).has(`place:${id}`);
+const placeOpen = (ctx, id) => !placeCost(id) || ownedSet(ctx, ctx.me).has(`place:${id}`);
 /* This week (Monday's date), for the post office gift: Friday to Sunday, once a week. */
 function weekKey(d = new Date()) {
   const m = new Date(d);
@@ -806,7 +812,7 @@ function render(ctx) {
       <span class="pl-lv" title="${esc(hi ? t("{n} XP til næste niveau", { n: hi - g.xp }) : t("Højeste niveau"))}"><b>${esc(t("Niveau {n}", { n: lv }))}</b><i style="--p:${prog}%"></i></span>
       ${ctx.feature(m, "points") ? `<span class="pl-pill pl-pts-pill" title="${esc(t("Point"))}">${svg("pstar")}<b class="num">${pts}</b></span>` : ""}</div></div>
     <div class="pl-bar">${ST.shop ? `<button class="btn soft" data-pl="shop">${svg("back")}${esc(t("Tilbage til værelset"))}</button>` : `<div class="pl-where"><button class="btn${ST.map ? "" : " soft"} pl-mapb" data-pl="map">${ST.map ? svg("back") : "🗺️"}${esc(ST.map ? t("Tilbage") : t("Kort"))}</button>${ST.map ? "" : `<span class="pl-here">${esc(placeName(ctx, sid))}</span>`}</div>
-      <div class="pl-bar-b">${lights.length && !ST.build && !ST.map ? `<button class="btn soft" data-go="mitlys" aria-label="${esc(t("Lys og stemning"))}">${svg("bulb")}<span class="pl-hide-s">${esc(t("Lys og stemning"))}</span></button>` : ""}${!ST.map && !ST.build && floorList(sid) ? `<button class="btn soft pl-floorb" data-act="play-floors" aria-label="${esc(t("Etager"))}" title="${esc(t("Etager"))}">🛗<span class="pl-hide-s">${esc(t("Etager"))}</span></button>` : ""}<button class="btn soft pl-shopb" data-pl="shop">${COIN}<span class="pl-hide-s">${esc(t("Butikken"))}</span></button>${visitKid(sid) || ST.map ? "" : `<button class="btn${ST.build ? "" : " soft"}" data-pl="build">${svg(ST.build ? "check" : "edit")}${esc(ST.build ? t("Færdig") : t("Byg"))}</button>`}${ST.map ? "" : `<button class="btn soft pl-storyb" data-pl="story" aria-label="${esc(t("Mine historier"))}" title="${esc(t("Mine historier"))}">📸</button>`}<button class="btn soft pl-famb" data-pl="fun" aria-label="${esc(t("Familieleg"))}">👨‍👩‍👧<span class="pl-hide-s">${esc(t("Familie"))}</span>${Fun.badge(ctx) ? `<i class="fun-n">${Fun.badge(ctx)}</i>` : ""}</button><button class="btn soft pl-sndb" data-pl="sound" aria-label="${esc(t("Lyd"))}" title="${esc(t("Lyd"))}">${soundIcon()}</button><button class="btn soft pl-fullb" data-pl="full" aria-label="${esc(ST.full ? t("Luk fuld skærm") : t("Fuld skærm"))}">${ST.full ? "✕" : "⛶"}</button></div>`}</div>`;
+      <div class="pl-bar-b">${lights.length && sid === "vaerelse" && !ST.build && !ST.map ? `<button class="btn soft" data-go="mitlys" aria-label="${esc(t("Lys og stemning"))}">${svg("bulb")}<span class="pl-hide-s">${esc(t("Lys og stemning"))}</span></button>` : ""}${!ST.map && !ST.build && floorList(sid) ? `<button class="btn soft pl-floorb" data-act="play-floors" aria-label="${esc(t("Etager"))}" title="${esc(t("Etager"))}">🛗<span class="pl-hide-s">${esc(t("Etager"))}</span></button>` : ""}<button class="btn soft pl-shopb" data-pl="shop">${COIN}<span class="pl-hide-s">${esc(t("Butikken"))}</span></button>${visitKid(sid) || ST.map ? "" : `<button class="btn${ST.build ? "" : " soft"}" data-pl="build">${svg(ST.build ? "check" : "edit")}${esc(ST.build ? t("Færdig") : t("Byg"))}</button>`}${ST.map ? "" : `<button class="btn soft pl-storyb" data-pl="story" aria-label="${esc(t("Mine historier"))}" title="${esc(t("Mine historier"))}">📸</button>`}<button class="btn soft pl-famb" data-pl="fun" aria-label="${esc(t("Familieleg"))}">👨‍👩‍👧<span class="pl-hide-s">${esc(t("Familie"))}</span>${Fun.badge(ctx) ? `<i class="fun-n">${Fun.badge(ctx)}</i>` : ""}</button><button class="btn soft pl-sndb" data-pl="sound" aria-label="${esc(t("Lyd"))}" title="${esc(t("Lyd"))}">${soundIcon()}</button><button class="btn soft pl-fullb" data-pl="full" aria-label="${esc(ST.full ? t("Luk fuld skærm") : t("Fuld skærm"))}">${ST.full ? "✕" : "⛶"}</button></div>`}</div>`;
   if (ST.shop) return `<div class="pl" style="--pc:${esc(m.color)}">${head}${shop(ctx, m, g, lv)}</div>`;
   if (ST.map) {
     const peers = Object.entries(ST.peers || {}).filter(([id, pe]) => id !== m.id && Date.now() - (pe.seen || 0) < 45000).map(([id, pe]) => ({ ...pe, color: ctx.member(id)?.color }));
@@ -875,11 +881,12 @@ function goTo(ctx, key, opts = {}) {
 }
 /* A place that opens with coins: ask, then buy it (it is the child's for good). */
 function askPlace(ctx, key) {
-  const pl = placeOf(ctx, key), price = placePrice(key), g = game(ctx, ctx.me), t = ctx.t;
+  const pl = placeOf(ctx, key), price = placeCost(key), g = game(ctx, ctx.me), t = ctx.t;
+  if (Parent.locked(ctx, `place:${key}`)) return ctx.toast(ctx.t("Låst af en voksen"));
   ctx.sheet(`<div class="pl-pop-badge">${esc(pl?.em || "🔒")}</div><h2>${esc(t(pl?.n || ""))}</h2><p class="t-sub">${esc(t("Åbn stedet for {n} mønter. Så er det dit for altid.", { n: price }))}</p><p><b>${COIN} ${g.coins}</b></p><div class="pl-pop-b"><button class="btn soft" data-close>${esc(t("Ikke nu"))}</button><button class="btn" data-act="play-buy-place" data-k="${esc(key)}"${g.coins < price ? " disabled" : ""}>${esc(g.coins < price ? t("Du mangler {n} mønter", { n: price - g.coins }) : t("Åbn for {n}", { n: price }))}</button></div>`, { cls: "pl-pop" });
 }
 async function buyPlace(ctx, key) {
-  const m = ctx.me, price = placePrice(key);
+  const m = ctx.me, price = placeCost(key);
   try {
     const res = await ctx.ws("game", { member: m.id, action: "unlock", items: [`place:${key}`], cost: price });
     ctx.data.game = { ...(ctx.data.game || {}), [m.id]: res };
@@ -990,6 +997,7 @@ function shop(ctx, m, g, lv) {
   const packs = ALLPACKS.filter((pk) => !pk.season).sort((a, b) => (lv < a.lvl) - (lv < b.lvl) || a.lvl - b.lvl);
   const later = ALLPACKS.filter((pk) => pk.season && !seasonOpen(ctx, pk).open);
   return `<section class="pl-shop">
+    ${Parent.isGrownUp(ctx) ? `<div class="pl-parent"><button class="btn soft" data-act="parent-game">🔑 ${esc(t("Forældre"))}</button></div>` : ""}
     ${now.length ? `<h3 class="pl-sh">${esc(t("Lige nu"))}</h3><div class="pl-packs now">${now.map(card).join("")}</div>` : ""}
     <h3 class="pl-sh">${esc(t("Pakker"))}</h3><div class="pl-packs">${packs.map(card).join("")}</div>
     <div class="card pl-earn"><b>${esc(t("Sådan får du mønter"))}</b><ul><li>${COIN}<span>${esc(t("Et rutinekort"))}</span><b>3</b></li><li>${COIN}<span>${esc(t("Hele rutinen"))}</span><b>+10</b></li><li>${COIN}<span>${esc(t("En opgave"))}</span><b>10</b></li><li>${COIN}<span>${esc(t("En lektie"))}</span><b>8</b></li><li>${COIN}<span>${esc(t("Skattekisten hver dag"))}</span><b>5</b></li></ul><small>${esc(t("Alle mønter, du får, giver også XP. Med mere XP stiger du i niveau og åbner nye rum og pakker."))}</small></div>
@@ -997,7 +1005,7 @@ function shop(ctx, m, g, lv) {
   </section>`;
 }
 function packPage(ctx, m, g, lv, owned, pk) {
-  const t = ctx.t, so = seasonOpen(ctx, pk), locked = lv < pk.lvl || (pk.season && !so.open);
+  const t = ctx.t, so = seasonOpen(ctx, pk), byParent = Parent.locked(ctx, `pack:${pk.id}`) && pk.items.some((id) => !has(owned, id)), locked = lv < pk.lvl || (pk.season && !so.open) || byParent;
   const { rest, sum, price } = packPrice(owned, pk);
   // A season pack gives its first thing free while the occasion lasts.
   const gift = pk.season && so.open && !pk.items.some((id) => owned.has(id)) ? pk.items[0] : null;
@@ -1005,7 +1013,7 @@ function packPage(ctx, m, g, lv, owned, pk) {
     const mine = has(owned, id), I = info(id), cost = id === gift ? 0 : I.price, ask = ST.ask === id;
     return `<div class="pl-buy${mine ? " mine" : ""}"><span class="pl-buy-th">${thumb(id, ST.d.me)}</span><b>${esc(t(I.n))}</b>${mine ? `<span class="pl-own">✓ ${esc(t("Din"))}</span>` : locked ? `<span class="pl-own">🔒</span>` : `<button class="btn ${ask ? "" : "soft"} sm${g.coins < cost ? " poor" : ""}" data-pl="buy" data-k="${esc(id)}" data-cost="${cost}">${ask ? esc(t("Køb?")) : cost ? `${COIN}${cost}` : esc(t("Gratis"))}</button>`}</div>`;
   };
-  const note = lv < pk.lvl ? t("Pakken åbner, når du når niveau {n}.", { n: pk.lvl }) : pk.season && !so.open ? t("Pakken kommer i butikken igen til {name}.", { name: t(pk.n) }) : pk.season && so.until ? t("I butikken til og med {date}.", { date: ctx.fmt.date(fromDay(so.until), { day: "numeric", month: "long" }) }) + (gift ? " " + t("Den første ting er en gave.") : "") : "";
+  const note = byParent ? t("Låst af en voksen") : lv < pk.lvl ? t("Pakken åbner, når du når niveau {n}.", { n: pk.lvl }) : pk.season && !so.open ? t("Pakken kommer i butikken igen til {name}.", { name: t(pk.n) }) : pk.season && so.until ? t("I butikken til og med {date}.", { date: ctx.fmt.date(fromDay(so.until), { day: "numeric", month: "long" }) }) + (gift ? " " + t("Den første ting er en gave.") : "") : "";
   return `<section class="pl-shop"><button class="lnk pl-back" data-pl="packs">${svg("back")}${esc(t("Alle pakker"))}</button>
     <div class="card pl-packhead"><span class="pl-packem">${pk.em}</span><div><h3>${esc(t(pk.n))}</h3><p class="t-sub">${esc(t(pk.d))}</p>${note ? `<p class="pl-note">${esc(note)}</p>` : ""}</div>
       ${!locked && rest.length > 1 ? `<button class="btn${ST.ask === "pack:" + pk.id ? "" : " soft"}${g.coins < price ? " poor" : ""}" data-pl="buy" data-k="pack:${pk.id}" data-cost="${price}">${ST.ask === "pack:" + pk.id ? esc(t("Køb hele pakken?")) : `${esc(t("Hele pakken"))} ${COIN}${price}`}${sum > price && ST.ask !== "pack:" + pk.id ? `<small>${esc(t("spar {n}", { n: sum - price }))}</small>` : ""}</button>` : ""}</div>
@@ -1032,6 +1040,12 @@ function morph(old, neu) {
   for (const a of [...neu.attributes]) if (old.getAttribute(a.name) !== a.value) old.setAttribute(a.name, a.value);
   if (!neu.children.length || !old.children.length) {
     if (old.innerHTML !== neu.innerHTML) old.innerHTML = neu.innerHTML;
+    return;
+  }
+  // text beside the children (a price next to its coin) is not matched below: when it changed, take the whole inside
+  const ownText = (n) => [...n.childNodes].filter((c) => c.nodeType === 3).map((c) => c.data).join("");
+  if (ownText(old) !== ownText(neu)) {
+    old.innerHTML = neu.innerHTML;
     return;
   }
   const pool = new Map();
@@ -1661,18 +1675,29 @@ function liveTv(ctx, sid, room) {
     }
     return hit;
   };
-  const tv = (house.items || []).find((it) => it.type === "tv" && it.ent && inside(it.x, it.y, r.pts)), st = tv && ctx.hass.states[tv.ent];
-  const screen = (room.items || []).find((it) => ["tv", "konsol", "skaerm"].includes(it.k));
-  if (!screen) return;
-  if (st && (st.state === "playing" || st.state === "on")) {
-    const a = st.attributes || {}, music = a.media_content_type === "music";
-    screen.on = 1;
-    screen.ch = music ? 4 : 1;
-    screen.live = [a.media_title, a.media_artist || a.media_series_title].filter(Boolean).join(" · ").slice(0, 24) || ctx.t("Tændt");
-  } else if (screen.live) {
-    delete screen.live;
-    screen.on = 0;
+  // the real tvs and speakers of this room, and whether they play: the game's own show it, and cannot control them
+  const real = (house.items || [])
+    .filter((it) => (it.type === "tv" || it.type === "speaker") && it.ent && inside(it.x, it.y, r.pts))
+    .map((it) => ({ kind: it.type === "tv" ? "tv" : "spk", st: ctx.hass.states[it.ent] }));
+  for (const g of room.items || []) {
+    const kind = realMedia(g.k);
+    if (!kind) continue;
+    const on = real.find((x) => x.kind === kind && x.st && (x.st.state === "playing" || (kind === "tv" && x.st.state === "on")));
+    if (on) {
+      const a = on.st.attributes || {}, music = a.media_content_type === "music";
+      g.on = 1;
+      if (kind === "tv") g.ch = music ? 4 : 1;
+      g.live = [a.media_title, a.media_artist || a.media_series_title].filter(Boolean).join(" · ").slice(0, 24) || ctx.t("Tændt");
+    } else {
+      g.on = 0;
+      delete g.live;
+    }
   }
+}
+/* What a thing is when it stands for something real in a room of the house: a tv (or a screen) or a speaker (or a radio). */
+function realMedia(k) {
+  const s = Fix.shapeOf(k);
+  return ["tv", "konsol", "skaerm"].includes(k) || s === "tv" || s === "screen" ? "tv" : s === "speaker" || s === "radio" ? "spk" : "";
 }
 /* A room's walls, floor and things, for the rooms next door (seen through the doorway). */
 function sceneSvg(ctx, key, rw, s0, s1, tod) {
@@ -1931,8 +1956,13 @@ async function buy(ctx, b) {
   const owned = ownedSet(ctx, m);
   const items = id.startsWith("pack:") ? (ALLPACKS.find((x) => x.id === id.slice(5))?.items || []).filter((x) => !has(owned, x)) : [id];
   if (!items.length) return redraw(ctx);
+  const from = id.startsWith("pack:") ? id.slice(5) : packOf(id)?.id || "";
+  if (items.some((x) => Parent.locked(ctx, x)) || (from && Parent.locked(ctx, `pack:${from}`))) {
+    ctx.toast(ctx.t("Låst af en voksen"));
+    return redraw(ctx);
+  }
   try {
-    const res = await ctx.ws("game", { member: m.id, action: "unlock", items, cost });
+    const res = await ctx.ws("game", { member: m.id, action: "unlock", items, cost, pack: from });
     ctx.data.game = { ...(ctx.data.game || {}), [m.id]: res };
     ST.got = items.find((x) => CAT[x]) || items[0];
     Sound.sfx("buy");
@@ -2136,6 +2166,11 @@ function itemTap(ctx, el) {
   if (!it || !CAT[it.k]) return;
   const k = it.k, fx = Fix.fxOf(k), T0 = CAT[k];
   if (/^mirror/.test(Fix.shapeOf(k)) || /spejl|mirror/i.test(k)) return Faces.mirror(ctx);
+  // the tv and the speakers of the real house only show whether they play; the game cannot switch them
+  if (String(spaceId()).startsWith("h:") && realMedia(k)) {
+    Sound.sfx("tap");
+    return ctx.toast(ctx.t(realMedia(k) === "tv" ? "Det er det rigtige TV. Her kan du se, om det kører, men ikke styre det." : "Det er den rigtige højttaler. Her kan du se, om den spiller, men ikke styre den."));
+  }
   if (Ride.ridable(k) && !room.ro) return ride(ctx, it);
   if (!room.ro && Salon.tap(ctx, it)) return;
   // Things that work: the tv changes channel, the bath fills, the tap runs, the toilet flushes.
@@ -2397,7 +2432,10 @@ function realCurtains(ctx, it) {
   ctx.toast(ctx.t(it.on ? "Gardinerne trækkes for" : "Gardinerne trækkes fra"));
   setTimeout(() => redraw(ctx), 400);
 }
+/* The real lights can only be switched from the child's own room; elsewhere (a sibling's room, a room of the house) the
+   game only shows how they are. */
 async function toggleLight(ctx) {
+  if (spaceId() !== "vaerelse") return;
   const lights = lightsAt(ctx, ctx.me, spaceId());
   if (!lights.length) return;
   const on = lights.some((id) => ctx.hass.states[id]?.state === "on");
@@ -2411,6 +2449,7 @@ let tick = null;
 /* What the toys (hv-toys) may use of the game. */
 Wall.init({ st: () => ST, save, redraw, sfx: (n) => Sound.sfx(n) });
 Salon.init({ st: () => ST, publish: (ctx) => publish(ctx), redraw, save, sfx: (n) => Sound.sfx(n), floatIcons, avatar: avatarSvg, look: (ctx) => ({ ...ST.d.me, age: ageGroup(ctx.member(ST.kid)) }), esc, flash: (ctx, id, ms) => Faces.flash(ctx, id, ms) });
+Parent.init({ packs: () => ALLPACKS, places: () => Object.keys(World.PLACES).filter((id) => placePrice(id) > 0), placeName: (id) => World.PLACES[id]?.n || id, levels: LEVELS, levelOf, esc, redraw });
 Faces.init({ st: () => ST, publish: (ctx) => publish(ctx), layer, cam, redraw, save, sfx: (n) => Sound.sfx(n), voice: (k) => Sound.voice(k), floatIcons, avatar: avatarSvg, look: (ctx) => ({ ...ST.d.me, age: ageGroup(ctx.member(ST.kid)) }), esc, W });
 Pet.init({ st: () => ST, save, floatIcons, say, layer, rw: () => RW(), sfx: (n) => Sound.sfx(n), voice: (k) => Sound.voice(k), FLOOR, H });
 Toys.init({
@@ -2552,6 +2591,7 @@ export default {
     ...Wall.WALL_ACTS,
     "play-floors": (el, ev, ctx) => floorsSheet(ctx),
     salon: (el, ev, ctx) => Salon.act(ctx, el.dataset.k),
+    "parent-game": (el, ev, ctx) => Parent.sheet(ctx),
     "play-floor": (el, ev, ctx) => {
       el.closest(".sheet-bg")?.close?.();
       goTo(ctx, el.dataset.k, { lift: true });
@@ -2835,7 +2875,7 @@ export default {
 @media (max-width: 640px) { .pl-hide-s { display: none; } .pl-lv { min-width: 80px; } .pl-buys { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pl-packs { grid-template-columns: minmax(0, 1fr); } .pl-packs.small { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .pl-tools { top: 8px; bottom: auto; gap: 4px; padding: 4px 6px 4px 12px; } .pl-tools button { width: 38px; height: 38px; font-size: 18px; } .pl-tools b { font-size: 12px; } .pl-stagebox { border-radius: 20px; } .pl-th svg { width: 60px; height: 52px; } }
 @media (prefers-reduced-motion: reduce) { .pl-me .pl-body, .pl-pet .pl-petb, .pl-bub, .pl-cloud, .pl-fish, .pl-twinkle, .pl-chest, .pl-sparkle, .pl-blink, .pl-beam, .pl-pop-c { animation: none !important; } }
-` + Fun.FUN_CSS + Toys.TOYS_CSS + Life.LIFE_CSS + Fix.FIX_CSS + HOUSE3D_CSS + Wall.WALL_CSS + Pet.PET_CSS + Walk.WALK_CSS + Ward.WARD_CSS + Faces.FACES_CSS + Salon.SALON_CSS,
+` + Fun.FUN_CSS + Toys.TOYS_CSS + Life.LIFE_CSS + Fix.FIX_CSS + HOUSE3D_CSS + Wall.WALL_CSS + Pet.PET_CSS + Walk.WALK_CSS + Ward.WARD_CSS + Faces.FACES_CSS + Salon.SALON_CSS + Parent.PARENT_CSS,
   en: {
     "Mit værelse": "My room", "Hej {name}!": "Hi {name}!", "Tryk på boblerne, når du har gjort det.": "Tap the bubbles when you have done it.", "Alt er klaret lige nu. Godt gået!": "All done for now. Well done!",
     "Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.": "Drag things where they should go. Tap something to change it.", "Byg dit værelse": "Build your room", "Lys og stemning": "Lights and mood", Færdig: "Done", "Dit værelse": "Your room", "Lyset i dit værelse": "The light in your room",
@@ -3143,6 +3183,9 @@ export default {
     ...Ward.WARD_EN,
     ...Faces.FACES_EN,
     ...Salon.SALON_EN,
+    ...Parent.PARENT_EN,
+    "Det er det rigtige TV. Her kan du se, om det kører, men ikke styre det.": "That is the real TV. Here you can see whether it is on, but not control it.",
+    "Det er den rigtige højttaler. Her kan du se, om den spiller, men ikke styre den.": "That is the real speaker. Here you can see whether it is playing, but not control it.",
     ...MAP_EN,
   },
 };

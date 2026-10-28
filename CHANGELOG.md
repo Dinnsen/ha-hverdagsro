@@ -2,6 +2,16 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.21.0] - 2026-10-28
+
+### Added
+- **Grown-ups run the room game** (the 🔑 *Forældre* button in the shop, for grown-ups only): unlock a pack or a place for a child (or take it away again), unlock everything at once, give or take coins, move a child a level up or down. **Prices:** one setting for all prices in per cent (0 % is free), a price per pack (per thing) and per place. **Locks:** lock a pack or a place, and a child cannot buy it until a grown-up opens it (the server checks it too). Everything is kept by Home Assistant (`hverdagsro/game_admin`), so every device sees it.
+- **The real tv and speakers of the house show that they play:** in the rooms of the house, the tv and the speakers of the game are on when the real ones play (with the title over them), and off when they do not. They cannot be switched from the game: tapping one says that it is the real one.
+
+### Changed
+- **The real lights can only be switched from the child's own room.** In a sibling's room and in the rooms of the house the game shows how the lights are, but there is no switch.
+- Text next to a picture (a price beside its coin) now updates when the page is drawn again; before, only the pictures did.
+
 ## [0.20.0] - 2026-10-28
 
 ### Added

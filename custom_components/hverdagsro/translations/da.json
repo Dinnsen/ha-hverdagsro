@@ -94,6 +94,9 @@
     "osky_error": {
       "message": "Ønskeskyen siger: {error}"
     },
+    "locked_item": {
+      "message": "Det her er låst af en voksen."
+    },
     "not_enough_coins": {
       "message": "Der er ikke mønter nok."
     },

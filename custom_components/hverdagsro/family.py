@@ -63,6 +63,7 @@ def default_data() -> dict[str, Any]:
         "pins": {},
         "board_done": {},
         "game": {},
+        "gamecfg": {"mult": 100, "prices": {}, "locked": []},
         "fun": {},
     }
 
@@ -528,8 +529,53 @@ class Family:
         state["coins"] = max(0, int(state["coins"]) + int(delta))
         state["xp"] = max(0, int(state["xp"]) + int(delta))
 
+    def gamecfg(self) -> dict[str, Any]:
+        """What the parents have set for the room game: a price in per cent, prices of single things, and what is locked."""
+        cfg: dict[str, Any] = self.data.setdefault("gamecfg", {})
+        cfg.setdefault("mult", 100)
+        cfg.setdefault("prices", {})
+        cfg.setdefault("locked", [])
+        return cfg
+
+    async def async_game_admin(
+        self,
+        action: str,
+        member_id: str,
+        items: list[str],
+        amount: int,
+        cfg: dict[str, Any] | None,
+        user: User | None,
+    ) -> dict[str, Any]:
+        """A grown-up looks after the room game: unlock or lock things for a child, give or take coins and experience,
+        set the prices and lock things (a child cannot buy what is locked, until a grown-up unlocks it)."""
+        if not self.can_manage(user):
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
+        if action == "config":
+            clean = cfg or {}
+            self.data["gamecfg"] = {
+                "mult": int(clean.get("mult", 100)),
+                "prices": dict(clean.get("prices", {})),
+                "locked": list(dict.fromkeys(clean.get("locked", []))),
+            }
+            self._changed()
+            return self.gamecfg()
+        member = self.require_member(member_id)
+        state = self.game(member["id"])
+        if action == "grant":
+            state["owned"] = [*state["owned"], *[i for i in dict.fromkeys(items) if i not in state["owned"]]][
+                -MAX_OWNED:
+            ]
+        elif action == "revoke":
+            state["owned"] = [i for i in state["owned"] if i not in items]
+        elif action == "coins":
+            state["coins"] = max(0, int(state["coins"]) + int(amount))
+        elif action == "xp":
+            state["xp"] = max(0, int(state["xp"]) + int(amount))
+        self._changed()
+        return state
+
     async def async_game(
-        self, member_id: str, action: str, items: list[str], cost: int, user: User | None = None
+        self, member_id: str, action: str, items: list[str], cost: int, user: User | None = None, pack: str = ""
     ) -> dict[str, Any]:
         """The room game: the coin of the day for looking in, or unlocking things (one, or a whole pack) for coins."""
         self._check_member_access(user, member_id)
@@ -545,6 +591,10 @@ class Family:
         new = [item for item in dict.fromkeys(items) if item not in state["owned"]]
         if not new:
             return state
+        # what the parents have locked is for a grown-up to unlock
+        locked = self.gamecfg()["locked"]
+        if not self.can_manage(user) and (any(item in locked for item in new) or (pack and f"pack:{pack}" in locked)):
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="locked_item")
         if int(cost) > int(state["coins"]):
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="not_enough_coins")
         state["coins"] = int(state["coins"]) - int(cost)
@@ -571,6 +621,7 @@ class Family:
             "appliances": self.data["appliances"],
             "points": self.data["points"],
             "game": self.data["game"],
+            "gamecfg": self.gamecfg(),
             "fun": funplay.fun(self),
             "requests": [r for r in self.requests if r["status"] == "pending" or r["at"][:10] == today],
             "ledger": self.data["ledger"][-40:],
