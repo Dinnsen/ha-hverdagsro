@@ -291,3 +291,6 @@ export const CITY_MAP_EN = {
   Lejlighederne: "The apartments", Tagterrassen: "The rooftop", "Kolbøtteparken": "Somersault Park", Torvet: "The square", Campingpladsen: "The campsite", Hospitalet: "The hospital",
   "Indkøbscentret": "The mall", Universitetet: "The university", "Villaen med pool": "The pool villa", "Det store familiehus": "The big family house", "Familiens byggeplads": "The family's building site",
 };
+
+/* The drawing helpers of the isometric maps, for the other towns (hv-towns.js). */
+export { Pp, poly, flat, box, windows, gable, door, tree, pine, sign };

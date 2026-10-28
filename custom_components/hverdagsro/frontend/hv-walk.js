@@ -19,6 +19,9 @@ export function planRoom(ctx, sid, me) {
 }
 /* How wide a place is in the game. */
 export function roomWidth(ctx, sid, me) {
+  // A place of the world can be a wide room that scrolls, like the rooms of the house.
+  const wide = World.PLACES?.[sid]?.width;
+  if (wide) return Math.max(MIN_W, Math.min(MAX_W, wide));
   const own = sid === "vaerelse" || !!visitOf(sid), h = (own || String(sid).startsWith("h:")) && planRoom(ctx, sid, me);
   const w = Math.max(own ? ME_MIN : MIN_W, h ? World.planWidth(h.room?.pts) : MIN_W);
   return Math.max(MIN_W, Math.min(MAX_W, w));
