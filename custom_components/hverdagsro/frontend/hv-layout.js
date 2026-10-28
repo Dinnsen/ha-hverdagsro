@@ -10,7 +10,7 @@ import { PROTO } from "./hv-proto.js";
 
 const BACK = 528, FRONT = 604, EDGE = 60, GAP = 22;
 /* What a shape is for. */
-const ROLE = {
+export const ROLE = {
   sofa: "seat", armchair: "seat", bench: "seat", pouf: "seat", lounger: "seat", hammock: "seat", chair: "chair", stool: "chair",
   coffeetable: "lowtable", roundtable: "table", table: "table", desk: "desk", counter: "counter", island: "counter",
   bookcase: "shelf", shelfunit: "shelf", cubes: "shelf", cabinet: "storage", dresser: "storage", chest: "storage", wardrobe: "wardrobe",
@@ -41,6 +41,45 @@ const surfOf = (k) => {
   const s = PROTO[META4[k]?.shape]?.[4];
   return Array.isArray(s) ? s : null;
 };
+
+/* Dress a room: little things on every top (a shelf, a table, a counter, a bed), and inside what opens (a fridge, a
+   cupboard, a chest: out of sight until the door is opened). `placed` are the pieces of furniture with their x, y and
+   idx (their place in `decor`); more entries are added to `decor`. */
+export function dress(placed, things, decor, R) {
+  const put = (k, x, y, o) => decor.push(o ? [k, Math.round(x), Math.round(y), o] : [k, Math.round(x), Math.round(y)]);
+  const small = things.filter((t) => t.w <= 120 && t.h <= 130 && t.cat !== "mob" && t.cat !== "væg" && t.role !== "rug" && t.role !== "ceiling" && t.shape !== "decal");
+  const pool = small.length ? small : things.filter((t) => t.w <= 90 && t.h <= 100);
+  let n = 0;
+  const pick = (role) => {
+    const kinds = GOES[role];
+    if (kinds) for (const set of kinds) {
+      const some = pool.filter((t) => set.has(t.shape));
+      if (some.length && R() < 0.8) return some[Math.floor(R() * some.length)];
+    }
+    return pool[Math.floor(R() * pool.length)];
+  };
+  for (const host of placed) {
+    if (!pool.length || host.noFill) continue;
+    const S = surfOf(host.k);
+    if (S) {
+      const lv = S.slice(1).filter((f) => f > 0.1 || S.length === 2);
+      const levels = lv.length > 2 ? [lv[lv.length - 1], lv[Math.floor((lv.length - 1) / 2)]] : lv;
+      for (const f of levels) {
+        const count = Math.max(1, Math.min(3, Math.floor((host.w * S[0]) / 90)));
+        const left = host.x - (host.w * S[0]) / 2 + 26, step = count > 1 ? (host.w * S[0] - 52) / (count - 1) : 0;
+        for (let i = 0; i < count && n < 46; i++, n++) put(pick(host.role).k, count > 1 ? left + i * step : host.x, host.y - host.h * f);
+      }
+    }
+    const I = insideOf(host.k);
+    if (I) {
+      for (const f of I.levels.slice(0, 3)) {
+        const count = Math.max(1, Math.min(2, Math.floor((host.w * I.w) / 90)));
+        const left = host.x - (host.w * I.w) / 2 + 26, step = count > 1 ? (host.w * I.w - 52) / (count - 1) : 0;
+        for (let i = 0; i < count; i++) put(pick(host.role).k, count > 1 ? left + i * step : host.x, host.y - host.h * f, { in: decor.length - host.idx });
+      }
+    }
+  }
+}
 
 /* Lay out a room: `keys` are what there is to use, `stations` what the room is (names below), `width` how wide it may be.
    Returns { decor, width }. */
@@ -281,38 +320,6 @@ export function arrange(keys, stations, seed, opts = {}) {
   if (cur) put(cur.k, Math.min(width - 260, 600), HANG.curtain);
   const ceil = take("ceiling");
   if (ceil && !decor.some(([k]) => META4[k]?.shape === "ceilinglamp")) for (let x = 500; x < width; x += 700) put(ceil.k, x, 150);
-  // dress the room: things on every top, things inside what opens
-  const small = things.filter((t) => t.w <= 120 && t.h <= 130 && t.cat !== "mob" && t.cat !== "væg" && t.role !== "rug" && t.role !== "ceiling" && t.shape !== "decal");
-  const pool = small.length ? small : things.filter((t) => t.w <= 90 && t.h <= 100);
-  let n = 0;
-  const pick = (role) => {
-    const kinds = GOES[role];
-    if (kinds) for (const set of kinds) {
-      const some = pool.filter((t) => set.has(t.shape));
-      if (some.length && R() < 0.8) return some[Math.floor(R() * some.length)];
-    }
-    return pool[Math.floor(R() * pool.length)];
-  };
-  for (const host of placed) {
-    if (!pool.length || host.noFill) continue;
-    const S = surfOf(host.k);
-    if (S) {
-      const lv = S.slice(1).filter((f) => f > 0.1 || S.length === 2);
-      const levels = lv.length > 2 ? [lv[lv.length - 1], lv[Math.floor((lv.length - 1) / 2)]] : lv;
-      for (const f of levels) {
-        const count = Math.max(1, Math.min(3, Math.floor((host.w * S[0]) / 90)));
-        const left = host.x - (host.w * S[0]) / 2 + 26, step = count > 1 ? (host.w * S[0] - 52) / (count - 1) : 0;
-        for (let i = 0; i < count && n < 46; i++, n++) put(pick(host.role).k, count > 1 ? left + i * step : host.x, host.y - host.h * f);
-      }
-    }
-    const I = insideOf(host.k);
-    if (I) {
-      for (const f of I.levels.slice(0, 3)) {
-        const count = Math.max(1, Math.min(2, Math.floor((host.w * I.w) / 90)));
-        const left = host.x - (host.w * I.w) / 2 + 26, step = count > 1 ? (host.w * I.w - 52) / (count - 1) : 0;
-        for (let i = 0; i < count; i++) put(pick(host.role).k, count > 1 ? left + i * step : host.x, host.y - host.h * f, { in: decor.length - host.idx });
-      }
-    }
-  }
+  dress(placed, things, decor, R);
   return { decor, width };
 }

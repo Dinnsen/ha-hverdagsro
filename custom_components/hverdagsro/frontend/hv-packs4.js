@@ -58,10 +58,11 @@ function fit(P, size, uw, uh) {
   return P[2] === "mob" ? clamp(s, 0.75, 1.35) : clamp(s, 0.22, 1.8);
 }
 
-function add(key, name, shapeName, k, a, n, size, lvl, en, uw = 0, uh = 0, flags = {}) {
+function add(key, name, shapeName, k, a, n, size, lvl, en, uw = 0, uh = 0, flags = {}, free = false) {
   const P = PROTO[shapeName];
   if (!P) throw new Error(`hv-packs4: no shape "${shapeName}" for ${key}`);
-  const s = fit(P, size, uw, uh), [w, h, cat, draw, surf, flat] = P;
+  const s = free ? clamp(Math.sqrt(((uw / 100) * UNIT) / P[0] * (((uh / 100) * UNIT) / P[1])), 0.3, 3.2) : fit(P, size, uw, uh);
+  const [w, h, cat, draw, surf, flat] = P;
   THINGS4[key] = [
     name, cat, k, Math.round(w * s), Math.round(h * s),
     s === 1 ? (c) => draw(c, a, n) : (c) => `<g transform="scale(${s})">${draw(c, a, n)}</g>`,
@@ -146,3 +147,14 @@ for (const [key, name, shapeName, k, a, n, size, en] of HOME) {
 addSurfaces(SURF4);
 /* The stove the game already has lights the pots on it too. */
 registerFx("komfur", "oven");
+
+/* The furniture of the places of the worlds (hv-worlds): a shape at the size the original's furniture has. Free for
+   everybody, and not in the shop. */
+export const PLACE4 = {};
+export function placeThing(key, shapeName, uw, uh, k, a, n) {
+  if (THINGS4[key] || PLACE4[key]) return key;
+  add(key, shapeName, shapeName, k, a, n, 100, null, "", uw, uh, {}, true);
+  PLACE4[key] = THINGS4[key];
+  delete THINGS4[key];
+  return key;
+}

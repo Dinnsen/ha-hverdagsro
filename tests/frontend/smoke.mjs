@@ -56,14 +56,18 @@ const runs = [
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"build\"]", "--click", "[data-pl=\"tab\"][data-k=\"mig\"]", "--click", "[data-pl=\"fig-new\"]", "--click", "[data-pl=\"fig-place\"]"],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", ".pl-shopb", "--click", "[data-pl=\"pack\"][data-k=\"bogorm\"]"],
   // 0.16: the new towns (Byerne), their places, the theme packs in the shop, and the fuller rooms of the house.
-  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-storfamilie\"]"],
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"hjem\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-storfamilie\"]"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"handel\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-supermarked\"]"],
   ["--user", "ida", "--view", "vaerelse", "--narrow", "--width", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"born\"]"],
   // things that open: a cupboard, and the things inside it come into sight
-  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-storfamilie\"]", "--eval", OPEN_ONE],
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"hjem\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-storfamilie\"]", "--eval", OPEN_ONE],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", ".pl-shopb", "--click", "[data-pl=\"pack\"][data-k=\"hd-bageri\"]"],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"house\"]", "--click", ".hz-sign[data-k=\"h:stue\"]"],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"house\"]", "--click", ".hz-sign[data-k=\"h:bad\"]"],
+  // the worlds of the original: the town, a bakery with its shelves, a hospital ward, a mall (laid out like the original)
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "[data-pl=\"go\"][data-k=\"w-Store\"]"],
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"w-BunBakery\"]", "--click", "[data-pl=\"go\"][data-k=\"w-BunBakery\"]"],
+  ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"w-Hospital\"]", "--click", "[data-pl=\"go\"][data-k=\"w-KidsWard\"]"],
   ["--user", "ida", "--view", "lister", "--narrow", "--width", "390"],
   ["--user", "tablet"],
   ["--user", "tablet", "--as", "oskar", "--view", "dag"],

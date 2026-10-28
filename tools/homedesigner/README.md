@@ -16,4 +16,8 @@ python tools/homedesigner/extract_game_data.py game.apk -o game_data
 python tools/homedesigner/build_packs.py custom_components/hverdagsro/frontend/hv-packs4-data.js
 ```
 
-The data file is committed, so the game does not need any of this to run.
+3. `extract_locations.py <your.apk>` reads the hand-built places of the same game (every piece of furniture with where it
+   stands and how big it is), and `build_places.py <out.js>` turns them into `hv-worlds-data.js`: the places of the
+   worlds, laid out like the original with our own shapes.
+
+The data files are committed, so the game does not need any of this to run.

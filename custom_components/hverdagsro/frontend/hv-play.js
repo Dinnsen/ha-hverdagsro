@@ -13,7 +13,8 @@ import { houseSvg, HOUSE3D_CSS, HOUSE3D_EN } from "./hv-house3d.js";
 import { WORLD_THINGS, WORLD_NAMES_EN } from "./hv-worlditems.js";
 import { THINGS2, PACKS2, PACKS2_EN } from "./hv-packs2.js";
 import { THINGS3, PACKS3, PACKS3_EN } from "./hv-packs3.js";
-import { THINGS4, PACKS4, PACKS4_EN, HOME4 } from "./hv-packs4.js";
+import { THINGS4, PACKS4, PACKS4_EN, HOME4, PLACE4 } from "./hv-packs4.js";
+import { WORLDS_EN } from "./hv-worlds.js";
 import { townsSvg, TOWNS, TOWNS_EN } from "./hv-towns.js";
 import * as Sound from "./hv-sound.js";
 import * as Fun from "./hv-fun.js";
@@ -650,6 +651,8 @@ for (const [k, v] of Object.entries(HOME_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0
 for (const [k, v] of Object.entries(HOME4)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "home" };
 for (const [k, v] of Object.entries(WORLD_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "world" };
 for (const [k, v] of Object.entries(Fix.FIX_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: 0, pack: "home" };
+// The furniture of the places of the worlds: free, and not in the drawer.
+for (const [k, v] of Object.entries(PLACE4)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "world" };
 // The fridges, wardrobes and bedside tables the game had before the theme packs open now too.
 Fix.registerLegacy(CAT);
 const LOOKS = { p: [PATTERNS_X, 25], f: [FLOORS_X, 20], x: [EXTRAS_X, 30] };
@@ -2991,6 +2994,7 @@ export default {
     ...PACKS2_EN,
     ...PACKS3_EN,
     ...PACKS4_EN,
+    ...WORLDS_EN,
     ...TOWNS_EN,
     ...MAP_EN,
   },

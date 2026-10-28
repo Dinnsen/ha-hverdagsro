@@ -6,7 +6,18 @@
    width, ...levels as a part of its height from the floor] (hv-fixtures: things can stand on it). */
 import { OL, shade, DRAW } from "./hv-playcat.js";
 
-const { r, c, e, p, ln, dot, gl, L, tx, star, heart, rep, leaf, T3 } = DRAW;
+const { p, ln, dot, gl, L, tx, star, heart, rep, leaf, T3 } = DRAW;
+/* Our shapes get a little more than the plain outline: a light edge on top and a soft shade underneath on every solid
+   rectangle, and a glint on every round shape that is big enough to show it. */
+const solid = (f) => f && f !== "none" && !/^url/.test(f);
+const r = (x, y, w, h, f, rx = 6, o = "") =>
+  DRAW.r(x, y, w, h, f, rx, o) +
+  (solid(f) && w >= 26 && h >= 16
+    ? `<path d="M${x + rx * 0.7 + 2} ${y + 4} H${x + w - rx * 0.7 - 2}" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".42"/><path d="M${x + rx * 0.7 + 2} ${y + h - 4} H${x + w - rx * 0.7 - 2}" stroke="#2B2340" stroke-width="3" stroke-linecap="round" opacity=".13"/>`
+    : "");
+const glint = (cx, cy, R) => `<path d="M${cx - R * 0.6} ${cy - R * 0.25} A${R * 0.66} ${R * 0.66} 0 0 1 ${cx - R * 0.15} ${cy - R * 0.62}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".45"/>`;
+const c = (cx, cy, R, f, o = "") => DRAW.c(cx, cy, R, f, o) + (solid(f) && R >= 13 ? glint(cx, cy, R) : "");
+const e = (cx, cy, rx, ry, f, o = "") => DRAW.e(cx, cy, rx, ry, f, o) + (solid(f) && ry >= 12 && rx >= 18 ? glint(cx, cy, Math.min(rx, ry * 1.6)) : "");
 const lt = (k) => shade(k, 1.2), dk = (k) => shade(k, 0.78), WOOD = "#C98B55", GLASS = "#CFE8FF", STEEL = "#CFD6E6", PALE = "#FFF3D6";
 const pick = (list, n) => list[((n % list.length) + list.length) % list.length];
 

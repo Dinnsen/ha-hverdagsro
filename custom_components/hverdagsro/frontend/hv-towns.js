@@ -7,8 +7,10 @@ import { OL, shade } from "./hv-playcat.js";
 import { BG, addWorld } from "./hv-world.js";
 import { box, windows, gable, door, tree, pine, sign, Pp, flat, poly } from "./hv-city.js";
 import { PACKS4 } from "./hv-packs4.js";
+import { WORLD_TOWNS } from "./hv-worlds.js";
 import { TOWNS4 } from "./hv-packs4-data.js";
 import { arrange } from "./hv-layout.js";
+import { roomBg, STYLES } from "./hv-roombg.js";
 
 const { W, H, FLOOR, rect, out, rep, skyDef } = BG;
 
@@ -64,23 +66,8 @@ function layout(pk) {
   return { decor, wd: width };
 }
 
-/* ------------------------------------------------------------------ the backdrop of a place */
-const STYLES = ["panel", "stripes", "dots", "bricks", "tiles", "plain"];
-function roomBg(pk, style, s0, s1, tod, wd = W) {
-  const wall = BG.look?.wall || pk.wall, floor = BG.look?.floor || pk.floor, accent = pk.cols[1] || "#fff";
-  let deco = "";
-  if (style === "stripes") deco = rep(Math.ceil(wd / 60), (i) => (i % 2 ? "" : rect(i * 60, 0, 30, FLOOR, shade(wall, 0.95))));
-  else if (style === "dots") deco = rep(Math.ceil(wd / 50), (i) => rep(7, (j) => `<circle cx="${i * 50 + 25 + (j % 2) * 25}" cy="${30 + j * 55}" r="5" fill="${shade(wall, 0.9)}"/>`));
-  else if (style === "bricks") deco = rep(9, (j) => rep(Math.ceil(wd / 90) + 1, (i) => rect(i * 90 - (j % 2) * 45, 20 + j * 46, 86, 42, shade(wall, 0.96), 3, `stroke="${shade(wall, 0.86)}" stroke-width="2"`)));
-  else if (style === "tiles") deco = rep(Math.ceil(wd / 40), (i) => rep(6, (j) => `<rect x="${i * 40}" y="${FLOOR - 180 + j * 30}" width="40" height="30" fill="none" stroke="${shade(wall, 0.82)}" stroke-width="3"/>`));
-  else if (style === "panel") deco = `${rect(0, FLOOR - 170, wd, 170, shade(wall, 0.93))}${rect(0, FLOOR - 176, wd, 10, shade(wall, 0.85))}${rep(Math.ceil(wd / 120), (i) => rect(i * 120 + 14, FLOOR - 150, 92, 120, "none", 6, `stroke="${shade(wall, 0.82)}" stroke-width="3"`))}`;
-  const winAt = (win) => `${rect(win, 70, 190, 160, "#fff", 12, out())}${rect(win + 12, 82, 166, 136, "url(#pl-sky)", 6)}${tod === "night" ? `<circle cx="${win + 120}" cy="120" r="16" fill="#FFF6C9"/>` : `<circle cx="${win + 120}" cy="120" r="20" fill="#FFE066"/>`}<path d="M${win + 95} 82 V218 M${win + 12} 150 H${win + 178}" stroke="${OL}" stroke-width="6"/>`;
-  const window = skyDef(s0, s1) + rep(Math.max(1, Math.floor((wd - 100) / 700)), (i) => winAt(Math.min(wd - 260, 640 + i * 700)));
-  return `${rect(0, 0, wd, FLOOR, wall)}${deco}${window}${rect(0, 0, wd, 12, accent, 0, 'opacity=".5"')}${rect(0, FLOOR - 16, wd, 16, "#fff", 0, out())}${rect(0, FLOOR, wd, H - FLOOR, floor)}${rep(6, (i) => `<path d="M0 ${FLOOR + 30 * (i + 1)} H${wd}" stroke="${shade(floor, 0.88)}" stroke-width="3"/>`)}`;
-}
-
 /* ------------------------------------------------------------------ the places */
-export const TOWNS = TOWNS4.map((t) => ({ ...t, packs: PACKS4.filter((p) => p.town === t.id) }));
+export const TOWNS = [...WORLD_TOWNS, ...TOWNS4.map((t) => ({ ...t, places: PACKS4.filter((p) => p.town === t.id) }))];
 const places = {};
 for (const pk of PACKS4) {
   const { decor, wd } = layout(pk);
@@ -106,6 +93,16 @@ const KIND = {
   "hd-herregaard": ["manor", 0], "hd-palae": ["manor", 1], "hd-hotel": ["tower", 2], "hd-gammeldags": ["house", 4], "hd-bryllup": ["pavilion", 0], "hd-velvaere": ["villa", 3],
   "hd-neonregnbue": ["tower", 1], "hd-streamer": ["tower", 3], "hd-tusindaar": ["mall", 1], "hd-solskin": ["tall", 3], "hd-stjernehus": ["villa", 4], "hd-loft": ["tower", 4], "hd-vaerksted": ["shop", 2], "hd-rengoering": ["house", 5], "hd-boblespa": ["pavilion", 2],
 };
+/* What a building of a world looks like, by what the place is. */
+const KINDS_BY_NAME = [
+  [/hospital|ward|treatment|basement|entrance|mall|center|centre|station|stadium|arcade/i, "mall"], [/school|class|campus|lecture|dorm|univers|court|bank|theatre|studio/i, "manor"],
+  [/apartment|loft|hotel|block|office|workplace|tower|lodge/i, "tower"], [/store|shop|salon|tailor|bakery|cafe|café|restaurant|food|emporium|dentist|vet|market/i, "shop"],
+  [/park|playground|field|forest|garden|arena|wildlife|beach|piste|skate|rink|bay|lagoon|pool|festival|onsen|boat/i, "park"], [/cabin|bungalow|barn|hut|house|home|farm/i, "cabin"],
+];
+function kindFor(pk) {
+  const hit = KINDS_BY_NAME.find(([rx]) => rx.test(pk.en || pk.n));
+  return [hit ? hit[1] : "house", hash(pk.id) % 5];
+}
 const BUILD = {
   house: (x, y, c1, c2, v) => `${box(x + 1.2, y + 1.5, 8 + (v % 2), 6 - (v % 3) * 0.4, 3.4 + (v % 3) * 0.5, c1)}${gable(x + 1.2, y + 1.5, 8 + (v % 2), 6 - (v % 3) * 0.4, 3.4 + (v % 3) * 0.5, 2.4, c2, c1)}${windows(x + 1.2, y + 1.5, 8 + (v % 2), 6 - (v % 3) * 0.4, 3.4 + (v % 3) * 0.5, 1, 4, 3, "#C7E6FF")}${door(x + 5, y + 1.5, 6)}${v % 2 ? box(x + 8, y + 2, 0.8, 0.8, 5.2, shade(c2, 0.8)) : ""}${tree(x + 10.5, y + 9, 0.8)}`,
   cottage: (x, y, c1, c2, v) => `${box(x + 2.5, y + 2.5, 6, 5, 2.8, c1)}${gable(x + 2.5, y + 2.5, 6, 5, 2.8, 2.2, c2, c1)}${windows(x + 2.5, y + 2.5, 6, 5, 2.8, 1, 2, 2, "#FFF3B0")}${door(x + 4.8, y + 2.5, 5, 1.3, 2.2)}${box(x + 7.6, y + 3, 0.7, 0.7, 4.6, "#8B5A3C")}${tree(x + 1, y + 9, 0.8, v % 2 ? "#F7B5CF" : "#6BCB77")}${tree(x + 10, y + 9.5, 0.6)}`,
@@ -138,10 +135,10 @@ export function townsSvg(ctx, lv, here, peers, t, opts = {}) {
   const [bx2, by2] = Pp(48, 39.5, 0.5);
   const bus = `<g class="tm-place" data-pl="town" role="button" aria-label="${t("Til Verden")}">${box(43.5, 36.6, 8, 2.6, 2.4, "#FFD93D", 0.4)}${windows(43.5, 36.6, 8, 2.6, 2.4, 1, 5, 1, "#C7E6FF", 0.4)}<rect x="${bx2 - 46}" y="${by2 + 12}" width="92" height="26" rx="13" fill="#fff" stroke="${OL}" stroke-width="2"/><text x="${bx2}" y="${by2 + 30}" class="tm-area">🚌 ${t("Til Verden")}</text></g>${tree(52.6, 40.6, 0.7)}`;
   const items = [];
-  town.packs.forEach((pk, i) => {
+  town.places.forEach((pk, i) => {
     const blk = BLOCKS[i];
     if (!blk) return;
-    const [kind, variant] = KIND[pk.id] || ["house", 0], [c0, c1] = [pk.cols[0], pk.cols[1] || pk.cols[0]];
+    const [kind, variant] = KIND[pk.id] || kindFor(pk), [c0, c1] = [pk.cols[0], pk.cols[1] || pk.cols[0]];
     const [px, py] = Pp(blk[0] + 0.4 + 5.5, blk[1] + 0.4 + 4.5, 6.4), sx = px + 26, sy = py - 46;
     const who = peers.filter((pe) => pe.space === pk.id), seen = (opts.seen || []).includes(pk.id);
     const badge = !open
