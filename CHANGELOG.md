@@ -2,6 +2,14 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.14.0] - 2026-10-28
+
+### Added
+- **The living house:** the grown-ups are in the living room and the kitchen only when they are really at home (their person in Home Assistant). Every room of the house has its real lights: the room is dark at night until the real light is on, and the switch in the room turns it on. The tv in a room shows what really plays on the tv there (from Husbyggeren's tv with its media player), with the title over it. When it rains or snows outside, it rains or snows on the windows.
+
+### Changed
+- **More detail in every room:** a cornice, a pendant lamp with its glow, curtains, a picture on the wall, a rug, the planks of the floor and the skirting board, and a soft shadow under every thing.
+
 ## [0.13.0] - 2026-10-28
 
 ### Added

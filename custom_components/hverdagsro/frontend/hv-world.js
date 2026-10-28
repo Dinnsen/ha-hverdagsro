@@ -234,7 +234,17 @@ function roomBackdrop(look, s0, s1, tod, wd = W) {
     return `<rect x="${x}" y="70" width="200" height="170" rx="12" fill="#fff" ${out()}/><rect x="${x + 14}" y="84" width="172" height="142" rx="6" fill="url(#pl-sky)"/><path d="M${x + 100} 84 V226 M${x + 14} 155 H${x + 186}" stroke="${OL}" stroke-width="5"/>`;
   });
   const window = look === "garage" ? "" : `${skyDef(s0, s1)}<rect x="${look === "kitchen" ? 760 : 620}" y="70" width="200" height="170" rx="12" fill="#fff" ${out()}/><rect x="${look === "kitchen" ? 774 : 634}" y="84" width="172" height="142" rx="6" fill="url(#pl-sky)"/>${tod === "night" ? `<circle cx="${look === "kitchen" ? 900 : 760}" cy="130" r="14" fill="#FFF6C9"/>` : `<circle cx="${look === "kitchen" ? 900 : 760}" cy="130" r="18" fill="#FFE066"/>`}<path d="M${look === "kitchen" ? 860 : 720} 84 V226 M${look === "kitchen" ? 774 : 634} 155 H${look === "kitchen" ? 946 : 806}" stroke="${OL}" stroke-width="5"/>`;
-  return `${rect(0, 0, wd, FLOOR, L.wall)}${tiles}${garage}${window}${more}${rect(0, FLOOR - 16, wd, 16, "#fff", 0, out())}${rect(0, FLOOR, wd, H - FLOOR, L.floor)}${rep(6, (i) => `<path d="M0 ${FLOOR + 30 * (i + 1)} H${wd}" stroke="${shade(L.floor, 0.88)}" stroke-width="3"/>`)}`;
+  // The little things that make a room a room: a cornice, a pendant lamp with its glow, curtains, a picture, the
+  // skirting board, the planks of the floor, a rug in the living rooms, and rain or snow on the window.
+  const lampX = Math.min(wd - 200, 420), pend = look === "garage" ? "" : `<path d="M${lampX} 0 V46" stroke="${OL}" stroke-width="3"/><ellipse cx="${lampX}" cy="78" rx="90" ry="44" class="pl-glow" fill="#FFE8A3" opacity="${tod === "night" ? 0.5 : 0.18}"/><path d="M${lampX - 44} 76 L${lampX - 30} 46 H${lampX + 30} L${lampX + 44} 76Z" fill="${{ kitchen: "#2B2340", bath: "#E8F6FF", bed: "#F7B5CF", kid: "#FFD93D" }[look] || "#F2E3CF"}" ${out()}/><ellipse cx="${lampX}" cy="76" rx="44" ry="8" fill="#FFF6C9" ${out(T3)}/>`;
+  const wx = BG.wx || "", winX = look === "kitchen" ? 760 : 620;
+  const drops = wx === "rain" ? `<g class="fx-rain" clip-path="url(#pl-winc)">${rep(9, (i) => `<path d="M${winX + 20 + i * 19} 80 v12" stroke="#4FB3FF" stroke-width="3" stroke-linecap="round" style="--fall:150px;animation-delay:${-(i * 0.17) % 0.6}s"/>`)}</g>` : wx === "snow" ? `<g class="fx-rain" clip-path="url(#pl-winc)">${rep(8, (i) => `<circle cx="${winX + 24 + i * 22}" cy="86" r="4" fill="#fff" style="--fall:150px;animation-delay:${-(i * 0.33) % 1.6}s;animation-duration:1.6s"/>`)}</g>` : "";
+  const winClip = look === "garage" ? "" : `<clipPath id="pl-winc"><rect x="${winX + 14}" y="84" width="172" height="142" rx="6"/></clipPath>`;
+  const curtains = look === "garage" ? "" : `<path d="M${winX - 26} 56 h252" stroke="${OL}" stroke-width="7" stroke-linecap="round"/><path d="M${winX - 18} 60 q-8 90 -2 182 h34 q6 -92 -4 -182z" fill="${{ bath: "#BFE6FF", kid: "#FFD1E3", bed: "#E2D5FF" }[look] || "#F7D9A8"}" ${out()}/><path d="M${winX + 184} 60 q8 90 2 182 h34 q-6 -92 4 -182z" fill="${{ bath: "#BFE6FF", kid: "#FFD1E3", bed: "#E2D5FF" }[look] || "#F7D9A8"}" ${out()}/>`;
+  const picture = ["living", "bed", "hall", "office", "kid", "other"].includes(look) ? `<rect x="${Math.min(wd - 190, 230)}" y="120" width="130" height="100" rx="6" fill="#fff" ${out()}/><rect x="${Math.min(wd - 190, 230) + 12}" y="132" width="106" height="76" fill="${{ bed: "#C7E6FF", hall: "#FFE4CC" }[look] || "#9BD7A0"}"/><circle cx="${Math.min(wd - 190, 230) + 86}" cy="156" r="12" fill="#FFE066"/><path d="M${Math.min(wd - 190, 230) + 12} 208 q30 -40 50 -14 q20 -40 56 -2 v16 h-106z" fill="#5A9E5F"/>` : "";
+  const rug = ["living", "bed", "kid", "office"].includes(look) ? `<ellipse cx="${Math.min(wd - 300, 520)}" cy="${FLOOR + 130}" rx="230" ry="44" fill="${shade(L.floor, 0.78)}" opacity=".35"/><ellipse cx="${Math.min(wd - 300, 520)}" cy="${FLOOR + 130}" rx="200" ry="34" fill="none" stroke="${shade(L.floor, 1.2)}" stroke-width="4" opacity=".5"/>` : "";
+  const planks = rep(Math.ceil(wd / 180), (i) => rep(3, (j) => `<path d="M${i * 180 + (j % 2) * 90} ${FLOOR + 30 + j * 60} v30" stroke="${shade(L.floor, 0.84)}" stroke-width="3"/>`));
+  return `${rect(0, 0, wd, FLOOR, L.wall)}${rect(0, 0, wd, 14, shade(L.wall, 0.92))}${tiles}${garage}${winClip}${window}${drops}${curtains}${more}${picture}${pend}${rect(0, FLOOR - 16, wd, 16, "#fff", 0, out())}${rect(0, FLOOR, wd, H - FLOOR, L.floor)}${rep(6, (i) => `<path d="M0 ${FLOOR + 30 * (i + 1)} H${wd}" stroke="${shade(L.floor, 0.88)}" stroke-width="3"/>`)}${planks}${rug}${rect(0, FLOOR, wd, 10, "rgba(0,0,0,.08)")}`;
 }
 /* A family house for the game when no floor plan has been drawn in Husbyggeren yet: a long, low L-shaped house with
    a double garage, the utility room and the entrance, the children's rooms along the front, a big kitchen and family
@@ -396,7 +406,7 @@ export function mapSvg(ctx, lv, here, peers, t) {
 
 /* ------------------------------------------------------------------ more of the world (hv-city.js and later) */
 /* The drawing helpers for backdrops, and a way to add places, areas and characters from other files. */
-export const BG = { W, H, FLOOR, T3, rect, out, rep, skyDef, sunMoon, cloud, hills, ground, outdoor, house, look: {} };
+export const BG = { W, H, FLOOR, T3, rect, out, rep, skyDef, sunMoon, cloud, hills, ground, outdoor, house, look: {}, wx: "" };
 export function addWorld({ places = {}, areas = [], npcs = {} }) {
   Object.assign(P, places);
   for (const a of areas) if (!AREAS.some((x) => x.id === a.id)) AREAS.push(a);
