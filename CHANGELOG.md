@@ -2,6 +2,19 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.16.0] - 2026-10-28
+
+### Added
+- **Seven new towns in the world, under a new map page, Byerne:** Hjemmebyen, Børnebyen, Årstidsbyen, Strandbyen, Handelsbyen, Slotsbyen and Neonbyen. Each town opens at its own level and has a place for every theme pack, so there are 47 new places to visit. A place is a long room that scrolls, furnished from its pack: the furniture along the walls, things on the shelves, tables and counters, and pictures, curtains and lamps up.
+- **47 theme packs with 2,284 new things** for the shop, from the family home, the nursery and the cabin to the supermarket, the bakery, the manor and the neon studio. Every thing has a Danish and an English name, its own colours and a price from the level of its pack. They are all our own drawings, made from about seventy shapes in `hv-proto.js` (a bed, a sofa, a bookcase, a fridge, a lamp …); the names and colours are in `hv-packs4-data.js`, made by `tools/homedesigner/build_packs.py`. No characters or brands from films, shows or games.
+- **Things that open and work:** fridges, cupboards, wardrobes, chests and chests of drawers open when tapped, show their shelves, and keep what you put inside them out of sight when they are shut. Stoves can be turned on (flames, and a pot on a burning stove bubbles), the cooker hood turns its fan, baths fill, showers run, taps and toilets have their scenes, and the tvs and screens have channels.
+- **Free things for the rooms of the house:** 50 everyday things (bookcases, open shelves, cube shelves, wall shelves, vases, books, cups, plants, pictures, clocks, baskets, a fridge, a stove, a hood, a chest …) are free for everybody.
+
+### Changed
+- **Every room of the house is fuller:** bookcases and open shelves with things on them, shelves on the wall, a fridge and a cupboard with things inside, pictures, a clock, a plant, a basket. What the family has put in a room in Husbyggeren stays where it is; the rest is added around it.
+- A place of the world can be a wide room that scrolls (`width` on the place), like the rooms of the house.
+- `hv-fixtures.js` can be told about more things that open or work (`registerFx`), and things have shelves inside while they are open.
+
 ## [0.15.0] - 2026-10-28
 
 ### Added

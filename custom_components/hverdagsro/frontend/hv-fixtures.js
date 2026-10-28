@@ -23,12 +23,34 @@ const SURF = {
   gavehylde: [0.85, 0.06, 0.52, 0.99], pakkehylde: [0.85, 0.06, 0.52, 0.99], foderskab: [0.85, 0.06, 0.5, 0.99], hemmeligdoer: [0.8, 0.28, 0.57, 0.99], slikhylde: [0.85, 0.06, 0.38, 0.7, 0.99],
 };
 export const isSurface = (k) => !!SURF[k];
-/* Where things can stand on a thing: [{ level, x0, x1, y }] in the room. */
+/* Things from the theme packs (hv-packs4) that work or open, registered by key: what they look like when on, the
+   shelves inside them, and what shape they are drawn with. */
+const ON = {}, INSIDE = {}, SHAPE = {};
+export const hasInside = (k) => !!INSIDE[k];
+export const insideOf = (k) => INSIDE[k] || null;
+export const shapeOf = (k) => SHAPE[k] || "";
+export function registerFx(key, shape, { fx, on, inside } = {}) {
+  SHAPE[key] = shape;
+  if (fx) FX[key] = fx;
+  if (on) ON[key] = on;
+  if (inside) INSIDE[key] = inside;
+}
+/* More surfaces from the theme packs (hv-packs4.js): the shelves, tables and counters they bring. */
+export const addSurfaces = (more) => Object.assign(SURF, more);
+/* Where things can stand on a thing: [{ level, x0, x1, y }] in the room. A thing that opens (a fridge, a cupboard, a
+   chest) also has shelves inside, but only while it is open: they come with inside: true. */
 export function topsOf(it, T) {
-  const S = SURF[it.k];
-  if (!S || !T) return [];
-  const sc = it.s || 1, half = (T.w * sc * S[0]) / 2;
-  return S.slice(1).map((f, level) => ({ level, x0: it.x - half, x1: it.x + half, y: Math.round(it.y - T.h * sc * f) }));
+  if (!T) return [];
+  const sc = it.s || 1, out = [], S = SURF[it.k], I = INSIDE[it.k];
+  if (S) {
+    const half = (T.w * sc * S[0]) / 2;
+    S.slice(1).forEach((f, level) => out.push({ level, x0: it.x - half, x1: it.x + half, y: Math.round(it.y - T.h * sc * f) }));
+  }
+  if (I && it.on) {
+    const half = (T.w * sc * I.w) / 2;
+    I.levels.forEach((f, level) => out.push({ level: 10 + level, x0: it.x - half, x1: it.x + half, y: Math.round(it.y - T.h * sc * f), inside: true }));
+  }
+  return out;
 }
 /* The best top for a thing dropped at x, y: the nearest one it fits on. */
 export function topNear(items, CAT, thing, x, y) {
@@ -37,7 +59,7 @@ export function topNear(items, CAT, thing, x, y) {
   const mine = new Set([thing.id, ...ridersOf(items, thing.id).map((r) => r.id)]);
   let best = null;
   for (const it of items) {
-    if (mine.has(it.id) || !SURF[it.k] || !CAT[it.k]) continue;
+    if (mine.has(it.id) || (!SURF[it.k] && !INSIDE[it.k]) || !CAT[it.k]) continue;
     for (const top of topsOf(it, CAT[it.k])) {
       if (x < top.x0 - 10 || x > top.x1 + 10) continue;
       const dd = Math.abs(y - top.y);
@@ -136,12 +158,51 @@ export function onSvg(it) {
     case "elkedel":
       return steam(-34, -80, 2);
     default:
-      return "";
+      return ON[it.k] ? ON[it.k](it) : "";
   }
 }
 /* A little scene that plays once, put into the thing for a moment. */
+/* A pot on a stove that is burning bubbles and steams. */
+export function ridingSvg(it, items) {
+  if (!it.at || SHAPE[it.k] !== "pot") return "";
+  const host = items.find((x) => x.id === it.at);
+  return host && host.on && SHAPE[host.k] === "oven" ? `${steam(0, -66, 2)}${bubbles(-20, 20, -54, 4)}` : "";
+}
 export function onceSvg(it) {
   return FX[it.k]?.once ? FX[it.k].once(it) : "";
+}
+
+/* ------------------------------------------------------------------ open things and things that run (theme packs)
+   Every one is drawn over the thing from its size (w, h), bottom centre at 0,0, like everything else here. */
+const DARK = "#3A3347";
+export const LOOKS = {
+  /* A door swung open: the shelves inside show, the door stands out at the side. */
+  door: (w, h, levels, col) => `<g pointer-events="none"><rect x="${-w * 0.42}" y="${-h * 0.95}" width="${w * 0.84}" height="${h * 0.89}" rx="6" fill="${DARK}" stroke="${OL}" stroke-width="3"/><rect x="${-w * 0.42}" y="${-h * 0.95}" width="${w * 0.84}" height="${h * 0.3}" rx="6" fill="#FFF3C4" opacity=".14"/>${levels.map((f) => `<rect x="${-w * 0.4}" y="${-h * f - 3}" width="${w * 0.8}" height="6" rx="2" fill="#CFD6E6" stroke="${OL}" stroke-width="2"/>`).join("")}<path d="M${w * 0.42} ${-h * 0.95} L${w * 0.66} ${-h * 0.88} V${-h * 0.1} L${w * 0.42} ${-h * 0.06}Z" fill="${col}" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/><circle cx="${w * 0.6}" cy="${-h * 0.5}" r="3.5" fill="#fff" stroke="${OL}" stroke-width="2"/></g>`,
+  /* A lid thrown back: the inside shows. */
+  lid: (w, h, col) => `<g pointer-events="none"><ellipse cx="0" cy="${-h * 0.62}" rx="${w * 0.42}" ry="${h * 0.12}" fill="${DARK}" stroke="${OL}" stroke-width="3"/><path d="M${-w * 0.5} ${-h * 0.62} L${-w * 0.4} ${-h * 1.12} H${w * 0.4} L${w * 0.5} ${-h * 0.62}Z" fill="${col}" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/><path d="M${-w * 0.3} ${-h * 0.95} H${w * 0.3}" stroke="#fff" stroke-width="4" opacity=".5"/></g>`,
+  /* The top drawer pulled out. */
+  drawer: (w, h, col) => `<g pointer-events="none"><rect x="${-w * 0.4}" y="${-h * 0.92}" width="${w * 0.8}" height="${h * 0.26}" rx="5" fill="${DARK}" stroke="${OL}" stroke-width="3"/><rect x="${-w * 0.42}" y="${-h * 0.7}" width="${w * 0.84}" height="${h * 0.2}" rx="5" fill="${col}" stroke="${OL}" stroke-width="3"/><circle cx="0" cy="${-h * 0.6}" r="4" fill="#fff" stroke="${OL}" stroke-width="2"/></g>`,
+  /* A stove with its flames. */
+  burn: (w, h) => `${[0, 1, 2].map((i) => flame(-w * 0.28 + i * w * 0.28, -h * 1.0, 0.7)).join("")}${steam(-w * 0.1, -h * 1.05, 2)}<rect x="${-w * 0.36}" y="${-h * 0.7}" width="${w * 0.72}" height="${h * 0.46}" rx="4" fill="#FF8A3C" opacity=".35" pointer-events="none"/>`,
+  /* The cooker hood: the fan turns and the light is on. */
+  hood: (w, h) => `<g pointer-events="none"><path d="M${-w * 0.42} ${-h * 0.5} L${w * 0.42} ${-h * 0.5} L${w * 0.5} ${-h * 0.1} H${-w * 0.5}Z" fill="#FFE8A3" opacity=".55"/><g class="fx-spinfast" transform="translate(0 ${-h * 0.3})"><path d="M-16 0 H16 M0 -16 V16" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g>${steam(0, -h * 0.55, 2)}</g>`,
+  /* A bath full of water. */
+  water: (w, h) => `<path d="M${-w * 0.46} ${-h * 0.72} H${w * 0.46} Q${w * 0.44} ${-h * 0.1} ${w * 0.3} ${-h * 0.06} H${-w * 0.3} Q${-w * 0.44} ${-h * 0.1} ${-w * 0.46} ${-h * 0.72}Z" fill="#7FC8F8" opacity=".85" pointer-events="none"/>${bubbles(-w * 0.4, w * 0.4, -h * 0.76, 7)}`,
+  /* A shower running. */
+  rain: (w, h) => drops(-w * 0.45, w * 0.45, -h * 0.95, -h * 0.08, 8) + steam(0, -h * 0.55, 3),
+  /* A washing machine on spin. */
+  spin: (w, h) => `<g class="fx-spinfast" pointer-events="none"><circle cx="0" cy="${-h * 0.45}" r="${Math.min(w, h) * 0.26}" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="28 9"/><circle cx="10" cy="${-h * 0.45}" r="7" fill="#FFB347"/><circle cx="-10" cy="${-h * 0.45}" r="7" fill="#F15BB5"/></g>`,
+  /* Something playing music. */
+  notes: (w, h) => `<g class="fx-steam" pointer-events="none"><text x="${-w * 0.2}" y="${-h * 0.9}" font-size="26" fill="${OL}">♪</text><text x="${w * 0.16}" y="${-h * 1.05}" font-size="30" fill="${OL}">♫</text></g>`,
+  /* The little scenes that play once. */
+  stew: () => `${steam(0, -60, 2)}${bubbles(-22, 22, -50, 5)}`,
+  flush: (w, h) => `<g class="fx-flush" pointer-events="none"><ellipse cx="0" cy="${-h * 0.8}" rx="${w * 0.42}" ry="7" fill="#4FB3FF"/><path d="M${-w * 0.3} ${-h * 0.8} q${w * 0.3} -10 ${w * 0.6} 0" stroke="#fff" stroke-width="3" fill="none"/></g>`,
+  tap: (w, h) => stream(w * 0.3, -h * 1.3, -h * 0.9),
+};
+/* A screen of a thing from a theme pack, so it gets the tv's channels. rect: [x, y, w, h] in the thing's own space. */
+export function addScreen(key, rect) {
+  SCREENS[key] = rect;
+  FX[key] = { tv: true, sound: "tv" };
 }
 
 /* ------------------------------------------------------------------ the shower (new: a bathroom needs one) */

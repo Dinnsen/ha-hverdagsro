@@ -2,6 +2,7 @@
    garden, and seven areas to open one level at a time. Every place has its own backdrop, things that stand there and
    characters who live there. All data: a new place is a new entry here. Every character is our own. */
 import { OL, S, shade } from "./hv-playcat.js";
+import { furnish } from "./hv-furnish.js";
 
 const W = 1000, H = 620, FLOOR = 440;
 const T3 = 'stroke-width="3"';
@@ -364,7 +365,9 @@ export function place(ctx, key) {
   if (String(key).startsWith("h:")) {
     const h = houseRooms(ctx).find((x) => x.id === key);
     if (!h) return null;
-    return { ...h, area: "hjem", bg: (s0, s1, tod, wd) => roomBackdrop(h.look, s0, s1, tod, wd), decor: houseDecor(ctx, h.room) || (ROOMLOOK[h.look] || ROOMLOOK.other).decor, own: !!houseDecor(ctx, h.room), npcs: [] };
+    // What the family has put in the room stays; shelves with things on them, pictures and plants are added around it.
+    const own = houseDecor(ctx, h.room), base = own || (ROOMLOOK[h.look] || ROOMLOOK.other).decor;
+    return { ...h, area: "hjem", bg: (s0, s1, tod, wd) => roomBackdrop(h.look, s0, s1, tod, wd), decor: furnish(h.look, base, planWidth(h.room?.pts)), own: !!own, npcs: [] };
   }
   return null;
 }
