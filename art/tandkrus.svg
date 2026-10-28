@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-42 -102 84 114" width="84" height="114">
+<!-- Hverdagsro: Tandbørster i krus (tandkrus). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-8 -40 L-16 -84 M8 -40 L14 -86 M0 -40 V-80" fill="none" stroke="#2B2340" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><rect x="-20" y="-88" width="8" height="14" rx="2" fill="#6BCB77" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><rect x="10" y="-92" width="8" height="14" rx="2" fill="#FF9AB5" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><rect x="-4" y="-86" width="8" height="14" rx="2" fill="#FFD93D" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-22 -44 H22 L18 0 H-18Z" fill="#BFE6FF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

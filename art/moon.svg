@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-52 -92 104 104" width="104" height="104">
+<!-- Hverdagsro: Månelampe (moon). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<g class="pl-lamp"><circle cx="0" cy="-40" r="64" class="pl-glow" fill="#FFE8A3"/><path d="M14 -76 a40 40 0 1 0 0 72 a32 32 0 1 1 0 -72z" fill="#FFE8A3" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

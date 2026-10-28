@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-54 -92 108 104" width="108" height="104">
+<!-- Hverdagsro: Klodser (blocks). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-40" y="-40" width="40" height="40" rx="4" fill="#FFD93D" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><rect x="2" y="-40" width="40" height="40" rx="4" fill="#4D96FF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><rect x="-20" y="-80" width="40" height="40" rx="4" fill="#FF6B6B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><text x="-20" y="-12" font-size="26" font-weight="900" text-anchor="middle" fill="#2B2340">A</text><text x="22" y="-12" font-size="26" font-weight="900" text-anchor="middle" fill="#fff">B</text>
+</svg>

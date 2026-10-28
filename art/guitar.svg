@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-52 -192 104 204" width="104" height="204">
+<!-- Hverdagsro: Guitar (guitar). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-30 -10 C-46 -40 -30 -60 -14 -64 C-26 -84 -10 -100 4 -96 C22 -92 26 -70 14 -62 C34 -54 36 -20 14 -6 C0 4 -20 4 -30 -10Z" fill="#FF6B6B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-2" cy="-44" r="9" fill="#2B2340"/><rect x="0" y="-180" width="12" height="96" fill="#C98B55" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" transform="rotate(14)"/>
+</svg>

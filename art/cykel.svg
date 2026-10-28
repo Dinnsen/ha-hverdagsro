@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-97 -122 194 134" width="194" height="134">
+<!-- Hverdagsro: Cykel (cykel). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<circle cx="-54" cy="-36" r="32" fill="none" stroke="#2B2340" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="56" cy="-36" r="32" fill="none" stroke="#2B2340" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/><path d="M-54 -36 L-10 -36 L28 -80 L56 -36 M-10 -36 L-26 -80 M-36 -84 h22 M28 -80 L22 -100 h18" fill="none" stroke="#FF6B6B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

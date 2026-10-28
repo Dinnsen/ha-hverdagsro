@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-42 -112 84 124" width="84" height="124">
+<!-- Hverdagsro: Krus med blyanter (blyantskrus). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-14 -46 V-86 l4 -8 l4 8 V-46Z" fill="#E5484D" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-5 -46 V-86 l4 -8 l4 8 V-46Z" fill="#FFD93D" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M4 -46 V-86 l4 -8 l4 8 V-46Z" fill="#6BCB77" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M13 -46 V-86 l4 -8 l4 8 V-46Z" fill="#F15BB5" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M-22 -50 H22 L18 0 H-18Z" fill="#4D96FF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-52 -142 104 154" width="104" height="154">
+<!-- Hverdagsro: Studiehøjttaler (studiemonitor). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-34" y="-126" width="68" height="122" rx="8" fill="#1B1530" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-94" r="16" fill="#3A3A55" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-94" r="6" fill="#9AA4BA" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-44" r="26" fill="#3A3A55" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-44" r="10" fill="#FFD93D" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

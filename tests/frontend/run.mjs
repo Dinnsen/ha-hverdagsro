@@ -24,7 +24,9 @@ for (let i = 0; i < args.length; i++) {
 }
 const TYPES = { ".js": "text/javascript", ".mjs": "text/javascript", ".html": "text/html", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".json": "application/json" };
 const server = http.createServer((req, res) => {
-  const p = path.join(ROOT, decodeURIComponent(new URL(req.url, "http://x").pathname));
+  // The art pack, as Home Assistant serves it (www/hverdagsro-art → /local/hverdagsro-art).
+  const url = new URL(req.url, "http://x"), rel = decodeURIComponent(url.pathname).replace(/^\/local\/hverdagsro-art\//, "/art/");
+  const p = path.join(ROOT, rel);
   if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) {
     res.writeHead(404);
     return res.end();

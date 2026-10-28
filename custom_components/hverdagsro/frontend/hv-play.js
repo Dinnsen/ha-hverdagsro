@@ -21,6 +21,7 @@ import * as Fix from "./hv-fixtures.js";
 import * as Wall from "./hv-wall.js";
 import * as Walk from "./hv-walk.js";
 import * as Pet from "./hv-pet.js";
+import * as Art from "./hv-art.js";
 import { HOME_THINGS, HOME_ACT, HOME_EN } from "./hv-homethings.js";
 import { CITY_THINGS, CITY_PACKS, CITY_EN } from "./hv-citythings.js";
 import { citySvg, CITY_MAP_EN, placePrice } from "./hv-city.js";
@@ -708,6 +709,8 @@ function render(ctx) {
     if (ST.d.sound) for (const k of ["music", "sfx"]) if (k in ST.d.sound) Sound.setSound(k, ST.d.sound[k]);
   }
   ST.ctx = ctx;
+  // The art pack (drawings from files in www/hverdagsro-art), once; the room is drawn again when it is in.
+  Art.load(CAT, () => ST && redraw(ctx));
   if (visitKid(spaceId())) ST.build = false;
   Life.wakeUp(ctx);
   Life.syncKnowledge(ctx);

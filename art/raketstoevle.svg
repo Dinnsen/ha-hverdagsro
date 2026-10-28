@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -92 144 104" width="144" height="104">
+<!-- Hverdagsro: Raketsko (raketstoevle). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-50 -20 V-60 H-10 V-40 H40 Q56 -40 56 -20Z" fill="#FF6B6B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><rect x="-56" y="-22" width="116" height="14" rx="6" fill="#fff" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M-50 -8 l-8 20 l16 -10 l8 16 l6 -26" fill="#FFB86B" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

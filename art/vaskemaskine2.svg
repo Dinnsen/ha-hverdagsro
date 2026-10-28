@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-77 -162 154 174" width="154" height="174">
+<!-- Hverdagsro: Vaskemaskine (vaskemaskine2). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-60" y="-146" width="120" height="146" rx="10" fill="#FFFFFF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-66" r="40" fill="#CFD6E6" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-66" r="28" fill="#9FD4FF" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-40" cy="-128" r="5" fill="#6BCB77"/><circle cx="-24" cy="-128" r="5" fill="#FFD93D"/><circle cx="-8" cy="-128" r="5" fill="#FF6B6B"/>
+</svg>

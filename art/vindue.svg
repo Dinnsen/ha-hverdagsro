@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-92 -172 184 184" width="184" height="184">
+<!-- Hverdagsro: Vindue (vindue). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-76" y="-156" width="152" height="150" rx="8" fill="#FFFFFF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><rect x="-64" y="-144" width="128" height="126" rx="4" fill="#C7E6FF" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M0 -144 V-18 M-64 -81 H64" fill="none" stroke="#2B2340" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M-80 -160 H80 L70 -140 H-70Z" fill="#FF6B6B" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-74 -104 148 116" width="148" height="116">
+<!-- Hverdagsro: Regnbue (rainbow). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-62" y="-92" width="124" height="92" rx="8" fill="#FFFFFF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-44 -18 a44 44 0 0 1 88 0" stroke="#FF6B6B" stroke-width="10" fill="none"/><path d="M-32 -18 a32 32 0 0 1 64 0" stroke="#FFD93D" stroke-width="10" fill="none"/><path d="M-20 -18 a20 20 0 0 1 40 0" stroke="#4D96FF" stroke-width="10" fill="none"/>
+</svg>

@@ -2,6 +2,11 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
 
+## [0.13.0] - 2026-10-28
+
+### Added
+- **The art pack:** every thing in the game (508) exported as an SVG file in `art/`, one per thing, with a manifest and an overview page, so an illustrator can redraw them. Put the folder in Home Assistant as `config/www/hverdagsro-art/`, and the game draws from the files instead of its own drawings; things without a file are drawn as before. `node tools/art-export.mjs` makes the pack again.
+
 ## [0.12.0] - 2026-10-28
 
 ### Changed

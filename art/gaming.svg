@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-62 -182 124 194" width="124" height="194">
+<!-- Hverdagsro: Gamerstol (gaming). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-40" y="-170" width="80" height="110" rx="24" fill="#3A3A55" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-24 -150 h48" stroke="#FF6B6B" stroke-width="8" stroke-linecap="round"/><rect x="-50" y="-70" width="100" height="22" rx="10" fill="#4b4b6f" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M0 -48 v34 M-34 -6 h68" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-34" cy="-4" r="6" fill="#2B2340"/><circle cx="34" cy="-4" r="6" fill="#2B2340"/>
+</svg>

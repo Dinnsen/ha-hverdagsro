@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-117 -92 234 104" width="234" height="104">
+<!-- Hverdagsro: Trampolin (trampolin). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-80 -40 L-90 0 M80 -40 L90 0 M-30 -40 L-34 0 M30 -40 L34 0" fill="none" stroke="#2B2340" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="0" cy="-42" rx="100" ry="18" fill="#4D96FF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="0" cy="-44" rx="80" ry="12" fill="#1B1530" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

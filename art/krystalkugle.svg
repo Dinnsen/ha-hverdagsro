@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-62 -142 124 154" width="124" height="154">
+<!-- Hverdagsro: Krystalkugle (krystalkugle). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<g class="pl-lamp"><ellipse cx="0" cy="-70" rx="50" ry="50" class="pl-glow" fill="#E0C3FF"/><path d="M-30 0 L-20 -24 H20 L30 0Z" fill="#8B5A3C" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-64" r="40" fill="#E0C3FF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" fill-opacity=".85"/><circle cx="-14" cy="-80" r="7" fill="#fff"/><polygon points="10.0,-64.0 12.1,-58.9 17.6,-58.5 13.4,-54.9 14.7,-49.5 10.0,-52.4 5.3,-49.5 6.6,-54.9 2.4,-58.5 7.9,-58.9" fill="#fff" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

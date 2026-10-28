@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -122 144 134" width="144" height="134">
+<!-- Hverdagsro: Lejrbål (baal). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<g class="pl-lamp"><ellipse cx="0" cy="-50" rx="80" ry="60" class="pl-glow" fill="#FFB347"/><path d="M-44 -6 L40 -24 M-40 -24 L44 -6" fill="none" stroke="#8B5A2B" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><path d="M-30 -20 Q-34 -70 -6 -100 Q-4 -70 10 -60 Q14 -84 30 -90 Q40 -50 30 -20Z" fill="#FFB347" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M-14 -20 Q-14 -50 0 -64 Q10 -44 14 -20Z" fill="#FFE066" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

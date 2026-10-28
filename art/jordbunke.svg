@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-92 -82 184 94" width="184" height="94">
+<!-- Hverdagsro: Jordbunke (jordbunke). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-76 0 Q-60 -60 0 -64 Q60 -60 76 0Z" fill="#8B5A2B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-30" cy="-30" r="4" fill="#613f1e"/><circle cx="20" cy="-40" r="3" fill="#613f1e"/><path d="M-10 -60 q4 -20 10 -24 q6 4 4 24" fill="#6BCB77" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>
