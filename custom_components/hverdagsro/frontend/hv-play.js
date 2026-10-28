@@ -125,6 +125,7 @@ export const nameY = (age) => {
 };
 /* The child's avatar: big head, small body. pose: "" (standing) or "sit" (on a chair, a sofa or a bed). me.age: the
    age group (see AGES). */
+let clipN = 0;
 export function avatarSvg(me, mood = "", pose = "") {
   const P = AGES[me.age] || AGES.kid;
   const sk = me.skin || SKINS[1], hc = me.hairc || HAIRC[1], top = me.top || "#FF6B6B", bot = me.bottom || "#4D96FF", shoe = me.shoec || "#3A3A55", eye = me.eyec || OL;
@@ -133,22 +134,22 @@ export function avatarSvg(me, mood = "", pose = "") {
   const hairBack = {
     lang: `<path d="M-62 -196 C-70 -120 -60 -96 -40 -92 L40 -92 C60 -96 70 -120 62 -196 Z" fill="${hc}" ${S()}/>`,
     hale: `<path d="M50 -230 C96 -230 100 -170 74 -140 C70 -170 60 -190 40 -200 Z" fill="${hc}" ${S()}/>`,
-    kroller: [-56, -36, 0, 36, 56, -60, 60].map((x, i) => `<circle cx="${x}" cy="${i > 4 ? -170 : -238 + Math.abs(x) * 0.6}" r="26" fill="${hc}" ${S()}/>`).join(""),
+    kroller: [-56, -36, 0, 36, 56, -60, 60].map((x, i) => `<circle cx="${x}" cy="${i > 4 ? -170 : -246 + Math.abs(x) * 0.5}" r="28" fill="${hc}" ${S()}/>`).join(""),
     knold: `<circle cx="0" cy="-262" r="24" fill="${hc}" ${S()}/>`,
     fletninger: `<path d="M-58 -190 q-14 50 -6 90 M58 -190 q14 50 6 90" fill="none" stroke="${OL}" stroke-width="20" stroke-linecap="round"/><path d="M-58 -190 q-14 50 -6 90 M58 -190 q14 50 6 90" fill="none" stroke="${hc}" stroke-width="13" stroke-linecap="round"/><circle cx="-64" cy="-98" r="7" fill="#FF6B6B" ${S("stroke-width=\"3\"")}/><circle cx="64" cy="-98" r="7" fill="#FF6B6B" ${S("stroke-width=\"3\"")}/>`,
     bob: `<path d="M-66 -196 C-70 -150 -66 -132 -48 -128 L48 -128 C66 -132 70 -150 66 -196 Z" fill="${hc}" ${S()}/>`,
   }[me.hair] || "";
   const hairFront = {
-    kort: `<path d="M-58 -200 C-58 -250 58 -250 58 -200 C40 -214 20 -206 0 -216 C-18 -206 -40 -214 -58 -200Z" fill="${hc}" ${S()}/>`,
-    lang: `<path d="M-60 -196 C-60 -252 60 -252 60 -196 C30 -222 -10 -224 -60 -196Z" fill="${hc}" ${S()}/>`,
-    hale: `<path d="M-60 -196 C-60 -252 60 -252 60 -196 C30 -222 -10 -224 -60 -196Z" fill="${hc}" ${S()}/><circle cx="56" cy="-218" r="9" fill="#FF6B6B" ${S("stroke-width=\"3\"")}/>`,
-    kroller: `<path d="M-50 -210 C-40 -246 40 -246 50 -210 C30 -224 -30 -224 -50 -210Z" fill="${hc}" ${S()}/>`,
-    knold: `<path d="M-58 -200 C-58 -252 58 -252 58 -200 C30 -220 -30 -220 -58 -200Z" fill="${hc}" ${S()}/>`,
-    pjusk: `<path d="M-60 -196 L-64 -232 -40 -224 -34 -256 -10 -236 4 -262 18 -236 40 -252 42 -224 64 -230 60 -196 C30 -214 -30 -214 -60 -196Z" fill="${hc}" ${S()}/>`,
-    fletninger: `<path d="M-60 -196 C-60 -252 60 -252 60 -196 C40 -210 10 -226 0 -206 C-10 -226 -40 -210 -60 -196Z" fill="${hc}" ${S()}/>`,
-    bob: `<path d="M-62 -192 C-62 -254 62 -254 62 -192 C40 -206 -40 -206 -62 -192Z" fill="${hc}" ${S()}/>`,
+    kort: `<path d="M-58 -200 C-58 -284 58 -284 58 -200 C40 -220 20 -210 0 -220 C-18 -210 -40 -220 -58 -200Z" fill="${hc}" ${S()}/>`,
+    lang: `<path d="M-60 -196 C-60 -286 60 -286 60 -196 C30 -226 -10 -228 -60 -196Z" fill="${hc}" ${S()}/>`,
+    hale: `<path d="M-60 -196 C-60 -286 60 -286 60 -196 C30 -226 -10 -228 -60 -196Z" fill="${hc}" ${S()}/><circle cx="56" cy="-218" r="9" fill="#FF6B6B" ${S("stroke-width=\"3\"")}/>`,
+    kroller: `<path d="M-56 -210 C-46 -284 46 -284 56 -210 C30 -228 -30 -228 -50 -210Z" fill="${hc}" ${S()}/>`,
+    knold: `<path d="M-58 -200 C-58 -286 58 -286 58 -200 C30 -226 -30 -226 -58 -200Z" fill="${hc}" ${S()}/>`,
+    pjusk: `<path d="M-60 -196 L-66 -258 -40 -252 -34 -284 -10 -262 4 -290 18 -262 40 -280 42 -250 66 -256 60 -196 C30 -214 -30 -214 -60 -196Z" fill="${hc}" ${S()}/>`,
+    fletninger: `<path d="M-60 -196 C-60 -286 60 -286 60 -196 C40 -214 10 -226 0 -206 C-10 -226 -40 -210 -60 -196Z" fill="${hc}" ${S()}/>`,
+    bob: `<path d="M-62 -192 C-62 -288 62 -288 62 -192 C40 -212 -40 -212 -62 -192Z" fill="${hc}" ${S()}/>`,
     skaldet: "",
-    pandehaar: `<path d="M-60 -196 C-60 -254 60 -254 60 -196 L52 -196 L44 -214 L30 -198 L18 -216 L4 -198 L-10 -216 L-24 -198 L-38 -216 L-50 -198Z" fill="${hc}" ${S()}/>`,
+    pandehaar: `<path d="M-60 -196 C-60 -288 60 -288 60 -196 L52 -196 L44 -214 L30 -198 L18 -216 L4 -198 L-10 -216 L-24 -198 L-38 -216 L-50 -198Z" fill="${hc}" ${S()}/>`,
   }[me.hair || "kort"] ?? "";
   const extra = {
     briller: `<g fill="none" ${S("stroke-width=\"4\"")}><circle cx="-22" cy="-178" r="14"/><circle cx="22" cy="-178" r="14"/><path d="M-8 -178 h16"/></g>`,
@@ -234,7 +235,9 @@ export function avatarSvg(me, mood = "", pose = "") {
     return `<g class="pl-arm ${side < 0 ? "l" : "r"}"><path d="M${sx} -128 L${ex} ${ey}" stroke="${OL}" stroke-width="22" stroke-linecap="round"/><path d="M${sx} -128 L${ex} ${ey}" stroke="${sleeve}" stroke-width="14" stroke-linecap="round"/>${tk === "tshirt" || tk === "sport" ? `<path d="M${sx} -128 L${sx + side * 10} -112" stroke="${top}" stroke-width="16" stroke-linecap="round"/>` : ""}<circle cx="${ex + side * 2}" cy="${ey + 4}" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/></g>`;
   };
   const Hd = (x) => (P.head === 1 || !x ? x : `<g transform="translate(0 -128) scale(${P.head}) translate(0 128)">${x}</g>`);
-  const inner = `${cape}${accBack}${Hd(hairBack)}${legs}${shoes}${body}${me.acc === "bamse" ? "" : acc}${arm(-1)}${arm(1)}${me.acc === "bamse" ? acc : ""}
+  // The legs, left and right, so they can swing when walking.
+  const cid = "plc" + ++clipN, legsSplit = `<clipPath id="${cid}l"><rect x="-200" y="-400" width="200" height="520"/></clipPath><clipPath id="${cid}r"><rect x="0" y="-400" width="200" height="520"/></clipPath><g class="pl-leg l" clip-path="url(#${cid}l)">${legs}${shoes}</g><g class="pl-leg r" clip-path="url(#${cid}r)">${legs}${shoes}</g>`;
+  const inner = `${cape}${accBack}${Hd(hairBack)}${legsSplit}${body}${me.acc === "bamse" ? "" : acc}${arm(-1)}${arm(1)}${me.acc === "bamse" ? acc : ""}
     ${Hd(`<circle cx="0" cy="-184" r="62" fill="${sk}" ${S()}/><circle cx="-60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/><circle cx="60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/>
     ${hairFront}${brows}${eyes}<circle cx="-36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/><circle cx="36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/>${mouth}${face}${extra}`)}`;
   // Longer legs lift the figure, so the feet stay on the floor.
@@ -338,11 +341,13 @@ function presenceKey(id = spaceId()) {
   if (isSpace(id)) return `${id}:${ST.kid}`;
   return id;
 }
-function R() {
-  const id = spaceId();
+const R = () => roomFor(spaceId());
+/* The room of any place: the child's own, a sibling's (read only), or one of the world's. */
+function roomFor(id) {
   if (id === "vaerelse") return ST.d;
   if (visitKid(id)) {
     const sib = ST.ctx.member(visitKid(id));
+    if (!sib) return ST.d;
     return { ...(sib.playroom || defaults(sib)), ro: true };
   }
   const all = (ST.d.spaces ||= {});
@@ -388,7 +393,7 @@ function backdrop(id, s0, s1, tod) {
 /* Furniture to sit or lie on: [pose, ...seat points] in the thing's own coordinates (its bottom centre is 0,0).
    A seat point is where the feet of a sitting figure go; for lying, the feet (the head lies towards the pillow). */
 const SEATS = {
-  bed: ["lie", [73, -96]], bunk: ["lie", [73, -100]], dobbeltseng: ["lie", [48, -110]], sovepose: ["lie", [65, -36]], haengekoje: ["lie", [83, -130]], muslingeseng: ["lie", [40, -84]], slotsseng: ["lie", [78, -104]], badekar: ["lie", [90, -60]],
+  bed: ["lie", [73, -96]], bunk: ["lie", [73, -100]], dobbeltseng: ["lie", [48, -110]], sovepose: ["lie", [65, -36]], haengekoje: ["lie", [83, -130]], muslingeseng: ["lie", [40, -84]], slotsseng: ["lie", [78, -104]], badekar: ["bath", [0, -46]], boblebad: ["bath", [0, -56]],
   sofa: ["sit", [-62, -26], [52, -26]], chair: ["sit", [0, -18]], beanbag: ["sit", [0, -20]], gaming: ["sit", [0, -20]], racerstol: ["sit", [0, -30]], trone: ["sit", [0, -50]], baenk: ["sit", [-50, -20], [50, -20]], toilet: ["sit", [0, -40]],
   gyngestativ: ["sit", [-15, -46], [60, -56]], havemoebel: ["sit", [-113, -10], [113, -10]], pudefort: ["sit", [0, -10]], tipi: ["sit", [0, -6]], scene: ["sit", [0, -40]], trampolin: ["sit", [0, -24]], hundekurv: ["sit", [0, -20]],
   // In the vehicles, and on the new chairs.
@@ -402,7 +407,7 @@ function seatsOf(it) {
   const S2 = SEATS[it.k];
   if (!S2) return [];
   const sc = it.s || 1;
-  return S2.slice(1).map(([dx, dy]) => ({ id: it.id, pose: S2[0], x: it.x + (it.f ? -dx : dx) * sc, y: it.y + dy * sc, depth: it.y + 0.5 }));
+  return S2.slice(1).map(([dx, dy]) => ({ id: it.id, pose: S2[0], x: it.x + (it.f ? -dx : dx) * sc, y: it.y + dy * sc, depth: S2[0] === "bath" ? it.y - 0.5 : it.y + 0.5 }));
 }
 /* A free seat near a point (where something was dropped). */
 function seatNear(room, x, y, skip = "") {
@@ -419,7 +424,7 @@ function seated(room, seat) {
   const it = (room.items || []).find((x) => x.id === seat.id);
   const st = it && seatsOf(it).find((q) => Math.abs(q.x - seat.x) < 2 && Math.abs(q.y - seat.y) < 2);
   if (!st) return null;
-  return st.pose === "lie" ? [st.x, st.y, st.depth, `translate(${st.x} ${st.y}) rotate(-90) scale(.75)`, "lie", it] : [st.x, st.y, st.depth, `translate(${st.x} ${st.y})`, "sit", it];
+  return st.pose === "lie" ? [st.x, st.y, st.depth, `translate(${st.x} ${st.y}) rotate(-90) scale(.75)`, "lie", it] : [st.x, st.y, st.depth, `translate(${st.x} ${st.y})`, st.pose === "bath" ? "bath" : "sit", it];
 }
 /* A blanket over someone lying in a bed. */
 const BLANKET = new Set(["bed", "bunk", "dobbeltseng", "slotsseng", "muslingeseng", "sovepose"]);
@@ -459,7 +464,7 @@ function people(ctx, m, sid, room, pl) {
     const px = pos ? pos[0] : vk ? x.playroom?.ax || 640 : 700 + i * 140, py = pos ? pos[1] : vk ? x.playroom?.ay || 590 : 600;
     const st = pos && pos[2] ? seated(room, pos[2]) : null;
     const tf = st ? st[3] : `translate(${px} ${py})`;
-    out.push([st ? st[2] : py, `<g class="pl-npc pl-fam${st ? " seated" : ""}" data-pl="${vk ? "fam" : "npc"}" data-id="${vk ? esc(x.id) : `fam:${esc(x.id)}`}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body">${avatarSvg({ ...me, age: ageGroup(x) }, st?.[4] === "lie" ? "sleep" : "", st?.[4] === "sit" ? "sit" : "")}${vk ? "" : heldSvg(room, `fam:${x.id}`)}</g>${st ? "" : `<text y="${nameY(ageGroup(x))}" text-anchor="middle" class="pl-petname">${esc(x.name)}</text>`}</g>${blanket(st)}`]);
+    out.push([st ? st[2] : py, `<g class="pl-npc pl-fam${st ? " seated" : ""}" data-pl="${vk ? "fam" : "npc"}" data-id="${vk ? esc(x.id) : `fam:${esc(x.id)}`}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body">${avatarSvg({ ...me, age: ageGroup(x) }, st?.[4] === "lie" ? "sleep" : st?.[4] === "bath" ? "glad" : "", st && st[4] !== "lie" ? "sit" : "")}${vk ? "" : heldSvg(room, `fam:${x.id}`)}</g>${st ? "" : `<text y="${nameY(ageGroup(x))}" text-anchor="middle" class="pl-petname">${esc(x.name)}</text>`}</g>${blanket(st)}`]);
   });
   return out;
 }
@@ -473,13 +478,20 @@ function stage(ctx, m) {
   const happy = bubbles(ctx, m).length < 3, pl = placeOf(ctx, sid), vk = visitKid(sid), dd = vk ? room : d;
   // How wide the room is, where the screen is in it, and the doors to the rooms next door.
   const rw = (ST.rw = Walk.roomWidth(ctx, sid, ST.kid));
+  ST.nb = Walk.neighbours(ctx, sid, ST.kid);
   if (ST.camFor !== sid) {
     ST.camFor = sid;
-    ST.camX = Math.round(d.ax - W / 2);
+    ST.camX = Math.max(0, Math.min(rw - W, Math.round(d.ax - W / 2)));
   }
-  ST.camX = Math.max(0, Math.min(rw - W, ST.camX || 0));
-  ST.doors = Walk.neighbours(ctx, sid, ST.kid, rw);
-  let s = patternDefs(dd);
+  ST.camX = Math.max(camMin(), Math.min(camMax(), ST.camX || 0));
+  let s = patternDefs(dd).replace("</defs>", Walk.WALK_DEFS + "</defs>");
+  // The rooms next door, already there to walk into.
+  const peek = (n, side) => {
+    if (!n) return "";
+    const w = Walk.roomWidth(ctx, n.key, ST.kid), off = side === "left" ? -w : rw;
+    return `<g class="wk-peek" transform="translate(${off} 0)" pointer-events="none"><clipPath id="wk-c${side}"><rect width="${w}" height="${H}"/></clipPath><g clip-path="url(#wk-c${side})">${sceneSvg(ctx, n.key, w, s0, s1, tod)}</g></g>`;
+  };
+  s += peek(ST.nb.left, "left") + peek(ST.nb.right, "right");
   if (sid === "vaerelse" || vk) {
     s += `<rect width="${rw}" height="${FLOOR}" fill="${dd.wall?.p && dd.wall.p !== "ren" ? "url(#pl-wp)" : wallFill(dd)}"/><rect y="${FLOOR - 16}" width="${rw}" height="16" fill="#fff" ${S()}/>`;
     s += `<rect y="${FLOOR}" width="${rw}" height="${H - FLOOR}" fill="url(#pl-fl)"/>`;
@@ -503,7 +515,11 @@ function stage(ctx, m) {
     }
     Object.defineProperty(room, "settled", { value: true, enumerable: false, configurable: true });
   }
-  s += Walk.doorsSvg(ctx, ST.doors, rw, FLOOR);
+  if (ST.nb.left) s += Walk.doorwaySvg("left", rw, FLOOR, `${ST.nb.left.em} ${esc(ST.nb.left.name)}`);
+  if (ST.nb.right) s += Walk.doorwaySvg("right", rw, FLOOR, `${ST.nb.right.em} ${esc(ST.nb.right.name)}`);
+  // In the bath: the water is on.
+  const st0 = d.seat && d.seat.space === sid ? seated(room, d.seat) : null;
+  if (st0 && st0[4] === "bath") st0[5].on = 1;
   // things, back to front
   const drawItem = (it) => {
     const T = CAT[it.k];
@@ -524,7 +540,8 @@ function stage(ctx, m) {
     (() => {
       const st = d.seat && d.seat.space === sid ? seated(room, d.seat) : null;
       const mood = ST.mood || (st?.[4] === "lie" || (tod === "night" && !lit && sid === "vaerelse") ? "sleep" : d.expr || "");
-      if (st) return [st[2], `<g class="pl-me seated" data-pl="me" transform="${st[3]}"><g class="pl-facing" transform="scale(${d.face < 0 && st[4] !== "lie" ? -1 : 1} 1)"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood, st[4] === "sit" ? "sit" : "")}${handSvg(d, st[4] === "sit", ageGroup(ctx.member(ST.kid)))}</g></g></g>${blanket(st)}${st[4] === "lie" ? `<g transform="translate(${st[0] - 150} ${st[1] - 110})" pointer-events="none"><text class="pl-zzz">z</text><text class="pl-zzz" x="18" y="-22" style="animation-delay:.5s">z</text><text class="pl-zzz" x="36" y="-44" style="animation-delay:1s">Z</text></g>` : ""}`];
+      if (st && st[4] === "bath" && !st[5].on) st[5].on = 1;
+      if (st) return [st[2], `<g class="pl-me seated${st[4] === "bath" ? " bath" : ""}" data-pl="me" transform="${st[3]}"><g class="pl-facing" transform="scale(${d.face < 0 && st[4] !== "lie" ? -1 : 1} 1)"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, st[4] === "bath" ? "glad" : mood, st[4] === "lie" ? "" : "sit")}${handSvg(d, st[4] === "sit", ageGroup(ctx.member(ST.kid)))}</g></g></g>${blanket(st)}${st[4] === "lie" ? `<g transform="translate(${st[0] - 150} ${st[1] - 110})" pointer-events="none"><text class="pl-zzz">z</text><text class="pl-zzz" x="18" y="-22" style="animation-delay:.5s">z</text><text class="pl-zzz" x="36" y="-44" style="animation-delay:1s">Z</text></g>` : ""}`];
       return [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-facing" transform="scale(${d.face < 0 ? -1 : 1} 1)"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood)}${handSvg(d, false, ageGroup(ctx.member(ST.kid)))}</g></g></g>`];
     })(),
     ...people(ctx, m, sid, room, pl),
@@ -734,7 +751,6 @@ function goTo(ctx, key, opts = {}) {
   if (!placeOpen(ctx, key)) return askPlace(ctx, key);
   const lv = levelOf(game(ctx, ctx.me).xp), need = levelFor(key);
   if (lv < need) return ctx.toast(ctx.t("Det åbner på niveau {n}. Klar rutiner og opgaver for at komme dertil.", { n: need }));
-  const prev = spaceId();
   ST.d.space = key;
   ST.d.onMap = false;
   ST.camFor = null;
@@ -743,12 +759,18 @@ function goTo(ctx, key, opts = {}) {
   ST.map = false;
   ST.build = false;
   ST.sel = null;
-  // Arrive at the edge of the place, like walking in; from the room next door, by its door.
-  const arrive = opts.from && Walk.arrival(ctx, prev, key, ST.kid, Walk.roomWidth(ctx, key, ST.kid));
-  ST.d.ax = arrive ? arrive.x : 140;
-  ST.d.ay = arrive ? arrive.y : 590;
-  if (arrive) ST.d.face = arrive.x > 500 ? -1 : 1;
-  Sound.sfx("whoosh");
+  // Arrive at the edge of the place, like walking in; walking in from the room next door, keep going.
+  if (opts.at) {
+    ST.d.ax = opts.at.x;
+    ST.d.ay = opts.at.y;
+    ST.camX = opts.at.cam;
+    ST.camFor = key;
+    Sound.sfx("step");
+  } else {
+    ST.d.ax = 140;
+    ST.d.ay = 590;
+    Sound.sfx("whoosh");
+  }
   save(ctx);
   redraw(ctx);
   publish(ctx);
@@ -899,9 +921,40 @@ function redraw(ctx) {
   if (!box) return;
   const tmp = document.createElement("div");
   tmp.innerHTML = render(ctx);
-  box.replaceWith(tmp.firstElementChild);
+  // Only what changed is swapped, so the animations (the tv, the water, the window) keep running.
+  morph(box, tmp.firstElementChild);
   bind(ctx);
   showPop(ctx);
+}
+/* Make old look like neu, keeping every child that is the same. Children are matched by tag, id and data-id. */
+const mkey = (n) => `${n.tagName}|${n.id || ""}|${n.dataset?.id || ""}|${n.dataset?.pl || ""}|${n.dataset?.k || ""}`;
+function morph(old, neu) {
+  if (old.tagName !== neu.tagName) return old.replaceWith(neu);
+  if (old.outerHTML === neu.outerHTML) return;
+  for (const a of [...old.attributes]) if (!neu.hasAttribute(a.name)) old.removeAttribute(a.name);
+  for (const a of [...neu.attributes]) if (old.getAttribute(a.name) !== a.value) old.setAttribute(a.name, a.value);
+  if (!neu.children.length || !old.children.length) {
+    if (old.innerHTML !== neu.innerHTML) old.innerHTML = neu.innerHTML;
+    return;
+  }
+  const pool = new Map();
+  for (const c of [...old.children]) {
+    const k = mkey(c);
+    (pool.get(k) || pool.set(k, []).get(k)).push(c);
+  }
+  const out = [];
+  for (const n of [...neu.children]) {
+    const o = pool.get(mkey(n))?.shift();
+    if (o) {
+      morph(o, n);
+      out.push(o);
+    } else out.push(n);
+  }
+  const kept = new Set(out);
+  for (const c of [...old.children]) if (!kept.has(c)) c.remove();
+  out.forEach((c, i) => {
+    if (old.children[i] !== c) old.insertBefore(c, old.children[i] || null);
+  });
 }
 /* Everything is saved by itself: a moment after each change, at once when the app is hidden or closed, and again
    later if Home Assistant could not be reached. The child carries on where they left off, on any device. */
@@ -987,29 +1040,16 @@ function turn(ctx, face) {
   ST.d.face = face;
   ctx.root.querySelector(".pl-me .pl-facing")?.setAttribute("transform", `scale(${face} 1)`);
 }
-/* At the left or right end of the room, by a door: go through it. */
+/* At the left or right end of the room: on into the room next door, without a jump: the picture stays where it is
+   and the figure simply keeps walking. */
 function atEdge(ctx) {
   const d = ST.d, rw = RW();
-  const side = d.ax <= 70 ? "left" : d.ax >= rw - 70 ? "right" : "";
-  const n = side && (ST.doors || []).find((x) => x.side === side);
+  const side = d.ax <= 44 ? "left" : d.ax >= rw - 44 ? "right" : "";
+  const n = side && ST.nb?.[side];
   if (!n || d.seat || ST.build || ST.map) return false;
-  goTo(ctx, n.key, { from: spaceId() });
+  const wN = Walk.roomWidth(ctx, n.key, ST.kid), cam0 = cam();
+  goTo(ctx, n.key, { at: { x: side === "left" ? wN - 52 : 52, y: d.ay, cam: side === "left" ? cam0 + wN : cam0 - rw } });
   return true;
-}
-/* Through a door: walk to it, then into the room behind it. */
-function walkThrough(ctx, key) {
-  const n = (ST.doors || []).find((x) => x.key === key);
-  if (!n) return goTo(ctx, key);
-  const d = ST.d, me = ctx.root.querySelector(".pl-me"), x = n.side === "left" ? 40 : n.side === "right" ? RW() - 40 : n.x;
-  if (d.seat) d.seat = null;
-  turn(ctx, x < d.ax ? -1 : 1);
-  d.ax = x;
-  d.ay = n.side === "wall" ? FLOOR + 44 : d.ay;
-  me?.classList.add("walking");
-  me?.setAttribute("transform", `translate(${d.ax} ${d.ay})`);
-  follow(ctx);
-  Sound.sfx("step");
-  setTimeout(() => goTo(ctx, key, { from: spaceId() }), 520);
 }
 /* The faces the figure can make: tap the head for the next one. */
 const FACES_PLAY = ["", "glad", "wow", "tunge", "sur", "trist"];
@@ -1038,6 +1078,7 @@ function bindKeys() {
     e.preventDefault();
     const dx = k === "l" ? -1 : k === "r" ? 1 : 0, dy = k === "u" ? -1 : k === "d" ? 1 : 0;
     if (ST.build) {
+      if (e.repeat) return;
       const it = R().items.find((x) => x.id === ST.sel);
       if (!it) return;
       it.x = Math.max(30, Math.min(RW() - 30, it.x + dx * 12));
@@ -1045,8 +1086,15 @@ function bindKeys() {
       ctx.root.querySelector(`.pl-it[data-id="${CSS.escape(it.id)}"]`)?.setAttribute("transform", `translate(${it.x} ${it.y}) scale(${it.f ? -(it.s || 1) : it.s || 1} ${it.s || 1})`);
       return save(ctx);
     }
-    keyStep(ctx, dx, dy);
+    if (e.repeat) return;
+    KEYS.add(k);
+    if (!keyRaf) keyRaf = requestAnimationFrame(keyLoop);
   });
+  document.addEventListener("keyup", (e) => {
+    const k = { ArrowLeft: "l", ArrowRight: "r", ArrowUp: "u", ArrowDown: "d", a: "l", d: "r", w: "u", s: "d", A: "l", D: "r", W: "u", S: "d" }[e.key];
+    if (k) KEYS.delete(k);
+  });
+  window.addEventListener("blur", () => KEYS.clear());
 }
 function keyStep(ctx, dx, dy) {
   const d = ST.d, rw = RW();
@@ -1055,25 +1103,33 @@ function keyStep(ctx, dx, dy) {
     save(ctx);
     redraw(ctx);
   }
-  if (dy < 0 && d.ay <= FLOOR + 48) {
-    // Up against the back wall, by a door: through it.
-    const n = (ST.doors || []).find((x) => x.side === "wall" && Math.abs(x.x - d.ax) < 80);
-    if (n) return walkThrough(ctx, n.key);
-  }
   if (dx) turn(ctx, dx);
-  d.ax = Math.max(40, Math.min(rw - 40, d.ax + dx * 34));
-  d.ay = Math.max(FLOOR + 40, Math.min(H - 8, d.ay + dy * 22));
+  d.ax = Math.max(40, Math.min(rw - 40, d.ax + dx * 9));
+  d.ay = Math.max(FLOOR + 40, Math.min(H - 8, d.ay + dy * 5));
   const me = ctx.root.querySelector(".pl-me");
   if (me) {
     me.classList.add("walking", "kbd");
     me.setAttribute("transform", `translate(${d.ax} ${d.ay})`);
     clearTimeout(ST.walkT);
-    ST.walkT = setTimeout(() => me.classList.remove("walking", "kbd"), 260);
+    ST.walkT = setTimeout(() => {
+      me.classList.remove("walking", "kbd");
+      publish(ctx);
+      save(ctx);
+    }, 160);
   }
   follow(ctx);
-  publish(ctx);
-  save(ctx);
   if (dx && atEdge(ctx)) return;
+}
+/* The keys held down right now; the figure walks as long as they are. */
+const KEYS = new Set();
+let keyRaf = 0;
+function keyLoop() {
+  keyRaf = 0;
+  const ctx = ST?.ctx;
+  if (!ctx || !KEYS.size) return;
+  const dx = (KEYS.has("r") ? 1 : 0) - (KEYS.has("l") ? 1 : 0), dy = (KEYS.has("d") ? 1 : 0) - (KEYS.has("u") ? 1 : 0);
+  if (dx || dy) keyStep(ctx, dx, dy);
+  keyRaf = requestAnimationFrame(keyLoop);
 }
 async function tapBubble(ctx, el) {
   const m = ctx.me, kind = el.dataset.kind, id = el.dataset.id;
@@ -1144,14 +1200,18 @@ function soundStep(ctx) {
 const pitchOf = (id) => 0.8 + ([...String(id)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 7) * 0.08;
 function bind(ctx) {
   const svgEl = ctx.$("pl-stage"), box = ctx.root.querySelector(".pl-fs .pl") || ctx.root.querySelector(".pl");
-  if (!box || box._hv) return;
+  if (!box) return;
+  if (svgEl && !svgEl._hv) {
+    svgEl._hv = 1;
+    bindStage(ctx, svgEl);
+  }
+  if (box._hv) return;
   box._hv = 1;
   // Sound wakes up on the first touch (browsers want that), then the place's own tune plays.
   box.addEventListener("pointerdown", () => Sound.wake(), { capture: true, passive: true });
   Sound.setGuard(() => ctx.view === "vaerelse" && !!ctx.host?.isConnected && !document.hidden);
   Sound.playTheme(...themeFor(ctx));
   // The shop has no room to drag in; its buttons are handled below.
-  if (svgEl) bindStage(ctx, svgEl);
   bindKeys();
   bindButtons(ctx, box);
 }
@@ -1194,7 +1254,6 @@ function bindStage(ctx, svgEl) {
       if (t?.dataset.pl !== "petdo") Pet.closeMenu(ctx);
       if (t?.dataset.pl === "emo") return doEmote(ctx, t);
       if (t?.dataset.pl === "petdo") return Pet.act(ctx, t.dataset.k);
-      if (t?.dataset.pl === "door") return walkThrough(ctx, t.dataset.k);
       if (t?.dataset.pl === "star") return Fun.tapStar(ctx, t);
       if (Wall.tap(ctx, t)) return;
       if (t?.dataset.pl === "pocket") {
@@ -1308,6 +1367,7 @@ function bindStage(ctx, svgEl) {
       const x = Math.max(60, Math.min(rw - 60, drag.ox + dx)), y = Math.max(FLOOR + 40, Math.min(H - 8, drag.oy + dy));
       if (drag.kind === "me") {
         if (Math.abs(x - ST.d.ax) > 2) turn(ctx, x < ST.d.ax ? -1 : 1);
+        drag.el?.classList.add("walking", "kbd");
         Object.assign(ST.d, { ax: x, ay: y });
         ST.d.seat = null;
         // Dragged up over the furniture: follow the finger, also above the floor.
@@ -1347,6 +1407,7 @@ function bindStage(ctx, svgEl) {
       return;
     }
     if (d.kind === "me") {
+      d.el?.classList.remove("walking", "kbd");
       if (!d.moved && d.play) {
         const body = ctx.root.querySelector(".pl-me .pl-body");
         // The face: a new look on each tap. The rest of the figure: a wave.
@@ -1476,13 +1537,39 @@ function takeInHand(ctx, it) {
   redraw(ctx);
 }
 /* A copy of the thing in the hand, to drag around. */
+/* A room's walls, floor and things, for the rooms next door (seen through the doorway). */
+function sceneSvg(ctx, key, rw, s0, s1, tod) {
+  const room = roomFor(key), pl = placeOf(ctx, key);
+  let s = "";
+  if (key === "vaerelse" || visitKid(key)) {
+    const fl = FLOORS[room.floor] || FLOORS_X[room.floor] || FLOORS.lys;
+    s += `<rect width="${rw}" height="${FLOOR}" fill="${wallFill(room)}"/><rect y="${FLOOR - 16}" width="${rw}" height="16" fill="#fff" ${S()}/><rect y="${FLOOR}" width="${rw}" height="${H - FLOOR}" fill="${fl[1]}"/>`;
+    s += `<rect x="560" y="70" width="230" height="200" rx="14" fill="#fff" ${S()}/><rect x="574" y="84" width="202" height="172" rx="6" fill="${s1}"/><path d="M675 84 v172 M574 170 h202" ${S()} fill="none"/>`;
+  } else if (pl) {
+    World.BG.look = paintable(pl) ? room.look || {} : {};
+    s += pl.bg(s0, s1, tod, rw);
+    World.BG.look = {};
+  } else s += backdrop(key, s0, s1, tod);
+  const items = room.items || [], draw = (it) => {
+    const T = CAT[it.k];
+    if (!T) return "";
+    const sc = it.s || 1;
+    return `<g class="pl-it" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${Fix.onSvg(it)}</g>`;
+  };
+  s += items.filter((it) => wallK(it.k)).map(draw).join("") + items.filter((it) => !wallK(it.k) && CAT[it.k]?.flat === 1 && !it.at).map(draw).join("");
+  s += items.filter((it) => CAT[it.k] && !wallK(it.k) && (CAT[it.k].flat !== 1 || it.at)).sort((a, b) => (a.at ? Fix.depthOf(items, a, wallK) : a.y) - (b.at ? Fix.depthOf(items, b, wallK) : b.y)).map(draw).join("");
+  return s;
+}
+/* How far the picture can scroll: a bit into the rooms next door. */
+const camMin = () => (ST?.nb?.left ? -Math.round(W * 0.45) : 0);
+const camMax = () => RW() - W + (ST?.nb?.right ? Math.round(W * 0.45) : 0);
 /* The room scrolls: what pops up in it goes into the room's own layer, so it scrolls along. */
 const layer = (ctx) => ctx.root.querySelector("#pl-world") || ctx.$("pl-stage");
 const RW = () => (ST && ST.rw) || W;
 const cam = () => (ST && ST.camX) || 0;
 /* Scroll the room so x is in the middle of the screen. */
 function setCam(ctx, x, now = false) {
-  ST.camX = Math.max(0, Math.min(RW() - W, Math.round(x - W / 2)));
+  ST.camX = Math.max(camMin(), Math.min(camMax(), Math.round(x - W / 2)));
   const g = ctx.root.querySelector("#pl-world");
   if (g) {
     g.classList.toggle("now", now);
@@ -2266,9 +2353,12 @@ export default {
 .pl-hand { cursor: grab; }
 .pl-ghost { opacity: .9; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
 .pl-me, .pl-pet { transition: transform .7s cubic-bezier(.3,.9,.4,1); cursor: pointer; }
-.pl-me.kbd { transition-duration: .22s; transition-timing-function: linear; }
+.pl-me.kbd { transition: none; }
 .pl-me .pl-body { animation: plbob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 .pl-me.walking .pl-body { animation: plwalk .35s ease-in-out infinite; }
+.pl-me.walking .pl-leg.l, .pl-npc.held .pl-leg.l { animation: plstep .35s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 0; }
+.pl-me.walking .pl-leg.r, .pl-npc.held .pl-leg.r { animation: plstep .35s ease-in-out infinite reverse; transform-box: fill-box; transform-origin: 50% 0; }
+@keyframes plstep { 0%, 100% { transform: rotate(-14deg) } 50% { transform: rotate(14deg) } }
 .pl-body.jump { animation: pljump .7s cubic-bezier(.3,1.6,.5,1) !important; }
 .pl-body.wave .pl-arm.r { animation: plwave .3s ease-in-out 3; transform-box: fill-box; transform-origin: 0 0; }
 .pl-pet .pl-petb { animation: plbob 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
