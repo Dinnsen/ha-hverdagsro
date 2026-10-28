@@ -1,6 +1,6 @@
 /* Hverdagsro – export every thing in the game as an SVG file, so an illustrator can redraw them.
    node tools/art-export.mjs [outdir]   (default: art/)
-   Writes <outdir>/<id>.svg (viewBox: the thing stands on y=0, centred on x=0), manifest.json and README.md.
+   Writes <outdir>/<id>.svg (viewBox: the thing stands on y=0, centred on x=0), pack.json and README.md.
    Put the folder in Home Assistant as config/www/hverdagsro-art/ and the game uses the files instead of its own
    drawings (hv-art.js). */
 import fs from "node:fs";
@@ -26,17 +26,17 @@ ${body}
   fs.writeFileSync(path.join(out, `${id}.svg`), svg);
   manifest.push({ id, name: T.n, cat: T.cat, pack: T.pack, w: T.w, h: T.h, flat: T.flat || 0, file: `${id}.svg` });
 }
-fs.writeFileSync(path.join(out, "manifest.json"), JSON.stringify({ version: 1, pad: PAD, items: manifest }, null, 1));
+fs.writeFileSync(path.join(out, "pack.json"), JSON.stringify({ version: 1, pad: PAD, items: manifest }, null, 1));
 fs.writeFileSync(path.join(out, "README.md"), `# Hverdagsro – kunstpakken
 
 Alle ting i spillet, én SVG-fil pr. ting (${manifest.length} filer). Tegn dem om i Illustrator eller et andet program,
 og læg mappen i Home Assistant som \`config/www/hverdagsro-art/\`. Spillet bruger så filerne i stedet for sine egne
 tegninger. Filer, der mangler, tegnes som før, så du kan tage én ting ad gangen.
 
-- Behold viewBox'en: tingen står på y=0 og er centreret om x=0. Bredden og højden står i manifest.json.
+- Behold viewBox'en: tingen står på y=0 og er centreret om x=0. Bredden og højden står i pack.json.
 - Alt, hvad der er inde i filen, vises. Farver, skygger, billeder (indlejrede PNG'er) – alt er tilladt.
 - En ting med en egen farve i spillet (farveknappen i Byg) mister den, når den tegnes fra en fil.
-- manifest.json siger, hvilke ting der er: id, navn, kategori, pakke, bredde, højde.
+- pack.json siger, hvilke ting der er: id, navn, kategori, pakke, bredde, højde.
 - Opdatér en fil: læg den i mappen igen og genindlæs siden (hold Shift nede, hvis browseren viser den gamle).
 `);
 // An overview page: every thing with its name, by category, to look through.

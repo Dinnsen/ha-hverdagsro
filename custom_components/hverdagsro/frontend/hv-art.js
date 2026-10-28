@@ -1,5 +1,5 @@
 /* Hverdagsro – the art pack: drawings from files instead of the game's own. If Home Assistant has a folder
-   config/www/hverdagsro-art/ with a manifest.json (made by tools/art-export.mjs, then redrawn by an illustrator), every
+   config/www/hverdagsro-art/ with a pack.json (made by tools/art-export.mjs, then redrawn by an illustrator), every
    thing that has a file there is drawn from the file. Things without a file are drawn as before. */
 const BASE = "/local/hverdagsro-art/";
 let loaded = null;
@@ -7,7 +7,7 @@ let loaded = null;
    things taken over, so the room can be drawn again. */
 export function load(CAT, done) {
   if (loaded) return loaded;
-  loaded = (typeof fetch === "function" ? fetch(`${BASE}manifest.json`, { cache: "no-cache" }) : Promise.reject(new Error("no fetch")))
+  loaded = (typeof fetch === "function" ? fetch(`${BASE}pack.json`, { cache: "no-cache" }) : Promise.reject(new Error("no fetch")))
     .then((r) => (r.ok ? r.json() : null))
     .then((m) => {
       if (!m || !Array.isArray(m.items)) return 0;

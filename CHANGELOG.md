@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
+All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
 ## [0.14.0] - 2026-10-28
 
