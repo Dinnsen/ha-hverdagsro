@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-130 -330 260 340" width="260" height="340">
+<!-- Hverdagsro: figure part shoe-lysende. The whole figure's frame; only this part is drawn. Feet on y=0, head around y=-184. -->
+<path d="M-36 -26 h30 v12 h-34 q-4 0 -4 -6z M6 -26 h30 q4 0 4 6 v6 h-34z" fill="#3A3A55" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-28" cy="-17" r="3" fill="#FF6B6B" class="pl-twinkle"/><circle cx="-18" cy="-17" r="3" fill="#FFD93D" class="pl-twinkle"/><circle cx="14" cy="-17" r="3" fill="#4D96FF" class="pl-twinkle"/><circle cx="24" cy="-17" r="3" fill="#6BCB77" class="pl-twinkle"/>
+</svg>

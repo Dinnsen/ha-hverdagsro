@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-130 -330 260 340" width="260" height="340">
+<!-- Hverdagsro: figure part top-stribet. The whole figure's frame; only this part is drawn. Feet on y=0, head around y=-184. -->
+<path d="M-44 -134 h88 l6 70 h-100z" fill="#FF6B6B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-46 -118 h92 M-47 -100 h94 M-48 -82 h96" stroke="#fff" stroke-width="7" opacity=".8"/>
+</svg>

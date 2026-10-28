@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-130 -330 260 340" width="260" height="340">
+<!-- Hverdagsro: figure part extra-festhat. The whole figure's frame; only this part is drawn. Feet on y=0, head around y=-184. -->
+<path d="M-30 -238 L8 -320 L40 -236Z" fill="#4D96FF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-18 -264 L28 -262 M-6 -290 L18 -288" stroke="#FFD93D" stroke-width="7"/><circle cx="8" cy="-322" r="10" fill="#FF6B6B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

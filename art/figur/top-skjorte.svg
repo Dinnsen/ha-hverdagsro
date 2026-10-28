@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-130 -330 260 340" width="260" height="340">
+<!-- Hverdagsro: figure part top-skjorte. The whole figure's frame; only this part is drawn. Feet on y=0, head around y=-184. -->
+<path d="M-44 -134 h88 l6 70 h-100z" fill="#FF6B6B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-16 -134 L0 -112 L16 -134 M0 -112 V-66" fill="none" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-96" r="3" fill="#2B2340"/><circle cx="0" cy="-80" r="3" fill="#2B2340"/>
+</svg>

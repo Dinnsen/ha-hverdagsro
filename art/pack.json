@@ -1,6 +1,8 @@
 {
- "version": 1,
+ "version": 2,
  "pad": 12,
+ "parts_off": true,
+ "backdrops_off": true,
  "items": [
   {
    "id": "bed",
@@ -5081,6 +5083,1054 @@
    "h": 300,
    "flat": 0,
    "file": "bruser.svg"
+  }
+ ],
+ "parts": [
+  {
+   "id": "bot-bukser",
+   "file": "figur/bot-bukser.svg"
+  },
+  {
+   "id": "shoe-sneakers",
+   "file": "figur/shoe-sneakers.svg"
+  },
+  {
+   "id": "top-tshirt",
+   "file": "figur/top-tshirt.svg"
+  },
+  {
+   "id": "arms-tshirt",
+   "file": "figur/arms-tshirt.svg"
+  },
+  {
+   "id": "head",
+   "file": "figur/head.svg"
+  },
+  {
+   "id": "hair-kort",
+   "file": "figur/hair-kort.svg"
+  },
+  {
+   "id": "eyes-open",
+   "file": "figur/eyes-open.svg"
+  },
+  {
+   "id": "cheeks",
+   "file": "figur/cheeks.svg"
+  },
+  {
+   "id": "mouth-smil",
+   "file": "figur/mouth-smil.svg"
+  },
+  {
+   "id": "hairback-lang",
+   "file": "figur/hairback-lang.svg"
+  },
+  {
+   "id": "hair-lang",
+   "file": "figur/hair-lang.svg"
+  },
+  {
+   "id": "hairback-hale",
+   "file": "figur/hairback-hale.svg"
+  },
+  {
+   "id": "hair-hale",
+   "file": "figur/hair-hale.svg"
+  },
+  {
+   "id": "hairback-kroller",
+   "file": "figur/hairback-kroller.svg"
+  },
+  {
+   "id": "hair-kroller",
+   "file": "figur/hair-kroller.svg"
+  },
+  {
+   "id": "hairback-knold",
+   "file": "figur/hairback-knold.svg"
+  },
+  {
+   "id": "hair-knold",
+   "file": "figur/hair-knold.svg"
+  },
+  {
+   "id": "hair-pjusk",
+   "file": "figur/hair-pjusk.svg"
+  },
+  {
+   "id": "hairback-fletninger",
+   "file": "figur/hairback-fletninger.svg"
+  },
+  {
+   "id": "hair-fletninger",
+   "file": "figur/hair-fletninger.svg"
+  },
+  {
+   "id": "hairback-bob",
+   "file": "figur/hairback-bob.svg"
+  },
+  {
+   "id": "hair-bob",
+   "file": "figur/hair-bob.svg"
+  },
+  {
+   "id": "hair-pandehaar",
+   "file": "figur/hair-pandehaar.svg"
+  },
+  {
+   "id": "top-hoodie",
+   "file": "figur/top-hoodie.svg"
+  },
+  {
+   "id": "arms-hoodie",
+   "file": "figur/arms-hoodie.svg"
+  },
+  {
+   "id": "top-stribet",
+   "file": "figur/top-stribet.svg"
+  },
+  {
+   "id": "arms-stribet",
+   "file": "figur/arms-stribet.svg"
+  },
+  {
+   "id": "top-skjorte",
+   "file": "figur/top-skjorte.svg"
+  },
+  {
+   "id": "arms-skjorte",
+   "file": "figur/arms-skjorte.svg"
+  },
+  {
+   "id": "top-jakke",
+   "file": "figur/top-jakke.svg"
+  },
+  {
+   "id": "arms-jakke",
+   "file": "figur/arms-jakke.svg"
+  },
+  {
+   "id": "top-kjole",
+   "file": "figur/top-kjole.svg"
+  },
+  {
+   "id": "arms-kjole",
+   "file": "figur/arms-kjole.svg"
+  },
+  {
+   "id": "top-overalls",
+   "file": "figur/top-overalls.svg"
+  },
+  {
+   "id": "arms-overalls",
+   "file": "figur/arms-overalls.svg"
+  },
+  {
+   "id": "cape",
+   "file": "figur/cape.svg"
+  },
+  {
+   "id": "top-helt",
+   "file": "figur/top-helt.svg"
+  },
+  {
+   "id": "arms-helt",
+   "file": "figur/arms-helt.svg"
+  },
+  {
+   "id": "top-sport",
+   "file": "figur/top-sport.svg"
+  },
+  {
+   "id": "arms-sport",
+   "file": "figur/arms-sport.svg"
+  },
+  {
+   "id": "bot-shorts",
+   "file": "figur/bot-shorts.svg"
+  },
+  {
+   "id": "bot-nederdel",
+   "file": "figur/bot-nederdel.svg"
+  },
+  {
+   "id": "bot-leggings",
+   "file": "figur/bot-leggings.svg"
+  },
+  {
+   "id": "shoe-stovler",
+   "file": "figur/shoe-stovler.svg"
+  },
+  {
+   "id": "shoe-sandaler",
+   "file": "figur/shoe-sandaler.svg"
+  },
+  {
+   "id": "shoe-gummistovler",
+   "file": "figur/shoe-gummistovler.svg"
+  },
+  {
+   "id": "extra-briller",
+   "file": "figur/extra-briller.svg"
+  },
+  {
+   "id": "extra-solbriller",
+   "file": "figur/extra-solbriller.svg"
+  },
+  {
+   "id": "extra-kasket",
+   "file": "figur/extra-kasket.svg"
+  },
+  {
+   "id": "extra-hue",
+   "file": "figur/extra-hue.svg"
+  },
+  {
+   "id": "extra-solhat",
+   "file": "figur/extra-solhat.svg"
+  },
+  {
+   "id": "extra-harebaand",
+   "file": "figur/extra-harebaand.svg"
+  },
+  {
+   "id": "extra-sloife",
+   "file": "figur/extra-sloife.svg"
+  },
+  {
+   "id": "extra-krone",
+   "file": "figur/extra-krone.svg"
+  },
+  {
+   "id": "extra-horn",
+   "file": "figur/extra-horn.svg"
+  },
+  {
+   "id": "extra-hundeorer",
+   "file": "figur/extra-hundeorer.svg"
+  },
+  {
+   "id": "extra-headset",
+   "file": "figur/extra-headset.svg"
+  },
+  {
+   "id": "extra-rumhjelm",
+   "file": "figur/extra-rumhjelm.svg"
+  },
+  {
+   "id": "extra-popbriller",
+   "file": "figur/extra-popbriller.svg"
+  },
+  {
+   "id": "extra-heksehat",
+   "file": "figur/extra-heksehat.svg"
+  },
+  {
+   "id": "extra-nissehue",
+   "file": "figur/extra-nissehue.svg"
+  },
+  {
+   "id": "extra-kaninorer",
+   "file": "figur/extra-kaninorer.svg"
+  },
+  {
+   "id": "extra-festhat",
+   "file": "figur/extra-festhat.svg"
+  },
+  {
+   "id": "extra-ridderhjelm",
+   "file": "figur/extra-ridderhjelm.svg"
+  },
+  {
+   "id": "extra-guldkrone",
+   "file": "figur/extra-guldkrone.svg"
+  },
+  {
+   "id": "face-briller",
+   "file": "figur/face-briller.svg"
+  },
+  {
+   "id": "face-solbriller",
+   "file": "figur/face-solbriller.svg"
+  },
+  {
+   "id": "face-stjernebriller",
+   "file": "figur/face-stjernebriller.svg"
+  },
+  {
+   "id": "face-hjertebriller",
+   "file": "figur/face-hjertebriller.svg"
+  },
+  {
+   "id": "face-maske",
+   "file": "figur/face-maske.svg"
+  },
+  {
+   "id": "acc-taske",
+   "file": "figur/acc-taske.svg"
+  },
+  {
+   "id": "accback-rygsaek",
+   "file": "figur/accback-rygsaek.svg"
+  },
+  {
+   "id": "acc-rygsaek",
+   "file": "figur/acc-rygsaek.svg"
+  },
+  {
+   "id": "acc-halskaede",
+   "file": "figur/acc-halskaede.svg"
+  },
+  {
+   "id": "acc-medalje",
+   "file": "figur/acc-medalje.svg"
+  },
+  {
+   "id": "acc-bamse",
+   "file": "figur/acc-bamse.svg"
+  },
+  {
+   "id": "mouth-grin",
+   "file": "figur/mouth-grin.svg"
+  },
+  {
+   "id": "mouth-tunge",
+   "file": "figur/mouth-tunge.svg"
+  },
+  {
+   "id": "mouth-o",
+   "file": "figur/mouth-o.svg"
+  },
+  {
+   "id": "top-cardigan",
+   "file": "figur/top-cardigan.svg"
+  },
+  {
+   "id": "arms-cardigan",
+   "file": "figur/arms-cardigan.svg"
+  },
+  {
+   "id": "bot-ternet",
+   "file": "figur/bot-ternet.svg"
+  },
+  {
+   "id": "face-bogbriller",
+   "file": "figur/face-bogbriller.svg"
+  },
+  {
+   "id": "acc-bogtaske",
+   "file": "figur/acc-bogtaske.svg"
+  },
+  {
+   "id": "top-gallakjole",
+   "file": "figur/top-gallakjole.svg"
+  },
+  {
+   "id": "arms-gallakjole",
+   "file": "figur/arms-gallakjole.svg"
+  },
+  {
+   "id": "bot-tyl",
+   "file": "figur/bot-tyl.svg"
+  },
+  {
+   "id": "face-fjermaske",
+   "file": "figur/face-fjermaske.svg"
+  },
+  {
+   "id": "acc-vifte",
+   "file": "figur/acc-vifte.svg"
+  },
+  {
+   "id": "top-traeningsdragt",
+   "file": "figur/top-traeningsdragt.svg"
+  },
+  {
+   "id": "arms-traeningsdragt",
+   "file": "figur/arms-traeningsdragt.svg"
+  },
+  {
+   "id": "bot-jeans",
+   "file": "figur/bot-jeans.svg"
+  },
+  {
+   "id": "shoe-lysende",
+   "file": "figur/shoe-lysende.svg"
+  },
+  {
+   "id": "shoe-rulleskoejter",
+   "file": "figur/shoe-rulleskoejter.svg"
+  },
+  {
+   "id": "top-regnfrakke",
+   "file": "figur/top-regnfrakke.svg"
+  },
+  {
+   "id": "arms-regnfrakke",
+   "file": "figur/arms-regnfrakke.svg"
+  },
+  {
+   "id": "acc-paraply",
+   "file": "figur/acc-paraply.svg"
+  },
+  {
+   "id": "shoe-ballerina",
+   "file": "figur/shoe-ballerina.svg"
+  },
+  {
+   "id": "top-glimmerjakke",
+   "file": "figur/top-glimmerjakke.svg"
+  },
+  {
+   "id": "arms-glimmerjakke",
+   "file": "figur/arms-glimmerjakke.svg"
+  },
+  {
+   "id": "eyes-sleep",
+   "file": "figur/eyes-sleep.svg"
+  },
+  {
+   "id": "mouth-sleep",
+   "file": "figur/mouth-sleep.svg"
+  },
+  {
+   "id": "mouth-wow",
+   "file": "figur/mouth-wow.svg"
+  },
+  {
+   "id": "mouth-glad",
+   "file": "figur/mouth-glad.svg"
+  },
+  {
+   "id": "brows-sur",
+   "file": "figur/brows-sur.svg"
+  },
+  {
+   "id": "mouth-sur",
+   "file": "figur/mouth-sur.svg"
+  },
+  {
+   "id": "brows-trist",
+   "file": "figur/brows-trist.svg"
+  },
+  {
+   "id": "mouth-trist",
+   "file": "figur/mouth-trist.svg"
+  }
+ ],
+ "npcs": [
+  {
+   "id": "bjeff",
+   "file": "figurer/bjeff.svg"
+  },
+  {
+   "id": "gnist",
+   "file": "figurer/gnist.svg"
+  },
+  {
+   "id": "fjer",
+   "file": "figurer/fjer.svg"
+  },
+  {
+   "id": "mursten",
+   "file": "figurer/mursten.svg"
+  },
+  {
+   "id": "boelge",
+   "file": "figurer/boelge.svg"
+  },
+  {
+   "id": "skrue",
+   "file": "figurer/skrue.svg"
+  },
+  {
+   "id": "frost",
+   "file": "figurer/frost.svg"
+  },
+  {
+   "id": "sporer",
+   "file": "figurer/sporer.svg"
+  },
+  {
+   "id": "hanne",
+   "file": "figurer/hanne.svg"
+  },
+  {
+   "id": "bip",
+   "file": "figurer/bip.svg"
+  },
+  {
+   "id": "mosse",
+   "file": "figurer/mosse.svg"
+  },
+  {
+   "id": "bjoern",
+   "file": "figurer/bjoern.svg"
+  },
+  {
+   "id": "hugo",
+   "file": "figurer/hugo.svg"
+  },
+  {
+   "id": "ugleline",
+   "file": "figurer/ugleline.svg"
+  },
+  {
+   "id": "mille",
+   "file": "figurer/mille.svg"
+  },
+  {
+   "id": "rikke",
+   "file": "figurer/rikke.svg"
+  },
+  {
+   "id": "pigge",
+   "file": "figurer/pigge.svg"
+  },
+  {
+   "id": "snegl",
+   "file": "figurer/snegl.svg"
+  },
+  {
+   "id": "hilda",
+   "file": "figurer/hilda.svg"
+  },
+  {
+   "id": "bonde",
+   "file": "figurer/bonde.svg"
+  },
+  {
+   "id": "luna",
+   "file": "figurer/luna.svg"
+  },
+  {
+   "id": "kaya",
+   "file": "figurer/kaya.svg"
+  },
+  {
+   "id": "mira",
+   "file": "figurer/mira.svg"
+  },
+  {
+   "id": "zoe",
+   "file": "figurer/zoe.svg"
+  },
+  {
+   "id": "nia",
+   "file": "figurer/nia.svg"
+  },
+  {
+   "id": "ivy",
+   "file": "figurer/ivy.svg"
+  },
+  {
+   "id": "beat",
+   "file": "figurer/beat.svg"
+  },
+  {
+   "id": "nova",
+   "file": "figurer/nova.svg"
+  },
+  {
+   "id": "mix",
+   "file": "figurer/mix.svg"
+  },
+  {
+   "id": "stitch",
+   "file": "figurer/stitch.svg"
+  },
+  {
+   "id": "snurre",
+   "file": "figurer/snurre.svg"
+  },
+  {
+   "id": "glasura",
+   "file": "figurer/glasura.svg"
+  },
+  {
+   "id": "muffi",
+   "file": "figurer/muffi.svg"
+  },
+  {
+   "id": "mochimo",
+   "file": "figurer/mochimo.svg"
+  },
+  {
+   "id": "bea",
+   "file": "figurer/bea.svg"
+  },
+  {
+   "id": "makro",
+   "file": "figurer/makro.svg"
+  },
+  {
+   "id": "kara",
+   "file": "figurer/kara.svg"
+  },
+  {
+   "id": "kiks",
+   "file": "figurer/kiks.svg"
+  },
+  {
+   "id": "pebbe",
+   "file": "figurer/pebbe.svg"
+  },
+  {
+   "id": "bente",
+   "file": "figurer/bente.svg"
+  },
+  {
+   "id": "blomma",
+   "file": "figurer/blomma.svg"
+  },
+  {
+   "id": "pjus",
+   "file": "figurer/pjus.svg"
+  },
+  {
+   "id": "dino",
+   "file": "figurer/dino.svg"
+  },
+  {
+   "id": "lilli",
+   "file": "figurer/lilli.svg"
+  },
+  {
+   "id": "bobo",
+   "file": "figurer/bobo.svg"
+  },
+  {
+   "id": "sproejt",
+   "file": "figurer/sproejt.svg"
+  },
+  {
+   "id": "flora",
+   "file": "figurer/flora.svg"
+  },
+  {
+   "id": "kvikke",
+   "file": "figurer/kvikke.svg"
+  },
+  {
+   "id": "tang",
+   "file": "figurer/tang.svg"
+  },
+  {
+   "id": "parko",
+   "file": "figurer/parko.svg"
+  },
+  {
+   "id": "volt",
+   "file": "figurer/volt.svg"
+  },
+  {
+   "id": "kvantia",
+   "file": "figurer/kvantia.svg"
+  },
+  {
+   "id": "turbo",
+   "file": "figurer/turbo.svg"
+  },
+  {
+   "id": "pixel",
+   "file": "figurer/pixel.svg"
+  },
+  {
+   "id": "magnus",
+   "file": "figurer/magnus.svg"
+  },
+  {
+   "id": "solveig",
+   "file": "figurer/solveig.svg"
+  },
+  {
+   "id": "ekko",
+   "file": "figurer/ekko.svg"
+  },
+  {
+   "id": "gizmo",
+   "file": "figurer/gizmo.svg"
+  },
+  {
+   "id": "prisme",
+   "file": "figurer/prisme.svg"
+  },
+  {
+   "id": "byggebot",
+   "file": "figurer/byggebot.svg"
+  },
+  {
+   "id": "natugle",
+   "file": "figurer/natugle.svg"
+  },
+  {
+   "id": "maaneskin",
+   "file": "figurer/maaneskin.svg"
+  },
+  {
+   "id": "lygte",
+   "file": "figurer/lygte.svg"
+  },
+  {
+   "id": "skygge",
+   "file": "figurer/skygge.svg"
+  },
+  {
+   "id": "stjernekaster",
+   "file": "figurer/stjernekaster.svg"
+  },
+  {
+   "id": "drilsk",
+   "file": "figurer/drilsk.svg"
+  },
+  {
+   "id": "konfetti",
+   "file": "figurer/konfetti.svg"
+  },
+  {
+   "id": "vagtbot",
+   "file": "figurer/vagtbot.svg"
+  },
+  {
+   "id": "ravna",
+   "file": "figurer/ravna.svg"
+  },
+  {
+   "id": "havfrand",
+   "file": "figurer/havfrand.svg"
+  },
+  {
+   "id": "bodil",
+   "file": "figurer/bodil.svg"
+  },
+  {
+   "id": "karla",
+   "file": "figurer/karla.svg"
+  },
+  {
+   "id": "kasper",
+   "file": "figurer/kasper.svg"
+  },
+  {
+   "id": "fie",
+   "file": "figurer/fie.svg"
+  },
+  {
+   "id": "kroelle",
+   "file": "figurer/kroelle.svg"
+  },
+  {
+   "id": "per",
+   "file": "figurer/per.svg"
+  },
+  {
+   "id": "pip",
+   "file": "figurer/pip.svg"
+  },
+  {
+   "id": "naja",
+   "file": "figurer/naja.svg"
+  },
+  {
+   "id": "musse",
+   "file": "figurer/musse.svg"
+  },
+  {
+   "id": "disko",
+   "file": "figurer/disko.svg"
+  },
+  {
+   "id": "rytme",
+   "file": "figurer/rytme.svg"
+  },
+  {
+   "id": "sam",
+   "file": "figurer/sam.svg"
+  },
+  {
+   "id": "kolboette",
+   "file": "figurer/kolboette.svg"
+  },
+  {
+   "id": "pling",
+   "file": "figurer/pling.svg"
+  },
+  {
+   "id": "frida",
+   "file": "figurer/frida.svg"
+  },
+  {
+   "id": "bent",
+   "file": "figurer/bent.svg"
+  },
+  {
+   "id": "dagny",
+   "file": "figurer/dagny.svg"
+  },
+  {
+   "id": "sif",
+   "file": "figurer/sif.svg"
+  },
+  {
+   "id": "gustav",
+   "file": "figurer/gustav.svg"
+  },
+  {
+   "id": "olga",
+   "file": "figurer/olga.svg"
+  },
+  {
+   "id": "laerke",
+   "file": "figurer/laerke.svg"
+  },
+  {
+   "id": "simon",
+   "file": "figurer/simon.svg"
+  },
+  {
+   "id": "brumme",
+   "file": "figurer/brumme.svg"
+  },
+  {
+   "id": "emil",
+   "file": "figurer/emil.svg"
+  },
+  {
+   "id": "sofie",
+   "file": "figurer/sofie.svg"
+  },
+  {
+   "id": "mona",
+   "file": "figurer/mona.svg"
+  },
+  {
+   "id": "pi",
+   "file": "figurer/pi.svg"
+  },
+  {
+   "id": "saga",
+   "file": "figurer/saga.svg"
+  },
+  {
+   "id": "rektor",
+   "file": "figurer/rektor.svg"
+  },
+  {
+   "id": "lasse",
+   "file": "figurer/lasse.svg"
+  },
+  {
+   "id": "flamme",
+   "file": "figurer/flamme.svg"
+  },
+  {
+   "id": "bedste",
+   "file": "figurer/bedste.svg"
+  },
+  {
+   "id": "morfar",
+   "file": "figurer/morfar.svg"
+  },
+  {
+   "id": "vuffe",
+   "file": "figurer/vuffe.svg"
+  }
+ ],
+ "pets": [
+  {
+   "id": "hund",
+   "file": "dyr/hund.svg"
+  },
+  {
+   "id": "kat",
+   "file": "dyr/kat.svg"
+  },
+  {
+   "id": "drage",
+   "file": "dyr/drage.svg"
+  }
+ ],
+ "backdrops": [
+  {
+   "id": "room-garage",
+   "file": "baggrunde/room-garage.svg"
+  },
+  {
+   "id": "room-utility",
+   "file": "baggrunde/room-utility.svg"
+  },
+  {
+   "id": "room-hall",
+   "file": "baggrunde/room-hall.svg"
+  },
+  {
+   "id": "room-bed",
+   "file": "baggrunde/room-bed.svg"
+  },
+  {
+   "id": "room-bath",
+   "file": "baggrunde/room-bath.svg"
+  },
+  {
+   "id": "room-kitchen",
+   "file": "baggrunde/room-kitchen.svg"
+  },
+  {
+   "id": "room-living",
+   "file": "baggrunde/room-living.svg"
+  },
+  {
+   "id": "place-have",
+   "file": "baggrunde/place-have.svg"
+  },
+  {
+   "id": "place-redning-station",
+   "file": "baggrunde/place-redning-station.svg"
+  },
+  {
+   "id": "place-redning-havn",
+   "file": "baggrunde/place-redning-havn.svg"
+  },
+  {
+   "id": "place-skov-lysning",
+   "file": "baggrunde/place-skov-lysning.svg"
+  },
+  {
+   "id": "place-skov-gaard",
+   "file": "baggrunde/place-skov-gaard.svg"
+  },
+  {
+   "id": "place-pop-studie",
+   "file": "baggrunde/place-pop-studie.svg"
+  },
+  {
+   "id": "place-pop-scene",
+   "file": "baggrunde/place-pop-scene.svg"
+  },
+  {
+   "id": "place-slik-bageri",
+   "file": "baggrunde/place-slik-bageri.svg"
+  },
+  {
+   "id": "place-slik-butik",
+   "file": "baggrunde/place-slik-butik.svg"
+  },
+  {
+   "id": "place-park-plads",
+   "file": "baggrunde/place-park-plads.svg"
+  },
+  {
+   "id": "place-park-vand",
+   "file": "baggrunde/place-park-vand.svg"
+  },
+  {
+   "id": "place-tekno-lab",
+   "file": "baggrunde/place-tekno-lab.svg"
+  },
+  {
+   "id": "place-tekno-tag",
+   "file": "baggrunde/place-tekno-tag.svg"
+  },
+  {
+   "id": "place-nat-gade",
+   "file": "baggrunde/place-nat-gade.svg"
+  },
+  {
+   "id": "place-nat-hule",
+   "file": "baggrunde/place-nat-hule.svg"
+  },
+  {
+   "id": "place-hem-grotte",
+   "file": "baggrunde/place-hem-grotte.svg"
+  },
+  {
+   "id": "place-hem-svamp",
+   "file": "baggrunde/place-hem-svamp.svg"
+  },
+  {
+   "id": "place-hem-skat",
+   "file": "baggrunde/place-hem-skat.svg"
+  },
+  {
+   "id": "place-hem-loft",
+   "file": "baggrunde/place-hem-loft.svg"
+  },
+  {
+   "id": "place-hem-bibliotek",
+   "file": "baggrunde/place-hem-bibliotek.svg"
+  },
+  {
+   "id": "place-by-cafe",
+   "file": "baggrunde/place-by-cafe.svg"
+  },
+  {
+   "id": "place-by-frisor",
+   "file": "baggrunde/place-by-frisor.svg"
+  },
+  {
+   "id": "place-by-post",
+   "file": "baggrunde/place-by-post.svg"
+  },
+  {
+   "id": "place-by-lejlighed",
+   "file": "baggrunde/place-by-lejlighed.svg"
+  },
+  {
+   "id": "place-by-tag",
+   "file": "baggrunde/place-by-tag.svg"
+  },
+  {
+   "id": "place-by-park",
+   "file": "baggrunde/place-by-park.svg"
+  },
+  {
+   "id": "place-by-torv",
+   "file": "baggrunde/place-by-torv.svg"
+  },
+  {
+   "id": "place-by-camping",
+   "file": "baggrunde/place-by-camping.svg"
+  },
+  {
+   "id": "place-by-hospital",
+   "file": "baggrunde/place-by-hospital.svg"
+  },
+  {
+   "id": "place-by-indkob",
+   "file": "baggrunde/place-by-indkob.svg"
+  },
+  {
+   "id": "place-by-uni",
+   "file": "baggrunde/place-by-uni.svg"
+  },
+  {
+   "id": "place-by-villa",
+   "file": "baggrunde/place-by-villa.svg"
+  },
+  {
+   "id": "place-by-familiehus",
+   "file": "baggrunde/place-by-familiehus.svg"
+  },
+  {
+   "id": "place-by-byg",
+   "file": "baggrunde/place-by-byg.svg"
+  },
+  {
+   "id": "place-hule",
+   "file": "baggrunde/place-hule.svg"
+  },
+  {
+   "id": "place-trae",
+   "file": "baggrunde/place-trae.svg"
+  },
+  {
+   "id": "place-rumstation",
+   "file": "baggrunde/place-rumstation.svg"
+  },
+  {
+   "id": "place-scene",
+   "file": "baggrunde/place-scene.svg"
   }
  ]
 }

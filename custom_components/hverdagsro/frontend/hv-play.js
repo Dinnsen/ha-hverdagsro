@@ -238,9 +238,19 @@ export function avatarSvg(me, mood = "", pose = "") {
   const Hd = (x) => (P.head === 1 || !x ? x : `<g transform="translate(0 -128) scale(${P.head}) translate(0 128)">${x}</g>`);
   // The legs, left and right, so they can swing when walking.
   const cid = "plc" + ++clipN, legsSplit = `<clipPath id="${cid}l"><rect x="-200" y="-400" width="200" height="520"/></clipPath><clipPath id="${cid}r"><rect x="0" y="-400" width="200" height="520"/></clipPath><g class="pl-leg l" clip-path="url(#${cid}l)">${legs}${shoes}</g><g class="pl-leg r" clip-path="url(#${cid}r)">${legs}${shoes}</g>`;
-  const inner = `${cape}${accBack}${Hd(hairBack)}${legsSplit}${body}${me.acc === "bamse" ? "" : acc}${arm(-1)}${arm(1)}${me.acc === "bamse" ? acc : ""}
-    ${Hd(`<circle cx="0" cy="-184" r="62" fill="${sk}" ${S()}/><circle cx="-60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/><circle cx="60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/>
-    ${hairFront}${brows}${eyes}<circle cx="-36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/><circle cx="36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/>${mouth}${face}${extra}`)}`;
+  // Every part can come from the art pack (a file drawn by an illustrator) instead.
+  const rec = {}, A = (key, svg) => {
+    if (svg) rec[key] = svg;
+    return svg ? Art.part(key) ?? svg : "";
+  };
+  const head = `<circle cx="0" cy="-184" r="62" fill="${sk}" ${S()}/><circle cx="-60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/><circle cx="60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/>`;
+  const cheeks = `<circle cx="-36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/><circle cx="36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/>`;
+  const parts = { cape: A("cape", cape), accback: A(`accback-${me.acc}`, accBack), hairback: A(`hairback-${me.hair}`, hairBack), legs: A(`bot-${bk}`, legs), shoes: A(`shoe-${shk}`, shoes), body: A(`top-${tk}`, body), acc: A(`acc-${me.acc}`, acc), arms: A(`arms-${tk}`, arm(-1) + arm(1)), head: A("head", head), hair: A(`hair-${me.hair || "kort"}`, hairFront), brows: A(`brows-${mood || "normal"}`, brows), eyes: A(`eyes-${mood === "sleep" ? "sleep" : "open"}`, eyes), cheeks: A("cheeks", cheeks), mouth: A(`mouth-${mood || mk}`, mouth), face: A(`face-${me.face}`, face), extra: A(`extra-${me.extra}`, extra) };
+  if (me._parts) return rec;
+  const legsSplit2 = `<clipPath id="${cid}l"><rect x="-200" y="-400" width="200" height="520"/></clipPath><clipPath id="${cid}r"><rect x="0" y="-400" width="200" height="520"/></clipPath><g class="pl-leg l" clip-path="url(#${cid}l)">${parts.legs}${parts.shoes}</g><g class="pl-leg r" clip-path="url(#${cid}r)">${parts.legs}${parts.shoes}</g>`;
+  void legsSplit;
+  const inner = `${parts.cape}${parts.accback}${Hd(parts.hairback)}${legsSplit2}${parts.body}${me.acc === "bamse" ? "" : parts.acc}${parts.arms}${me.acc === "bamse" ? parts.acc : ""}
+    ${Hd(`${parts.head}${parts.hair}${parts.brows}${parts.eyes}${parts.cheeks}${parts.mouth}${parts.face}${parts.extra}`)}`;
   // Longer legs lift the figure, so the feet stay on the floor.
   const lift = sit ? 30 - (L - 26) : -(L - 56);
   return P.sc === 1 && !lift ? inner : `<g transform="scale(${P.sc}) translate(0 ${lift})">${inner}</g>`;
@@ -463,7 +473,7 @@ function people(ctx, m, sid, room, pl) {
     if (!N) continue;
     const st = pos[2] ? seated(room, pos[2]) : null;
     const tf = st ? (st[4] === "lie" ? `translate(${st[0]} ${st[1]}) rotate(-90) scale(.66)` : `translate(${st[0]} ${st[1]}) scale(.82)`) : `translate(${pos[0]} ${pos[1]}) scale(.82)`;
-    out.push([st ? st[2] : pos[1], `<g class="pl-npc${st ? " seated" : ""}" data-pl="npc" data-id="${esc(id)}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body" style="animation-delay:${-(id.length % 5) * 0.4}s">${charSvg(N[3], st?.[4] === "lie" ? "sleep" : ST.npcMood?.[id] || "", avatarSvg)}${heldSvg(room, id)}</g>${id.startsWith("fig:") && !st ? `<text y="-262" text-anchor="middle" class="pl-petname">${esc(N[0])}</text>` : ""}</g>${blanket(st)}`]);
+    out.push([st ? st[2] : pos[1], `<g class="pl-npc${st ? " seated" : ""}" data-pl="npc" data-id="${esc(id)}" transform="${tf}">${st ? "" : `<ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/>`}<g class="pl-body" style="animation-delay:${-(id.length % 5) * 0.4}s">${Art.npc(id) ?? charSvg(N[3], st?.[4] === "lie" ? "sleep" : ST.npcMood?.[id] || "", avatarSvg)}${heldSvg(room, id)}</g>${id.startsWith("fig:") && !st ? `<text y="-262" text-anchor="middle" class="pl-petname">${esc(N[0])}</text>` : ""}</g>${blanket(st)}`]);
   }
   const key = presenceKey(sid), live = new Set();
   for (const [pid, pe] of Object.entries(ST.peers || {})) {
@@ -520,10 +530,10 @@ function stage(ctx, m) {
     }<path d="M675 84 v172 M574 170 h202" ${S()} fill="none"/>${World.BG.wx ? `<clipPath id="pl-winc0"><rect x="574" y="84" width="202" height="172" rx="6"/></clipPath><g class="fx-rain" clip-path="url(#pl-winc0)">${Array.from({ length: 10 }, (_, i) => World.BG.wx === "rain" ? `<path d="M${586 + i * 19} 80 v12" stroke="#4FB3FF" stroke-width="3" stroke-linecap="round" style="--fall:180px;animation-delay:${-(i * 0.17) % 0.6}s"/>` : `<circle cx="${590 + i * 19}" cy="86" r="4" fill="#fff" style="--fall:180px;animation-delay:${-(i * 0.33) % 1.6}s;animation-duration:1.6s"/>`).join("")}</g>` : ""}<path d="M560 60 h230" stroke="#FF6B6B" stroke-width="16" stroke-linecap="round"/><path d="M548 64 q-8 100 -2 206 h30 q6 -104 -4 -206z M772 64 q8 100 2 206 h30 q-6 -104 4 -206z" fill="${dd.wall?.c === "rosa" ? "#FFD1E3" : "#FFF0B8"}" ${S()}/></g><rect width="${rw}" height="14" fill="rgba(0,0,0,.06)"/><rect y="${FLOOR}" width="${rw}" height="10" fill="rgba(0,0,0,.08)"/>`;
   } else if (pl) {
     World.BG.look = paintable(pl) ? room.look || {} : {};
-    s += pl.bg(s0, s1, tod, rw) + Toys.seasonSvg(ctx, pl);
+    s += (Art.bg(pl.area === "hjem" && pl.look ? `room-${pl.look}` : `place-${sid}`, rw) ?? pl.bg(s0, s1, tod, rw)) + Toys.seasonSvg(ctx, pl);
     World.BG.look = {};
   }
-  else s += backdrop(sid, s0, s1, tod);
+  else s += Art.bg(`place-${sid}`, rw) ?? backdrop(sid, s0, s1, tod);
   // The light switch for the real lights of the room.
   if (lights.length && !vk) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset her"))}"><rect x="${sid === "vaerelse" ? 500 : rw - 80}" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="${sid === "vaerelse" ? 510 : rw - 70}" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
   // The real tv: what plays on it plays in the game too.
@@ -567,7 +577,7 @@ function stage(ctx, m) {
       return [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-facing" transform="scale(${d.face < 0 ? -1 : 1} 1)"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood)}${handSvg(d, false, ageGroup(ctx.member(ST.kid)))}</g></g></g>`];
     })(),
     ...people(ctx, m, sid, room, pl),
-    ...(m.pet && ctx.feature(m, "pet") ? [[d.py, `<g class="pl-pet${happy ? " happy" : ""}" data-pl="pet" transform="translate(${d.px} ${d.py}) scale(.8)"><ellipse cx="0" cy="0" rx="60" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-petb">${petInRoom(m, happy)}</g><text y="-150" text-anchor="middle" class="pl-petname">${esc(m.pet.name || "")}</text></g>`]] : []),
+    ...(m.pet && ctx.feature(m, "pet") ? [[d.py, `<g class="pl-pet${happy ? " happy" : ""}" data-pl="pet" transform="translate(${d.px} ${d.py}) scale(.8)"><ellipse cx="0" cy="0" rx="60" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-petb">${Art.pet(m.pet?.kind || "hund") ?? petInRoom(m, happy)}</g><text y="-150" text-anchor="middle" class="pl-petname">${esc(m.pet.name || "")}</text></g>`]] : []),
   ].sort((a, b) => a[0] - b[0]);
   s += actors.map((a) => a[1]).join("");
   // night: dark unless the lights are on (the bedroom and the tree house have real windows)
@@ -2321,7 +2331,7 @@ Fun.init({
   draw: (k) => (CAT[k] ? CAT[k].d(CAT[k].c) : ""),
 });
 
-export { CAT as PLAY_CAT };
+export { CAT as PLAY_CAT, petInRoom, backdrop as spaceBackdrop, HAIRS, EXTRAS, EXTRAS_X, FLOORS };
 export default {
   id: "play",
   views: {
