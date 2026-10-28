@@ -5,13 +5,14 @@
    from the pack's own furniture first, and the lift in each floor (as the original has) takes you to the others.
    Our own drawings and rooms. */
 import { shade } from "./hv-playcat.js";
-import { addWorld } from "./hv-world.js";
+import { addWorld, PLACES } from "./hv-world.js";
 import { registerFx } from "./hv-fixtures.js";
 import { PROTO } from "./hv-proto.js";
 import { PACKS4, PACKS4_EN, HOME4, placeThing } from "./hv-packs4.js";
 import { HOUSES } from "./hv-floors-data.js";
 import { arrange } from "./hv-layout.js";
 import { floorBg } from "./hv-roombg.js";
+import { THEME_OF } from "./hv-scenery.js";
 
 const hash = (s) => [...String(s)].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) >>> 0, 7);
 const UNIT = 38.3;
@@ -55,7 +56,7 @@ const PLAN_OF = {
 /* The names of the floors. */
 const FLOORS_DA = ["Stuen", "1. sal", "2. sal", "3. sal", "4. sal"];
 const SHOP_FLOORS = ["Stueplan", "1. sal", "2. sal", "3. sal"];
-export const FLOORS_EN = { Stuen: "Ground floor", Stueplan: "Ground floor", "1. sal": "1st floor", "2. sal": "2nd floor", "3. sal": "3rd floor", "4. sal": "4th floor", Udenfor: "Outside", Indeni: "Inside", "Hvilken etage?": "Which floor?", "Ind i vognen": "Into the van", Ud: "Out" };
+export const FLOORS_EN = { Etager: "Floors", "🛗 Huset har {n} etager. Tag liften, eller tryk på Etager.": "🛗 This house has {n} floors. Take the lift, or tap Floors.", "Du er her": "You are here", Stuen: "Ground floor", Stueplan: "Ground floor", "1. sal": "1st floor", "2. sal": "2nd floor", "3. sal": "3rd floor", "4. sal": "4th floor", Udenfor: "Outside", Indeni: "Inside", "Hvilken etage?": "Which floor?", "Ind i vognen": "Into the van", Ud: "Out" };
 const labelOf = (plan, fi) => (plan === "camper" ? ["Udenfor", "Indeni"][fi] : (["shop", "hotel", "restaurant"].includes(plan) ? SHOP_FLOORS : FLOORS_DA)[fi] || `${fi}. sal`);
 
 /* The look of each kind of room: pattern, wall and floor, from the pack's own colours. */
@@ -113,6 +114,7 @@ function buildHouse(bid, house, pk, meta, places) {
   const labels = house.floors.map((_, fi) => labelOf(kind, fi));
   const left = new Set(pk.items), prefer = new Set(pk.items), home = Object.keys(HOME4), fill = fillersOf(pk);
   const lifts = [];
+  FLOOR_LIST[bid] = ids.map((id, fi) => [id, labels[fi]]);
   house.floors.forEach((F, fi) => {
     const allOut = plan.out || (kind === "camper" && fi === 0);
     const last = F.rooms.length - 1;
@@ -189,6 +191,7 @@ function buildHouse(bid, house, pk, meta, places) {
     zones.forEach((z) => !types.has(z.ri) && types.set(z.ri, z.type));
     const spec = {
       cols: pk.cols,
+      theme: kind === "camper" ? "camp" : THEME_OF[bid] || "",
       rooms: rooms.map((r, ri) => {
         const t = types.get(ri), look = r.out ? {} : lookOf(t, pk);
         return { ...r, kind: t, ...look, style: look.style, fx: fxOf[ri] };
@@ -219,6 +222,12 @@ const EXTRA = {
   "hd-startkassen-stort": { n: "Det store startkasse-hus", en: "The big starter house", em: "🏠" },
 };
 export const BUILDINGS = [];
+/* The floors of every building, bottom first: [[place id, name], …]; and what a place is a floor of. */
+const FLOOR_LIST = {};
+export function floorList(sid) {
+  const bid = PLACES[sid]?.of;
+  return bid && FLOOR_LIST[bid]?.length > 1 ? FLOOR_LIST[bid] : null;
+}
 const places = {};
 for (const [bid, house] of Object.entries(HOUSES)) {
   const pk = PACKS4.find((p) => p.id === house.pack);

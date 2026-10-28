@@ -2,6 +2,28 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.19.0] - 2026-10-28
+
+### Added
+- **Swing and jump.** Tap a swing (the swing set, the garden swing) and your figure sits on it and swings with the ropes; tap a trampoline and your figure stands on the mat and jumps, and the mat gives under the landing. Tap again, or tap the figure, to get off. `hv-ride.js`.
+- **The floors of a house are easy to find:** a lift button (🛗 *Etager*) in the toolbar of every house with more than one floor shows all the floors and where you are; the first time you walk into such a house you are told, and the map of the towns shows how many floors each building has.
+- **Round the buildings, much more detail** (`hv-scenery.js`). The outdoor stretches of the packs are no longer a plain garden: every pack gets what the original's scene has round it, found by reading the original's scenes (`tools/homedesigner/extract_scenery.py`): a pool with palms, a roofed patio and loungers (pool villa, hotel); a spa pool with bubbles and steam; a beach with sea, sailboats, parasols and a porch; a café terrace with an awning, string lights and tables; a bakery garden with picket fence, vegetable beds and a rose trellis; a lotus pond with an arched bridge, bamboo and stone lanterns; a cottage garden with a stone gate with ivy, a tiered fountain and a waterfall; a city park with an iron gate, a winding path, a duck pond and lamps; an activity park with a great tree with a swing, a slide, flags and a city hanging upside down in the sky; a supermarket yard with a loading dock, a truck and crates; a rooftop with chimneys, a water tank, planters and string lights; a campsite with pines, a campfire, a tent and a saucer with its beam; a porch with rocking chairs and a mailbox; a manor with clipped hedges, topiary and columns; and a city balcony with the lit skyline and neon signs.
+
+### Changed
+- **The buildings of Byerne are much richer** (`hv-buildings.js`): each building is as tall as the original's house has floors, has a roof of its kind (gable, hip, flat with a stair house and air-conditioners), ledges between the floors, balconies, a porch with posts, an awning with stripes, chimneys with smoke, wings on the manors, and stands in a lot with what its pack has round it (a pool and palms, a pier, a terrace, a fence and beds, a lotus pond, a gate, a swing in a tree, tents and a fire, a loading dock with a truck).
+- **The washing machine and the tumble dryer turn round their own centre.** The drums, the cooker hood fan and the microwave plate now rotate with SMIL about their centre, the same in every browser.
+- **The curtains of the house work:** the curtains at the windows of your house draw across the window and are the real curtains of the room (the cover of the area in Home Assistant) when there is one.
+
+## [0.18.0] - 2026-10-28
+
+### Added
+- **The avatars of the original.** The whole catalog of the character creator is in the game now, drawn with our own shapes: **548 hair styles and beards** (short, long, crazy, beards), **1,552 pieces of clothes** (dresses, sweaters, jackets, suits, swimwear, pyjamas, towels, uniforms, costumes, winter clothes … with colours and patterns: stripes, dots, plaid, flowers, camo, stars, hearts, rainbow, leopard, zebra), **647 hats**, **664 pairs of glasses and masks**, **193 ear accessories**, the parts of the face (284 eyes, 525 brows, 544 noses, 567 mouths, 233 cheeks, 127 freckles, 83 wrinkles, 12 scars) and **259 colours**. Made by `tools/homedesigner/extract_avatars.py` and `build_avatars.py`; brands, licensed characters and real people are left out.
+- **544 premade figures and 761 pets** live in the places of their worlds (the hospital, the school, the farm, the stable, the mall …), as the original has them: they talk, and the pets make their sound. Their skin and hair colours are not in the original in a readable form, so they are picked from the palettes by name; the species and colour of a pet come from its name. In every place a few pets are out, and which ones changes from day to day.
+- **The figure workshop** has the wardrobe of the original: pick hair, beard, clothes, hats, glasses and masks, ear accessories and the parts of the face from pages of little pictures, sorted by kind; choose colours; and a button for a random look.
+- **32 expressions:** tap the head of your figure for the menu: neutral, happy, surprised, sleepy, sick, angry, furious, sad, sobbing, screaming, laughing, celebrating, super excited, confused, creepy, dead, kiss, naughty kiss, heart eyes, heartbroken, flushed, freezing, hot and tired, smug, evil smirk, grimace, pleading, rolling eyes, yummy, oops, wink.
+- **Six dances** (dance 1, 2, 3, the prom dance and two pool yoga dances) from the same menu, and when a radio or a speaker plays, the people in the room dance to it.
+- **Talking:** a figure moves its mouth when it speaks; **eating** makes a yummy face; **the mirror** lets you change your hair, colour, clothes, hat and face and **take pictures** that you keep.
+
 ## [0.17.0] - 2026-10-28
 
 ### Changed

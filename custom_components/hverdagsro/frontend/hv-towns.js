@@ -4,10 +4,13 @@
    page "Byerne" shows one town at a time. All our own drawings and places. */
 import { OL, shade } from "./hv-playcat.js";
 import { BG, addWorld, PLACES } from "./hv-world.js";
-import { box, windows, gable, door, tree, pine, sign, Pp, flat, poly } from "./hv-city.js";
+import { box, windows, tree, sign, Pp, flat, poly } from "./hv-city.js";
 import { WORLD_TOWNS } from "./hv-worlds.js";
 import { TOWNS4 } from "./hv-packs4-data.js";
 import { BUILDINGS } from "./hv-floors.js";
+import { HOUSES } from "./hv-floors-data.js";
+import { buildingSvg } from "./hv-buildings.js";
+import { THEME_OF } from "./hv-scenery.js";
 
 const { rep } = BG;
 const hash = (s) => [...s].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) >>> 0, 7);
@@ -44,22 +47,6 @@ function kindFor(pk) {
   const hit = KINDS_BY_NAME.find(([rx]) => rx.test(pk.en || pk.n));
   return [hit ? hit[1] : "house", hash(pk.id) % 5];
 }
-const BUILD = {
-  house: (x, y, c1, c2, v) => `${box(x + 1.2, y + 1.5, 8 + (v % 2), 6 - (v % 3) * 0.4, 3.4 + (v % 3) * 0.5, c1)}${gable(x + 1.2, y + 1.5, 8 + (v % 2), 6 - (v % 3) * 0.4, 3.4 + (v % 3) * 0.5, 2.4, c2, c1)}${windows(x + 1.2, y + 1.5, 8 + (v % 2), 6 - (v % 3) * 0.4, 3.4 + (v % 3) * 0.5, 1, 4, 3, "#C7E6FF")}${door(x + 5, y + 1.5, 6)}${v % 2 ? box(x + 8, y + 2, 0.8, 0.8, 5.2, shade(c2, 0.8)) : ""}${tree(x + 10.5, y + 9, 0.8)}`,
-  cottage: (x, y, c1, c2, v) => `${box(x + 2.5, y + 2.5, 6, 5, 2.8, c1)}${gable(x + 2.5, y + 2.5, 6, 5, 2.8, 2.2, c2, c1)}${windows(x + 2.5, y + 2.5, 6, 5, 2.8, 1, 2, 2, "#FFF3B0")}${door(x + 4.8, y + 2.5, 5, 1.3, 2.2)}${box(x + 7.6, y + 3, 0.7, 0.7, 4.6, "#8B5A3C")}${tree(x + 1, y + 9, 0.8, v % 2 ? "#F7B5CF" : "#6BCB77")}${tree(x + 10, y + 9.5, 0.6)}`,
-  tall: (x, y, c1, c2, v) => `${box(x + 3, y + 2, 6, 6, 7 + (v % 2), c1)}${gable(x + 3, y + 2, 6, 6, 7 + (v % 2), 2.6, c2, c1)}${windows(x + 3, y + 2, 6, 6, 7 + (v % 2), 3, 3, 3, "#C7E6FF")}${door(x + 5.2, y + 2, 6, 1.4, 2.4)}`,
-  shop: (x, y, c1, c2, v) => `${box(x + 0.6, y + 1.5, 10.8, 6.5, 4.2 + (v % 2) * 0.8, c1)}${windows(x + 0.6, y + 1.5, 10.8, 6.5, 4.2 + (v % 2) * 0.8, 1, 5, 3, "#FFF6E6")}${box(x + 0.6, y + 7.7, 10.8, 0.5, 0.8, c2, 3.0)}${rep(5, (i) => box(x + 1.2 + i * 2.2, y + 7.7, 1.1, 0.5, 0.8, "#fff", 3.0))}${door(x + 4.8 + (v % 3), y + 1.5, 6.5, 2, 2.4, "#BFE6FF")}`,
-  mall: (x, y, c1, c2, v) => `${box(x + 0.6, y + 1, 10.8, 9, 5.8, c1)}${windows(x + 0.6, y + 1, 10.8, 9, 5.8, 2, 6, 4, "#FFF6E6")}${box(x + 3.5, y + 9.7, 5, 0.8, 1.2, c2, 3)}${door(x + 4.8, y + 1, 9, 2.4, 2.6, "#BFE6FF")}${box(x + 4.5, y + 3, 3, 2, 1.2, c2, 5.8)}`,
-  tower: (x, y, c1, c2, v) => `${box(x + 2.5, y + 2, 6, 5.5, 9 + (v % 3) * 1.5, c1)}${windows(x + 2.5, y + 2, 6, 5.5, 9 + (v % 3) * 1.5, 4 + (v % 3), 4, 3, "#FFF6E6")}${box(x + 2.9, y + 2.4, 5.2, 4.7, 0.8, c2, 9 + (v % 3) * 1.5)}${door(x + 4.6, y + 2, 5.5)}`,
-  manor: (x, y, c1, c2, v) => `${box(x + 1, y + 1, 10, 7, 5 + v, c1)}${rep(5, (i) => box(x + 1.6 + i * 2, y + 7.6, 0.6, 0.6, 3.6, "#FFFFFF"))}${gable(x + 1, y + 1, 10, 7, 5 + v, 2.4, c2, c1)}${windows(x + 1, y + 1, 10, 7, 5 + v, 2, 5, 3, "#FFF6E6")}${door(x + 5.2, y + 1, 7, 1.6, 2.6)}${v ? box(x + 0.6, y + 1.5, 2, 2, 7.5, c1) + box(x + 9.4, y + 1.5, 2, 2, 7.5, c1) : ""}`,
-  villa: (x, y, c1, c2, v) => `${box(x + 1, y + 1, 7.5 + (v % 2), 5, 3, c1)}${box(x + 3, y + 1, 5.5, 5, 2.4, shade(c1, 0.95), 3)}${windows(x + 1, y + 1, 7.5 + (v % 2), 5, 3, 1, 3, 2, "#9FD4FF")}${flat([[x + 2, y + 7.2, 0.45], [x + 10, y + 7.2, 0.45], [x + 10, y + 10.8, 0.45], [x + 2, y + 10.8, 0.45]], "#4FB3FF", `stroke="${OL}" stroke-width="1.5"`)}${door(x + 4, y + 1, 5, 1.6, 2.4, c2)}${v > 1 ? tree(x + 10.8, y + 3, 0.8, "#4FB05F") : ""}`,
-  cabin: (x, y, c1, c2, v) => `${box(x + 2, y + 2, 7, 5, 3, c1)}${gable(x + 2, y + 2, 7, 5, 3, 2.2, c2, c1)}${windows(x + 2, y + 2, 7, 5, 3, 1, 2, 2, "#FFF3B0")}${door(x + 4.8, y + 2, 5, 1.3, 2.2)}${pine(x + 0.8, y + 1, 1)}${pine(x + 10, y + 2, 0.8)}${pine(x + 10.4, y + 8, 1)}${v % 2 ? pine(x + 1, y + 9, 0.9) : ""}`,
-  hut: (x, y, c1, c2, v) => `${box(x + 3.5, y + 3, 4.5, 4, 2.4, c1)}${gable(x + 3.5, y + 3, 4.5, 4, 2.4, 1.8, c2, c1)}${door(x + 5, y + 3, 4, 1.2, 1.9)}${tree(x + 9.5, y + 8, 0.7)}${v % 2 ? tree(x + 1.5, y + 8.5, 0.6) : ""}`,
-  pavilion: (x, y, c1, c2, v) => `${flat([[x + 1, y + 1, 0.4], [x + 11, y + 1, 0.4], [x + 11, y + 10, 0.4], [x + 1, y + 10, 0.4]], shade(c1, 1.1), `stroke="${OL}" stroke-width="1.5"`)}${rep(4, (i) => box(x + 1.4 + (i % 2) * 8.8, y + 1.6 + Math.floor(i / 2) * 7.2, 0.6, 0.6, 3.8, "#FFFFFF", 0.4))}${box(x + 1, y + 1, 10, 9, 0.5, c2, 4.2)}${tree(x + 0.5, y + 11, 0.7)}`,
-  park: (x, y, c1, c2, v) => `${flat([[x + 0.6, y + 0.6, 0.4], [x + 11.4, y + 0.6, 0.4], [x + 11.4, y + 11.4, 0.4], [x + 0.6, y + 11.4, 0.4]], "#9BD7A0", `stroke="${OL}" stroke-width="1.5"`)}${tree(x + 2, y + 2, 0.8)}${tree(x + 10, y + 3, 0.8, "#8FD08A")}${tree(x + 3, y + 10, 0.7)}${box(x + 5.6, y + 5.6, 2.6, 0.8, 0.8, c2, 0.4)}${v ? box(x + 4, y + 8, 4, 0.6, 1.6, c1, 0.4) : tree(x + 8.5, y + 8.5, 0.8)}`,
-  haunted: (x, y, c1, c2) => `${box(x + 3, y + 2, 6, 6, 6.4, "#5D4E7A")}${gable(x + 3, y + 2, 6, 6, 6.4, 3.8, "#2B2340", "#5D4E7A")}${windows(x + 3, y + 2, 6, 6, 6.4, 2, 3, 3, "#FFD93D")}${door(x + 5.2, y + 2, 6, 1.4, 2.4, "#3A2A55")}${pine(x + 1, y + 9, 1)}${pine(x + 10.4, y + 9.4, 0.9)}`,
-  camper: (x, y, c1, c2) => `${box(x + 2, y + 4, 7, 3, 2.8, c1)}${box(x + 7.4, y + 4, 2.2, 3, 1.6, shade(c1, 0.9))}${windows(x + 2, y + 4, 7, 3, 2.8, 1, 3, 1, "#C7E6FF")}${box(x + 1, y + 7.1, 5, 0.5, 0.5, c2, 2.2)}${pine(x + 0.6, y + 1.4, 1)}${pine(x + 10.6, y + 9, 0.9)}`,
-};
 /* One town seen from above. opts: { town: id, seen: [place ids] }. */
 export function townsSvg(ctx, lv, here, peers, t, opts = {}) {
   const town = TOWNS.find((x) => x.id === opts.town) || TOWNS[0];
@@ -86,12 +73,14 @@ export function townsSvg(ctx, lv, here, peers, t, opts = {}) {
     const [kind, variant] = KIND[pk.id] || kindFor(pk), [c0, c1] = [pk.cols[0], pk.cols[1] || pk.cols[0]];
     const [px, py] = Pp(blk[0] + 0.4 + 5.5, blk[1] + 0.4 + 4.5, 6.4), sx = px + 26, sy = py - 46;
     const who = peers.filter((pe) => buildingOf(pe.space) === pk.id), seen = (opts.seen || []).includes(pk.id);
+    const nFl = HOUSES[pk.id]?.floors.length || 1;
+    const floorsB = nFl > 1 ? `<g class="tm-floorsb" pointer-events="none"><rect x="${sx - 80}" y="${sy - 11}" width="42" height="22" rx="11" fill="#fff" stroke="${OL}" stroke-width="2"/><text x="${sx - 59}" y="${sy + 5}" class="tm-newt">🛗${nFl}</text></g>` : "";
     const badge = !open
       ? `<g class="tm-lock" pointer-events="none"><rect x="${sx - 30}" y="${sy - 12}" width="60" height="24" rx="12" fill="#fff" stroke="${OL}" stroke-width="2"/><text x="${sx}" y="${sy + 5}" class="tm-newt">🔒 ${town.lvl}</text></g>`
       : seen
         ? `<g class="tm-seen" pointer-events="none"><circle cx="${sx}" cy="${sy}" r="11" fill="#6BCB77" stroke="#fff" stroke-width="3"/><path d="M${sx - 5} ${sy} l4 4 l7 -8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></g>`
         : `<g class="tm-new" pointer-events="none"><rect x="${sx - 19}" y="${sy - 11}" width="38" height="22" rx="11" fill="#FFD93D" stroke="${OL}" stroke-width="2"/><text x="${sx}" y="${sy + 5}" class="tm-newt">${t("NY")}</text></g>`;
-    items.push([blk[0] + blk[1], `<g class="tm-place${open ? "" : " locked"}${pk.id === buildingOf(here) ? " here" : ""}" data-pl="go" data-k="${pk.id}" role="button" aria-label="${t(pk.n)}">${BUILD[kind](blk[0] + 0.4, blk[1] + 0.4, c0, c1, variant)}${sign(blk[0] + 0.4 + 5.5, blk[1] + 0.4 + 4.5, 6.4, pk.em)}<text x="${px}" y="${py + 34}" class="tm-lbl">${t(pk.n)}</text>${badge}${who.map((pe, j) => `<circle cx="${sx - 22 + j * 12}" cy="${sy + 18}" r="8" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="2"/>`).join("")}</g>`]);
+    items.push([blk[0] + blk[1], `<g class="tm-place${open ? "" : " locked"}${pk.id === buildingOf(here) ? " here" : ""}" data-pl="go" data-k="${pk.id}" role="button" aria-label="${t(pk.n)}">${buildingSvg(kind, variant, c0, c1, HOUSES[pk.id]?.floors.length || 1 + (hash(pk.id) % 2), THEME_OF[pk.id] || "", blk[0] + 0.4, blk[1] + 0.4)}${sign(blk[0] + 0.4 + 5.5, blk[1] + 0.4 + 4.5, 6.4, pk.em)}<text x="${px}" y="${py + 34}" class="tm-lbl">${t(pk.n)}</text>${floorsB}${badge}${who.map((pe, j) => `<circle cx="${sx - 22 + j * 12}" cy="${sy + 18}" r="8" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="2"/>`).join("")}</g>`]);
   });
   items.sort((a, b) => a[0] - b[0]);
   const tw = Math.max(220, t(town.n).length * 17 + 90);

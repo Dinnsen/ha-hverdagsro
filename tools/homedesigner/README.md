@@ -30,4 +30,14 @@ python tools/homedesigner/extract_shells.py game.apk -o game_data
 python tools/homedesigner/build_floors.py -d game_data
 ```
 
+5. `extract_avatars.py <your.apk>` reads the avatar system of the game (the catalog of hair, beards, clothes, hats, masks,
+   ear accessories, colours and their categories, the dance moves, the premade figures and pets and the world each lives
+   in), and `build_avatars.py` turns it into `hv-avatars-data.js`. Only names, numbers and colours are read: every figure is
+   drawn by the game's own shapes (`hv-avatars.js`). Brands, licensed characters and real people are left out.
+
+```
+python tools/homedesigner/extract_avatars.py game.apk -o game_data
+python tools/homedesigner/build_avatars.py -d game_data
+```
+
 The data files are committed, so the game does not need any of this to run.

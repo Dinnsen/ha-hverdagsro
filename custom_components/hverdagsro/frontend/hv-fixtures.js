@@ -5,6 +5,7 @@
    - Things that work: taps run, the toilet flushes, the bath and the shower fill with water, the tv has channels,
      the stove burns, the washing machine spins, the kettle steams. Everything is drawn here, in the thing's own
      coordinates (its bottom centre is 0,0), so it follows the thing when it is moved, turned or made bigger. */
+import { spinSvg } from "./hv-core.js";
 import { OL } from "./hv-playcat.js";
 
 /* ------------------------------------------------------------------ fixed things */
@@ -132,7 +133,7 @@ export const FX = {
   vaskemaskine2: { toggle: true, sound: "hum" },
   kaffemaskine: { toggle: true, sound: "water" },
   elkedel: { toggle: true, sound: "water" },
-  mikroovn: { once: () => `<rect x="-50" y="-66" width="76" height="56" rx="4" fill="#FFE8A3" opacity=".75" pointer-events="none"/><g class="fx-turn" pointer-events="none"><ellipse cx="-12" cy="-24" rx="22" ry="5" fill="#fff" stroke="${OL}" stroke-width="2"/></g>`, sound: "hum", after: "ding", ms: 2200 },
+  mikroovn: { once: () => `<rect x="-50" y="-66" width="76" height="56" rx="4" fill="#FFE8A3" opacity=".75" pointer-events="none"/><g pointer-events="none">${spinSvg(-12, -24, 2)}<ellipse cx="-12" cy="-24" rx="22" ry="5" fill="#fff" stroke="${OL}" stroke-width="2"/></g>`, sound: "hum", after: "ding", ms: 2200 },
   ...Object.fromEntries(Object.keys(SCREENS).map((k) => [k, { tv: true, sound: "tv" }])),
 };
 export const fxOf = (k) => FX[k] || null;
@@ -150,9 +151,9 @@ export function onSvg(it) {
     case "komfur":
       return `${[0, 1, 2, 3].map((i) => flame(-36 + i * 24, -126, 0.8)).join("")}${steam(-12, -150, 2)}<rect x="-38" y="-92" width="76" height="54" rx="4" fill="#FF8A3C" opacity=".35" pointer-events="none"/>`;
     case "vaskemaskine":
-      return `<g class="fx-spinfast" pointer-events="none"><circle cx="0" cy="-54" r="24" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="30 10"/><circle cx="12" cy="-54" r="8" fill="#FFB347"/><circle cx="-12" cy="-54" r="8" fill="#F15BB5"/></g>${bubbles(-20, 20, -40, 3)}`;
+      return `<g pointer-events="none">${spinSvg(0, -54, 0.6)}<circle cx="0" cy="-54" r="24" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="30 10"/><circle cx="12" cy="-54" r="8" fill="#FFB347"/><circle cx="-12" cy="-54" r="8" fill="#F15BB5"/></g>${bubbles(-20, 20, -40, 3)}`;
     case "vaskemaskine2":
-      return `<g class="fx-spinfast" pointer-events="none"><circle cx="0" cy="-66" r="22" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="26 9"/><circle cx="10" cy="-66" r="7" fill="#F15BB5"/><circle cx="-10" cy="-66" r="7" fill="#FFD93D"/></g>${bubbles(-18, 18, -50, 3)}`;
+      return `<g pointer-events="none">${spinSvg(0, -66, 0.6)}<circle cx="0" cy="-66" r="22" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="26 9"/><circle cx="10" cy="-66" r="7" fill="#F15BB5"/><circle cx="-10" cy="-66" r="7" fill="#FFD93D"/></g>${bubbles(-18, 18, -50, 3)}`;
     case "kaffemaskine":
       return `<path d="M0 -60 V-36" stroke="#8B5A3C" stroke-width="4" stroke-dasharray="5 4" class="fx-drip" pointer-events="none"/>${steam(0, -40, 1)}`;
     case "elkedel":
@@ -185,13 +186,13 @@ export const LOOKS = {
   /* A stove with its flames. */
   burn: (w, h) => `${[0, 1, 2].map((i) => flame(-w * 0.28 + i * w * 0.28, -h * 1.0, 0.7)).join("")}${steam(-w * 0.1, -h * 1.05, 2)}<rect x="${-w * 0.36}" y="${-h * 0.7}" width="${w * 0.72}" height="${h * 0.46}" rx="4" fill="#FF8A3C" opacity=".35" pointer-events="none"/>`,
   /* The cooker hood: the fan turns and the light is on. */
-  hood: (w, h) => `<g pointer-events="none"><path d="M${-w * 0.42} ${-h * 0.5} L${w * 0.42} ${-h * 0.5} L${w * 0.5} ${-h * 0.1} H${-w * 0.5}Z" fill="#FFE8A3" opacity=".55"/><g class="fx-spinfast" transform="translate(0 ${-h * 0.3})"><path d="M-16 0 H16 M0 -16 V16" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g>${steam(0, -h * 0.55, 2)}</g>`,
+  hood: (w, h) => `<g pointer-events="none"><path d="M${-w * 0.42} ${-h * 0.5} L${w * 0.42} ${-h * 0.5} L${w * 0.5} ${-h * 0.1} H${-w * 0.5}Z" fill="#FFE8A3" opacity=".55"/><g transform="translate(0 ${-h * 0.3})">${spinSvg(0, 0, 0.6)}<path d="M-16 0 H16 M0 -16 V16" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g>${steam(0, -h * 0.55, 2)}</g>`,
   /* A bath full of water. */
   water: (w, h) => `<path d="M${-w * 0.46} ${-h * 0.72} H${w * 0.46} Q${w * 0.44} ${-h * 0.1} ${w * 0.3} ${-h * 0.06} H${-w * 0.3} Q${-w * 0.44} ${-h * 0.1} ${-w * 0.46} ${-h * 0.72}Z" fill="#7FC8F8" opacity=".85" pointer-events="none"/>${bubbles(-w * 0.4, w * 0.4, -h * 0.76, 7)}`,
   /* A shower running. */
   rain: (w, h) => drops(-w * 0.45, w * 0.45, -h * 0.95, -h * 0.08, 8) + steam(0, -h * 0.55, 3),
   /* A washing machine on spin. */
-  spin: (w, h) => `<g class="fx-spinfast" pointer-events="none"><circle cx="0" cy="${-h * 0.45}" r="${Math.min(w, h) * 0.26}" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="28 9"/><circle cx="10" cy="${-h * 0.45}" r="7" fill="#FFB347"/><circle cx="-10" cy="${-h * 0.45}" r="7" fill="#F15BB5"/></g>`,
+  spin: (w, h) => `<g pointer-events="none">${spinSvg(0, -h * 0.45, 0.6)}<circle cx="0" cy="${-h * 0.45}" r="${Math.min(w, h) * 0.26}" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="28 9"/><circle cx="10" cy="${-h * 0.45}" r="7" fill="#FFB347"/><circle cx="-10" cy="${-h * 0.45}" r="7" fill="#F15BB5"/></g>`,
   /* Something playing music. */
   notes: (w, h) => `<g class="fx-steam" pointer-events="none"><text x="${-w * 0.2}" y="${-h * 0.9}" font-size="26" fill="${OL}">♪</text><text x="${w * 0.16}" y="${-h * 1.05}" font-size="30" fill="${OL}">♫</text></g>`,
   /* Curtains drawn: one cloth across the whole window. */
@@ -262,10 +263,8 @@ export const FIX_CSS = `
 .fx-flush, .fx-spinfast, .fx-turn { transform-box: fill-box; transform-origin: 50% 50%; }
 .fx-flush { animation: fxflush 1.8s ease-in-out; }
 @keyframes fxflush { from { transform: rotate(0) scale(1); } to { transform: rotate(720deg) scale(.2); opacity: 0; } }
-.fx-spinfast { animation: fxspin .6s linear infinite; }
-.fx-turn { animation: fxspin 2s linear infinite; }
 @keyframes fxspin { to { transform: rotate(360deg); } }
 .fx-drip { animation: fxflow .5s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .fx-hop, .fx-swim, .fx-roll, .fx-fly, .fx-eq, .fx-bubbles circle, .fx-rain path, .fx-steam path, .fx-flame, .fx-stream path, .fx-flush, .fx-spinfast, .fx-turn, .fx-drip { animation: none; } }
 `;
-export const FIX_EN = { Brusebad: "Shower", Tegnefilm: "Cartoons", Havet: "The sea", Fodbold: "Football", Musik: "Music", Rummet: "Space", "Kanal {n}": "Channel {n}", Slukket: "Off" };
+export const FIX_EN = { "Gardinerne trækkes for": "The curtains are being drawn", "Gardinerne trækkes fra": "The curtains are being opened", Brusebad: "Shower", Tegnefilm: "Cartoons", Havet: "The sea", Fodbold: "Football", Musik: "Music", Rummet: "Space", "Kanal {n}": "Channel {n}", Slukket: "Off" };

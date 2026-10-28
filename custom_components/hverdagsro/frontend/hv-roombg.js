@@ -2,6 +2,7 @@
    the theme packs (hv-towns) and of the worlds (hv-worlds). */
 import { OL, shade } from "./hv-playcat.js";
 import { BG } from "./hv-world.js";
+import { SCENERY } from "./hv-scenery.js";
 
 const { W, H, FLOOR, T3, rect, out, rep, skyDef } = BG;
 
@@ -38,13 +39,15 @@ export function roomBg(pk, style, s0, s1, tod, wd = W) {
 
 /* ------------------------------------------------------------------ outdoors: a garden, a balcony, a park */
 const hillsW = (wd, col, y, k) => `<path d="M0 ${y} ${rep(Math.ceil(wd / 340), (i) => `Q${i * 340 + 170} ${y - 56 - ((i + k) % 3) * 18} ${i * 340 + 340} ${y - 6 - ((i + k) % 2) * 14}`)} V${FLOOR} H0Z" fill="${col}"/>`;
-export function outdoorBg(kind, s0, s1, tod, wd = W, seed = 0) {
+export function outdoorBg(kind, s0, s1, tod, wd = W, seed = 0, theme = "") {
   const night = tod === "night";
   const wx = BG.wx || "";
   const sky = `${skyDef(s0, s1)}${rect(0, 0, wd, FLOOR, "url(#pl-sky)")}${BG.sunMoon(Math.max(140, wd * 0.7), 90, tod)}${night ? "" : rep(Math.max(1, Math.floor(wd / 520)), (i) => BG.cloud(160 + i * 520 + ((seed + i) % 3) * 40, 70 + ((i + seed) % 2) * 34, 0.8 + ((i + seed) % 3) * 0.1))}`;
   const rain = wx
     ? `<g class="fx-rain" pointer-events="none">${rep(Math.ceil(wd / 44), (j) => (wx === "rain" ? `<path d="M${14 + j * 44} 20 v14" stroke="#4FB3FF" stroke-width="3" stroke-linecap="round" style="--fall:560px;animation-delay:${-(j * 0.13) % 0.9}s"/>` : `<circle cx="${14 + j * 44}" cy="20" r="4" fill="#fff" style="--fall:560px;animation-delay:${-(j * 0.31) % 2.4}s"/>`))}</g>`
     : "";
+  // the pack's own surroundings, where it has them
+  if (SCENERY[theme]) return `${sky}${SCENERY[theme](wd, night, seed)}${rain}`;
   if (kind === "balcony") {
     // a railing, and the roofs of the town behind it
     const roofs = rep(Math.ceil(wd / 120), (i) => rect(i * 120 + 6, 150 + ((i * 37 + seed * 11) % 110), 100, FLOOR, shade("#9AA4BA", 0.9 + (i % 3) * 0.08), 3, out(BG.T3)));
@@ -67,7 +70,7 @@ export function floorBg(F, s0, s1, tod, wd) {
   const parts = F.rooms.map((r, i) => {
     const w = r.x1 - r.x0;
     const inner = r.out
-      ? outdoorBg(r.kind, s0, s1, tod, w, i)
+      ? outdoorBg(r.kind, s0, s1, tod, w, i, r.kind === "balcony" && !/^(city|rooftop|terrace)$/.test(F.theme || "") ? "city" : F.theme)
       : roomBg({ wall: r.wall, floor: r.floor, cols: F.cols, fx: (r.fx || []).map(([k, x]) => [k, x - r.x0]) }, r.style, s0, s1, tod, w);
     return `<svg x="${r.x0}" y="0" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${inner}</svg>`;
   });
