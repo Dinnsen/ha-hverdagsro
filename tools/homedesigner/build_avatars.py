@@ -458,7 +458,6 @@ DA = {
     "clown": "klovne",
     "masquerade": "maskerade",
     "hero": "helte",
-    "star": "stjerne",
     "earring": "ørering",
     "earrings": "ørenringe",
     "hoop": "creol",
@@ -488,7 +487,6 @@ DA = {
     "kid": "barne",
     "adult": "voksen",
     "old": "gammel",
-    "cozy": "hyggelig",
     "sleeping": "sove",
     "bag": "taske",
     "pack": "pakke",
@@ -496,10 +494,8 @@ DA = {
     "free": "gratis",
     "wrapped": "indpakket",
     "slime": "slim",
-    "neon": "neon",
     "coastal": "kyst",
     "swimming": "svømme",
-    "stars": "stjerne",
     "sailor": "sømands",
     "school": "skole",
     "band": "band",
@@ -553,20 +549,20 @@ def seed_of(s: str) -> int:
 
 
 def blocked(ts: list[str]) -> bool:
-    l = low(ts)
-    return any(t in BLOCK for t in l) or "".join(l) in BLOCK
+    words = low(ts)
+    return any(t in BLOCK for t in words) or "".join(words) in BLOCK
 
 
 def colors_in(ts: list[str]) -> list[str]:
-    out, i, l = [], 0, low(ts)
-    while i < len(l):
-        two = l[i] + l[i + 1] if i + 1 < len(l) else ""
+    out, i, words = [], 0, low(ts)
+    while i < len(words):
+        two = words[i] + words[i + 1] if i + 1 < len(words) else ""
         if two in COLOR:
             out.append(COLOR[two])
             i += 2
             continue
-        if l[i] in COLOR:
-            out.append(COLOR[l[i]])
+        if words[i] in COLOR:
+            out.append(COLOR[words[i]])
         i += 1
     return out
 
@@ -576,18 +572,17 @@ def pattern_in(ts: list[str]) -> str:
 
 
 def pick(table, ts: list[str]):
-    l = set(low(ts))
+    have = set(low(ts))
     for words, val, *rest in table:
-        if l & set(words):
+        if have & set(words):
             return (val, *rest) if rest else val
     return None
 
 
 def label(ts: list[str]) -> tuple[str, str]:
     """A Danish and an English name from the words that are known; names of people are dropped."""
-    l = low(ts)
     da_words, en_words = [], []
-    for t in l:
+    for t in low(ts):
         if t in GENERIC or t.isdigit():
             continue
         if t in DA:
@@ -936,7 +931,7 @@ def pets(rows) -> list:
             world = parts[i + 1] if len(parts) > i + 2 else "Pets"
         else:
             world = "PetAdoptionCenter"
-        if any(f in SKIP_PET for f in [world.lower()] + folder[:1]) and world.lower() != "pets":
+        if any(f in SKIP_PET for f in [world.lower(), *folder[:1]]) and world.lower() != "pets":
             world = "PetAdoptionCenter"
         ts = split(name)
         if blocked(ts) or not ts:
@@ -965,7 +960,7 @@ def roster(rows, cl_by, hat_by, mask_by, ear_by, feats):
             continue
         baby = ts[0] == "Baby"
         core = ts[1:] if baby else ts
-        key = [t for t in core]
+        key = list(core)
         n = len(key)
 
         def has(names, want=key, n=n):
@@ -1018,7 +1013,6 @@ def main() -> int:
     hats, hat_by = items([n for n in names["CharacterFeatureItemAsset"] if n.endswith("Hat")], "Hat", HAT, "hat")
     masks, mask_by = items([n for n in names["CharacterFeatureItemAsset"] if n.endswith("Mask")], "Mask", MASK, "mask")
     ears, ear_by = items(names["CharacterFeatureEarAccessoryAsset"], "Left", EAR, "stud")
-    ear_by.update({n: i for n, i in ear_by.items()})
     for n in names["CharacterFeatureEarAccessoryAsset"]:
         base = re.sub(r"(Left|Right)$", "", n)
         ear_by.setdefault(base, ear_by.get(n, -1))
