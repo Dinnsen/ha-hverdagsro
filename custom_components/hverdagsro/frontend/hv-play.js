@@ -25,6 +25,7 @@ import * as Fix from "./hv-fixtures.js";
 import * as Wall from "./hv-wall.js";
 import * as Walk from "./hv-walk.js";
 import * as Pet from "./hv-pet.js";
+import * as Av from "./hv-avatars.js";
 import * as Art from "./hv-art.js";
 import { HOME_THINGS, HOME_ACT, HOME_EN } from "./hv-homethings.js";
 import { CITY_THINGS, CITY_PACKS, CITY_EN } from "./hv-citythings.js";
@@ -132,10 +133,11 @@ export const nameY = (age) => {
    age group (see AGES). */
 let clipN = 0;
 export function avatarSvg(me, mood = "", pose = "") {
+  me = Av.dress(me);
   const P = AGES[me.age] || AGES.kid;
   const sk = me.skin || SKINS[1], hc = me.hairc || HAIRC[1], top = me.top || "#FF6B6B", bot = me.bottom || "#4D96FF", shoe = me.shoec || "#3A3A55", eye = me.eyec || OL;
   const tk = me.topk || "tshirt", bk = me.botk || "bukser", shk = me.shoek || "sneakers";
-  const dress = tk === "kjole" || tk === "gallakjole";
+  const dress = tk === "kjole" || tk === "gallakjole" || Av.longTop(tk);
   const hairBack = {
     lang: `<path d="M-62 -196 C-70 -120 -60 -96 -40 -92 L40 -92 C60 -96 70 -120 62 -196 Z" fill="${hc}" ${S()}/>`,
     hale: `<path d="M50 -230 C96 -230 100 -170 74 -140 C70 -170 60 -190 40 -200 Z" fill="${hc}" ${S()}/>`,
@@ -218,7 +220,7 @@ export function avatarSvg(me, mood = "", pose = "") {
       ? `<path d="M-36 ${fy - 6} h30 v6 h-34 q-4 0 -4 -3z M6 ${fy - 6} h30 q4 0 4 3 v3 h-34z" fill="${shoe}" ${S("stroke-width=\"3\"")}/>`
       : `<path d="M-36 ${fy - 12} h30 v12 h-34 q-4 0 -4 -6z M6 ${fy - 12} h30 q4 0 4 6 v6 h-34z" fill="${shoe}" ${S()}/><path d="M-30 ${fy - 2} h22 M12 ${fy - 2} h22" stroke="#fff" stroke-width="3"/>`;
   // The top: its shape, on the body and the arms.
-  const sleeve = tk === "tshirt" || dress || tk === "sport" ? sk : top;
+  const sleeve = Av.sleeveOf(tk, top, sk) ?? (tk === "tshirt" || dress || tk === "sport" ? sk : top);
   let body = `<path d="M-44 -134 h88 l6 70 h-100z" fill="${top}" ${S()}/>`;
   if (dress) body = `<path d="M-40 -134 h80 l26 ${sit ? 80 : 100} h-132z" fill="${top}" ${S()}/><path d="M-40 -96 h80" stroke="${shade(top, 0.8)}" stroke-width="5"/>`;
   if (tk === "hoodie") body += `<path d="M-30 -134 q30 22 60 0" fill="none" ${S()}/><rect x="-22" y="-98" width="44" height="22" rx="8" fill="${shade(top, 0.88)}" ${S("stroke-width=\"3\"")}/>`;
@@ -234,6 +236,10 @@ export function avatarSvg(me, mood = "", pose = "") {
   if (tk === "pyjamas") body += `${[[-28, -118], [6, -110], [28, -92], [-18, -86], [10, -78]].map(([x, y]) => `<path d="M${x} ${y - 6} l2 4 4 1 -3 3 1 4 -4 -2 -4 2 1 -4 -3 -3 4 -1z" fill="#FFF6C9"/>`).join("")}<path d="M-14 -134 q14 12 28 0" fill="none" stroke="#fff" stroke-width="4"/>`;
   if (tk === "helt") body += `<path d="M0 -126 l9 18 20 2 -15 13 4 20 -18 -10 -18 10 4 -20 -15 -13 20 -2z" fill="#FFD93D" ${S("stroke-width=\"3\"")}/>`;
   if (tk === "sport") body += `<text x="0" y="-84" text-anchor="middle" font-size="34" font-weight="900" fill="#fff" stroke="${OL}" stroke-width="2" font-family="system-ui, sans-serif">${esc(String(me.num || "10").slice(0, 2))}</text>`;
+  // the clothes of the original's wardrobe: more kinds of tops, and patterns on them
+  if (Av.newTop(tk)) body = Av.bodyOf(tk, top, bot, sit, sk) || body;
+  const pid = "plp" + ++clipN;
+  body += Av.patternOf(me.pat, top, pid, dress, sit);
   const cape = tk === "helt" ? `<path d="M-40 -130 Q-76 -60 -66 ${sit ? -40 : -6} Q0 ${sit ? -54 : -20} 66 ${sit ? -40 : -6} Q76 -60 40 -130Z" fill="${me.capec || "#E5484D"}" ${S()}/>` : "";
   const arm = (side) => {
     const sx = side * 44, ex = side * (sit ? 66 : 72), ey = sit ? -86 : -76;
@@ -249,12 +255,15 @@ export function avatarSvg(me, mood = "", pose = "") {
   };
   const head = `<circle cx="0" cy="-184" r="62" fill="${sk}" ${S()}/><circle cx="-60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/><circle cx="60" cy="-178" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/>`;
   const cheeks = `<circle cx="-36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/><circle cx="36" cy="-158" r="9" fill="#FF8FA3" opacity=".55"/>`;
-  const parts = { cape: A("cape", cape), accback: A(`accback-${me.acc}`, accBack), hairback: A(`hairback-${me.hair}`, hairBack), legs: A(`bot-${bk}`, legs), shoes: A(`shoe-${shk}`, shoes), body: A(`top-${tk}`, body), acc: A(`acc-${me.acc}`, acc), arms: A(`arms-${tk}`, arm(-1) + arm(1)), head: A("head", head), hair: A(`hair-${me.hair || "kort"}`, hairFront), brows: A(`brows-${mood || "normal"}`, brows), eyes: A(`eyes-${mood === "sleep" ? "sleep" : "open"}`, eyes), cheeks: A("cheeks", cheeks), mouth: A(`mouth-${mood || mk}`, mouth), face: A(`face-${me.face}`, face), extra: A(`extra-${me.extra}`, extra) };
+  const AH = me.hs ? Av.hairOf(me.hs, hc) : null;
+  const X = typeof mood === "string" && mood.startsWith("x:") ? Av.expression(mood.slice(2), eye) : null;
+  const facex = `${me.fn != null ? Av.noseOf(me.fn, sk) : ""}${me.ff != null ? Av.frecklesOf(me.ff) : ""}${me.fw != null ? Av.wrinklesOf(me.fw) : ""}${me.fs != null ? Av.scarOf(me.fs) : ""}`;
+  const parts = { cape: A("cape", cape), accback: A(`accback-${me.acc}`, accBack), hairback: A(`hairback-${me.hs || me.hair}`, AH ? AH.back : hairBack), legs: A(`bot-${bk}`, legs), shoes: A(`shoe-${shk}`, shoes), body: A(`top-${tk}`, body), acc: A(`acc-${me.acc}`, acc), arms: A(`arms-${tk}`, arm(-1) + arm(1)), head: A("head", head), hair: A(`hair-${me.hs || me.hair || "kort"}`, AH ? AH.front : hairFront), brows: A(`brows-${mood || "normal"}`, X ? X.brows : me.fb != null ? Av.browsOf(me.fb) : brows), eyes: A(`eyes-${mood === "sleep" ? "sleep" : "open"}`, X ? X.eyes : me.fe != null && mood !== "sleep" ? Av.eyesOf(me.fe, eye) : eyes), cheeks: A("cheeks", me.fh != null ? Av.blushOf(me.fh) : cheeks), mouth: A(`mouth-${mood || mk}`, X ? X.mouth : me.fm != null && !mood ? Av.mouthOf(me.fm) : mouth), face: A(`face-${me.face}`, face + (me.mk != null ? Av.maskOf(me.mk) : "")), extra: A(`extra-${me.extra}`, extra + (me.ht != null ? Av.hatOf(me.ht) : "") + (me.er != null ? Av.earOf(me.er) : "") + (X ? X.extra : "")), facex, beard: me.bd ? Av.beardOf(me.bd, hc) : "" };
   if (me._parts) return rec;
   const legsSplit2 = `<clipPath id="${cid}l"><rect x="-200" y="-400" width="200" height="520"/></clipPath><clipPath id="${cid}r"><rect x="0" y="-400" width="200" height="520"/></clipPath><g class="pl-leg l" clip-path="url(#${cid}l)">${parts.legs}${parts.shoes}</g><g class="pl-leg r" clip-path="url(#${cid}r)">${parts.legs}${parts.shoes}</g>`;
   void legsSplit;
   const inner = `${parts.cape}${parts.accback}${Hd(parts.hairback)}${legsSplit2}${parts.body}${me.acc === "bamse" ? "" : parts.acc}${parts.arms}${me.acc === "bamse" ? parts.acc : ""}
-    ${Hd(`${parts.head}${parts.hair}${parts.brows}${parts.eyes}${parts.cheeks}${parts.mouth}${parts.face}${parts.extra}`)}`;
+    ${Hd(`${parts.head}${parts.hair}${parts.brows}${parts.eyes}${parts.cheeks}${parts.facex}${parts.beard}${parts.mouth}${parts.face}${parts.extra}`)}`;
   // Longer legs lift the figure, so the feet stay on the floor.
   const lift = sit ? 30 - (L - 26) : -(L - 56);
   return P.sc === 1 && !lift ? inner : `<g transform="scale(${P.sc}) translate(0 ${lift})">${inner}</g>`;
@@ -3025,6 +3034,7 @@ export default {
     ...WORLDS_EN,
     ...TOWNS_EN,
     ...FLOORS_EN,
+    ...Av.AV_EN,
     ...MAP_EN,
   },
 };

@@ -8,6 +8,7 @@ import { WORLDS, PLACES } from "./hv-worlds-data.js";
 import { HOME4, META4, placeThing } from "./hv-packs4.js";
 import { ROLE, dress } from "./hv-layout.js";
 import { roomBg, STYLES } from "./hv-roombg.js";
+import { AV, personLook, linesFor } from "./hv-avatars.js";
 
 void BG;
 const hash = (s) => [...String(s)].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) >>> 0, 7);
@@ -55,7 +56,23 @@ for (const w of WORLDS) {
   }
   if (members.length) WORLD_TOWNS.push({ id: `w-${w.id}`, n: w.n, en: w.en, em: w.em, lvl: w.lvl, col: w.col, places: members });
 }
-addWorld({ places, areas: WORLD_TOWNS.map((t) => ({ id: t.id, n: t.n, em: t.em, lvl: t.lvl, x: 0, y: 0, col: t.col, map: "byer" })) });
+/* The figures of every world, from the original's list of who lives where: they stand in the places of their world. */
+const npcs = {}, byWorld = {};
+AV.people.forEach((p, i) => (byWorld[p[1].toLowerCase()] ||= []).push([p, i]));
+for (const w of WORLDS) {
+  const ids = w.places.filter((id) => places[`w-${id}`]), where = {};
+  if (!ids.length) continue;
+  for (const [p, i] of byWorld[w.id.toLowerCase()] || []) {
+    const pk = `w-${ids[(hash(p[0]) >>> 3) % ids.length]}`, id = `av-${i}`;
+    npcs[id] = [p[0], `w-${w.id}`, "", { kind: "person", me: personLook(p) }, linesFor(w.id, p[8] >>> 0)];
+    (where[pk] ||= []).push(id);
+  }
+  for (const [pk, list] of Object.entries(where)) {
+    const wd = places[pk].width || 1000;
+    places[pk].npcs = list.map((id, j) => [id, Math.round(170 + ((j + 0.5) * (wd - 340)) / list.length), 560 + (j % 3) * 34]);
+  }
+}
+addWorld({ places, npcs, areas: WORLD_TOWNS.map((t) => ({ id: t.id, n: t.n, em: t.em, lvl: t.lvl, x: 0, y: 0, col: t.col, map: "byer" })) });
 
 /* English names, looked up by the Danish text. */
 export const WORLDS_EN = {};
