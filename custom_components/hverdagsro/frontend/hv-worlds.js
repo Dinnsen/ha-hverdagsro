@@ -8,7 +8,7 @@ import { WORLDS, PLACES } from "./hv-worlds-data.js";
 import { HOME4, META4, placeThing } from "./hv-packs4.js";
 import { ROLE, dress } from "./hv-layout.js";
 import { roomBg, STYLES } from "./hv-roombg.js";
-import { AV, personLook, linesFor } from "./hv-avatars.js";
+import { AV, personLook, linesFor, petLook } from "./hv-avatars.js";
 
 void BG;
 const hash = (s) => [...String(s)].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) >>> 0, 7);
@@ -59,6 +59,8 @@ for (const w of WORLDS) {
 /* The figures of every world, from the original's list of who lives where: they stand in the places of their world. */
 const npcs = {}, byWorld = {};
 AV.people.forEach((p, i) => (byWorld[p[1].toLowerCase()] ||= []).push([p, i]));
+const known = new Set(WORLDS.map((w) => w.id.toLowerCase())), byPets = {};
+AV.pets.forEach((p, i) => (byPets[(known.has(p[1].toLowerCase()) ? p[1] : "PetAdoptionCenter").toLowerCase()] ||= []).push([p, i]));
 for (const w of WORLDS) {
   const ids = w.places.filter((id) => places[`w-${id}`]), where = {};
   if (!ids.length) continue;
@@ -67,6 +69,13 @@ for (const w of WORLDS) {
     npcs[id] = [p[0], `w-${w.id}`, "", { kind: "person", me: personLook(p) }, linesFor(w.id, p[8] >>> 0)];
     (where[pk] ||= []).push(id);
   }
+  // the pets of the world: a few in every place, and others from one day to the next
+  const day = Math.floor(Date.now() / 86400000), pets = (byPets[w.id.toLowerCase()] || []).sort((a, b) => ((a[0][4] ^ Math.imul(day, 2654435761)) >>> 0) - ((b[0][4] ^ Math.imul(day, 2654435761)) >>> 0));
+  pets.slice(0, ids.length * 5).forEach(([p, i], j) => {
+    const pk = `w-${ids[j % ids.length]}`, id = `pet-${i}`, look = petLook(p);
+    npcs[id] = [p[0], `w-${w.id}`, "", look, look._say];
+    (where[pk] ||= []).push(id);
+  });
   for (const [pk, list] of Object.entries(where)) {
     const wd = places[pk].width || 1000;
     places[pk].npcs = list.map((id, j) => [id, Math.round(170 + ((j + 0.5) * (wd - 340)) / list.length), 560 + (j % 3) * 34]);

@@ -788,7 +788,166 @@ CATEGORY_DA = {
     "Nose": ("Næse", "Nose"),
     "Wrinkles": ("Rynker", "Wrinkles"),
 }
-WORLD_DA = {}  # filled from the game's own list of towns at build time (hv-worlds-data.js has the names)
+# what a premade pet is, from the words of its name: species word -> (kind of drawing, Danish name)
+SPECIES = [
+    (
+        (
+            "dog",
+            "puppy",
+            "pup",
+            "hound",
+            "beagle",
+            "terrier",
+            "retriever",
+            "poodle",
+            "husky",
+            "corgi",
+            "dachshund",
+            "inu",
+            "wolf",
+        ),
+        "dog",
+        "hund",
+    ),
+    (("cat", "kitten", "kitty", "tabby", "lynx", "tiger", "lion", "leopard"), "cat", "kat"),
+    (("rabbit", "bunny", "hare"), "rabbit", "kanin"),
+    (("hamster", "gerbil", "guinea", "mouse", "rat", "squirrel", "chinchilla", "ferret"), "mouse", "gnaver"),
+    (("horse", "pony", "donkey", "unicorn", "zebra", "foal"), "horse", "hest"),
+    (("pig", "piglet", "boar", "hog"), "pig", "gris"),
+    (("sloth", "bear", "panda", "koala", "monkey", "ape", "gorilla", "raccoon"), "bear", "bjørn"),
+    (("owl",), "owl", "ugle"),
+    (
+        (
+            "chicken",
+            "hen",
+            "rooster",
+            "chick",
+            "duck",
+            "duckling",
+            "goose",
+            "mallard",
+            "pigeon",
+            "bird",
+            "budgie",
+            "parrot",
+            "canary",
+            "swan",
+            "penguin",
+            "crow",
+            "sparrow",
+            "crested",
+            "cockatiel",
+            "turkey",
+        ),
+        "hen",
+        "fugl",
+    ),
+    (
+        (
+            "fish",
+            "koi",
+            "goldfish",
+            "shark",
+            "whale",
+            "dolphin",
+            "seal",
+            "otter",
+            "octopus",
+            "crab",
+            "squid",
+            "jellyfish",
+            "sea",
+            "shell",
+            "lobster",
+        ),
+        "blob",
+        "havdyr",
+    ),
+    (
+        (
+            "frog",
+            "toad",
+            "turtle",
+            "tortoise",
+            "lizard",
+            "gecko",
+            "snake",
+            "dino",
+            "dragon",
+            "crocodile",
+            "alligator",
+            "newt",
+        ),
+        "dino",
+        "krybdyr",
+    ),
+    (
+        (
+            "butterfly",
+            "bug",
+            "bee",
+            "ladybug",
+            "beetle",
+            "spider",
+            "worm",
+            "ant",
+            "moth",
+            "caterpillar",
+            "fly",
+            "snail",
+            "slug",
+            "bat",
+        ),
+        "butterfly",
+        "insekt",
+    ),
+    (("bot", "robot", "virus", "ghost", "rock", "creature", "monster", "alien"), "robot", "væsen"),
+]
+SKIP_PET = {"gifts", "subscriptionboxes", "miniso", "codeunlock", "creatortools", "homedesigner"}
+PET_WORDS = {
+    "pet",
+    "start",
+    "wrapped",
+    "gift",
+    "event",
+    "po",
+    "variant",
+    "baby",
+    "infant",
+    "big",
+    "small",
+    "little",
+    "fluffy",
+}
+
+
+def pets(rows) -> list:
+    """The premade pets: [name, world, species, colour, seed]. The species and the colour come from the words of the name,
+    the rest of the look from the seed."""
+    out = []
+    for path, _h, _g, kind, _x in rows:
+        if kind != "PremadePet":
+            continue
+        parts = path.split("/")
+        name = parts[-1][:-7]
+        folder = [x.lower() for x in parts[3:-1]]
+        if "pets" in [x.lower() for x in parts[:-1]]:
+            i = [x.lower() for x in parts].index("pets")
+            world = parts[i + 1] if len(parts) > i + 2 else "Pets"
+        else:
+            world = "PetAdoptionCenter"
+        if any(f in SKIP_PET for f in [world.lower()] + folder[:1]) and world.lower() != "pets":
+            world = "PetAdoptionCenter"
+        ts = split(name)
+        if blocked(ts) or not ts:
+            continue
+        low_ = [t.lower() for t in ts]
+        sp = next(((k, da) for words, k, da in SPECIES if set(words) & set(low_)), None)
+        cs = colors_in(ts)
+        shown = [t for t in ts if t.lower() not in PET_WORDS and t.lower() not in COLOR]
+        label = " ".join(shown) if shown else (sp[1].capitalize() if sp else "Kæledyr")
+        out.append([label, world, sp[0] if sp else "", cs[0] if cs else "", seed_of(name), sp[1] if sp else ""])
+    return out
 
 
 def roster(rows, cl_by, hat_by, mask_by, ear_by, feats):
@@ -913,6 +1072,7 @@ def main() -> int:
         "expr": EXPRESSIONS,
         "dance": dances,
         "people": people,
+        "pets": pets(rows),
     }
     body = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     OUT_JS.write_text(
@@ -928,7 +1088,7 @@ def main() -> int:
         collections.Counter(c[3] for c in cl),
     )
     print(
-        f"clothes {len(cl)}, hats {len(hats)}, masks {len(masks)}, ears {len(ears)}, hair {sum(map(len, hair.values()))}, people {len(people)}, swatches {sum(map(len, data['sw'].values()))}"
+        f"clothes {len(cl)}, hats {len(hats)}, masks {len(masks)}, ears {len(ears)}, hair {sum(map(len, hair.values()))}, people {len(people)}, pets {len(data['pets'])}, swatches {sum(map(len, data['sw'].values()))}"
     )
     for f in fam:
         print(dict(f.most_common(14)))

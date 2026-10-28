@@ -103,7 +103,7 @@ export function dress(me) {
   if (!it) return me;
   const [, , , top, c1, c2, pat, bot] = it;
   const topk = KIND[top] || "tshirt";
-  return { ...me, topk, top: hexOK(c1), bottom: hexOK(["swim", "onesie", "puffer"].includes(topk) ? c1 : c2), botk: me.botk || (topk === "swim" ? "shorts" : topk === "onesie" ? "leggings" : bot || "bukser"), pat, _long: ["kjole", "coat", "robe", "towel"].includes(topk) };
+  return { ...me, topk, top: hexOK(c1), bottom: hexOK(["swim", "onesie", "puffer"].includes(topk) ? c1 : c2), botk: (topk === "swim" ? "shorts" : topk === "onesie" ? "leggings" : bot || "bukser"), pat, _long: ["kjole", "coat", "robe", "towel"].includes(topk) };
 }
 export const longTop = (tk) => ["kjole", "coat", "robe", "towel"].includes(tk);
 export const newTop = (tk) => ["sweater", "coat", "suit", "swim", "robe", "towel", "onesie", "puffer", "uniform", "costume", "vest"].includes(tk);
@@ -431,3 +431,47 @@ export const linesFor = (world, seed) => {
   out.push(all[seed % all.length][0], all[(seed >>> 3) % all.length][0]);
   return [...new Set(out)];
 };
+
+/* ------------------------------------------------------------------ helpers for the workshop */
+export const has = (v) => v !== undefined && v !== null && v !== "";
+const idN = (g, n) => g + String(n).padStart(3, "0");
+/* A new look, drawn by chance from the whole catalog (the original's randomize button). */
+export function randomLook() {
+  const r = (n) => Math.floor(Math.random() * n), of = (a) => a[r(a.length)], chance = (p) => Math.random() < p;
+  const crazy = chance(0.08), long = !crazy && chance(0.5);
+  return {
+    hs: crazy ? idN("C", of(AV.hair.Crazy)) : long ? idN("L", of(AV.hair.Long)) : idN("S", of(AV.hair.Short)),
+    hairc: of(AV.sw.hair)[0], skin: of(AV.sw.skin)[0], eyec: of(["#2B2340", "#5B3A21", "#2F6FED", "#3F9E5A", "#7A6A8A"]), cl: r(AV.cl.length),
+    fe: r(284), fb: r(525), fn: r(544), fm: r(567), fh: chance(0.6) ? r(233) : "", ff: chance(0.25) ? r(127) : "", fw: "", fs: chance(0.05) ? r(12) : "",
+    bd: !long && !crazy && chance(0.12) ? idN("B", of(AV.hair.Beard)) : "", ht: chance(0.25) ? r(AV.hat.length) : "", mk: chance(0.3) ? r(AV.mask.length) : "", er: chance(0.3) ? r(AV.ear.length) : "", expr: "",
+  };
+}
+
+/* ------------------------------------------------------------------ the premade pets */
+const FUR = {
+  dog: ["#C98B55", "#E9B65A", "#3A3A55", "#FFFFFF", "#9AA4BA", "#8B5A2B"], cat: ["#FFB347", "#9AA4BA", "#3A3A55", "#FFFFFF", "#C98B55", "#F5E1C8"],
+  rabbit: ["#FFFFFF", "#C9B7A0", "#9AA4BA", "#F5E1C8"], mouse: ["#C9B7A0", "#FFFFFF", "#9AA4BA", "#E8C69A"], horse: ["#8B5A2B", "#3A3A55", "#E8C69A", "#FFFFFF"],
+  pig: ["#F7B5CF", "#FFD1DF"], bear: ["#C98B55", "#9AA4BA", "#3A3A55", "#E8C69A"], owl: ["#A9764C", "#CFD6E6"], hen: ["#FFFFFF", "#FFD93D", "#C98B55", "#E5484D"],
+  dino: ["#6BCB77", "#4FB3FF", "#9B5DE5", "#FFB347"], butterfly: ["#C7B8FF", "#FFB347", "#4FB3FF", "#F7B5CF"], blob: ["#6BCB77", "#4FB3FF", "#FF8A3C", "#F7B5CF", "#9B5DE5"], robot: ["#CFD6E6", "#FFD93D", "#4FB3FF"],
+};
+const BODY = {
+  dog: { kind: "dog", ears: "flop", snout: "dog", tail: "wag" }, cat: { kind: "cat", ears: "point", snout: "cat", tail: "thin" }, rabbit: { kind: "rabbit", ears: "long", snout: "mouse", tail: "puff" },
+  mouse: { kind: "mouse", ears: "round", snout: "mouse", tail: "thin" }, horse: { kind: "horse", ears: "point", snout: "dog", tail: "bushy" }, pig: { kind: "pig", ears: "flop", snout: "none", tail: "curl" },
+  bear: { kind: "bear", ears: "round", snout: "bear", tail: "puff" }, owl: { kind: "owl" }, hen: { kind: "hen" }, dino: { kind: "dino" }, butterfly: { kind: "butterfly" }, blob: { kind: "blob" }, robot: { kind: "robot" },
+};
+const GUESS = ["dog", "cat", "bear", "mouse", "rabbit", "hen", "pig", "dog", "cat"];
+const PETSAY = {
+  dog: [["Vuf vuf!", "Woof woof!"], ["Skal vi lege med bolden?", "Shall we play with the ball?"]], cat: [["Miav!", "Meow!"], ["Klø mig bag øret.", "Scratch me behind the ear."]],
+  rabbit: [["Hop hop!", "Hop hop!"], ["Jeg elsker gulerødder.", "I love carrots."]], mouse: [["Pip pip!", "Squeak squeak!"]], horse: [["Vrinsk!", "Neigh!"], ["Skal vi ride en tur?", "Shall we go for a ride?"]],
+  pig: [["Øf øf!", "Oink oink!"]], bear: [["Brum!", "Grr!"], ["Jeg elsker honning.", "I love honey."]], owl: [["Uhu!", "Hoot!"]], hen: [["Pip! Kluk kluk!", "Peep! Cluck cluck!"]], dino: [["Rawr!", "Rawr!"]],
+  butterfly: [["Jeg flyver fra blomst til blomst.", "I fly from flower to flower."]], blob: [["Plask plask!", "Splash splash!"]], robot: [["Bip bop!", "Beep boop!"]],
+};
+for (const list of Object.values(PETSAY)) for (const [da, en] of list) AV_EN[da] = en;
+/* A premade pet: [name, world, species, colour, seed, Danish species] to a character the game can draw, and what it says. */
+export function petLook(row) {
+  const [, , sp0, col, seed] = row, h = seed >>> 0, sp = sp0 || GUESS[h % GUESS.length], body = BODY[sp], fur = col || FUR[sp][(h >>> 5) % FUR[sp].length];
+  const ch = { ...body, fur, belly: shade(fur, 1.25) };
+  if (sp === "dog" || sp === "cat") ch.marks = ["", "", "spots", "patch"][(h >>> 9) % 4];
+  if ((h >>> 12) % 100 < 14 && ["dog", "cat", "rabbit", "bear", "mouse", "pig"].includes(sp)) ch.hat = ["bow", "party", "beanie", "crown", "cap"][(h >>> 14) % 5];
+  return { kind: body.kind, ...ch, _say: PETSAY[sp] ? PETSAY[sp].map(([da]) => da) : ["Hej!"] };
+}

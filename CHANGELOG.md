@@ -2,6 +2,16 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.18.0] - 2026-10-28
+
+### Added
+- **The avatars of the original.** The whole catalog of the character creator is in the game now, drawn with our own shapes: **548 hair styles and beards** (short, long, crazy, beards), **1,552 pieces of clothes** (dresses, sweaters, jackets, suits, swimwear, pyjamas, towels, uniforms, costumes, winter clothes … with colours and patterns: stripes, dots, plaid, flowers, camo, stars, hearts, rainbow, leopard, zebra), **647 hats**, **664 pairs of glasses and masks**, **193 ear accessories**, the parts of the face (284 eyes, 525 brows, 544 noses, 567 mouths, 233 cheeks, 127 freckles, 83 wrinkles, 12 scars) and **259 colours**. Made by `tools/homedesigner/extract_avatars.py` and `build_avatars.py`; brands, licensed characters and real people are left out.
+- **544 premade figures and 761 pets** live in the places of their worlds (the hospital, the school, the farm, the stable, the mall …), as the original has them: they talk, and the pets make their sound. Their skin and hair colours are not in the original in a readable form, so they are picked from the palettes by name; the species and colour of a pet come from its name. In every place a few pets are out, and which ones changes from day to day.
+- **The figure workshop** has the wardrobe of the original: pick hair, beard, clothes, hats, glasses and masks, ear accessories and the parts of the face from pages of little pictures, sorted by kind; choose colours; and a button for a random look.
+- **32 expressions:** tap the head of your figure for the menu: neutral, happy, surprised, sleepy, sick, angry, furious, sad, sobbing, screaming, laughing, celebrating, super excited, confused, creepy, dead, kiss, naughty kiss, heart eyes, heartbroken, flushed, freezing, hot and tired, smug, evil smirk, grimace, pleading, rolling eyes, yummy, oops, wink.
+- **Six dances** (dance 1, 2, 3, the prom dance and two pool yoga dances) from the same menu, and when a radio or a speaker plays, the people in the room dance to it.
+- **Talking:** a figure moves its mouth when it speaks; **eating** makes a yummy face; **the mirror** lets you change your hair, colour, clothes, hat and face and **take pictures** that you keep.
+
 ## [0.17.0] - 2026-10-28
 
 ### Changed
