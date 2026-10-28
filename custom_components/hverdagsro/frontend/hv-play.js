@@ -21,6 +21,7 @@ import * as Fix from "./hv-fixtures.js";
 import * as Wall from "./hv-wall.js";
 import * as Walk from "./hv-walk.js";
 import * as Pet from "./hv-pet.js";
+import * as Art from "./hv-art.js";
 import { HOME_THINGS, HOME_ACT, HOME_EN } from "./hv-homethings.js";
 import { CITY_THINGS, CITY_PACKS, CITY_EN } from "./hv-citythings.js";
 import { citySvg, CITY_MAP_EN, placePrice } from "./hv-city.js";
@@ -273,20 +274,35 @@ function patternDefs(d) {
   return `<defs>${pat ? `<pattern id="pl-wp" width="${p === "skyer" ? 80 : 60}" height="60" patternUnits="userSpaceOnUse">${pat}</pattern>` : PX ? `<pattern id="pl-wp" width="${PX[2]}" height="${PX[3]}" patternUnits="userSpaceOnUse">${PX[1](c, dk, lt)}</pattern>` : ""}<pattern id="pl-fl" width="${planks ? 200 : d.floor === "tern" ? 80 : 40}" height="${planks ? 36 : 40}" patternUnits="userSpaceOnUse">${fl2}</pattern>
     <radialGradient id="pl-g"><stop offset="0" stop-color="#FFE8A3" stop-opacity=".9"/><stop offset="1" stop-color="#FFE8A3" stop-opacity="0"/></radialGradient></defs>`;
 }
+/* The weather outside, for the windows: rain, snow or nothing. */
+function weatherNow(ctx) {
+  const id = ctx.data.settings?.weather || ctx.entities?.("weather")?.[0], st = id && ctx.hass.states[id]?.state;
+  return /rain|pouring|lightning|hail/.test(st || "") ? "rain" : /snow/.test(st || "") ? "snow" : "";
+}
 function sky(ctx) {
   const el = ctx.hass.states["sun.sun"]?.attributes?.elevation ?? 20;
   return el > 6 ? ["#8FD3FF", "#D8F1FF", "day"] : el > -4 ? ["#FF9E7A", "#FFD39E", "dusk"] : ["#1B2150", "#36407A", "night"];
 }
 /* The child's real room in the house drawing, and its lights. */
-function realLights(ctx, m) {
-  const rooms = ctx.data.house?.rooms || [];
-  const r = rooms.find((x) => x.kid === m.id) || rooms.find((x) => new RegExp(`(^|[^a-zæøå])${m.name.split(" ")[0]}`, "i").test(x.name || ""));
+/* The real lights of a room of the house (the lights of its area, or the light it was given in Husbyggeren). */
+function roomLights(ctx, r) {
   if (!r) return [];
   const isGroup = (id) => Array.isArray(ctx.hass.states[id]?.attributes?.entity_id);
   const inArea = r.area ? ctx.entities("light").filter((id) => ctx.area(id) === r.area) : [];
   const single = inArea.filter((id) => !isGroup(id));
   const list = single.length ? single : inArea;
   return list.length ? list : r.light && ctx.hass.states[r.light] ? [r.light] : [];
+}
+function realLights(ctx, m) {
+  const rooms = ctx.data.house?.rooms || [];
+  return roomLights(ctx, rooms.find((x) => x.kid === m.id) || rooms.find((x) => new RegExp(`(^|[^a-zæøå])${m.name.split(" ")[0]}`, "i").test(x.name || "")));
+}
+/* The lights where the child is: their own room, a sibling's, or a room of the house. */
+function lightsAt(ctx, m, sid) {
+  if (sid === "vaerelse") return realLights(ctx, m);
+  if (visitKid(sid)) return realLights(ctx, ctx.member(visitKid(sid)) || m);
+  if (String(sid).startsWith("h:")) return roomLights(ctx, (ctx.data.house?.rooms || []).find((r) => `h:${r.id}` === sid));
+  return [];
 }
 /* What floats in the room: the routine cards for now, the day's missions and homework. */
 function bubbles(ctx, m) {
@@ -457,7 +473,9 @@ function people(ctx, m, sid, room, pl) {
   }
   // A sibling at home in their own room, and the family in the house's living rooms.
   const vk = visitKid(sid);
-  const fam = vk ? [ctx.member(vk)].filter(Boolean) : pl && pl.area === "hjem" && ["living", "kitchen"].includes(pl.look) ? ctx.members().filter((x) => x.id !== m.id && x.role !== "child") : [];
+  // The grown-ups are in the living rooms when they are really at home (their person entity), else out.
+  const home = (x) => !x.person || !ctx.hass.states[x.person] || ctx.hass.states[x.person].state === "home";
+  const fam = vk ? [ctx.member(vk)].filter(Boolean) : pl && pl.area === "hjem" && ["living", "kitchen"].includes(pl.look) ? ctx.members().filter((x) => x.id !== m.id && x.role !== "child" && home(x)) : [];
   fam.forEach((x, i) => {
     if (live.has(x.id)) return;
     const me = x.playroom?.me || familyLook(x), pos = !vk && npcAt[`fam:${x.id}`];
@@ -474,7 +492,8 @@ function familyLook(x) {
   return { skin: SKINS[n % 3], hair: ["kort", "lang", "pjusk", "hale", "knold", "kroller"][(n >> 3) % 6], hairc: HAIRC[(n >> 6) % 5], top: x.color || "#6E4AFF", bottom: ["#3A3A55", "#4D96FF", "#5B3A21"][(n >> 9) % 3], extra: (n >> 11) % 3 ? "ingen" : "briller", topk: x.role === "child" ? "tshirt" : ["skjorte", "jakke", "cardigan", "stribet"][(n >> 13) % 4], botk: x.role === "child" ? "bukser" : "jeans", shoek: "sneakers" };
 }
 function stage(ctx, m) {
-  const d = ST.d, room = R(), sid = spaceId(), [s0, s1, tod] = sky(ctx), lights = sid === "vaerelse" ? realLights(ctx, m) : [], lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
+  const d = ST.d, room = R(), sid = spaceId(), [s0, s1, tod] = sky(ctx), lights = lightsAt(ctx, m, sid), lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
+  World.BG.wx = weatherNow(ctx);
   const happy = bubbles(ctx, m).length < 3, pl = placeOf(ctx, sid), vk = visitKid(sid), dd = vk ? room : d;
   // How wide the room is, where the screen is in it, and the doors to the rooms next door.
   const rw = (ST.rw = Walk.roomWidth(ctx, sid, ST.kid));
@@ -498,15 +517,17 @@ function stage(ctx, m) {
     // the window shows the real sky
     s += `<g class="pl-win"><rect x="560" y="70" width="230" height="200" rx="14" fill="#fff" ${S()}/><linearGradient id="pl-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s0}"/><stop offset="1" stop-color="${s1}"/></linearGradient><rect x="574" y="84" width="202" height="172" rx="6" fill="url(#pl-sky)"/>${
       tod === "night" ? `<circle cx="720" cy="130" r="22" fill="#FFF6C9"/><circle cx="730" cy="122" r="20" fill="${s0}"/>${[[600, 110], [640, 150], [690, 100], [750, 200], [610, 210]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="#fff" class="pl-twinkle"/>`).join("")}` : `<circle cx="720" cy="130" r="26" fill="#FFE066" ${tod === "dusk" ? 'opacity=".8"' : ""}/><g class="pl-cloud"><ellipse cx="630" cy="150" rx="34" ry="14" fill="#fff"/><ellipse cx="650" cy="140" rx="22" ry="16" fill="#fff"/></g>`
-    }<path d="M675 84 v172 M574 170 h202" ${S()} fill="none"/><path d="M560 60 h230" stroke="#FF6B6B" stroke-width="16" stroke-linecap="round"/></g>`;
-    // the light switch for the real lights
-    if (lights.length) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset i dit værelse"))}"><rect x="500" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="510" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
+    }<path d="M675 84 v172 M574 170 h202" ${S()} fill="none"/>${World.BG.wx ? `<clipPath id="pl-winc0"><rect x="574" y="84" width="202" height="172" rx="6"/></clipPath><g class="fx-rain" clip-path="url(#pl-winc0)">${Array.from({ length: 10 }, (_, i) => World.BG.wx === "rain" ? `<path d="M${586 + i * 19} 80 v12" stroke="#4FB3FF" stroke-width="3" stroke-linecap="round" style="--fall:180px;animation-delay:${-(i * 0.17) % 0.6}s"/>` : `<circle cx="${590 + i * 19}" cy="86" r="4" fill="#fff" style="--fall:180px;animation-delay:${-(i * 0.33) % 1.6}s;animation-duration:1.6s"/>`).join("")}</g>` : ""}<path d="M560 60 h230" stroke="#FF6B6B" stroke-width="16" stroke-linecap="round"/><path d="M548 64 q-8 100 -2 206 h30 q6 -104 -4 -206z M772 64 q8 100 2 206 h30 q-6 -104 4 -206z" fill="${dd.wall?.c === "rosa" ? "#FFD1E3" : "#FFF0B8"}" ${S()}/></g><rect width="${rw}" height="14" fill="rgba(0,0,0,.06)"/><rect y="${FLOOR}" width="${rw}" height="10" fill="rgba(0,0,0,.08)"/>`;
   } else if (pl) {
     World.BG.look = paintable(pl) ? room.look || {} : {};
     s += pl.bg(s0, s1, tod, rw) + Toys.seasonSvg(ctx, pl);
     World.BG.look = {};
   }
   else s += backdrop(sid, s0, s1, tod);
+  // The light switch for the real lights of the room.
+  if (lights.length && !vk) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset her"))}"><rect x="${sid === "vaerelse" ? 500 : rw - 80}" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="${sid === "vaerelse" ? 510 : rw - 70}" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
+  // The real tv: what plays on it plays in the game too.
+  liveTv(ctx, sid, room);
   // Things put up on a table or a shelf before tops existed stand on them now.
   if (!room.settled) {
     for (const it of room.items || []) if (!it.at && !wallK(it.k) && it.y < FLOOR && CAT[it.k]) {
@@ -525,7 +546,8 @@ function stage(ctx, m) {
     const T = CAT[it.k];
     if (!T) return "";
     const sc = it.s || 1, sel = ST.build && ST.sel === it.id, fixed = Fix.FIXED.has(it.k) || room.ro;
-    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}${fixed ? " fixed" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${T.d(it.c || T.c)}${Fix.onSvg(it)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
+    const shadow = !wallK(it.k) && T.flat !== 1 && !it.at ? `<ellipse cx="0" cy="2" rx="${Math.round(T.w * 0.44)}" ry="${Math.max(5, Math.round(T.w * 0.05))}" fill="rgba(0,0,0,.13)"/>` : "";
+    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}${fixed ? " fixed" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${shadow}${T.d(it.c || T.c)}${it.live ? `<g transform="translate(0 ${-T.h - 16})"><rect x="-90" y="-28" width="180" height="30" rx="15" fill="#fff" ${S("stroke-width=\"3\"")}/><text y="-7" text-anchor="middle" class="pl-livet">${esc(it.live)}</text></g>` : ""}${Fix.onSvg(it)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
   };
   const items = room.items || [];
   const isWall = (it) => wallK(it.k);
@@ -708,6 +730,8 @@ function render(ctx) {
     if (ST.d.sound) for (const k of ["music", "sfx"]) if (k in ST.d.sound) Sound.setSound(k, ST.d.sound[k]);
   }
   ST.ctx = ctx;
+  // The art pack (drawings from files in www/hverdagsro-art), once; the room is drawn again when it is in.
+  Art.load(CAT, () => ST && redraw(ctx));
   if (visitKid(spaceId())) ST.build = false;
   Life.wakeUp(ctx);
   Life.syncKnowledge(ctx);
@@ -716,7 +740,7 @@ function render(ctx) {
     ST.map = ST.shop = ST.build = false;
     if (spaceId() !== "vaerelse") ST.d.space = "vaerelse";
   }
-  const t = ctx.t, B = bubbles(ctx, m), pts = ctx.points(m.id), sid = spaceId(), lights = sid === "vaerelse" ? realLights(ctx, m) : [], lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
+  const t = ctx.t, B = bubbles(ctx, m), pts = ctx.points(m.id), sid = spaceId(), lights = lightsAt(ctx, m, sid), lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
   const g = game(ctx, m), lv = levelOf(g.xp), lo = LEVELS[lv - 1] || 0, hi = LEVELS[lv];
   const prog = hi ? Math.round(((g.xp - lo) / (hi - lo)) * 100) : 100;
   const sub = ST.shop ? t("Byt dine mønter til nye ting. Mønter får du for rutiner, opgaver og lektier.") : ST.build ? t("Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.") : B.length ? t("Tryk på boblerne, når du har gjort det.") : t("Alt er klaret lige nu. Godt gået!");
@@ -1537,6 +1561,33 @@ function takeInHand(ctx, it) {
   redraw(ctx);
 }
 /* A copy of the thing in the hand, to drag around. */
+/* The real tv of a room of the house (from Husbyggeren, with its media player): when something plays on it, the game's
+   tv in that room is on, with the title over it. */
+function liveTv(ctx, sid, room) {
+  if (!String(sid).startsWith("h:")) return;
+  const house = World.houseData(ctx), r = (house.rooms || []).find((x) => `h:${x.id}` === sid);
+  if (!r || !Array.isArray(r.pts)) return;
+  const inside = (x, y, pts) => {
+    let hit = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-9) + xi) hit = !hit;
+    }
+    return hit;
+  };
+  const tv = (house.items || []).find((it) => it.type === "tv" && it.ent && inside(it.x, it.y, r.pts)), st = tv && ctx.hass.states[tv.ent];
+  const screen = (room.items || []).find((it) => ["tv", "konsol", "skaerm"].includes(it.k));
+  if (!screen) return;
+  if (st && (st.state === "playing" || st.state === "on")) {
+    const a = st.attributes || {}, music = a.media_content_type === "music";
+    screen.on = 1;
+    screen.ch = music ? 4 : 1;
+    screen.live = [a.media_title, a.media_artist || a.media_series_title].filter(Boolean).join(" · ").slice(0, 24) || ctx.t("Tændt");
+  } else if (screen.live) {
+    delete screen.live;
+    screen.on = 0;
+  }
+}
 /* A room's walls, floor and things, for the rooms next door (seen through the doorway). */
 function sceneSvg(ctx, key, rw, s0, s1, tod) {
   const room = roomFor(key), pl = placeOf(ctx, key);
@@ -2182,7 +2233,7 @@ function exitFull(ctx) {
 }
 
 async function toggleLight(ctx) {
-  const lights = realLights(ctx, ctx.me);
+  const lights = lightsAt(ctx, ctx.me, spaceId());
   if (!lights.length) return;
   const on = lights.some((id) => ctx.hass.states[id]?.state === "on");
   const sw = ctx.root.querySelector(".pl-switch");
@@ -2351,6 +2402,7 @@ export default {
 #pl-stage .pl-it:not(.fixed) { cursor: grab; }
 #pl-stage .pl-it.held { cursor: grabbing; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
 .pl-hand { cursor: grab; }
+.pl-livet { font: 800 13px system-ui, sans-serif; fill: #2B2340; }
 .pl-ghost { opacity: .9; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
 .pl-me, .pl-pet { transition: transform .7s cubic-bezier(.3,.9,.4,1); cursor: pointer; }
 .pl-me.kbd { transition: none; }
@@ -2847,6 +2899,8 @@ export default {
     ...Wall.WALL_EN,
     ...Pet.PET_EN,
     Verden: "World",
+    "Lyset her": "The light here",
+    Tændt: "On",
     "Spilletid tilbage i dag": "Play time left today",
     ...CITY_EN,
     ...CITY_MAP_EN,

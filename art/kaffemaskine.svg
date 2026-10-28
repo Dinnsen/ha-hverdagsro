@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-52 -122 104 134" width="104" height="134">
+<!-- Hverdagsro: Kaffemaskine (kaffemaskine). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-34" y="-106" width="68" height="106" rx="8" fill="#3A3A55" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><rect x="-24" y="-60" width="48" height="40" rx="4" fill="#BFE6FF" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M-14 -34 H14 V-22 Q14 -16 8 -16 H-8 Q-14 -16 -14 -22Z" fill="#8B5A3C" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="-90" r="5" fill="#6BCB77"/>
+</svg>

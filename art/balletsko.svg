@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-62 -72 124 84" width="124" height="84">
+<!-- Hverdagsro: Balletsko (balletsko). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-44 -10 Q-46 -30 -26 -30 H-6 Q4 -30 4 -14 Q4 -6 -10 -6 H-36Z" fill="#F7B5CF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M4 -14 Q2 -34 22 -34 H40 Q50 -34 50 -18 Q50 -8 36 -8 H12Z" fill="#F7B5CF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-20 -30 q-10 -24 10 -40 M30 -34 q10 -20 -6 -40" fill="none" stroke="#F7B5CF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

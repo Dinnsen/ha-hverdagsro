@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-52 -122 104 134" width="104" height="134">
+<!-- Hverdagsro: Varm kakao (termokande). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-26" y="-96" width="52" height="92" rx="12" fill="#9B5DE5" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><rect x="-20" y="-106" width="40" height="14" rx="6" fill="#3A3A55" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-10 -110 q-4 -14 4 -24 M8 -110 q-4 -14 4 -24" fill="none" stroke="#CFD6E6" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><polygon points="0.0,-68.0 3.2,-60.4 11.4,-59.7 5.1,-54.3 7.1,-46.3 0.0,-50.6 -7.1,-46.3 -5.1,-54.3 -11.4,-59.7 -3.2,-60.4" fill="#fff" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-62 -92 124 104" width="124" height="104">
+<!-- Hverdagsro: Sløjfekurv (sloejfekasse). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-44 -40 L-36 0 H36 L44 -40Z" fill="#E8C39E" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-26 -48 q-14 -16 -18 0 q8 6 18 0 q14 -16 18 0 q-8 6 -18 0" fill="#FF6B6B" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M0 -48 q-14 -16 -18 0 q8 6 18 0 q14 -16 18 0 q-8 6 -18 0" fill="#4D96FF" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M26 -48 q-14 -16 -18 0 q8 6 18 0 q14 -16 18 0 q-8 6 -18 0" fill="#FFD93D" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

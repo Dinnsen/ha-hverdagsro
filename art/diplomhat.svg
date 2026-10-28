@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-62 -72 124 84" width="124" height="84">
+<!-- Hverdagsro: Studenterhue (diplomhat). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-46 -36 L0 -56 L46 -36 L0 -16Z" fill="#2B2340" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-26 -28 V-8 Q0 4 26 -8 V-28" fill="#2B2340" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 -38 V-6" fill="none" stroke="#FFD93D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="30" cy="-4" r="5" fill="#FFD93D" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

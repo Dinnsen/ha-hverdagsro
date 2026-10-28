@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -182 144 194" width="144" height="194">
+<!-- Hverdagsro: Radar (radar). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-30" y="-50" width="60" height="50" rx="6" fill="#7A849E" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M0 -50 V-90" fill="none" stroke="#2B2340" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M-50 -150 Q0 -60 50 -150 Q0 -130 -50 -150Z" fill="#CFD6E6" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M0 -110 L18 -140" fill="none" stroke="#2B2340" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="-142" r="5" fill="#FF6B6B" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-112 -72 224 84" width="224" height="84">
+<!-- Hverdagsro: Flyvekost (kost). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-90 -36 L40 -30" fill="none" stroke="#C98B55" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M-90 -36 L40 -30" fill="none" stroke="#2B2340" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 -40 L96 -54 L100 -10 L40 -20Z" fill="#FFD93D" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M50 -30 L96 -40 M50 -26 L98 -24" fill="none" stroke="#ccae31" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

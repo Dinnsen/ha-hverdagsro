@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-92 -182 184 194" width="184" height="194">
+<!-- Hverdagsro: Hønsehus (hoensehus). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-50 0 V-60 M50 0 V-60" fill="none" stroke="#2B2340" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><rect x="-60" y="-120" width="120" height="64" rx="4" fill="#E5484D" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-70 -116 L0 -164 L70 -116Z" fill="#8B3A1F" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-14 -56 V-90 a14 14 0 0 1 28 0 V-56Z" fill="#3A2A20" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-30 0 L0 -56" fill="none" stroke="#C98B55" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

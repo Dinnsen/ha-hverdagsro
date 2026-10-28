@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-132 -172 264 184" width="264" height="184">
+<!-- Hverdagsro: Kuppeltelt (telt). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-110 0 Q-100 -150 0 -150 Q100 -150 110 0Z" fill="#6BCB77" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M0 0 L-30 -110 Q0 -120 30 -110Z" fill="#4b8e53" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-60 -20 Q-56 -120 0 -150 M60 -20 Q56 -120 0 -150" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

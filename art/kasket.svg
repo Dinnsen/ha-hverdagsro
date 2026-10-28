@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-57 -62 114 74" width="114" height="74">
+<!-- Hverdagsro: Kasket (kasket). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-30 -16 Q-30 -50 4 -50 Q34 -50 34 -16Z" fill="#E5484D" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M24 -16 H60 Q58 -6 30 -6 H24Z" fill="#b73a3e" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="2" cy="-50" r="5" fill="#fff"/>
+</svg>

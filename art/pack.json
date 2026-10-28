@@ -1,0 +1,5086 @@
+{
+ "version": 1,
+ "pad": 12,
+ "items": [
+  {
+   "id": "bed",
+   "name": "Seng",
+   "cat": "mob",
+   "pack": "start",
+   "w": 300,
+   "h": 150,
+   "flat": 0,
+   "file": "bed.svg"
+  },
+  {
+   "id": "bunk",
+   "name": "Køjeseng",
+   "cat": "mob",
+   "pack": "start",
+   "w": 230,
+   "h": 330,
+   "flat": 0,
+   "file": "bunk.svg"
+  },
+  {
+   "id": "desk",
+   "name": "Skrivebord",
+   "cat": "mob",
+   "pack": "start",
+   "w": 220,
+   "h": 130,
+   "flat": 0,
+   "file": "desk.svg"
+  },
+  {
+   "id": "chair",
+   "name": "Stol",
+   "cat": "mob",
+   "pack": "start",
+   "w": 72,
+   "h": 130,
+   "flat": 0,
+   "file": "chair.svg"
+  },
+  {
+   "id": "shelf",
+   "name": "Reol med legetøj",
+   "cat": "mob",
+   "pack": "start",
+   "w": 180,
+   "h": 240,
+   "flat": 0,
+   "file": "shelf.svg"
+  },
+  {
+   "id": "wardrobe",
+   "name": "Klædeskab",
+   "cat": "mob",
+   "pack": "start",
+   "w": 170,
+   "h": 290,
+   "flat": 0,
+   "file": "wardrobe.svg"
+  },
+  {
+   "id": "beanbag",
+   "name": "Sækkestol",
+   "cat": "mob",
+   "pack": "start",
+   "w": 140,
+   "h": 96,
+   "flat": 0,
+   "file": "beanbag.svg"
+  },
+  {
+   "id": "rug",
+   "name": "Tæppe",
+   "cat": "mob",
+   "pack": "start",
+   "w": 340,
+   "h": 40,
+   "flat": 1,
+   "file": "rug.svg"
+  },
+  {
+   "id": "floorlamp",
+   "name": "Standerlampe",
+   "cat": "lys",
+   "pack": "start",
+   "w": 90,
+   "h": 236,
+   "flat": 0,
+   "file": "floorlamp.svg"
+  },
+  {
+   "id": "tablelamp",
+   "name": "Bordlampe",
+   "cat": "lys",
+   "pack": "start",
+   "w": 60,
+   "h": 80,
+   "flat": 0,
+   "file": "tablelamp.svg"
+  },
+  {
+   "id": "plant",
+   "name": "Plante",
+   "cat": "pynt",
+   "pack": "start",
+   "w": 100,
+   "h": 150,
+   "flat": 0,
+   "file": "plant.svg"
+  },
+  {
+   "id": "teddy",
+   "name": "Bamse",
+   "cat": "leg",
+   "pack": "start",
+   "w": 64,
+   "h": 112,
+   "flat": 0,
+   "file": "teddy.svg"
+  },
+  {
+   "id": "ball",
+   "name": "Bold",
+   "cat": "leg",
+   "pack": "start",
+   "w": 52,
+   "h": 52,
+   "flat": 0,
+   "file": "ball.svg"
+  },
+  {
+   "id": "tipi",
+   "name": "Legetelt",
+   "cat": "leg",
+   "pack": "start",
+   "w": 220,
+   "h": 246,
+   "flat": 0,
+   "file": "tipi.svg"
+  },
+  {
+   "id": "aquarium",
+   "name": "Akvarie",
+   "cat": "pynt",
+   "pack": "start",
+   "w": 132,
+   "h": 90,
+   "flat": 0,
+   "file": "aquarium.svg"
+  },
+  {
+   "id": "guitar",
+   "name": "Guitar",
+   "cat": "leg",
+   "pack": "start",
+   "w": 80,
+   "h": 180,
+   "flat": 0,
+   "file": "guitar.svg"
+  },
+  {
+   "id": "dollhouse",
+   "name": "Dukkehus",
+   "cat": "leg",
+   "pack": "start",
+   "w": 192,
+   "h": 190,
+   "flat": 0,
+   "file": "dollhouse.svg"
+  },
+  {
+   "id": "car",
+   "name": "Legetøjsbil",
+   "cat": "leg",
+   "pack": "start",
+   "w": 96,
+   "h": 52,
+   "flat": 0,
+   "file": "car.svg"
+  },
+  {
+   "id": "blocks",
+   "name": "Klodser",
+   "cat": "leg",
+   "pack": "start",
+   "w": 84,
+   "h": 80,
+   "flat": 0,
+   "file": "blocks.svg"
+  },
+  {
+   "id": "gaming",
+   "name": "Gamerstol",
+   "cat": "mob",
+   "pack": "start",
+   "w": 100,
+   "h": 170,
+   "flat": 0,
+   "file": "gaming.svg"
+  },
+  {
+   "id": "poster",
+   "name": "Plakat med stjerne",
+   "cat": "væg",
+   "pack": "start",
+   "w": 100,
+   "h": 130,
+   "flat": 0,
+   "file": "poster.svg"
+  },
+  {
+   "id": "rainbow",
+   "name": "Regnbue",
+   "cat": "væg",
+   "pack": "start",
+   "w": 124,
+   "h": 92,
+   "flat": 0,
+   "file": "rainbow.svg"
+  },
+  {
+   "id": "clock",
+   "name": "Ur",
+   "cat": "væg",
+   "pack": "start",
+   "w": 72,
+   "h": 72,
+   "flat": 0,
+   "file": "clock.svg"
+  },
+  {
+   "id": "garland",
+   "name": "Lyskæde",
+   "cat": "væg",
+   "pack": "start",
+   "w": 320,
+   "h": 60,
+   "flat": 0,
+   "file": "garland.svg"
+  },
+  {
+   "id": "wallshelf",
+   "name": "Hylde med bøger",
+   "cat": "væg",
+   "pack": "start",
+   "w": 160,
+   "h": 66,
+   "flat": 0,
+   "file": "wallshelf.svg"
+  },
+  {
+   "id": "mirror",
+   "name": "Spejl",
+   "cat": "væg",
+   "pack": "start",
+   "w": 80,
+   "h": 140,
+   "flat": 0,
+   "file": "mirror.svg"
+  },
+  {
+   "id": "photo",
+   "name": "Billede",
+   "cat": "væg",
+   "pack": "start",
+   "w": 92,
+   "h": 70,
+   "flat": 0,
+   "file": "photo.svg"
+  },
+  {
+   "id": "moon",
+   "name": "Månelampe",
+   "cat": "lys",
+   "pack": "start",
+   "w": 80,
+   "h": 80,
+   "flat": 0,
+   "file": "moon.svg"
+  },
+  {
+   "id": "pudefort",
+   "name": "Pudefort",
+   "cat": "mob",
+   "pack": "hule",
+   "w": 280,
+   "h": 190,
+   "flat": 0,
+   "file": "pudefort.svg"
+  },
+  {
+   "id": "kaleche",
+   "name": "Sengehimmel",
+   "cat": "mob",
+   "pack": "hule",
+   "w": 220,
+   "h": 320,
+   "flat": 0,
+   "file": "kaleche.svg"
+  },
+  {
+   "id": "sovepose",
+   "name": "Sovepose",
+   "cat": "mob",
+   "pack": "hule",
+   "w": 220,
+   "h": 60,
+   "flat": 1,
+   "file": "sovepose.svg"
+  },
+  {
+   "id": "lommelygte",
+   "name": "Lommelygte",
+   "cat": "lys",
+   "pack": "hule",
+   "w": 120,
+   "h": 50,
+   "flat": 0,
+   "file": "lommelygte.svg"
+  },
+  {
+   "id": "haengekoje",
+   "name": "Hængekøje",
+   "cat": "mob",
+   "pack": "hule",
+   "w": 320,
+   "h": 230,
+   "flat": 0,
+   "file": "haengekoje.svg"
+  },
+  {
+   "id": "pudebjerg",
+   "name": "Pudebjerg",
+   "cat": "leg",
+   "pack": "hule",
+   "w": 170,
+   "h": 110,
+   "flat": 0,
+   "file": "pudebjerg.svg"
+  },
+  {
+   "id": "skattekiste",
+   "name": "Skattekiste",
+   "cat": "leg",
+   "pack": "hule",
+   "w": 130,
+   "h": 110,
+   "flat": 0,
+   "file": "skattekiste.svg"
+  },
+  {
+   "id": "stjerneprojektor",
+   "name": "Stjerneprojektor",
+   "cat": "lys",
+   "pack": "hule",
+   "w": 80,
+   "h": 80,
+   "flat": 0,
+   "file": "stjerneprojektor.svg"
+  },
+  {
+   "id": "lanterne",
+   "name": "Lanterne",
+   "cat": "lys",
+   "pack": "hule",
+   "w": 60,
+   "h": 110,
+   "flat": 0,
+   "file": "lanterne.svg"
+  },
+  {
+   "id": "huleskilt",
+   "name": "Skilt: Hulen",
+   "cat": "væg",
+   "pack": "hule",
+   "w": 170,
+   "h": 90,
+   "flat": 0,
+   "file": "huleskilt.svg"
+  },
+  {
+   "id": "lysgardin",
+   "name": "Lysgardin",
+   "cat": "væg",
+   "pack": "hule",
+   "w": 240,
+   "h": 210,
+   "flat": 0,
+   "file": "lysgardin.svg"
+  },
+  {
+   "id": "fyrtaarn",
+   "name": "Redningsfyrtårn",
+   "cat": "mob",
+   "pack": "redning",
+   "w": 170,
+   "h": 360,
+   "flat": 0,
+   "file": "fyrtaarn.svg"
+  },
+  {
+   "id": "brandbil",
+   "name": "Brandbil",
+   "cat": "leg",
+   "pack": "redning",
+   "w": 180,
+   "h": 100,
+   "flat": 0,
+   "file": "brandbil.svg"
+  },
+  {
+   "id": "politibil",
+   "name": "Politibil",
+   "cat": "leg",
+   "pack": "redning",
+   "w": 150,
+   "h": 80,
+   "flat": 0,
+   "file": "politibil.svg"
+  },
+  {
+   "id": "redningsbaad",
+   "name": "Redningsbåd",
+   "cat": "leg",
+   "pack": "redning",
+   "w": 160,
+   "h": 80,
+   "flat": 0,
+   "file": "redningsbaad.svg"
+  },
+  {
+   "id": "helikopter",
+   "name": "Helikopter",
+   "cat": "leg",
+   "pack": "redning",
+   "w": 190,
+   "h": 100,
+   "flat": 0,
+   "file": "helikopter.svg"
+  },
+  {
+   "id": "hundekurv",
+   "name": "Hundekurv",
+   "cat": "mob",
+   "pack": "redning",
+   "w": 180,
+   "h": 70,
+   "flat": 0,
+   "file": "hundekurv.svg"
+  },
+  {
+   "id": "knoglepude",
+   "name": "Knoglepude",
+   "cat": "leg",
+   "pack": "redning",
+   "w": 150,
+   "h": 60,
+   "flat": 0,
+   "file": "knoglepude.svg"
+  },
+  {
+   "id": "potetaeppe",
+   "name": "Potetæppe",
+   "cat": "mob",
+   "pack": "redning",
+   "w": 320,
+   "h": 50,
+   "flat": 1,
+   "file": "potetaeppe.svg"
+  },
+  {
+   "id": "poteplakat",
+   "name": "Poteplakat",
+   "cat": "væg",
+   "pack": "redning",
+   "w": 110,
+   "h": 140,
+   "flat": 0,
+   "file": "poteplakat.svg"
+  },
+  {
+   "id": "madskaal",
+   "name": "Madskål",
+   "cat": "leg",
+   "pack": "redning",
+   "w": 90,
+   "h": 40,
+   "flat": 0,
+   "file": "madskaal.svg"
+  },
+  {
+   "id": "hvalpebamse",
+   "name": "Hvalpebamse",
+   "cat": "leg",
+   "pack": "redning",
+   "w": 90,
+   "h": 110,
+   "flat": 0,
+   "file": "hvalpebamse.svg"
+  },
+  {
+   "id": "scene",
+   "name": "Scene",
+   "cat": "mob",
+   "pack": "pop",
+   "w": 360,
+   "h": 80,
+   "flat": 1,
+   "file": "scene.svg"
+  },
+  {
+   "id": "mikrofon",
+   "name": "Mikrofon",
+   "cat": "leg",
+   "pack": "pop",
+   "w": 70,
+   "h": 210,
+   "flat": 0,
+   "file": "mikrofon.svg"
+  },
+  {
+   "id": "spotlight",
+   "name": "Spotlight",
+   "cat": "lys",
+   "pack": "pop",
+   "w": 100,
+   "h": 130,
+   "flat": 0,
+   "file": "spotlight.svg"
+  },
+  {
+   "id": "discokugle",
+   "name": "Discokugle",
+   "cat": "væg",
+   "pack": "pop",
+   "w": 90,
+   "h": 150,
+   "flat": 0,
+   "file": "discokugle.svg"
+  },
+  {
+   "id": "hoejttaler",
+   "name": "Højttaler",
+   "cat": "mob",
+   "pack": "pop",
+   "w": 100,
+   "h": 160,
+   "flat": 0,
+   "file": "hoejttaler.svg"
+  },
+  {
+   "id": "neonhjerte",
+   "name": "Neonhjerte",
+   "cat": "væg",
+   "pack": "pop",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "neonhjerte.svg"
+  },
+  {
+   "id": "bandplakat",
+   "name": "Bandplakat",
+   "cat": "væg",
+   "pack": "pop",
+   "w": 120,
+   "h": 160,
+   "flat": 0,
+   "file": "bandplakat.svg"
+  },
+  {
+   "id": "glimmergardin",
+   "name": "Glimmergardin",
+   "cat": "væg",
+   "pack": "pop",
+   "w": 270,
+   "h": 270,
+   "flat": 0,
+   "file": "glimmergardin.svg"
+  },
+  {
+   "id": "keyboard",
+   "name": "Keyboard",
+   "cat": "mob",
+   "pack": "pop",
+   "w": 180,
+   "h": 120,
+   "flat": 0,
+   "file": "keyboard.svg"
+  },
+  {
+   "id": "lysstav",
+   "name": "Lysstav",
+   "cat": "leg",
+   "pack": "pop",
+   "w": 40,
+   "h": 120,
+   "flat": 0,
+   "file": "lysstav.svg"
+  },
+  {
+   "id": "guldplade",
+   "name": "Guldplade",
+   "cat": "væg",
+   "pack": "pop",
+   "w": 100,
+   "h": 100,
+   "flat": 0,
+   "file": "guldplade.svg"
+  },
+  {
+   "id": "gamerbord",
+   "name": "Gamerbord",
+   "cat": "mob",
+   "pack": "gamer",
+   "w": 270,
+   "h": 130,
+   "flat": 0,
+   "file": "gamerbord.svg"
+  },
+  {
+   "id": "skaerm",
+   "name": "Gamerskærm",
+   "cat": "pynt",
+   "pack": "gamer",
+   "w": 160,
+   "h": 130,
+   "flat": 0,
+   "file": "skaerm.svg"
+  },
+  {
+   "id": "dobbeltskaerm",
+   "name": "Dobbeltskærm",
+   "cat": "pynt",
+   "pack": "gamer",
+   "w": 260,
+   "h": 130,
+   "flat": 0,
+   "file": "dobbeltskaerm.svg"
+  },
+  {
+   "id": "konsol",
+   "name": "TV med spillekonsol",
+   "cat": "mob",
+   "pack": "gamer",
+   "w": 240,
+   "h": 210,
+   "flat": 0,
+   "file": "konsol.svg"
+  },
+  {
+   "id": "ledlys",
+   "name": "LED-lys",
+   "cat": "væg",
+   "pack": "gamer",
+   "w": 340,
+   "h": 30,
+   "flat": 0,
+   "file": "ledlys.svg"
+  },
+  {
+   "id": "headset",
+   "name": "Headset på holder",
+   "cat": "leg",
+   "pack": "gamer",
+   "w": 70,
+   "h": 130,
+   "flat": 0,
+   "file": "headset.svg"
+  },
+  {
+   "id": "arkade",
+   "name": "Arkademaskine",
+   "cat": "mob",
+   "pack": "gamer",
+   "w": 130,
+   "h": 290,
+   "flat": 0,
+   "file": "arkade.svg"
+  },
+  {
+   "id": "neonskilt",
+   "name": "Neonskilt",
+   "cat": "væg",
+   "pack": "gamer",
+   "w": 170,
+   "h": 90,
+   "flat": 0,
+   "file": "neonskilt.svg"
+  },
+  {
+   "id": "minikoeleskab",
+   "name": "Minikøleskab",
+   "cat": "mob",
+   "pack": "gamer",
+   "w": 90,
+   "h": 120,
+   "flat": 0,
+   "file": "minikoeleskab.svg"
+  },
+  {
+   "id": "vrbriller",
+   "name": "VR-briller",
+   "cat": "leg",
+   "pack": "gamer",
+   "w": 100,
+   "h": 50,
+   "flat": 0,
+   "file": "vrbriller.svg"
+  },
+  {
+   "id": "racerstol",
+   "name": "Racerstol",
+   "cat": "mob",
+   "pack": "gamer",
+   "w": 130,
+   "h": 200,
+   "flat": 0,
+   "file": "racerstol.svg"
+  },
+  {
+   "id": "kaninbur",
+   "name": "Kaninbur",
+   "cat": "mob",
+   "pack": "dyr",
+   "w": 180,
+   "h": 120,
+   "flat": 0,
+   "file": "kaninbur.svg"
+  },
+  {
+   "id": "hamsterbur",
+   "name": "Hamsterbur",
+   "cat": "pynt",
+   "pack": "dyr",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "hamsterbur.svg"
+  },
+  {
+   "id": "kradsetrae",
+   "name": "Kradsetræ",
+   "cat": "mob",
+   "pack": "dyr",
+   "w": 130,
+   "h": 250,
+   "flat": 0,
+   "file": "kradsetrae.svg"
+  },
+  {
+   "id": "papegoeje",
+   "name": "Papegøje på pind",
+   "cat": "pynt",
+   "pack": "dyr",
+   "w": 90,
+   "h": 190,
+   "flat": 0,
+   "file": "papegoeje.svg"
+  },
+  {
+   "id": "skildpadde",
+   "name": "Skildpadde",
+   "cat": "leg",
+   "pack": "dyr",
+   "w": 100,
+   "h": 50,
+   "flat": 0,
+   "file": "skildpadde.svg"
+  },
+  {
+   "id": "gyngehest",
+   "name": "Gyngehest",
+   "cat": "leg",
+   "pack": "dyr",
+   "w": 180,
+   "h": 150,
+   "flat": 0,
+   "file": "gyngehest.svg"
+  },
+  {
+   "id": "enhjoerning",
+   "name": "Enhjørning-bamse",
+   "cat": "leg",
+   "pack": "dyr",
+   "w": 110,
+   "h": 140,
+   "flat": 0,
+   "file": "enhjoerning.svg"
+  },
+  {
+   "id": "fuglehus",
+   "name": "Fuglehus",
+   "cat": "væg",
+   "pack": "dyr",
+   "w": 80,
+   "h": 120,
+   "flat": 0,
+   "file": "fuglehus.svg"
+  },
+  {
+   "id": "basketkurv",
+   "name": "Basketkurv",
+   "cat": "væg",
+   "pack": "sport",
+   "w": 120,
+   "h": 150,
+   "flat": 0,
+   "file": "basketkurv.svg"
+  },
+  {
+   "id": "fodboldmaal",
+   "name": "Fodboldmål",
+   "cat": "mob",
+   "pack": "sport",
+   "w": 250,
+   "h": 140,
+   "flat": 0,
+   "file": "fodboldmaal.svg"
+  },
+  {
+   "id": "skateboard",
+   "name": "Skateboard",
+   "cat": "leg",
+   "pack": "sport",
+   "w": 130,
+   "h": 40,
+   "flat": 0,
+   "file": "skateboard.svg"
+  },
+  {
+   "id": "trampolin",
+   "name": "Trampolin",
+   "cat": "mob",
+   "pack": "sport",
+   "w": 210,
+   "h": 80,
+   "flat": 0,
+   "file": "trampolin.svg"
+  },
+  {
+   "id": "boksesaek",
+   "name": "Boksesæk",
+   "cat": "mob",
+   "pack": "sport",
+   "w": 140,
+   "h": 280,
+   "flat": 0,
+   "file": "boksesaek.svg"
+  },
+  {
+   "id": "loebecykel",
+   "name": "Løbecykel",
+   "cat": "leg",
+   "pack": "sport",
+   "w": 160,
+   "h": 100,
+   "flat": 0,
+   "file": "loebecykel.svg"
+  },
+  {
+   "id": "pokalhylde",
+   "name": "Pokalhylde",
+   "cat": "væg",
+   "pack": "sport",
+   "w": 170,
+   "h": 100,
+   "flat": 0,
+   "file": "pokalhylde.svg"
+  },
+  {
+   "id": "medaljer",
+   "name": "Medaljer",
+   "cat": "væg",
+   "pack": "sport",
+   "w": 110,
+   "h": 100,
+   "flat": 0,
+   "file": "medaljer.svg"
+  },
+  {
+   "id": "staffeli",
+   "name": "Staffeli",
+   "cat": "mob",
+   "pack": "kreativ",
+   "w": 130,
+   "h": 230,
+   "flat": 0,
+   "file": "staffeli.svg"
+  },
+  {
+   "id": "kridttavle",
+   "name": "Kridttavle",
+   "cat": "væg",
+   "pack": "kreativ",
+   "w": 180,
+   "h": 120,
+   "flat": 0,
+   "file": "kridttavle.svg"
+  },
+  {
+   "id": "malerpletter",
+   "name": "Malerpletter",
+   "cat": "mob",
+   "pack": "kreativ",
+   "w": 260,
+   "h": 50,
+   "flat": 1,
+   "file": "malerpletter.svg"
+  },
+  {
+   "id": "garnkurv",
+   "name": "Garnkurv",
+   "cat": "leg",
+   "pack": "kreativ",
+   "w": 90,
+   "h": 80,
+   "flat": 0,
+   "file": "garnkurv.svg"
+  },
+  {
+   "id": "byggebord",
+   "name": "Byggebord",
+   "cat": "mob",
+   "pack": "kreativ",
+   "w": 210,
+   "h": 130,
+   "flat": 0,
+   "file": "byggebord.svg"
+  },
+  {
+   "id": "uro",
+   "name": "Uro med stjerner",
+   "cat": "væg",
+   "pack": "kreativ",
+   "w": 150,
+   "h": 170,
+   "flat": 0,
+   "file": "uro.svg"
+  },
+  {
+   "id": "tegninger",
+   "name": "Tegninger på snor",
+   "cat": "væg",
+   "pack": "kreativ",
+   "w": 280,
+   "h": 110,
+   "flat": 0,
+   "file": "tegninger.svg"
+  },
+  {
+   "id": "palme",
+   "name": "Palme",
+   "cat": "pynt",
+   "pack": "jungle",
+   "w": 180,
+   "h": 310,
+   "flat": 0,
+   "file": "palme.svg"
+  },
+  {
+   "id": "lianer",
+   "name": "Lianer",
+   "cat": "væg",
+   "pack": "jungle",
+   "w": 300,
+   "h": 170,
+   "flat": 0,
+   "file": "lianer.svg"
+  },
+  {
+   "id": "abebamse",
+   "name": "Abebamse",
+   "cat": "leg",
+   "pack": "jungle",
+   "w": 100,
+   "h": 110,
+   "flat": 0,
+   "file": "abebamse.svg"
+  },
+  {
+   "id": "loevetaeppe",
+   "name": "Løvetæppe",
+   "cat": "mob",
+   "pack": "jungle",
+   "w": 280,
+   "h": 60,
+   "flat": 1,
+   "file": "loevetaeppe.svg"
+  },
+  {
+   "id": "bambus",
+   "name": "Bambus",
+   "cat": "pynt",
+   "pack": "jungle",
+   "w": 90,
+   "h": 270,
+   "flat": 0,
+   "file": "bambus.svg"
+  },
+  {
+   "id": "tropeplakat",
+   "name": "Tropeplakat",
+   "cat": "væg",
+   "pack": "jungle",
+   "w": 110,
+   "h": 140,
+   "flat": 0,
+   "file": "tropeplakat.svg"
+  },
+  {
+   "id": "krokodille",
+   "name": "Krokodille-bamse",
+   "cat": "leg",
+   "pack": "jungle",
+   "w": 160,
+   "h": 60,
+   "flat": 0,
+   "file": "krokodille.svg"
+  },
+  {
+   "id": "raket",
+   "name": "Raket",
+   "cat": "mob",
+   "pack": "rum",
+   "w": 140,
+   "h": 310,
+   "flat": 0,
+   "file": "raket.svg"
+  },
+  {
+   "id": "planetlampe",
+   "name": "Planetlampe",
+   "cat": "lys",
+   "pack": "rum",
+   "w": 130,
+   "h": 110,
+   "flat": 0,
+   "file": "planetlampe.svg"
+  },
+  {
+   "id": "teleskop",
+   "name": "Teleskop",
+   "cat": "leg",
+   "pack": "rum",
+   "w": 130,
+   "h": 180,
+   "flat": 0,
+   "file": "teleskop.svg"
+  },
+  {
+   "id": "rumdragt",
+   "name": "Rumdragt",
+   "cat": "mob",
+   "pack": "rum",
+   "w": 110,
+   "h": 230,
+   "flat": 0,
+   "file": "rumdragt.svg"
+  },
+  {
+   "id": "ufolampe",
+   "name": "UFO-lampe",
+   "cat": "lys",
+   "pack": "rum",
+   "w": 150,
+   "h": 140,
+   "flat": 0,
+   "file": "ufolampe.svg"
+  },
+  {
+   "id": "rumvaesen",
+   "name": "Rumvæsen-bamse",
+   "cat": "leg",
+   "pack": "rum",
+   "w": 90,
+   "h": 120,
+   "flat": 0,
+   "file": "rumvaesen.svg"
+  },
+  {
+   "id": "stjernekort",
+   "name": "Stjernekort",
+   "cat": "væg",
+   "pack": "rum",
+   "w": 140,
+   "h": 110,
+   "flat": 0,
+   "file": "stjernekort.svg"
+  },
+  {
+   "id": "robot",
+   "name": "Robot",
+   "cat": "leg",
+   "pack": "rum",
+   "w": 90,
+   "h": 140,
+   "flat": 0,
+   "file": "robot.svg"
+  },
+  {
+   "id": "globus",
+   "name": "Globus",
+   "cat": "pynt",
+   "pack": "rum",
+   "w": 80,
+   "h": 120,
+   "flat": 0,
+   "file": "globus.svg"
+  },
+  {
+   "id": "muslingeseng",
+   "name": "Muslingeseng",
+   "cat": "mob",
+   "pack": "hav",
+   "w": 310,
+   "h": 190,
+   "flat": 0,
+   "file": "muslingeseng.svg"
+  },
+  {
+   "id": "soestjerne",
+   "name": "Søstjernepude",
+   "cat": "leg",
+   "pack": "hav",
+   "w": 90,
+   "h": 80,
+   "flat": 0,
+   "file": "soestjerne.svg"
+  },
+  {
+   "id": "fiskeuro",
+   "name": "Fiskeuro",
+   "cat": "væg",
+   "pack": "hav",
+   "w": 150,
+   "h": 160,
+   "flat": 0,
+   "file": "fiskeuro.svg"
+  },
+  {
+   "id": "dykkerhjelm",
+   "name": "Dykkerhjelm",
+   "cat": "pynt",
+   "pack": "hav",
+   "w": 100,
+   "h": 100,
+   "flat": 0,
+   "file": "dykkerhjelm.svg"
+  },
+  {
+   "id": "stortakvarie",
+   "name": "Stort akvarie",
+   "cat": "mob",
+   "pack": "hav",
+   "w": 230,
+   "h": 210,
+   "flat": 0,
+   "file": "stortakvarie.svg"
+  },
+  {
+   "id": "blaeksprutte",
+   "name": "Blæksprutte-bamse",
+   "cat": "leg",
+   "pack": "hav",
+   "w": 110,
+   "h": 100,
+   "flat": 0,
+   "file": "blaeksprutte.svg"
+  },
+  {
+   "id": "flaskeskib",
+   "name": "Skib i flaske",
+   "cat": "pynt",
+   "pack": "hav",
+   "w": 120,
+   "h": 70,
+   "flat": 0,
+   "file": "flaskeskib.svg"
+  },
+  {
+   "id": "trone",
+   "name": "Trone",
+   "cat": "mob",
+   "pack": "slot",
+   "w": 140,
+   "h": 230,
+   "flat": 0,
+   "file": "trone.svg"
+  },
+  {
+   "id": "slotsseng",
+   "name": "Slotsseng",
+   "cat": "mob",
+   "pack": "slot",
+   "w": 320,
+   "h": 230,
+   "flat": 0,
+   "file": "slotsseng.svg"
+  },
+  {
+   "id": "rustning",
+   "name": "Rustning",
+   "cat": "mob",
+   "pack": "slot",
+   "w": 100,
+   "h": 240,
+   "flat": 0,
+   "file": "rustning.svg"
+  },
+  {
+   "id": "skjold",
+   "name": "Skjold",
+   "cat": "væg",
+   "pack": "slot",
+   "w": 90,
+   "h": 110,
+   "flat": 0,
+   "file": "skjold.svg"
+  },
+  {
+   "id": "dragebamse",
+   "name": "Dragebamse",
+   "cat": "leg",
+   "pack": "slot",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "dragebamse.svg"
+  },
+  {
+   "id": "slotsport",
+   "name": "Slotsport",
+   "cat": "væg",
+   "pack": "slot",
+   "w": 170,
+   "h": 210,
+   "flat": 0,
+   "file": "slotsport.svg"
+  },
+  {
+   "id": "fane",
+   "name": "Fane",
+   "cat": "væg",
+   "pack": "slot",
+   "w": 90,
+   "h": 170,
+   "flat": 0,
+   "file": "fane.svg"
+  },
+  {
+   "id": "graeskar",
+   "name": "Græskarlygte",
+   "cat": "fest",
+   "pack": "halloween",
+   "w": 110,
+   "h": 100,
+   "flat": 0,
+   "file": "graeskar.svg"
+  },
+  {
+   "id": "spoegelse",
+   "name": "Spøgelse",
+   "cat": "fest",
+   "pack": "halloween",
+   "w": 90,
+   "h": 130,
+   "flat": 0,
+   "file": "spoegelse.svg"
+  },
+  {
+   "id": "spind",
+   "name": "Edderkoppespind",
+   "cat": "fest",
+   "pack": "halloween",
+   "w": 160,
+   "h": 160,
+   "flat": 0,
+   "file": "spind.svg"
+  },
+  {
+   "id": "heksekedel",
+   "name": "Heksekedel",
+   "cat": "fest",
+   "pack": "halloween",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "heksekedel.svg"
+  },
+  {
+   "id": "flagermus",
+   "name": "Flagermus-guirlande",
+   "cat": "fest",
+   "pack": "halloween",
+   "w": 300,
+   "h": 80,
+   "flat": 0,
+   "file": "flagermus.svg"
+  },
+  {
+   "id": "slikskaal",
+   "name": "Slikskål",
+   "cat": "fest",
+   "pack": "halloween",
+   "w": 100,
+   "h": 70,
+   "flat": 0,
+   "file": "slikskaal.svg"
+  },
+  {
+   "id": "juletrae",
+   "name": "Juletræ",
+   "cat": "fest",
+   "pack": "jul",
+   "w": 190,
+   "h": 300,
+   "flat": 0,
+   "file": "juletrae.svg"
+  },
+  {
+   "id": "julestroempe",
+   "name": "Julesok",
+   "cat": "fest",
+   "pack": "jul",
+   "w": 90,
+   "h": 130,
+   "flat": 0,
+   "file": "julestroempe.svg"
+  },
+  {
+   "id": "pakker",
+   "name": "Julegaver",
+   "cat": "fest",
+   "pack": "jul",
+   "w": 160,
+   "h": 100,
+   "flat": 0,
+   "file": "pakker.svg"
+  },
+  {
+   "id": "nisse",
+   "name": "Nisse",
+   "cat": "fest",
+   "pack": "jul",
+   "w": 90,
+   "h": 140,
+   "flat": 0,
+   "file": "nisse.svg"
+  },
+  {
+   "id": "snemand",
+   "name": "Snemand",
+   "cat": "fest",
+   "pack": "jul",
+   "w": 110,
+   "h": 170,
+   "flat": 0,
+   "file": "snemand.svg"
+  },
+  {
+   "id": "adventskrans",
+   "name": "Adventskrans",
+   "cat": "fest",
+   "pack": "jul",
+   "w": 140,
+   "h": 110,
+   "flat": 0,
+   "file": "adventskrans.svg"
+  },
+  {
+   "id": "julestjerne",
+   "name": "Julestjerne",
+   "cat": "fest",
+   "pack": "jul",
+   "w": 100,
+   "h": 140,
+   "flat": 0,
+   "file": "julestjerne.svg"
+  },
+  {
+   "id": "paaskekurv",
+   "name": "Påskekurv",
+   "cat": "fest",
+   "pack": "paaske",
+   "w": 120,
+   "h": 100,
+   "flat": 0,
+   "file": "paaskekurv.svg"
+  },
+  {
+   "id": "kylling",
+   "name": "Påskekylling",
+   "cat": "fest",
+   "pack": "paaske",
+   "w": 80,
+   "h": 90,
+   "flat": 0,
+   "file": "kylling.svg"
+  },
+  {
+   "id": "paaskehare",
+   "name": "Påskehare",
+   "cat": "fest",
+   "pack": "paaske",
+   "w": 100,
+   "h": 140,
+   "flat": 0,
+   "file": "paaskehare.svg"
+  },
+  {
+   "id": "gaekkebrev",
+   "name": "Gækkebrev",
+   "cat": "fest",
+   "pack": "paaske",
+   "w": 110,
+   "h": 110,
+   "flat": 0,
+   "file": "gaekkebrev.svg"
+  },
+  {
+   "id": "paaskeliljer",
+   "name": "Påskeliljer",
+   "cat": "fest",
+   "pack": "paaske",
+   "w": 100,
+   "h": 140,
+   "flat": 0,
+   "file": "paaskeliljer.svg"
+  },
+  {
+   "id": "lagkage",
+   "name": "Lagkage",
+   "cat": "fest",
+   "pack": "fodselsdag",
+   "w": 120,
+   "h": 120,
+   "flat": 0,
+   "file": "lagkage.svg"
+  },
+  {
+   "id": "balloner",
+   "name": "Balloner",
+   "cat": "fest",
+   "pack": "fodselsdag",
+   "w": 130,
+   "h": 260,
+   "flat": 0,
+   "file": "balloner.svg"
+  },
+  {
+   "id": "flagguirlande",
+   "name": "Flagguirlande",
+   "cat": "fest",
+   "pack": "fodselsdag",
+   "w": 300,
+   "h": 80,
+   "flat": 0,
+   "file": "flagguirlande.svg"
+  },
+  {
+   "id": "gaveaeske",
+   "name": "Gaveæske",
+   "cat": "fest",
+   "pack": "fodselsdag",
+   "w": 90,
+   "h": 100,
+   "flat": 0,
+   "file": "gaveaeske.svg"
+  },
+  {
+   "id": "tillykke",
+   "name": "Tillykke-banner",
+   "cat": "fest",
+   "pack": "fodselsdag",
+   "w": 300,
+   "h": 90,
+   "flat": 0,
+   "file": "tillykke.svg"
+  },
+  {
+   "id": "toende",
+   "name": "Fastelavnstønde",
+   "cat": "fest",
+   "pack": "fastelavn",
+   "w": 120,
+   "h": 170,
+   "flat": 0,
+   "file": "toende.svg"
+  },
+  {
+   "id": "udklaedning",
+   "name": "Udklædningskiste",
+   "cat": "fest",
+   "pack": "fastelavn",
+   "w": 160,
+   "h": 120,
+   "flat": 0,
+   "file": "udklaedning.svg"
+  },
+  {
+   "id": "maske",
+   "name": "Maske",
+   "cat": "fest",
+   "pack": "fastelavn",
+   "w": 120,
+   "h": 70,
+   "flat": 0,
+   "file": "maske.svg"
+  },
+  {
+   "id": "fyrvaerkeri",
+   "name": "Fyrværkeriplakat",
+   "cat": "fest",
+   "pack": "nytaar",
+   "w": 130,
+   "h": 150,
+   "flat": 0,
+   "file": "fyrvaerkeri.svg"
+  },
+  {
+   "id": "konfettikanon",
+   "name": "Konfettikanon",
+   "cat": "fest",
+   "pack": "nytaar",
+   "w": 100,
+   "h": 140,
+   "flat": 0,
+   "file": "konfettikanon.svg"
+  },
+  {
+   "id": "nytaarsur",
+   "name": "Nytårsur",
+   "cat": "fest",
+   "pack": "nytaar",
+   "w": 90,
+   "h": 120,
+   "flat": 0,
+   "file": "nytaarsur.svg"
+  },
+  {
+   "id": "baal",
+   "name": "Lejrbål",
+   "cat": "fest",
+   "pack": "sommer",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "baal.svg"
+  },
+  {
+   "id": "solsikker",
+   "name": "Solsikker",
+   "cat": "fest",
+   "pack": "sommer",
+   "w": 100,
+   "h": 170,
+   "flat": 0,
+   "file": "solsikker.svg"
+  },
+  {
+   "id": "hjertepude",
+   "name": "Hjertepude",
+   "cat": "fest",
+   "pack": "valentin",
+   "w": 100,
+   "h": 90,
+   "flat": 0,
+   "file": "hjertepude.svg"
+  },
+  {
+   "id": "hjerteballon",
+   "name": "Hjerteballon",
+   "cat": "fest",
+   "pack": "valentin",
+   "w": 80,
+   "h": 230,
+   "flat": 0,
+   "file": "hjerteballon.svg"
+  },
+  {
+   "id": "flagstang",
+   "name": "Bordflag",
+   "cat": "fest",
+   "pack": "danmark",
+   "w": 70,
+   "h": 130,
+   "flat": 0,
+   "file": "flagstang.svg"
+  },
+  {
+   "id": "dkguirlande",
+   "name": "Rød-hvid guirlande",
+   "cat": "fest",
+   "pack": "danmark",
+   "w": 300,
+   "h": 70,
+   "flat": 0,
+   "file": "dkguirlande.svg"
+  },
+  {
+   "id": "brandslange",
+   "name": "Brandslange på hjul",
+   "cat": "mob",
+   "pack": "brand",
+   "w": 120,
+   "h": 130,
+   "flat": 0,
+   "file": "brandslange.svg"
+  },
+  {
+   "id": "brandstige",
+   "name": "Brandstige",
+   "cat": "mob",
+   "pack": "brand",
+   "w": 90,
+   "h": 300,
+   "flat": 0,
+   "file": "brandstige.svg"
+  },
+  {
+   "id": "brandslukker",
+   "name": "Brandslukker",
+   "cat": "leg",
+   "pack": "brand",
+   "w": 60,
+   "h": 110,
+   "flat": 0,
+   "file": "brandslukker.svg"
+  },
+  {
+   "id": "sirenelampe",
+   "name": "Sirenelampe",
+   "cat": "lys",
+   "pack": "brand",
+   "w": 70,
+   "h": 70,
+   "flat": 0,
+   "file": "sirenelampe.svg"
+  },
+  {
+   "id": "brandhjelmstativ",
+   "name": "Hjelmstativ",
+   "cat": "mob",
+   "pack": "brand",
+   "w": 130,
+   "h": 200,
+   "flat": 0,
+   "file": "brandhjelmstativ.svg"
+  },
+  {
+   "id": "brandhane",
+   "name": "Brandhane",
+   "cat": "pynt",
+   "pack": "brand",
+   "w": 70,
+   "h": 100,
+   "flat": 0,
+   "file": "brandhane.svg"
+  },
+  {
+   "id": "landingsplads",
+   "name": "Helikopterplads",
+   "cat": "mob",
+   "pack": "luft",
+   "w": 300,
+   "h": 50,
+   "flat": 1,
+   "file": "landingsplads.svg"
+  },
+  {
+   "id": "vindpose",
+   "name": "Vindpose",
+   "cat": "pynt",
+   "pack": "luft",
+   "w": 140,
+   "h": 200,
+   "flat": 0,
+   "file": "vindpose.svg"
+  },
+  {
+   "id": "propelfly",
+   "name": "Propelfly",
+   "cat": "leg",
+   "pack": "luft",
+   "w": 180,
+   "h": 90,
+   "flat": 0,
+   "file": "propelfly.svg"
+  },
+  {
+   "id": "radar",
+   "name": "Radar",
+   "cat": "pynt",
+   "pack": "luft",
+   "w": 120,
+   "h": 170,
+   "flat": 0,
+   "file": "radar.svg"
+  },
+  {
+   "id": "faldskaerm",
+   "name": "Faldskærm",
+   "cat": "væg",
+   "pack": "luft",
+   "w": 180,
+   "h": 200,
+   "flat": 0,
+   "file": "faldskaerm.svg"
+  },
+  {
+   "id": "gravko",
+   "name": "Gravko",
+   "cat": "leg",
+   "pack": "byg",
+   "w": 220,
+   "h": 140,
+   "flat": 0,
+   "file": "gravko.svg"
+  },
+  {
+   "id": "kegle",
+   "name": "Trafikkegle",
+   "cat": "leg",
+   "pack": "byg",
+   "w": 60,
+   "h": 80,
+   "flat": 0,
+   "file": "kegle.svg"
+  },
+  {
+   "id": "betonblander",
+   "name": "Betonblander",
+   "cat": "mob",
+   "pack": "byg",
+   "w": 160,
+   "h": 150,
+   "flat": 0,
+   "file": "betonblander.svg"
+  },
+  {
+   "id": "stillads",
+   "name": "Stillads",
+   "cat": "mob",
+   "pack": "byg",
+   "w": 220,
+   "h": 300,
+   "flat": 0,
+   "file": "stillads.svg"
+  },
+  {
+   "id": "vaerktoejskasse",
+   "name": "Værktøjskasse",
+   "cat": "leg",
+   "pack": "byg",
+   "w": 120,
+   "h": 80,
+   "flat": 0,
+   "file": "vaerktoejskasse.svg"
+  },
+  {
+   "id": "murstensstak",
+   "name": "Murstensstak",
+   "cat": "leg",
+   "pack": "byg",
+   "w": 130,
+   "h": 90,
+   "flat": 0,
+   "file": "murstensstak.svg"
+  },
+  {
+   "id": "trillebor",
+   "name": "Trillebør",
+   "cat": "leg",
+   "pack": "byg",
+   "w": 160,
+   "h": 90,
+   "flat": 0,
+   "file": "trillebor.svg"
+  },
+  {
+   "id": "ski",
+   "name": "Ski og stave",
+   "cat": "væg",
+   "pack": "bjerg",
+   "w": 120,
+   "h": 200,
+   "flat": 0,
+   "file": "ski.svg"
+  },
+  {
+   "id": "kaelk",
+   "name": "Kælk",
+   "cat": "leg",
+   "pack": "bjerg",
+   "w": 170,
+   "h": 70,
+   "flat": 0,
+   "file": "kaelk.svg"
+  },
+  {
+   "id": "termokande",
+   "name": "Varm kakao",
+   "cat": "pynt",
+   "pack": "bjerg",
+   "w": 80,
+   "h": 110,
+   "flat": 0,
+   "file": "termokande.svg"
+  },
+  {
+   "id": "slaede",
+   "name": "Hundeslæde",
+   "cat": "mob",
+   "pack": "bjerg",
+   "w": 230,
+   "h": 120,
+   "flat": 0,
+   "file": "slaede.svg"
+  },
+  {
+   "id": "isbjerg",
+   "name": "Isbjerg",
+   "cat": "pynt",
+   "pack": "bjerg",
+   "w": 180,
+   "h": 150,
+   "flat": 0,
+   "file": "isbjerg.svg"
+  },
+  {
+   "id": "pingvin",
+   "name": "Pingvin-bamse",
+   "cat": "leg",
+   "pack": "bjerg",
+   "w": 80,
+   "h": 120,
+   "flat": 0,
+   "file": "pingvin.svg"
+  },
+  {
+   "id": "ladestation",
+   "name": "Ladestation",
+   "cat": "lys",
+   "pack": "robotredning",
+   "w": 80,
+   "h": 160,
+   "flat": 0,
+   "file": "ladestation.svg"
+  },
+  {
+   "id": "drone",
+   "name": "Drone",
+   "cat": "leg",
+   "pack": "robotredning",
+   "w": 160,
+   "h": 70,
+   "flat": 0,
+   "file": "drone.svg"
+  },
+  {
+   "id": "robothund",
+   "name": "Robothund",
+   "cat": "leg",
+   "pack": "robotredning",
+   "w": 140,
+   "h": 110,
+   "flat": 0,
+   "file": "robothund.svg"
+  },
+  {
+   "id": "honningkrukke",
+   "name": "Honningkrukke",
+   "cat": "pynt",
+   "pack": "bjorn",
+   "w": 80,
+   "h": 90,
+   "flat": 0,
+   "file": "honningkrukke.svg"
+  },
+  {
+   "id": "laenestol",
+   "name": "Lænestol",
+   "cat": "mob",
+   "pack": "bjorn",
+   "w": 160,
+   "h": 150,
+   "flat": 0,
+   "file": "laenestol.svg"
+  },
+  {
+   "id": "gyngestol",
+   "name": "Gyngestol",
+   "cat": "mob",
+   "pack": "bjorn",
+   "w": 160,
+   "h": 170,
+   "flat": 0,
+   "file": "gyngestol.svg"
+  },
+  {
+   "id": "hyggepude",
+   "name": "Stor hyggepude",
+   "cat": "mob",
+   "pack": "bjorn",
+   "w": 160,
+   "h": 70,
+   "flat": 0,
+   "file": "hyggepude.svg"
+  },
+  {
+   "id": "bjoernebog",
+   "name": "Bog om bjørne",
+   "cat": "pynt",
+   "pack": "bjorn",
+   "w": 100,
+   "h": 60,
+   "flat": 0,
+   "file": "bjoernebog.svg"
+  },
+  {
+   "id": "elefantbamse",
+   "name": "Elefantbamse",
+   "cat": "leg",
+   "pack": "elefant",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "elefantbamse.svg"
+  },
+  {
+   "id": "vandkande",
+   "name": "Vandkande",
+   "cat": "pynt",
+   "pack": "elefant",
+   "w": 120,
+   "h": 90,
+   "flat": 0,
+   "file": "vandkande.svg"
+  },
+  {
+   "id": "tromme",
+   "name": "Tromme",
+   "cat": "leg",
+   "pack": "elefant",
+   "w": 110,
+   "h": 90,
+   "flat": 0,
+   "file": "tromme.svg"
+  },
+  {
+   "id": "badebalje",
+   "name": "Badebalje",
+   "cat": "mob",
+   "pack": "elefant",
+   "w": 170,
+   "h": 80,
+   "flat": 0,
+   "file": "badebalje.svg"
+  },
+  {
+   "id": "jordbunke",
+   "name": "Jordbunke",
+   "cat": "pynt",
+   "pack": "ormehaven",
+   "w": 160,
+   "h": 70,
+   "flat": 0,
+   "file": "jordbunke.svg"
+  },
+  {
+   "id": "plantekasse",
+   "name": "Plantekasse",
+   "cat": "mob",
+   "pack": "ormehaven",
+   "w": 200,
+   "h": 120,
+   "flat": 0,
+   "file": "plantekasse.svg"
+  },
+  {
+   "id": "tunnelroer",
+   "name": "Krybetunnel",
+   "cat": "leg",
+   "pack": "ormehaven",
+   "w": 220,
+   "h": 90,
+   "flat": 0,
+   "file": "tunnelroer.svg"
+  },
+  {
+   "id": "regnorm",
+   "name": "Regnorm-bamse",
+   "cat": "leg",
+   "pack": "ormehaven",
+   "w": 130,
+   "h": 70,
+   "flat": 0,
+   "file": "regnorm.svg"
+  },
+  {
+   "id": "gulerod",
+   "name": "Kæmpegulerod",
+   "cat": "pynt",
+   "pack": "ormehaven",
+   "w": 60,
+   "h": 160,
+   "flat": 0,
+   "file": "gulerod.svg"
+  },
+  {
+   "id": "svampe",
+   "name": "Svampe",
+   "cat": "pynt",
+   "pack": "skovvenner",
+   "w": 120,
+   "h": 90,
+   "flat": 0,
+   "file": "svampe.svg"
+  },
+  {
+   "id": "bladbunke",
+   "name": "Bladbunke",
+   "cat": "pynt",
+   "pack": "skovvenner",
+   "w": 150,
+   "h": 60,
+   "flat": 1,
+   "file": "bladbunke.svg"
+  },
+  {
+   "id": "musehus",
+   "name": "Musehus i en stub",
+   "cat": "mob",
+   "pack": "skovvenner",
+   "w": 160,
+   "h": 160,
+   "flat": 0,
+   "file": "musehus.svg"
+  },
+  {
+   "id": "egern",
+   "name": "Egern med nød",
+   "cat": "leg",
+   "pack": "skovvenner",
+   "w": 100,
+   "h": 110,
+   "flat": 0,
+   "file": "egern.svg"
+  },
+  {
+   "id": "ko",
+   "name": "Ko",
+   "cat": "leg",
+   "pack": "gaard",
+   "w": 200,
+   "h": 140,
+   "flat": 0,
+   "file": "ko.svg"
+  },
+  {
+   "id": "gris",
+   "name": "Gris",
+   "cat": "leg",
+   "pack": "gaard",
+   "w": 150,
+   "h": 100,
+   "flat": 0,
+   "file": "gris.svg"
+  },
+  {
+   "id": "faar",
+   "name": "Får",
+   "cat": "leg",
+   "pack": "gaard",
+   "w": 150,
+   "h": 110,
+   "flat": 0,
+   "file": "faar.svg"
+  },
+  {
+   "id": "hoensehus",
+   "name": "Hønsehus",
+   "cat": "mob",
+   "pack": "gaard",
+   "w": 160,
+   "h": 170,
+   "flat": 0,
+   "file": "hoensehus.svg"
+  },
+  {
+   "id": "maelkejunge",
+   "name": "Mælkejunge",
+   "cat": "pynt",
+   "pack": "gaard",
+   "w": 70,
+   "h": 120,
+   "flat": 0,
+   "file": "maelkejunge.svg"
+  },
+  {
+   "id": "hoeballe",
+   "name": "Høballe",
+   "cat": "mob",
+   "pack": "gaard",
+   "w": 160,
+   "h": 110,
+   "flat": 0,
+   "file": "hoeballe.svg"
+  },
+  {
+   "id": "dukkevogn",
+   "name": "Dukkevogn",
+   "cat": "leg",
+   "pack": "dukkehus",
+   "w": 150,
+   "h": 130,
+   "flat": 0,
+   "file": "dukkevogn.svg"
+  },
+  {
+   "id": "kludedukke",
+   "name": "Kludedukke",
+   "cat": "leg",
+   "pack": "dukkehus",
+   "w": 70,
+   "h": 120,
+   "flat": 0,
+   "file": "kludedukke.svg"
+  },
+  {
+   "id": "tesaet",
+   "name": "Tesæt",
+   "cat": "pynt",
+   "pack": "dukkehus",
+   "w": 160,
+   "h": 80,
+   "flat": 0,
+   "file": "tesaet.svg"
+  },
+  {
+   "id": "dukkeseng",
+   "name": "Dukkeseng",
+   "cat": "mob",
+   "pack": "dukkehus",
+   "w": 140,
+   "h": 80,
+   "flat": 0,
+   "file": "dukkeseng.svg"
+  },
+  {
+   "id": "troldedoer",
+   "name": "Troldedør",
+   "cat": "væg",
+   "pack": "fantasiskov",
+   "w": 100,
+   "h": 150,
+   "flat": 0,
+   "file": "troldedoer.svg"
+  },
+  {
+   "id": "oenskebroend",
+   "name": "Ønskebrønd",
+   "cat": "mob",
+   "pack": "fantasiskov",
+   "w": 170,
+   "h": 210,
+   "flat": 0,
+   "file": "oenskebroend.svg"
+  },
+  {
+   "id": "lysblomst",
+   "name": "Lysende blomst",
+   "cat": "lys",
+   "pack": "fantasiskov",
+   "w": 90,
+   "h": 170,
+   "flat": 0,
+   "file": "lysblomst.svg"
+  },
+  {
+   "id": "feeloekke",
+   "name": "Feeløkke",
+   "cat": "pynt",
+   "pack": "fantasiskov",
+   "w": 200,
+   "h": 60,
+   "flat": 1,
+   "file": "feeloekke.svg"
+  },
+  {
+   "id": "balletstang",
+   "name": "Balletstang",
+   "cat": "mob",
+   "pack": "danseakademi",
+   "w": 300,
+   "h": 130,
+   "flat": 0,
+   "file": "balletstang.svg"
+  },
+  {
+   "id": "spejlvaeg",
+   "name": "Spejlvæg",
+   "cat": "væg",
+   "pack": "danseakademi",
+   "w": 300,
+   "h": 200,
+   "flat": 0,
+   "file": "spejlvaeg.svg"
+  },
+  {
+   "id": "dansegulv",
+   "name": "Lysende dansegulv",
+   "cat": "mob",
+   "pack": "danseakademi",
+   "w": 300,
+   "h": 60,
+   "flat": 1,
+   "file": "dansegulv.svg"
+  },
+  {
+   "id": "balletsko",
+   "name": "Balletsko",
+   "cat": "pynt",
+   "pack": "danseakademi",
+   "w": 100,
+   "h": 60,
+   "flat": 0,
+   "file": "balletsko.svg"
+  },
+  {
+   "id": "tutustativ",
+   "name": "Tutu på stativ",
+   "cat": "mob",
+   "pack": "danseakademi",
+   "w": 120,
+   "h": 220,
+   "flat": 0,
+   "file": "tutustativ.svg"
+  },
+  {
+   "id": "sminkebord",
+   "name": "Sminkebord med lys",
+   "cat": "mob",
+   "pack": "backstage",
+   "w": 220,
+   "h": 260,
+   "flat": 0,
+   "file": "sminkebord.svg"
+  },
+  {
+   "id": "toejstativ",
+   "name": "Tøjstativ",
+   "cat": "mob",
+   "pack": "backstage",
+   "w": 240,
+   "h": 230,
+   "flat": 0,
+   "file": "toejstativ.svg"
+  },
+  {
+   "id": "sminkekuffert",
+   "name": "Sminkekuffert",
+   "cat": "pynt",
+   "pack": "backstage",
+   "w": 120,
+   "h": 80,
+   "flat": 0,
+   "file": "sminkekuffert.svg"
+  },
+  {
+   "id": "skaermvaeg",
+   "name": "Omklædningsskærm",
+   "cat": "mob",
+   "pack": "backstage",
+   "w": 230,
+   "h": 200,
+   "flat": 0,
+   "file": "skaermvaeg.svg"
+  },
+  {
+   "id": "sneakerhylde",
+   "name": "Sneakerhylde",
+   "cat": "væg",
+   "pack": "streetwear",
+   "w": 200,
+   "h": 150,
+   "flat": 0,
+   "file": "sneakerhylde.svg"
+  },
+  {
+   "id": "boombox",
+   "name": "Boombox",
+   "cat": "leg",
+   "pack": "streetwear",
+   "w": 160,
+   "h": 90,
+   "flat": 0,
+   "file": "boombox.svg"
+  },
+  {
+   "id": "graffitivaeg",
+   "name": "Graffitivæg",
+   "cat": "væg",
+   "pack": "streetwear",
+   "w": 300,
+   "h": 180,
+   "flat": 0,
+   "file": "graffitivaeg.svg"
+  },
+  {
+   "id": "haettetroejebojle",
+   "name": "Hættetrøje på bøjle",
+   "cat": "væg",
+   "pack": "streetwear",
+   "w": 120,
+   "h": 150,
+   "flat": 0,
+   "file": "haettetroejebojle.svg"
+  },
+  {
+   "id": "kamerastativ",
+   "name": "Kamera på stativ",
+   "cat": "mob",
+   "pack": "foto",
+   "w": 120,
+   "h": 200,
+   "flat": 0,
+   "file": "kamerastativ.svg"
+  },
+  {
+   "id": "softbox",
+   "name": "Fotolampe",
+   "cat": "lys",
+   "pack": "foto",
+   "w": 140,
+   "h": 240,
+   "flat": 0,
+   "file": "softbox.svg"
+  },
+  {
+   "id": "fotobaggrund",
+   "name": "Fotobaggrund",
+   "cat": "væg",
+   "pack": "foto",
+   "w": 260,
+   "h": 260,
+   "flat": 0,
+   "file": "fotobaggrund.svg"
+  },
+  {
+   "id": "polaroidvaeg",
+   "name": "Billedsnor med fotos",
+   "cat": "væg",
+   "pack": "foto",
+   "w": 260,
+   "h": 120,
+   "flat": 0,
+   "file": "polaroidvaeg.svg"
+  },
+  {
+   "id": "mixerpult",
+   "name": "Mixerpult",
+   "cat": "mob",
+   "pack": "producer",
+   "w": 260,
+   "h": 150,
+   "flat": 0,
+   "file": "mixerpult.svg"
+  },
+  {
+   "id": "studiemonitor",
+   "name": "Studiehøjttaler",
+   "cat": "mob",
+   "pack": "producer",
+   "w": 80,
+   "h": 130,
+   "flat": 0,
+   "file": "studiemonitor.svg"
+  },
+  {
+   "id": "trommesaet",
+   "name": "Trommesæt",
+   "cat": "mob",
+   "pack": "producer",
+   "w": 260,
+   "h": 200,
+   "flat": 0,
+   "file": "trommesaet.svg"
+  },
+  {
+   "id": "popfilter",
+   "name": "Studiemikrofon",
+   "cat": "leg",
+   "pack": "producer",
+   "w": 100,
+   "h": 220,
+   "flat": 0,
+   "file": "popfilter.svg"
+  },
+  {
+   "id": "proeverum",
+   "name": "Prøverum",
+   "cat": "mob",
+   "pack": "modebutik",
+   "w": 160,
+   "h": 260,
+   "flat": 0,
+   "file": "proeverum.svg"
+  },
+  {
+   "id": "mannequin",
+   "name": "Mannequin",
+   "cat": "mob",
+   "pack": "modebutik",
+   "w": 100,
+   "h": 260,
+   "flat": 0,
+   "file": "mannequin.svg"
+  },
+  {
+   "id": "taskehylde",
+   "name": "Taskehylde",
+   "cat": "væg",
+   "pack": "modebutik",
+   "w": 200,
+   "h": 140,
+   "flat": 0,
+   "file": "taskehylde.svg"
+  },
+  {
+   "id": "kasseapparat",
+   "name": "Kasseapparat",
+   "cat": "pynt",
+   "pack": "modebutik",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "kasseapparat.svg"
+  },
+  {
+   "id": "frisoerstol",
+   "name": "Frisørstol",
+   "cat": "mob",
+   "pack": "salon",
+   "w": 130,
+   "h": 180,
+   "flat": 0,
+   "file": "frisoerstol.svg"
+  },
+  {
+   "id": "haartoerrer",
+   "name": "Hårtørrer",
+   "cat": "pynt",
+   "pack": "salon",
+   "w": 120,
+   "h": 90,
+   "flat": 0,
+   "file": "haartoerrer.svg"
+  },
+  {
+   "id": "neglelak",
+   "name": "Neglelakhylde",
+   "cat": "væg",
+   "pack": "salon",
+   "w": 180,
+   "h": 100,
+   "flat": 0,
+   "file": "neglelak.svg"
+  },
+  {
+   "id": "haarboerster",
+   "name": "Hårbørster",
+   "cat": "pynt",
+   "pack": "salon",
+   "w": 120,
+   "h": 80,
+   "flat": 0,
+   "file": "haarboerster.svg"
+  },
+  {
+   "id": "festivaltelt",
+   "name": "Festivaltelt",
+   "cat": "mob",
+   "pack": "festival",
+   "w": 300,
+   "h": 230,
+   "flat": 0,
+   "file": "festivaltelt.svg"
+  },
+  {
+   "id": "madvogn",
+   "name": "Madvogn",
+   "cat": "mob",
+   "pack": "festival",
+   "w": 260,
+   "h": 200,
+   "flat": 0,
+   "file": "madvogn.svg"
+  },
+  {
+   "id": "armbaandsbod",
+   "name": "Armbånd",
+   "cat": "pynt",
+   "pack": "festival",
+   "w": 120,
+   "h": 60,
+   "flat": 0,
+   "file": "armbaandsbod.svg"
+  },
+  {
+   "id": "flagbanner",
+   "name": "Festivalflag",
+   "cat": "pynt",
+   "pack": "festival",
+   "w": 120,
+   "h": 260,
+   "flat": 0,
+   "file": "flagbanner.svg"
+  },
+  {
+   "id": "bageovn",
+   "name": "Bageovn",
+   "cat": "mob",
+   "pack": "kage",
+   "w": 150,
+   "h": 160,
+   "flat": 0,
+   "file": "bageovn.svg"
+  },
+  {
+   "id": "roerepind",
+   "name": "Røreskål",
+   "cat": "pynt",
+   "pack": "kage",
+   "w": 110,
+   "h": 90,
+   "flat": 0,
+   "file": "roerepind.svg"
+  },
+  {
+   "id": "lagkageopsats",
+   "name": "Kageopsats",
+   "cat": "pynt",
+   "pack": "kage",
+   "w": 120,
+   "h": 160,
+   "flat": 0,
+   "file": "lagkageopsats.svg"
+  },
+  {
+   "id": "kagerulle",
+   "name": "Bagebord",
+   "cat": "mob",
+   "pack": "kage",
+   "w": 220,
+   "h": 120,
+   "flat": 0,
+   "file": "kagerulle.svg"
+  },
+  {
+   "id": "kokkehue",
+   "name": "Kokkehue på knag",
+   "cat": "væg",
+   "pack": "kage",
+   "w": 90,
+   "h": 110,
+   "flat": 0,
+   "file": "kokkehue.svg"
+  },
+  {
+   "id": "slikmaskine",
+   "name": "Slikautomat",
+   "cat": "mob",
+   "pack": "slikriget",
+   "w": 110,
+   "h": 180,
+   "flat": 0,
+   "file": "slikmaskine.svg"
+  },
+  {
+   "id": "slikstok",
+   "name": "Kæmpe slikstok",
+   "cat": "pynt",
+   "pack": "slikriget",
+   "w": 90,
+   "h": 240,
+   "flat": 0,
+   "file": "slikstok.svg"
+  },
+  {
+   "id": "lollipoptrae",
+   "name": "Slikkepindetræ",
+   "cat": "pynt",
+   "pack": "slikriget",
+   "w": 160,
+   "h": 220,
+   "flat": 0,
+   "file": "lollipoptrae.svg"
+  },
+  {
+   "id": "gummibamse",
+   "name": "Vingummibamse",
+   "cat": "leg",
+   "pack": "slikriget",
+   "w": 90,
+   "h": 120,
+   "flat": 0,
+   "file": "gummibamse.svg"
+  },
+  {
+   "id": "skumfidussofa",
+   "name": "Skumfidussofa",
+   "cat": "mob",
+   "pack": "slikriget",
+   "w": 240,
+   "h": 130,
+   "flat": 0,
+   "file": "skumfidussofa.svg"
+  },
+  {
+   "id": "minikokken",
+   "name": "Minikøkken",
+   "cat": "leg",
+   "pack": "miniature",
+   "w": 160,
+   "h": 150,
+   "flat": 0,
+   "file": "minikokken.svg"
+  },
+  {
+   "id": "mininaboer",
+   "name": "Mininaboer",
+   "cat": "leg",
+   "pack": "miniature",
+   "w": 140,
+   "h": 90,
+   "flat": 0,
+   "file": "mininaboer.svg"
+  },
+  {
+   "id": "minibil",
+   "name": "Lille bilbane",
+   "cat": "leg",
+   "pack": "miniature",
+   "w": 260,
+   "h": 40,
+   "flat": 1,
+   "file": "minibil.svg"
+  },
+  {
+   "id": "rulletrappe",
+   "name": "Legetøjselevator",
+   "cat": "leg",
+   "pack": "miniature",
+   "w": 120,
+   "h": 220,
+   "flat": 0,
+   "file": "rulletrappe.svg"
+  },
+  {
+   "id": "kattepude",
+   "name": "Kattepude",
+   "cat": "mob",
+   "pack": "kawaii",
+   "w": 130,
+   "h": 100,
+   "flat": 0,
+   "file": "kattepude.svg"
+  },
+  {
+   "id": "hvalpbamse",
+   "name": "Plyshvalp",
+   "cat": "leg",
+   "pack": "kawaii",
+   "w": 100,
+   "h": 110,
+   "flat": 0,
+   "file": "hvalpbamse.svg"
+  },
+  {
+   "id": "pandaslag",
+   "name": "Pandahængekøje",
+   "cat": "mob",
+   "pack": "kawaii",
+   "w": 220,
+   "h": 170,
+   "flat": 0,
+   "file": "pandaslag.svg"
+  },
+  {
+   "id": "froepude",
+   "name": "Frøpude",
+   "cat": "mob",
+   "pack": "kawaii",
+   "w": 140,
+   "h": 90,
+   "flat": 0,
+   "file": "froepude.svg"
+  },
+  {
+   "id": "sky",
+   "name": "Søvnig sky-lampe",
+   "cat": "lys",
+   "pack": "kawaii",
+   "w": 150,
+   "h": 90,
+   "flat": 0,
+   "file": "sky.svg"
+  },
+  {
+   "id": "gavehylde",
+   "name": "Gavehylde",
+   "cat": "mob",
+   "pack": "gavebutik",
+   "w": 180,
+   "h": 200,
+   "flat": 0,
+   "file": "gavehylde.svg"
+  },
+  {
+   "id": "gaveaesker",
+   "name": "Gavestak",
+   "cat": "pynt",
+   "pack": "gavebutik",
+   "w": 120,
+   "h": 140,
+   "flat": 0,
+   "file": "gaveaesker.svg"
+  },
+  {
+   "id": "kortstativ",
+   "name": "Kortstativ",
+   "cat": "mob",
+   "pack": "gavebutik",
+   "w": 90,
+   "h": 200,
+   "flat": 0,
+   "file": "kortstativ.svg"
+  },
+  {
+   "id": "sloejfekasse",
+   "name": "Sløjfekurv",
+   "cat": "pynt",
+   "pack": "gavebutik",
+   "w": 100,
+   "h": 80,
+   "flat": 0,
+   "file": "sloejfekasse.svg"
+  },
+  {
+   "id": "tebord",
+   "name": "Tebord",
+   "cat": "mob",
+   "pack": "teselskab",
+   "w": 200,
+   "h": 110,
+   "flat": 0,
+   "file": "tebord.svg"
+  },
+  {
+   "id": "etagere",
+   "name": "Kageetagere",
+   "cat": "pynt",
+   "pack": "teselskab",
+   "w": 90,
+   "h": 150,
+   "flat": 0,
+   "file": "etagere.svg"
+  },
+  {
+   "id": "blomstervase",
+   "name": "Blomstervase",
+   "cat": "pynt",
+   "pack": "teselskab",
+   "w": 80,
+   "h": 140,
+   "flat": 0,
+   "file": "blomstervase.svg"
+  },
+  {
+   "id": "festlys",
+   "name": "Lyskæde med hjerter",
+   "cat": "væg",
+   "pack": "teselskab",
+   "w": 280,
+   "h": 60,
+   "flat": 0,
+   "file": "festlys.svg"
+  },
+  {
+   "id": "vandrutsjebane",
+   "name": "Vandrutsjebane",
+   "cat": "leg",
+   "pack": "vandland",
+   "w": 260,
+   "h": 240,
+   "flat": 0,
+   "file": "vandrutsjebane.svg"
+  },
+  {
+   "id": "badering",
+   "name": "Badering",
+   "cat": "leg",
+   "pack": "vandland",
+   "w": 110,
+   "h": 60,
+   "flat": 0,
+   "file": "badering.svg"
+  },
+  {
+   "id": "bassin",
+   "name": "Soppebassin",
+   "cat": "leg",
+   "pack": "vandland",
+   "w": 260,
+   "h": 60,
+   "flat": 1,
+   "file": "bassin.svg"
+  },
+  {
+   "id": "vandpistol",
+   "name": "Vandkanon",
+   "cat": "leg",
+   "pack": "vandland",
+   "w": 120,
+   "h": 70,
+   "flat": 0,
+   "file": "vandpistol.svg"
+  },
+  {
+   "id": "solskaerm",
+   "name": "Parasol",
+   "cat": "mob",
+   "pack": "vandland",
+   "w": 200,
+   "h": 220,
+   "flat": 0,
+   "file": "solskaerm.svg"
+  },
+  {
+   "id": "isvogn",
+   "name": "Isvogn",
+   "cat": "mob",
+   "pack": "isbod",
+   "w": 200,
+   "h": 200,
+   "flat": 0,
+   "file": "isvogn.svg"
+  },
+  {
+   "id": "isvaffel",
+   "name": "Kæmpe isvaffel",
+   "cat": "pynt",
+   "pack": "isbod",
+   "w": 80,
+   "h": 180,
+   "flat": 0,
+   "file": "isvaffel.svg"
+  },
+  {
+   "id": "isskilt",
+   "name": "Isskilt",
+   "cat": "pynt",
+   "pack": "isbod",
+   "w": 90,
+   "h": 170,
+   "flat": 0,
+   "file": "isskilt.svg"
+  },
+  {
+   "id": "softice",
+   "name": "Softicemaskine",
+   "cat": "mob",
+   "pack": "isbod",
+   "w": 130,
+   "h": 160,
+   "flat": 0,
+   "file": "softice.svg"
+  },
+  {
+   "id": "undersoegelsesbord",
+   "name": "Dyrlægebord",
+   "cat": "mob",
+   "pack": "dyreklinik",
+   "w": 200,
+   "h": 120,
+   "flat": 0,
+   "file": "undersoegelsesbord.svg"
+  },
+  {
+   "id": "dyrlaegetaske",
+   "name": "Dyrlægetaske",
+   "cat": "leg",
+   "pack": "dyreklinik",
+   "w": 110,
+   "h": 80,
+   "flat": 0,
+   "file": "dyrlaegetaske.svg"
+  },
+  {
+   "id": "kaeledyrsseng",
+   "name": "Kæledyrsseng",
+   "cat": "mob",
+   "pack": "dyreklinik",
+   "w": 150,
+   "h": 70,
+   "flat": 0,
+   "file": "kaeledyrsseng.svg"
+  },
+  {
+   "id": "foderskab",
+   "name": "Foderhylde",
+   "cat": "mob",
+   "pack": "dyreklinik",
+   "w": 160,
+   "h": 180,
+   "flat": 0,
+   "file": "foderskab.svg"
+  },
+  {
+   "id": "telt",
+   "name": "Kuppeltelt",
+   "cat": "mob",
+   "pack": "camping",
+   "w": 240,
+   "h": 160,
+   "flat": 0,
+   "file": "telt.svg"
+  },
+  {
+   "id": "baalsted",
+   "name": "Lejrbål med pinde",
+   "cat": "pynt",
+   "pack": "camping",
+   "w": 120,
+   "h": 120,
+   "flat": 0,
+   "file": "baalsted.svg"
+  },
+  {
+   "id": "campingstol",
+   "name": "Campingstol",
+   "cat": "mob",
+   "pack": "camping",
+   "w": 110,
+   "h": 130,
+   "flat": 0,
+   "file": "campingstol.svg"
+  },
+  {
+   "id": "kano",
+   "name": "Kano",
+   "cat": "leg",
+   "pack": "camping",
+   "w": 260,
+   "h": 70,
+   "flat": 0,
+   "file": "kano.svg"
+  },
+  {
+   "id": "stjernehimmel",
+   "name": "Stjerneplakat",
+   "cat": "væg",
+   "pack": "camping",
+   "w": 160,
+   "h": 110,
+   "flat": 0,
+   "file": "stjernehimmel.svg"
+  },
+  {
+   "id": "havegynge",
+   "name": "Havegynge",
+   "cat": "mob",
+   "pack": "sommerhus",
+   "w": 240,
+   "h": 220,
+   "flat": 0,
+   "file": "havegynge.svg"
+  },
+  {
+   "id": "hangekurv",
+   "name": "Picnickurv",
+   "cat": "pynt",
+   "pack": "sommerhus",
+   "w": 120,
+   "h": 100,
+   "flat": 0,
+   "file": "hangekurv.svg"
+  },
+  {
+   "id": "strandhaandklaede",
+   "name": "Strandhåndklæde",
+   "cat": "leg",
+   "pack": "sommerhus",
+   "w": 240,
+   "h": 50,
+   "flat": 1,
+   "file": "strandhaandklaede.svg"
+  },
+  {
+   "id": "sandslot",
+   "name": "Sandslot",
+   "cat": "pynt",
+   "pack": "sommerhus",
+   "w": 160,
+   "h": 140,
+   "flat": 0,
+   "file": "sandslot.svg"
+  },
+  {
+   "id": "familiebord",
+   "name": "Familiens spisebord",
+   "cat": "mob",
+   "pack": "hverdag",
+   "w": 260,
+   "h": 130,
+   "flat": 0,
+   "file": "familiebord.svg"
+  },
+  {
+   "id": "vaskemaskine2",
+   "name": "Vaskemaskine",
+   "cat": "mob",
+   "pack": "hverdag",
+   "w": 130,
+   "h": 150,
+   "flat": 0,
+   "file": "vaskemaskine2.svg"
+  },
+  {
+   "id": "stoevsuger",
+   "name": "Robotstøvsuger",
+   "cat": "leg",
+   "pack": "hverdag",
+   "w": 100,
+   "h": 40,
+   "flat": 1,
+   "file": "stoevsuger.svg"
+  },
+  {
+   "id": "familietavle",
+   "name": "Familietavle",
+   "cat": "væg",
+   "pack": "hverdag",
+   "w": 180,
+   "h": 130,
+   "flat": 0,
+   "file": "familietavle.svg"
+  },
+  {
+   "id": "drivhus",
+   "name": "Drivhus",
+   "cat": "mob",
+   "pack": "koekkenhave",
+   "w": 220,
+   "h": 200,
+   "flat": 0,
+   "file": "drivhus.svg"
+  },
+  {
+   "id": "hoejbed",
+   "name": "Højbed med grønt",
+   "cat": "mob",
+   "pack": "koekkenhave",
+   "w": 220,
+   "h": 110,
+   "flat": 0,
+   "file": "hoejbed.svg"
+  },
+  {
+   "id": "vandkande2",
+   "name": "Havekande",
+   "cat": "leg",
+   "pack": "koekkenhave",
+   "w": 120,
+   "h": 90,
+   "flat": 0,
+   "file": "vandkande2.svg"
+  },
+  {
+   "id": "fugleskraemsel",
+   "name": "Fugleskræmsel",
+   "cat": "pynt",
+   "pack": "koekkenhave",
+   "w": 140,
+   "h": 260,
+   "flat": 0,
+   "file": "fugleskraemsel.svg"
+  },
+  {
+   "id": "heltekappe",
+   "name": "Heltekappe på bøjle",
+   "cat": "væg",
+   "pack": "helte",
+   "w": 120,
+   "h": 170,
+   "flat": 0,
+   "file": "heltekappe.svg"
+  },
+  {
+   "id": "traeningsbane",
+   "name": "Forhindringsbane",
+   "cat": "leg",
+   "pack": "helte",
+   "w": 280,
+   "h": 120,
+   "flat": 0,
+   "file": "traeningsbane.svg"
+  },
+  {
+   "id": "heltemaske",
+   "name": "Maskevæg",
+   "cat": "væg",
+   "pack": "helte",
+   "w": 180,
+   "h": 100,
+   "flat": 0,
+   "file": "heltemaske.svg"
+  },
+  {
+   "id": "heltepokal",
+   "name": "Heltepokal",
+   "cat": "pynt",
+   "pack": "helte",
+   "w": 90,
+   "h": 140,
+   "flat": 0,
+   "file": "heltepokal.svg"
+  },
+  {
+   "id": "kontrolpanel",
+   "name": "Kontrolpanel",
+   "cat": "mob",
+   "pack": "base",
+   "w": 240,
+   "h": 150,
+   "flat": 0,
+   "file": "kontrolpanel.svg"
+  },
+  {
+   "id": "hemmeligdoer",
+   "name": "Bogreol med lem",
+   "cat": "mob",
+   "pack": "base",
+   "w": 160,
+   "h": 260,
+   "flat": 0,
+   "file": "hemmeligdoer.svg"
+  },
+  {
+   "id": "periskop",
+   "name": "Periskop",
+   "cat": "leg",
+   "pack": "base",
+   "w": 80,
+   "h": 220,
+   "flat": 0,
+   "file": "periskop.svg"
+  },
+  {
+   "id": "kodekort",
+   "name": "Hemmeligt kort",
+   "cat": "væg",
+   "pack": "base",
+   "w": 180,
+   "h": 130,
+   "flat": 0,
+   "file": "kodekort.svg"
+  },
+  {
+   "id": "opfinderbord",
+   "name": "Opfinderbord",
+   "cat": "mob",
+   "pack": "opfinder",
+   "w": 240,
+   "h": 170,
+   "flat": 0,
+   "file": "opfinderbord.svg"
+  },
+  {
+   "id": "tandhjul",
+   "name": "Tandhjulsur",
+   "cat": "væg",
+   "pack": "opfinder",
+   "w": 150,
+   "h": 130,
+   "flat": 0,
+   "file": "tandhjul.svg"
+  },
+  {
+   "id": "lynmaskine",
+   "name": "Lynmaskine",
+   "cat": "lys",
+   "pack": "opfinder",
+   "w": 120,
+   "h": 200,
+   "flat": 0,
+   "file": "lynmaskine.svg"
+  },
+  {
+   "id": "raketstoevle",
+   "name": "Raketsko",
+   "cat": "leg",
+   "pack": "opfinder",
+   "w": 120,
+   "h": 80,
+   "flat": 0,
+   "file": "raketstoevle.svg"
+  },
+  {
+   "id": "planetring",
+   "name": "Planetlampe med ring",
+   "cat": "lys",
+   "pack": "kosmisk",
+   "w": 160,
+   "h": 160,
+   "flat": 0,
+   "file": "planetring.svg"
+  },
+  {
+   "id": "stjernekappe",
+   "name": "Stjernekappe",
+   "cat": "væg",
+   "pack": "kosmisk",
+   "w": 120,
+   "h": 170,
+   "flat": 0,
+   "file": "stjernekappe.svg"
+  },
+  {
+   "id": "meteor",
+   "name": "Meteor-sækkestol",
+   "cat": "mob",
+   "pack": "kosmisk",
+   "w": 160,
+   "h": 110,
+   "flat": 0,
+   "file": "meteor.svg"
+  },
+  {
+   "id": "rumkapsel",
+   "name": "Rumkapsel-seng",
+   "cat": "mob",
+   "pack": "kosmisk",
+   "w": 300,
+   "h": 150,
+   "flat": 0,
+   "file": "rumkapsel.svg"
+  },
+  {
+   "id": "troldmandsbord",
+   "name": "Tryllebord",
+   "cat": "mob",
+   "pack": "magi",
+   "w": 220,
+   "h": 140,
+   "flat": 0,
+   "file": "troldmandsbord.svg"
+  },
+  {
+   "id": "krystalkugle",
+   "name": "Krystalkugle",
+   "cat": "lys",
+   "pack": "magi",
+   "w": 100,
+   "h": 130,
+   "flat": 0,
+   "file": "krystalkugle.svg"
+  },
+  {
+   "id": "tryllebog",
+   "name": "Tryllebog på pult",
+   "cat": "pynt",
+   "pack": "magi",
+   "w": 120,
+   "h": 150,
+   "flat": 0,
+   "file": "tryllebog.svg"
+  },
+  {
+   "id": "kost",
+   "name": "Flyvekost",
+   "cat": "leg",
+   "pack": "magi",
+   "w": 200,
+   "h": 60,
+   "flat": 0,
+   "file": "kost.svg"
+  },
+  {
+   "id": "stjernestav",
+   "name": "Tryllestav-holder",
+   "cat": "pynt",
+   "pack": "magi",
+   "w": 80,
+   "h": 160,
+   "flat": 0,
+   "file": "stjernestav.svg"
+  },
+  {
+   "id": "cafebord",
+   "name": "Cafébord",
+   "cat": "mob",
+   "pack": "cafe",
+   "w": 130,
+   "h": 110,
+   "flat": 0,
+   "file": "cafebord.svg"
+  },
+  {
+   "id": "menutavle",
+   "name": "Menutavle",
+   "cat": "væg",
+   "pack": "cafe",
+   "w": 160,
+   "h": 120,
+   "flat": 0,
+   "file": "menutavle.svg"
+  },
+  {
+   "id": "kagemontre",
+   "name": "Kagemontre",
+   "cat": "mob",
+   "pack": "cafe",
+   "w": 200,
+   "h": 140,
+   "flat": 0,
+   "file": "kagemontre.svg"
+  },
+  {
+   "id": "espresso",
+   "name": "Espressomaskine",
+   "cat": "pynt",
+   "pack": "cafe",
+   "w": 140,
+   "h": 110,
+   "flat": 0,
+   "file": "espresso.svg"
+  },
+  {
+   "id": "postskranke",
+   "name": "Postskranke",
+   "cat": "mob",
+   "pack": "posthus",
+   "w": 260,
+   "h": 140,
+   "flat": 0,
+   "file": "postskranke.svg"
+  },
+  {
+   "id": "postsaek",
+   "name": "Postsæk",
+   "cat": "leg",
+   "pack": "posthus",
+   "w": 100,
+   "h": 100,
+   "flat": 0,
+   "file": "postsaek.svg"
+  },
+  {
+   "id": "pakkehylde",
+   "name": "Pakkehylde",
+   "cat": "mob",
+   "pack": "posthus",
+   "w": 180,
+   "h": 200,
+   "flat": 0,
+   "file": "pakkehylde.svg"
+  },
+  {
+   "id": "jukebox",
+   "name": "Musikafspiller",
+   "cat": "mob",
+   "pack": "tagfest",
+   "w": 130,
+   "h": 200,
+   "flat": 0,
+   "file": "jukebox.svg"
+  },
+  {
+   "id": "festlamper",
+   "name": "Festlamper",
+   "cat": "væg",
+   "pack": "tagfest",
+   "w": 300,
+   "h": 80,
+   "flat": 0,
+   "file": "festlamper.svg"
+  },
+  {
+   "id": "solseng",
+   "name": "Solseng",
+   "cat": "mob",
+   "pack": "tagfest",
+   "w": 220,
+   "h": 80,
+   "flat": 0,
+   "file": "solseng.svg"
+  },
+  {
+   "id": "hospitalsseng",
+   "name": "Hospitalsseng",
+   "cat": "mob",
+   "pack": "hospital",
+   "w": 280,
+   "h": 160,
+   "flat": 0,
+   "file": "hospitalsseng.svg"
+  },
+  {
+   "id": "roentgen",
+   "name": "Røntgenbillede",
+   "cat": "væg",
+   "pack": "hospital",
+   "w": 130,
+   "h": 130,
+   "flat": 0,
+   "file": "roentgen.svg"
+  },
+  {
+   "id": "rullestol",
+   "name": "Kørestol",
+   "cat": "mob",
+   "pack": "hospital",
+   "w": 140,
+   "h": 140,
+   "flat": 0,
+   "file": "rullestol.svg"
+  },
+  {
+   "id": "ambulance",
+   "name": "Ambulance",
+   "cat": "leg",
+   "pack": "hospital",
+   "w": 220,
+   "h": 130,
+   "flat": 0,
+   "file": "ambulance.svg"
+  },
+  {
+   "id": "apotek",
+   "name": "Medicinskab",
+   "cat": "mob",
+   "pack": "hospital",
+   "w": 140,
+   "h": 200,
+   "flat": 0,
+   "file": "apotek.svg"
+  },
+  {
+   "id": "indkoebsvogn",
+   "name": "Indkøbsvogn",
+   "cat": "leg",
+   "pack": "indkob",
+   "w": 150,
+   "h": 120,
+   "flat": 0,
+   "file": "indkoebsvogn.svg"
+  },
+  {
+   "id": "butiksvindue",
+   "name": "Butiksvindue",
+   "cat": "mob",
+   "pack": "indkob",
+   "w": 260,
+   "h": 220,
+   "flat": 0,
+   "file": "butiksvindue.svg"
+  },
+  {
+   "id": "rulletrappe2",
+   "name": "Rulletrappe",
+   "cat": "mob",
+   "pack": "indkob",
+   "w": 280,
+   "h": 220,
+   "flat": 0,
+   "file": "rulletrappe2.svg"
+  },
+  {
+   "id": "auditorie",
+   "name": "Auditoriebænk",
+   "cat": "mob",
+   "pack": "uni",
+   "w": 280,
+   "h": 110,
+   "flat": 0,
+   "file": "auditorie.svg"
+  },
+  {
+   "id": "mikroskop",
+   "name": "Mikroskop",
+   "cat": "pynt",
+   "pack": "uni",
+   "w": 80,
+   "h": 120,
+   "flat": 0,
+   "file": "mikroskop.svg"
+  },
+  {
+   "id": "stortavle",
+   "name": "Stor tavle",
+   "cat": "væg",
+   "pack": "uni",
+   "w": 280,
+   "h": 140,
+   "flat": 0,
+   "file": "stortavle.svg"
+  },
+  {
+   "id": "diplomhat",
+   "name": "Studenterhue",
+   "cat": "pynt",
+   "pack": "uni",
+   "w": 100,
+   "h": 60,
+   "flat": 0,
+   "file": "diplomhat.svg"
+  },
+  {
+   "id": "pool",
+   "name": "Swimmingpool",
+   "cat": "mob",
+   "pack": "poolvilla",
+   "w": 420,
+   "h": 60,
+   "flat": 1,
+   "file": "pool.svg"
+  },
+  {
+   "id": "palme2",
+   "name": "Palme i krukke",
+   "cat": "pynt",
+   "pack": "poolvilla",
+   "w": 160,
+   "h": 220,
+   "flat": 0,
+   "file": "palme2.svg"
+  },
+  {
+   "id": "storsofa",
+   "name": "Stor familiesofa",
+   "cat": "mob",
+   "pack": "storfamilie",
+   "w": 360,
+   "h": 150,
+   "flat": 0,
+   "file": "storsofa.svg"
+  },
+  {
+   "id": "langbord",
+   "name": "Langt spisebord",
+   "cat": "mob",
+   "pack": "storfamilie",
+   "w": 380,
+   "h": 130,
+   "flat": 0,
+   "file": "langbord.svg"
+  },
+  {
+   "id": "campingvogn",
+   "name": "Campingvogn",
+   "cat": "mob",
+   "pack": "campingvogn",
+   "w": 300,
+   "h": 180,
+   "flat": 0,
+   "file": "campingvogn.svg"
+  },
+  {
+   "id": "haengekoeje2",
+   "name": "Hængekøje mellem træer",
+   "cat": "mob",
+   "pack": "campingvogn",
+   "w": 300,
+   "h": 220,
+   "flat": 0,
+   "file": "haengekoeje2.svg"
+  },
+  {
+   "id": "bjoernestol",
+   "name": "Bjørnestol",
+   "cat": "mob",
+   "pack": "kaelebjorne",
+   "w": 160,
+   "h": 170,
+   "flat": 0,
+   "file": "bjoernestol.svg"
+  },
+  {
+   "id": "skyseng",
+   "name": "Skyseng",
+   "cat": "mob",
+   "pack": "kaelebjorne",
+   "w": 300,
+   "h": 160,
+   "flat": 0,
+   "file": "skyseng.svg"
+  },
+  {
+   "id": "honninglampe",
+   "name": "Honninglampe",
+   "cat": "lys",
+   "pack": "kaelebjorne",
+   "w": 90,
+   "h": 130,
+   "flat": 0,
+   "file": "honninglampe.svg"
+  },
+  {
+   "id": "bamsereol",
+   "name": "Bamsereol",
+   "cat": "mob",
+   "pack": "kaelebjorne",
+   "w": 160,
+   "h": 190,
+   "flat": 0,
+   "file": "bamsereol.svg"
+  },
+  {
+   "id": "poteplaid",
+   "name": "Plaid med poter",
+   "cat": "leg",
+   "pack": "kaelebjorne",
+   "w": 200,
+   "h": 40,
+   "flat": 1,
+   "file": "poteplaid.svg"
+  },
+  {
+   "id": "neonsofa",
+   "name": "Neonsofa",
+   "cat": "mob",
+   "pack": "neonregnbue",
+   "w": 260,
+   "h": 120,
+   "flat": 0,
+   "file": "neonsofa.svg"
+  },
+  {
+   "id": "regnbuereol",
+   "name": "Regnbuereol",
+   "cat": "mob",
+   "pack": "neonregnbue",
+   "w": 180,
+   "h": 200,
+   "flat": 0,
+   "file": "regnbuereol.svg"
+  },
+  {
+   "id": "neonlampe",
+   "name": "Neon-regnbuelampe",
+   "cat": "lys",
+   "pack": "neonregnbue",
+   "w": 160,
+   "h": 110,
+   "flat": 0,
+   "file": "neonlampe.svg"
+  },
+  {
+   "id": "diskogulv",
+   "name": "Diskotæppe",
+   "cat": "leg",
+   "pack": "neonregnbue",
+   "w": 260,
+   "h": 40,
+   "flat": 1,
+   "file": "diskogulv.svg"
+  },
+  {
+   "id": "hjertespejl",
+   "name": "Hjertespejl",
+   "cat": "væg",
+   "pack": "neonregnbue",
+   "w": 120,
+   "h": 120,
+   "flat": 0,
+   "file": "hjertespejl.svg"
+  },
+  {
+   "id": "yogamaatte",
+   "name": "Yogamåtte",
+   "cat": "leg",
+   "pack": "ro",
+   "w": 240,
+   "h": 40,
+   "flat": 1,
+   "file": "yogamaatte.svg"
+  },
+  {
+   "id": "stueplanter",
+   "name": "Plantehylde",
+   "cat": "mob",
+   "pack": "ro",
+   "w": 180,
+   "h": 200,
+   "flat": 0,
+   "file": "stueplanter.svg"
+  },
+  {
+   "id": "boblebad",
+   "name": "Boblebad",
+   "cat": "mob",
+   "pack": "ro",
+   "w": 280,
+   "h": 110,
+   "flat": 0,
+   "file": "boblebad.svg"
+  },
+  {
+   "id": "duftlys",
+   "name": "Duftlys og sten",
+   "cat": "lys",
+   "pack": "ro",
+   "w": 140,
+   "h": 80,
+   "flat": 0,
+   "file": "duftlys.svg"
+  },
+  {
+   "id": "meditationspude",
+   "name": "Meditationspude",
+   "cat": "leg",
+   "pack": "ro",
+   "w": 120,
+   "h": 50,
+   "flat": 0,
+   "file": "meditationspude.svg"
+  },
+  {
+   "id": "gryde",
+   "name": "Gryde",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 110,
+   "h": 80,
+   "flat": 0,
+   "file": "gryde.svg"
+  },
+  {
+   "id": "stegepande",
+   "name": "Stegepande",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 150,
+   "h": 40,
+   "flat": 0,
+   "file": "stegepande.svg"
+  },
+  {
+   "id": "kaffemaskine",
+   "name": "Kaffemaskine",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 80,
+   "h": 110,
+   "flat": 0,
+   "file": "kaffemaskine.svg"
+  },
+  {
+   "id": "elkedel",
+   "name": "Elkedel",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 80,
+   "h": 90,
+   "flat": 0,
+   "file": "elkedel.svg"
+  },
+  {
+   "id": "broedrister",
+   "name": "Brødrister",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 90,
+   "h": 80,
+   "flat": 0,
+   "file": "broedrister.svg"
+  },
+  {
+   "id": "mikroovn",
+   "name": "Mikroovn",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 130,
+   "h": 80,
+   "flat": 0,
+   "file": "mikroovn.svg"
+  },
+  {
+   "id": "skaerebraet",
+   "name": "Skærebræt med grønt",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 140,
+   "h": 50,
+   "flat": 0,
+   "file": "skaerebraet.svg"
+  },
+  {
+   "id": "tallerkener",
+   "name": "Tallerkenstak",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 100,
+   "h": 60,
+   "flat": 0,
+   "file": "tallerkener.svg"
+  },
+  {
+   "id": "kopper",
+   "name": "Kopper på række",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 140,
+   "h": 50,
+   "flat": 0,
+   "file": "kopper.svg"
+  },
+  {
+   "id": "frugtskaal",
+   "name": "Frugtskål",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 120,
+   "h": 70,
+   "flat": 0,
+   "file": "frugtskaal.svg"
+  },
+  {
+   "id": "broedkurv",
+   "name": "Brødkurv",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 110,
+   "h": 60,
+   "flat": 0,
+   "file": "broedkurv.svg"
+  },
+  {
+   "id": "maelk",
+   "name": "Mælk",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 50,
+   "h": 100,
+   "flat": 0,
+   "file": "maelk.svg"
+  },
+  {
+   "id": "juice",
+   "name": "Juice",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 50,
+   "h": 100,
+   "flat": 0,
+   "file": "juice.svg"
+  },
+  {
+   "id": "madpakke",
+   "name": "Madpakke",
+   "cat": "leg",
+   "pack": "home",
+   "w": 100,
+   "h": 60,
+   "flat": 0,
+   "file": "madpakke.svg"
+  },
+  {
+   "id": "pizza",
+   "name": "Pizza",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 120,
+   "h": 40,
+   "flat": 0,
+   "file": "pizza.svg"
+  },
+  {
+   "id": "aeble",
+   "name": "Æble",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 60,
+   "h": 70,
+   "flat": 0,
+   "file": "aeble.svg"
+  },
+  {
+   "id": "banan",
+   "name": "Bananer",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 90,
+   "h": 50,
+   "flat": 0,
+   "file": "banan.svg"
+  },
+  {
+   "id": "ost",
+   "name": "Ost",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 90,
+   "h": 60,
+   "flat": 0,
+   "file": "ost.svg"
+  },
+  {
+   "id": "boller",
+   "name": "Boller",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 110,
+   "h": 50,
+   "flat": 0,
+   "file": "boller.svg"
+  },
+  {
+   "id": "pandekager",
+   "name": "Pandekager",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 100,
+   "h": 80,
+   "flat": 0,
+   "file": "pandekager.svg"
+  },
+  {
+   "id": "vandmelon",
+   "name": "Vandmelon",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 120,
+   "h": 60,
+   "flat": 0,
+   "file": "vandmelon.svg"
+  },
+  {
+   "id": "cornflakes",
+   "name": "Morgenmad",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 100,
+   "h": 110,
+   "flat": 0,
+   "file": "cornflakes.svg"
+  },
+  {
+   "id": "jakkeknage",
+   "name": "Jakke på knage",
+   "cat": "væg",
+   "pack": "home",
+   "w": 120,
+   "h": 140,
+   "flat": 0,
+   "file": "jakkeknage.svg"
+  },
+  {
+   "id": "gummistoevler",
+   "name": "Gummistøvler",
+   "cat": "leg",
+   "pack": "home",
+   "w": 100,
+   "h": 80,
+   "flat": 0,
+   "file": "gummistoevler.svg"
+  },
+  {
+   "id": "skoletaske",
+   "name": "Skoletaske",
+   "cat": "leg",
+   "pack": "home",
+   "w": 90,
+   "h": 110,
+   "flat": 0,
+   "file": "skoletaske.svg"
+  },
+  {
+   "id": "kasket",
+   "name": "Kasket",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 90,
+   "h": 50,
+   "flat": 0,
+   "file": "kasket.svg"
+  },
+  {
+   "id": "halstoerklaede",
+   "name": "Halstørklæde",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 120,
+   "h": 60,
+   "flat": 0,
+   "file": "halstoerklaede.svg"
+  },
+  {
+   "id": "pyjamas",
+   "name": "Pyjamas",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 110,
+   "h": 60,
+   "flat": 0,
+   "file": "pyjamas.svg"
+  },
+  {
+   "id": "sokker",
+   "name": "Sokker",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 90,
+   "h": 70,
+   "flat": 0,
+   "file": "sokker.svg"
+  },
+  {
+   "id": "skopar",
+   "name": "Sko ved døren",
+   "cat": "leg",
+   "pack": "home",
+   "w": 120,
+   "h": 40,
+   "flat": 0,
+   "file": "skopar.svg"
+  },
+  {
+   "id": "tablet",
+   "name": "Tablet",
+   "cat": "leg",
+   "pack": "home",
+   "w": 100,
+   "h": 80,
+   "flat": 0,
+   "file": "tablet.svg"
+  },
+  {
+   "id": "mobil",
+   "name": "Mobiltelefon",
+   "cat": "leg",
+   "pack": "home",
+   "w": 50,
+   "h": 90,
+   "flat": 0,
+   "file": "mobil.svg"
+  },
+  {
+   "id": "fjernbetjening",
+   "name": "Fjernbetjening",
+   "cat": "leg",
+   "pack": "home",
+   "w": 40,
+   "h": 90,
+   "flat": 0,
+   "file": "fjernbetjening.svg"
+  },
+  {
+   "id": "computer",
+   "name": "Bærbar computer",
+   "cat": "leg",
+   "pack": "home",
+   "w": 130,
+   "h": 90,
+   "flat": 0,
+   "file": "computer.svg"
+  },
+  {
+   "id": "smarthoejttaler",
+   "name": "Smart højttaler",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 60,
+   "h": 90,
+   "flat": 0,
+   "file": "smarthoejttaler.svg"
+  },
+  {
+   "id": "controller",
+   "name": "Spillecontroller",
+   "cat": "leg",
+   "pack": "home",
+   "w": 100,
+   "h": 60,
+   "flat": 0,
+   "file": "controller.svg"
+  },
+  {
+   "id": "hovedtelefoner",
+   "name": "Hovedtelefoner",
+   "cat": "leg",
+   "pack": "home",
+   "w": 90,
+   "h": 80,
+   "flat": 0,
+   "file": "hovedtelefoner.svg"
+  },
+  {
+   "id": "vaekkeur",
+   "name": "Vækkeur",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 70,
+   "h": 80,
+   "flat": 0,
+   "file": "vaekkeur.svg"
+  },
+  {
+   "id": "radio",
+   "name": "Radio",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 110,
+   "h": 80,
+   "flat": 0,
+   "file": "radio.svg"
+  },
+  {
+   "id": "tandkrus",
+   "name": "Tandbørster i krus",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 60,
+   "h": 90,
+   "flat": 0,
+   "file": "tandkrus.svg"
+  },
+  {
+   "id": "haandklaede",
+   "name": "Håndklæde",
+   "cat": "væg",
+   "pack": "home",
+   "w": 90,
+   "h": 120,
+   "flat": 0,
+   "file": "haandklaede.svg"
+  },
+  {
+   "id": "badeand",
+   "name": "Badeand",
+   "cat": "leg",
+   "pack": "home",
+   "w": 80,
+   "h": 70,
+   "flat": 0,
+   "file": "badeand.svg"
+  },
+  {
+   "id": "shampoo",
+   "name": "Shampoo og sæbe",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 90,
+   "h": 90,
+   "flat": 0,
+   "file": "shampoo.svg"
+  },
+  {
+   "id": "toiletrulle",
+   "name": "Toiletpapir",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 60,
+   "h": 70,
+   "flat": 0,
+   "file": "toiletrulle.svg"
+  },
+  {
+   "id": "bademaatte",
+   "name": "Bademåtte",
+   "cat": "leg",
+   "pack": "home",
+   "w": 170,
+   "h": 30,
+   "flat": 1,
+   "file": "bademaatte.svg"
+  },
+  {
+   "id": "badekaabe",
+   "name": "Badekåbe",
+   "cat": "væg",
+   "pack": "home",
+   "w": 100,
+   "h": 160,
+   "flat": 0,
+   "file": "badekaabe.svg"
+  },
+  {
+   "id": "bogstabel",
+   "name": "Bøger",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 110,
+   "h": 80,
+   "flat": 0,
+   "file": "bogstabel.svg"
+  },
+  {
+   "id": "aabenbog",
+   "name": "Åben bog",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 120,
+   "h": 50,
+   "flat": 0,
+   "file": "aabenbog.svg"
+  },
+  {
+   "id": "puslespil",
+   "name": "Puslespil",
+   "cat": "leg",
+   "pack": "home",
+   "w": 130,
+   "h": 40,
+   "flat": 1,
+   "file": "puslespil.svg"
+  },
+  {
+   "id": "braetspil",
+   "name": "Brætspil",
+   "cat": "leg",
+   "pack": "home",
+   "w": 130,
+   "h": 40,
+   "flat": 1,
+   "file": "braetspil.svg"
+  },
+  {
+   "id": "klodsborg",
+   "name": "Klodsborg",
+   "cat": "leg",
+   "pack": "home",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "klodsborg.svg"
+  },
+  {
+   "id": "tegneblok",
+   "name": "Tegneblok og farver",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 130,
+   "h": 40,
+   "flat": 0,
+   "file": "tegneblok.svg"
+  },
+  {
+   "id": "legetog",
+   "name": "Legetøjstog",
+   "cat": "leg",
+   "pack": "home",
+   "w": 160,
+   "h": 70,
+   "flat": 0,
+   "file": "legetog.svg"
+  },
+  {
+   "id": "sjippetov",
+   "name": "Sjippetov",
+   "cat": "leg",
+   "pack": "home",
+   "w": 130,
+   "h": 40,
+   "flat": 0,
+   "file": "sjippetov.svg"
+  },
+  {
+   "id": "vasketoejskurv",
+   "name": "Vasketøjskurv",
+   "cat": "mob",
+   "pack": "home",
+   "w": 100,
+   "h": 90,
+   "flat": 0,
+   "file": "vasketoejskurv.svg"
+  },
+  {
+   "id": "doermaatte",
+   "name": "Dørmåtte",
+   "cat": "leg",
+   "pack": "home",
+   "w": 160,
+   "h": 30,
+   "flat": 1,
+   "file": "doermaatte.svg"
+  },
+  {
+   "id": "paraply",
+   "name": "Paraplystativ",
+   "cat": "mob",
+   "pack": "home",
+   "w": 70,
+   "h": 130,
+   "flat": 0,
+   "file": "paraply.svg"
+  },
+  {
+   "id": "stoevsugerstav",
+   "name": "Støvsuger",
+   "cat": "leg",
+   "pack": "home",
+   "w": 80,
+   "h": 160,
+   "flat": 0,
+   "file": "stoevsugerstav.svg"
+  },
+  {
+   "id": "fejekost",
+   "name": "Kost og fejebakke",
+   "cat": "leg",
+   "pack": "home",
+   "w": 120,
+   "h": 170,
+   "flat": 0,
+   "file": "fejekost.svg"
+  },
+  {
+   "id": "strygebraet",
+   "name": "Strygebræt",
+   "cat": "mob",
+   "pack": "home",
+   "w": 200,
+   "h": 110,
+   "flat": 0,
+   "file": "strygebraet.svg"
+  },
+  {
+   "id": "papkasser",
+   "name": "Papkasser",
+   "cat": "mob",
+   "pack": "home",
+   "w": 140,
+   "h": 120,
+   "flat": 0,
+   "file": "papkasser.svg"
+  },
+  {
+   "id": "haveslange",
+   "name": "Haveslange",
+   "cat": "leg",
+   "pack": "home",
+   "w": 110,
+   "h": 70,
+   "flat": 0,
+   "file": "haveslange.svg"
+  },
+  {
+   "id": "plaeneklipper",
+   "name": "Plæneklipper",
+   "cat": "leg",
+   "pack": "home",
+   "w": 150,
+   "h": 110,
+   "flat": 0,
+   "file": "plaeneklipper.svg"
+  },
+  {
+   "id": "haveredskab",
+   "name": "Skovl og handsker",
+   "cat": "leg",
+   "pack": "home",
+   "w": 110,
+   "h": 120,
+   "flat": 0,
+   "file": "haveredskab.svg"
+  },
+  {
+   "id": "loebehjul",
+   "name": "Løbehjul",
+   "cat": "leg",
+   "pack": "home",
+   "w": 140,
+   "h": 130,
+   "flat": 0,
+   "file": "loebehjul.svg"
+  },
+  {
+   "id": "cykelhjelm",
+   "name": "Cykelhjelm",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 90,
+   "h": 60,
+   "flat": 0,
+   "file": "cykelhjelm.svg"
+  },
+  {
+   "id": "grill",
+   "name": "Grill",
+   "cat": "mob",
+   "pack": "home",
+   "w": 120,
+   "h": 130,
+   "flat": 0,
+   "file": "grill.svg"
+  },
+  {
+   "id": "fotoalbum",
+   "name": "Fotoalbum",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 100,
+   "h": 40,
+   "flat": 0,
+   "file": "fotoalbum.svg"
+  },
+  {
+   "id": "tulipaner",
+   "name": "Tulipaner i vase",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 80,
+   "h": 130,
+   "flat": 0,
+   "file": "tulipaner.svg"
+  },
+  {
+   "id": "stearinlys",
+   "name": "Stearinlys",
+   "cat": "lys",
+   "pack": "home",
+   "w": 70,
+   "h": 110,
+   "flat": 0,
+   "file": "stearinlys.svg"
+  },
+  {
+   "id": "blyantskrus",
+   "name": "Krus med blyanter",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 60,
+   "h": 100,
+   "flat": 0,
+   "file": "blyantskrus.svg"
+  },
+  {
+   "id": "snekugle",
+   "name": "Snekugle",
+   "cat": "pynt",
+   "pack": "home",
+   "w": 80,
+   "h": 90,
+   "flat": 0,
+   "file": "snekugle.svg"
+  },
+  {
+   "id": "vaegkalender",
+   "name": "Vægkalender",
+   "cat": "væg",
+   "pack": "home",
+   "w": 110,
+   "h": 130,
+   "flat": 0,
+   "file": "vaegkalender.svg"
+  },
+  {
+   "id": "boernetegning",
+   "name": "Børnetegning",
+   "cat": "væg",
+   "pack": "home",
+   "w": 110,
+   "h": 90,
+   "flat": 0,
+   "file": "boernetegning.svg"
+  },
+  {
+   "id": "medaljeophaeng",
+   "name": "Medaljer og diplom",
+   "cat": "væg",
+   "pack": "home",
+   "w": 120,
+   "h": 110,
+   "flat": 0,
+   "file": "medaljeophaeng.svg"
+  },
+  {
+   "id": "sofa",
+   "name": "Sofa",
+   "cat": "mob",
+   "pack": "world",
+   "w": 300,
+   "h": 140,
+   "flat": 0,
+   "file": "sofa.svg"
+  },
+  {
+   "id": "sofabord",
+   "name": "Sofabord",
+   "cat": "mob",
+   "pack": "world",
+   "w": 180,
+   "h": 60,
+   "flat": 0,
+   "file": "sofabord.svg"
+  },
+  {
+   "id": "tv",
+   "name": "Fjernsyn",
+   "cat": "mob",
+   "pack": "world",
+   "w": 220,
+   "h": 190,
+   "flat": 0,
+   "file": "tv.svg"
+  },
+  {
+   "id": "spisebord",
+   "name": "Spisebord",
+   "cat": "mob",
+   "pack": "world",
+   "w": 260,
+   "h": 110,
+   "flat": 0,
+   "file": "spisebord.svg"
+  },
+  {
+   "id": "koekken",
+   "name": "Køkkenbord",
+   "cat": "mob",
+   "pack": "world",
+   "w": 320,
+   "h": 200,
+   "flat": 0,
+   "file": "koekken.svg"
+  },
+  {
+   "id": "komfur",
+   "name": "Komfur",
+   "cat": "mob",
+   "pack": "world",
+   "w": 120,
+   "h": 150,
+   "flat": 0,
+   "file": "komfur.svg"
+  },
+  {
+   "id": "koeleskab",
+   "name": "Køleskab",
+   "cat": "mob",
+   "pack": "world",
+   "w": 120,
+   "h": 260,
+   "flat": 0,
+   "file": "koeleskab.svg"
+  },
+  {
+   "id": "badekar",
+   "name": "Badekar",
+   "cat": "mob",
+   "pack": "world",
+   "w": 300,
+   "h": 130,
+   "flat": 0,
+   "file": "badekar.svg"
+  },
+  {
+   "id": "toilet",
+   "name": "Toilet",
+   "cat": "mob",
+   "pack": "world",
+   "w": 100,
+   "h": 150,
+   "flat": 0,
+   "file": "toilet.svg"
+  },
+  {
+   "id": "haandvask",
+   "name": "Håndvask",
+   "cat": "mob",
+   "pack": "world",
+   "w": 120,
+   "h": 220,
+   "flat": 0,
+   "file": "haandvask.svg"
+  },
+  {
+   "id": "vaskemaskine",
+   "name": "Vaskemaskine",
+   "cat": "mob",
+   "pack": "world",
+   "w": 120,
+   "h": 130,
+   "flat": 0,
+   "file": "vaskemaskine.svg"
+  },
+  {
+   "id": "dobbeltseng",
+   "name": "Dobbeltseng",
+   "cat": "mob",
+   "pack": "world",
+   "w": 340,
+   "h": 170,
+   "flat": 0,
+   "file": "dobbeltseng.svg"
+  },
+  {
+   "id": "natbord",
+   "name": "Natbord",
+   "cat": "mob",
+   "pack": "world",
+   "w": 80,
+   "h": 110,
+   "flat": 0,
+   "file": "natbord.svg"
+  },
+  {
+   "id": "bil",
+   "name": "Bil",
+   "cat": "mob",
+   "pack": "world",
+   "w": 330,
+   "h": 150,
+   "flat": 0,
+   "file": "bil.svg"
+  },
+  {
+   "id": "cykel",
+   "name": "Cykel",
+   "cat": "leg",
+   "pack": "world",
+   "w": 170,
+   "h": 110,
+   "flat": 0,
+   "file": "cykel.svg"
+  },
+  {
+   "id": "vaerktoejsvaeg",
+   "name": "Værktøjsvæg",
+   "cat": "væg",
+   "pack": "world",
+   "w": 220,
+   "h": 130,
+   "flat": 0,
+   "file": "vaerktoejsvaeg.svg"
+  },
+  {
+   "id": "skoreol",
+   "name": "Skoreol",
+   "cat": "mob",
+   "pack": "world",
+   "w": 160,
+   "h": 90,
+   "flat": 0,
+   "file": "skoreol.svg"
+  },
+  {
+   "id": "knager",
+   "name": "Knagerække",
+   "cat": "væg",
+   "pack": "world",
+   "w": 200,
+   "h": 150,
+   "flat": 0,
+   "file": "knager.svg"
+  },
+  {
+   "id": "vindue",
+   "name": "Vindue",
+   "cat": "væg",
+   "pack": "world",
+   "w": 160,
+   "h": 160,
+   "flat": 0,
+   "file": "vindue.svg"
+  },
+  {
+   "id": "maleri",
+   "name": "Maleri",
+   "cat": "væg",
+   "pack": "world",
+   "w": 180,
+   "h": 130,
+   "flat": 0,
+   "file": "maleri.svg"
+  },
+  {
+   "id": "familiefoto",
+   "name": "Familiefoto",
+   "cat": "væg",
+   "pack": "world",
+   "w": 140,
+   "h": 110,
+   "flat": 0,
+   "file": "familiefoto.svg"
+  },
+  {
+   "id": "stueplante",
+   "name": "Stor stueplante",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 120,
+   "h": 240,
+   "flat": 0,
+   "file": "stueplante.svg"
+  },
+  {
+   "id": "gulvtaeppe",
+   "name": "Stort tæppe",
+   "cat": "mob",
+   "pack": "world",
+   "w": 360,
+   "h": 50,
+   "flat": 1,
+   "file": "gulvtaeppe.svg"
+  },
+  {
+   "id": "havemoebel",
+   "name": "Havebord og stole",
+   "cat": "mob",
+   "pack": "world",
+   "w": 300,
+   "h": 140,
+   "flat": 0,
+   "file": "havemoebel.svg"
+  },
+  {
+   "id": "trampolinhave",
+   "name": "Havetrampolin",
+   "cat": "mob",
+   "pack": "world",
+   "w": 340,
+   "h": 200,
+   "flat": 0,
+   "file": "trampolinhave.svg"
+  },
+  {
+   "id": "gyngestativ",
+   "name": "Gyngestativ",
+   "cat": "mob",
+   "pack": "world",
+   "w": 280,
+   "h": 250,
+   "flat": 0,
+   "file": "gyngestativ.svg"
+  },
+  {
+   "id": "sandkasse",
+   "name": "Sandkasse",
+   "cat": "mob",
+   "pack": "world",
+   "w": 280,
+   "h": 80,
+   "flat": 0,
+   "file": "sandkasse.svg"
+  },
+  {
+   "id": "lygtepael",
+   "name": "Lygtepæl",
+   "cat": "lys",
+   "pack": "world",
+   "w": 80,
+   "h": 330,
+   "flat": 0,
+   "file": "lygtepael.svg"
+  },
+  {
+   "id": "baenk",
+   "name": "Bænk",
+   "cat": "mob",
+   "pack": "world",
+   "w": 220,
+   "h": 100,
+   "flat": 0,
+   "file": "baenk.svg"
+  },
+  {
+   "id": "trae",
+   "name": "Træ",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 220,
+   "h": 330,
+   "flat": 0,
+   "file": "trae.svg"
+  },
+  {
+   "id": "busk",
+   "name": "Busk",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 160,
+   "h": 90,
+   "flat": 0,
+   "file": "busk.svg"
+  },
+  {
+   "id": "blomsterbed",
+   "name": "Blomsterbed",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 240,
+   "h": 80,
+   "flat": 0,
+   "file": "blomsterbed.svg"
+  },
+  {
+   "id": "postkasse",
+   "name": "Postkasse",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 70,
+   "h": 150,
+   "flat": 0,
+   "file": "postkasse.svg"
+  },
+  {
+   "id": "fontaene",
+   "name": "Springvand",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 260,
+   "h": 200,
+   "flat": 0,
+   "file": "fontaene.svg"
+  },
+  {
+   "id": "marked",
+   "name": "Markedsbod",
+   "cat": "mob",
+   "pack": "world",
+   "w": 260,
+   "h": 260,
+   "flat": 0,
+   "file": "marked.svg"
+  },
+  {
+   "id": "isbod",
+   "name": "Isbod",
+   "cat": "mob",
+   "pack": "world",
+   "w": 220,
+   "h": 270,
+   "flat": 0,
+   "file": "isbod.svg"
+  },
+  {
+   "id": "karrusel",
+   "name": "Karrusel",
+   "cat": "mob",
+   "pack": "world",
+   "w": 300,
+   "h": 300,
+   "flat": 0,
+   "file": "karrusel.svg"
+  },
+  {
+   "id": "pariserhjul",
+   "name": "Pariserhjul",
+   "cat": "mob",
+   "pack": "world",
+   "w": 340,
+   "h": 400,
+   "flat": 0,
+   "file": "pariserhjul.svg"
+  },
+  {
+   "id": "rutsjebane",
+   "name": "Rutsjebane",
+   "cat": "mob",
+   "pack": "world",
+   "w": 280,
+   "h": 240,
+   "flat": 0,
+   "file": "rutsjebane.svg"
+  },
+  {
+   "id": "badebassin",
+   "name": "Badebassin",
+   "cat": "mob",
+   "pack": "world",
+   "w": 340,
+   "h": 80,
+   "flat": 1,
+   "file": "badebassin.svg"
+  },
+  {
+   "id": "parasol",
+   "name": "Parasol",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 220,
+   "h": 260,
+   "flat": 0,
+   "file": "parasol.svg"
+  },
+  {
+   "id": "kagedisk",
+   "name": "Kagedisk",
+   "cat": "mob",
+   "pack": "world",
+   "w": 280,
+   "h": 170,
+   "flat": 0,
+   "file": "kagedisk.svg"
+  },
+  {
+   "id": "bagerovn",
+   "name": "Bagerovn",
+   "cat": "mob",
+   "pack": "world",
+   "w": 200,
+   "h": 230,
+   "flat": 0,
+   "file": "bagerovn.svg"
+  },
+  {
+   "id": "slikautomat",
+   "name": "Slikautomat",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 100,
+   "h": 200,
+   "flat": 0,
+   "file": "slikautomat.svg"
+  },
+  {
+   "id": "slikhylde",
+   "name": "Slikhylde",
+   "cat": "mob",
+   "pack": "world",
+   "w": 260,
+   "h": 240,
+   "flat": 0,
+   "file": "slikhylde.svg"
+  },
+  {
+   "id": "labbord",
+   "name": "Laboratoriebord",
+   "cat": "mob",
+   "pack": "world",
+   "w": 280,
+   "h": 200,
+   "flat": 0,
+   "file": "labbord.svg"
+  },
+  {
+   "id": "kontrolpult",
+   "name": "Kontrolpult",
+   "cat": "mob",
+   "pack": "world",
+   "w": 300,
+   "h": 220,
+   "flat": 0,
+   "file": "kontrolpult.svg"
+  },
+  {
+   "id": "hologram",
+   "name": "Hologram",
+   "cat": "lys",
+   "pack": "world",
+   "w": 140,
+   "h": 220,
+   "flat": 0,
+   "file": "hologram.svg"
+  },
+  {
+   "id": "robotarm",
+   "name": "Robotarm",
+   "cat": "mob",
+   "pack": "world",
+   "w": 200,
+   "h": 240,
+   "flat": 0,
+   "file": "robotarm.svg"
+  },
+  {
+   "id": "heltestatue",
+   "name": "Heltestatue",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 160,
+   "h": 320,
+   "flat": 0,
+   "file": "heltestatue.svg"
+  },
+  {
+   "id": "antennemast",
+   "name": "Antennemast",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 120,
+   "h": 340,
+   "flat": 0,
+   "file": "antennemast.svg"
+  },
+  {
+   "id": "redningsring",
+   "name": "Redningskrans",
+   "cat": "væg",
+   "pack": "world",
+   "w": 110,
+   "h": 110,
+   "flat": 0,
+   "file": "redningsring.svg"
+  },
+  {
+   "id": "bro",
+   "name": "Mole",
+   "cat": "mob",
+   "pack": "world",
+   "w": 360,
+   "h": 90,
+   "flat": 0,
+   "file": "bro.svg"
+  },
+  {
+   "id": "boeje",
+   "name": "Bøje",
+   "cat": "leg",
+   "pack": "world",
+   "w": 70,
+   "h": 110,
+   "flat": 0,
+   "file": "boeje.svg"
+  },
+  {
+   "id": "traktor",
+   "name": "Traktor",
+   "cat": "mob",
+   "pack": "world",
+   "w": 280,
+   "h": 210,
+   "flat": 0,
+   "file": "traktor.svg"
+  },
+  {
+   "id": "svampehus",
+   "name": "Svampehus",
+   "cat": "mob",
+   "pack": "world",
+   "w": 240,
+   "h": 260,
+   "flat": 0,
+   "file": "svampehus.svg"
+  },
+  {
+   "id": "hejsekran",
+   "name": "Redningskran",
+   "cat": "mob",
+   "pack": "world",
+   "w": 260,
+   "h": 330,
+   "flat": 0,
+   "file": "hejsekran.svg"
+  },
+  {
+   "id": "skilt",
+   "name": "Vejskilt",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 120,
+   "h": 260,
+   "flat": 0,
+   "file": "skilt.svg"
+  },
+  {
+   "id": "skraldespand",
+   "name": "Skraldespand",
+   "cat": "pynt",
+   "pack": "world",
+   "w": 80,
+   "h": 110,
+   "flat": 0,
+   "file": "skraldespand.svg"
+  },
+  {
+   "id": "bruser",
+   "name": "Brusebad",
+   "cat": "mob",
+   "pack": "home",
+   "w": 150,
+   "h": 300,
+   "flat": 0,
+   "file": "bruser.svg"
+  }
+ ]
+}

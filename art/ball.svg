@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-38 -64 76 76" width="76" height="76">
+<!-- Hverdagsro: Bold (ball). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<circle cx="0" cy="-26" r="26" fill="#FF6B6B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-26 -26 Q0 -10 26 -26 M0 -52 Q-14 -26 0 0" fill="none" stroke="#fff" stroke-width="5"/>
+</svg>

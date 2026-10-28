@@ -1,6 +1,28 @@
 # Changelog
 
-All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/manifest.json`.
+All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
+
+## [0.14.0] - 2026-10-28
+
+### Added
+- **The living house:** the grown-ups are in the living room and the kitchen only when they are really at home (their person in Home Assistant). Every room of the house has its real lights: the room is dark at night until the real light is on, and the switch in the room turns it on. The tv in a room shows what really plays on the tv there (from Husbyggeren's tv with its media player), with the title over it. When it rains or snows outside, it rains or snows on the windows.
+
+### Changed
+- **More detail in every room:** a cornice, a pendant lamp with its glow, curtains, a picture on the wall, a rug, the planks of the floor and the skirting board, and a soft shadow under every thing.
+
+## [0.13.0] - 2026-10-28
+
+### Added
+- **The art pack:** every thing in the game (508) exported as an SVG file in `art/`, one per thing, with a manifest and an overview page, so an illustrator can redraw them. Put the folder in Home Assistant as `config/www/hverdagsro-art/`, and the game draws from the files instead of its own drawings; things without a file are drawn as before. `node tools/art-export.mjs` makes the pack again.
+
+## [0.12.0] - 2026-10-28
+
+### Changed
+- **The house is one long row of rooms**, like a doll's house seen from the front: the rooms stand side by side in the order you would walk through them, with the garden at the end. The rooms next door are already there to the left and the right; walk out at the end of one and you are in the next, without a jump. No more doors in the back wall.
+- **Walking:** hold an arrow key (or W A S D) and the figure keeps walking, with its legs swinging; drag it and it walks too, turning the way it goes.
+- **The picture is not redrawn** every time you do something: only what changed is swapped, so the tv, the water, the window and the rest keep running.
+- **The bath:** you sit in it, awake and happy, with the water on, instead of falling asleep in it.
+- **Hair** now covers the whole head on every hairstyle.
 
 ## [0.12.0] - 2026-10-28
 

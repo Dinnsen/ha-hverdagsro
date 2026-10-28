@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -352 144 364" width="144" height="364">
+<!-- Hverdagsro: Antennemast (antennemast). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M-40 0 L0 -300 L40 0 M-30 -80 L30 -80 M-22 -160 L22 -160 M-12 -230 L12 -230 M-30 -80 L22 -160 M30 -80 L-22 -160" fill="none" stroke="#9AA4BA" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><g class="pl-lamp"><ellipse cx="0" cy="-306" rx="30" ry="30" class="pl-glow" fill="#FF6B6B"/><circle cx="0" cy="-306" r="10" fill="#FF6B6B" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -122 94 134" width="94" height="134">
+<!-- Hverdagsro: Bøje (boeje). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<g class="pl-bob"><path d="M-30 -30 Q0 0 30 -30Z" fill="#FF6B6B" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><rect x="-12" y="-90" width="24" height="60" rx="6" fill="#fff" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12 -70 h24" fill="none" stroke="#FF6B6B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><g class="pl-lamp"><ellipse cx="0" cy="-100" rx="20" ry="18" class="pl-glow" fill="#FFE066"/><circle cx="0" cy="-98" r="7" fill="#FFE066" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g></g>
+</svg>

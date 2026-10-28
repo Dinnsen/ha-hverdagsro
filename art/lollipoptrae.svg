@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-92 -232 184 244" width="184" height="244">
+<!-- Hverdagsro: Slikkepindetræ (lollipoptrae). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M0 0 V-110" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="0" cy="-160" r="56" fill="#F15BB5" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M0 -160 m0 -40 a40 40 0 1 1 -1 0 M0 -160 m0 -20 a20 20 0 1 0 1 0" fill="none" stroke="#fff" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

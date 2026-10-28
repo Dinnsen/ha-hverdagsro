@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-52 -152 104 164" width="104" height="164">
+<!-- Hverdagsro: Spejl (mirror). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<ellipse cx="0" cy="-70" rx="40" ry="70" fill="#FFB347" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="0" cy="-70" rx="30" ry="58" fill="#DDF3FF" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M-12 -100 l14 -16 M-6 -80 l18 -20" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+</svg>

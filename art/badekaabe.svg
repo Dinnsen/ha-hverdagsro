@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-62 -172 124 184" width="124" height="184">
+<!-- Hverdagsro: Badekåbe (badekaabe). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<circle cx="0" cy="-150" r="6" fill="#2B2340" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-24 -144 L-46 -10 H46 L24 -144 Q0 -150 -24 -144Z" fill="#FF9AB5" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-24 -144 L0 -90 L24 -144" fill="none" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-40 -70 H40" fill="none" stroke="#cc7b91" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

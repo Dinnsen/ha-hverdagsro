@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-57 -182 114 194" width="114" height="194">
+<!-- Hverdagsro: Isskilt (isskilt). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<path d="M0 0 V-90" fill="none" stroke="#2B2340" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><rect x="-36" y="-170" width="72" height="80" rx="10" fill="#FF9AB5" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M-14 -126 L0 -100 L14 -126Z" fill="#E8C39E" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-136" r="14" fill="#fff" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

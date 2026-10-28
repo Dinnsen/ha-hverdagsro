@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-32 -102 64 114" width="64" height="114">
+<!-- Hverdagsro: Fjernbetjening (fjernbetjening). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-14" y="-86" width="28" height="82" rx="10" fill="#3A3A55" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="0" cy="-72" r="5" fill="#E5484D"/><circle cx="-6" cy="-54" r="3" fill="#fff"/><circle cx="6" cy="-54" r="3" fill="#fff"/><circle cx="-6" cy="-42" r="3" fill="#fff"/><circle cx="6" cy="-42" r="3" fill="#fff"/><circle cx="-6" cy="-30" r="3" fill="#fff"/><circle cx="6" cy="-30" r="3" fill="#fff"/>
+</svg>

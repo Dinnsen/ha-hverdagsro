@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -62 144 74" width="144" height="74">
+<!-- Hverdagsro: Lommelygte (lommelygte). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<g class="pl-lamp"><path d="M30 -24 L120 -60 L120 12Z" class="pl-glow" fill="#FFE8A3"/><rect x="-36" y="-32" width="52" height="22" rx="8" fill="#4D96FF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M16 -36 l20 -6 v34 l-20 -6z" fill="#CFD6E6" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-14" cy="-21" r="4" fill="#FFD93D" stroke="#2B2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>

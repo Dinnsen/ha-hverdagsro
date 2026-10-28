@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-92 -102 184 114" width="184" height="114">
+<!-- Hverdagsro: Busk (busk). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<circle cx="-40" cy="-40" r="40" fill="#5A9E5F" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="30" cy="-46" r="44" fill="#61ab67" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-4" cy="-64" r="36" fill="#5A9E5F" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-30" cy="-54" r="5" fill="#FFD93D"/><circle cx="24" cy="-70" r="5" fill="#F15BB5"/>
+</svg>

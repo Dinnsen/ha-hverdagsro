@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-97 -42 194 54" width="194" height="54">
+<!-- Hverdagsro: Bademåtte (bademaatte). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<ellipse cx="0" cy="-12" rx="80" ry="14" fill="#4D96FF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="0" cy="-12" rx="64" ry="9" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6 6"/>
+</svg>

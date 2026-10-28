@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-42 -82 84 94" width="84" height="94">
+<!-- Hverdagsro: Toiletpapir (toiletrulle). The thing stands on y=0, centred on x=0. Keep the viewBox; draw anything inside. -->
+<rect x="-26" y="-60" width="52" height="60" rx="10" fill="#FFFFFF" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="0" cy="-60" rx="26" ry="8" fill="#F2F2F2" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="0" cy="-60" rx="9" ry="4" fill="#C98B55" stroke="#2B2340" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

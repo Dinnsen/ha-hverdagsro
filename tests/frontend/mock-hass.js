@@ -40,7 +40,7 @@ export function demoStates() {
   add(st("media_player.stue", "playing", { friendly_name: "Stue", volume_level: 0.32, is_volume_muted: false, media_title: "Solskin", media_artist: "Familiebåndet", media_album_name: "Hverdag", media_duration: 214, media_position: 63, media_position_updated_at: iso(now), supported_features: 4127295, group_members: ["media_player.stue", "media_player.kokken"], source_list: ["Spotify", "Radio"], source: "Spotify" }));
   add(st("media_player.kokken", "playing", { friendly_name: "Køkken", volume_level: 0.25, is_volume_muted: false, media_title: "Solskin", media_artist: "Familiebåndet", supported_features: 4127295, group_members: ["media_player.stue", "media_player.kokken"] }));
   add(st("media_player.ida", "paused", { friendly_name: "Idas højttaler", volume_level: 0.18, media_title: "Godnathistorie", media_artist: "Radio", supported_features: 4127295 }));
-  add(st("media_player.tv_stue", "off", { friendly_name: "TV i stuen", supported_features: 21437 }));
+  add(st("media_player.tv_stue", "playing", { friendly_name: "TV i stuen", supported_features: 21437, media_content_type: "tvshow", media_title: "Bamses billedbog", media_series_title: "DR Ramasjang" }));
   add(st("alarm_control_panel.huset", "disarmed", { friendly_name: "Huset", code_arm_required: false, supported_features: 63, code_format: null }));
   add(st("binary_sensor.hoveddor", "off", { friendly_name: "Hoveddør", device_class: "door" }));
   add(st("binary_sensor.terrassedor", "on", { friendly_name: "Terrassedør", device_class: "door" }));
