@@ -7,6 +7,7 @@ import { hashStr, mixHex, prng, hexRgb, slug } from "./hv-core.js";
 import { ART, ART_IDS, drawArt } from "./hv-roomart.js";
 
 /* ------------------------------------------------------------------ room types (fallback if hv-house.js lacks them) */
+import { roomTiles } from "./hv-appliances.js";
 const RTYPES_L = [["kid", "Børneværelse"], ["bed", "Soveværelse"], ["guest", "Gæsteværelse"], ["office", "Kontor"], ["living", "Stue"], ["kitchen", "Køkken"], ["bath", "Badeværelse"], ["smallbath", "Lille bad"], ["toilet", "Toilet"], ["utility", "Bryggers"], ["hall", "Entré og gang"], ["walkin", "Walk-in"], ["garage", "Garage"], ["other", "Andet rum"]];
 const AGES_L = [["baby", "Baby", "0–1 år"], ["toddler", "Tumling", "1–3 år"], ["child", "Barn", "4–7 år"], ["bigchild", "Stort barn", "8–10 år"], ["preteen", "Preteen", "11–12 år"], ["teen", "Teenager", "13–16 år"], ["young", "Ung", "17+ år"]];
 const GSTYLES_L = [["neutral", "Neutral"], ["pige", "Pige"], ["dreng", "Dreng"]];
@@ -652,7 +653,11 @@ function scene(ctx, room, lights, prefix = "") {
   const W = {};
   const art = hasArt(room) ? drawArt(ARTH(), room.art, k, W, lights, room.lamps || {}) : null;
   const draw = art ? art.draw : genDraw(k, room, W);
-  const slots = slotsFor(lights, W);
+  const pos = (room.page && room.page.pos) || {}, mine = ctx.me?.room_prefs?.[room.id]?.pos || {};
+  const slots = slotsFor(lights, W).map((sl, i) => {
+    const p = mine[lights[i]?.id] || pos[lights[i]?.id];
+    return p ? [p[0], p[1], sl[2]] : sl;
+  });
   const sc = PRESETS(room, lights, slots).find((p) => p[0] === scenes[room.id]);
   const E = env(ctx);
   const svg = `<svg class="rm-svg" id="${k}" viewBox="0 0 480 270" role="img" aria-label="${ctx.esc(room.name)}">
@@ -850,16 +855,19 @@ function roomCfg(ctx, r, scope = "") {
     show: { pic: true, scenes: true, lights: true, climate: true, media: true, security: true, other: true, ...(f.show || {}), ...(m.show || {}) },
     fav: pick("fav", []),
     hide: pick("hide", []),
+    add: pick("add", []),
+    pos: { ...(f.pos || {}), ...(m.pos || {}) },
     names: { ...(f.names || {}), ...(m.names || {}) },
     pin: pick("pin", false),
   };
 }
 const hasMine = (ctx, r) => Object.keys(myCfg(ctx, r)).length > 0;
 /* What else is in the room, sorted into the page's groups. */
-function roomEntities(ctx, room) {
+function roomEntities(ctx, room, cfg = null) {
   const ids = new Set(areaEntities(ctx, room));
   if (typeof House.roomItemEntities === "function") for (const id of House.roomItemEntities(ctx, room.id)) if (ctx.hass.states[id] && !id.startsWith("light.")) ids.add(id);
-  return [...ids];
+  for (const id of cfg?.add || []) if (ctx.hass.states[id]) ids.add(id);
+  return [...ids].filter((id) => !cfg || !cfg.hide.includes(id));
 }
 function groupOf(ctx, id) {
   const d = id.split(".")[0], dc = ctx.hass.states[id]?.attributes?.device_class;
@@ -897,8 +905,10 @@ function roomPage(ctx, id) {
   const eyebrow = [typeName(ctx, room), room.rtype === "kid" && ag ? t(ag[1]) : "", temp != null ? `${ctx.fmt.num(temp, 1)} °C` : ""].filter(Boolean).join(" · ");
   const tools = `<button class="ra-back" data-go="${back}">${svg("back")}${esc(back === "sikkerhed" ? t("Huset") : t("Hjem"))}</button>
     <button class="ra-tune" data-act="room-tune" data-id="${esc(room.id)}" aria-label="${esc(t("Tilpas rummet"))}">${svg("sliders")}</button>`;
+  const placing = place.room === room.id && real.find((l) => l.id === place.lamp);
+  const placer = placing ? `<div class="ra-placer" data-act="room-place-at" data-id="${esc(room.id)}"><span>${esc(t("Tryk der, hvor {name} skal sidde", { name: placing.name }))}</span><button class="btn soft sm" data-act="room-place-stop">${esc(t("Færdig"))}</button></div>` : "";
   const head = cfg.show.pic
-    ? `<div class="ra-hero">${sc.svg}${tools}<div class="ra-cap"><div><span>${esc(eyebrow)}</span><h2>${esc(room.name)}</h2></div><em>${esc(count)}</em></div></div>`
+    ? `<div class="ra-hero${placing ? " placing" : ""}">${sc.svg}${placer}${tools}<div class="ra-cap"><div><span>${esc(eyebrow)}</span><h2>${esc(room.name)}</h2></div><em>${esc(count)}</em></div></div>`
     : `<div class="ra-flat">${tools}<div class="ra-cap"><div><span>${esc(eyebrow)}</span><h2>${esc(room.name)}</h2></div><em>${esc(count)}</em></div></div>`;
   // The moods: favourites first, then Hverdagsro's own, then the room's scenes in Home Assistant.
   const haScenes = room.area ? Object.keys(ctx.hass.states).filter((x) => (x.startsWith("scene.") || x.startsWith("script.")) && ctx.area(x) === room.area) : [];
@@ -918,11 +928,14 @@ function roomPage(ctx, id) {
       ${allOpen[room.id] && real.length > 1 ? `<div class="ra-list">${real.map((l) => `<button class="ra-li${l.on ? " on" : ""}${cur && l.id === cur.id ? " cur" : ""}" data-act="room-pick" data-room="${esc(room.id)}" data-id="${esc(l.id)}" style="--lc:${l.col}"><i></i><b>${esc(l.name)}</b><small>${esc(l.off ? t("Svarer ikke") : l.on ? (l.type === "onoff" ? t("Tændt") : `${l.bri} %`) : t("Slukket"))}</small></button>`).join("")}</div>` : ""}`
     : cfg.show.lights && !lights.length ? `<p class="t-sub">${esc(t("Der er ikke koblet lys til rummet. Sæt lyskilder i rummet i Husbyggeren, eller vælg rummets område i Home Assistant."))}</p>` : "";
   // Everything else in the room, as small cards per group.
-  const ents = roomEntities(ctx, room);
+  const ents0 = roomEntities(ctx, room, cfg);
+  // The appliances in the room as living tiles (the washing machine spins, the coffee drips); the rest as tiles.
+  const [apHtml, apIds] = roomTiles(ctx, ents0), ents = ents0.filter((x) => !apIds.includes(x));
   const groups = GROUPS.filter(([g]) => cfg.show[g]).map(([g, name, ic]) => {
     const rows = ents.filter((x) => groupOf(ctx, x) === g).map((x) => thingRow(ctx, x)).filter(Boolean);
     return rows.length ? `<section class="card ra-group"><div class="card-head"><h2>${svg(ic, "ic")}${esc(t(name))}</h2></div><div class="rp-list">${rows.join("")}</div></section>` : "";
   }).filter(Boolean);
+  if (apHtml && cfg.show.other) groups.unshift(`<section class="card ra-group ra-ap"><div class="card-head"><h2>${svg("vacuum", "ic")}${esc(t("Apparater"))}</h2></div><div class="ap-grid">${apHtml}</div></section>`);
   const plan = ctx.isParent && cfg.show.other && typeof House.roomPlan === "function" ? House.roomPlan(ctx, room.id) : null;
   if (plan) groups.push(`<section class="card ra-group rp-mini"><div class="card-head"><h2>${esc(t("På tegningen"))}</h2><span class="meta">${esc(t("{n} møbler", { n: plan.furn }))}</span></div>${plan.svg}</section>`);
   return `<div class="ra rm-card" data-room="${esc(room.id)}" style="--pc:${color}">
@@ -936,6 +949,7 @@ function roomPage(ctx, id) {
 /* "Tilpas rummet": what the page shows, favourite moods, lamps (rename, hide) and the front page. For the whole
    family (parents) or only for me. */
 const tune = { s: null, id: "", scope: "" };
+const place = { room: "", lamp: "" }; // placing a lamp in the picture
 function tuneHtml(ctx, room) {
   const { t, esc, svg } = ctx;
   const fam = ctx.isParent, mine = !!ctx.me;
@@ -953,10 +967,21 @@ function tuneHtml(ctx, room) {
     ${sc.length || ha.length ? `<b class="ra-tn-h">${esc(t("Favoritstemninger"))}</b><div class="ra-tn-chips">${[...sc, ...ha].map(([id, name]) => `<button class="ra-chip${cfg.fav.includes(id) ? " fav" : ""}" data-act="room-fav" ${d} data-v="${esc(id)}" aria-pressed="${cfg.fav.includes(id)}">${cfg.fav.includes(id) ? svg("pstar") : ""}${esc(name)}</button>`).join("")}</div>` : ""}
     ${all.length ? `<b class="ra-tn-h">${esc(t("Lamper"))}</b><div class="ra-tn-lamps">${all.map((l) => {
       const hidden = cfg.hide.includes(l.id);
-      return `<div class="ra-tn-lamp${hidden ? " hid" : ""}" style="--lc:${l.col}"><i></i><input type="text" maxlength="40" value="${esc(cfg.names[l.id] || "")}" placeholder="${esc(l.base || l.name)}" data-in="room-name" ${d} data-id="${esc(l.id)}" aria-label="${esc(t("Navn på {name}", { name: l.base || l.name }))}"><button class="btn soft sm" data-act="room-hide" ${d} data-id="${esc(l.id)}">${esc(hidden ? t("Vis") : t("Skjul"))}</button></div>`;
+      return `<div class="ra-tn-lamp${hidden ? " hid" : ""}" style="--lc:${l.col}"><i></i><input type="text" maxlength="40" value="${esc(cfg.names[l.id] || "")}" placeholder="${esc(l.base || l.name)}" data-in="room-name" ${d} data-id="${esc(l.id)}" aria-label="${esc(t("Navn på {name}", { name: l.base || l.name }))}">${!hasArt(room) && cfg.show.pic && !hidden ? `<button class="iconbtn" data-act="room-place" ${d} data-id="${esc(l.id)}" data-close title="${esc(t("Placér i billedet"))}" aria-label="${esc(t("Placér i billedet"))}">${svg("pin")}</button>` : ""}<button class="btn soft sm" data-act="room-hide" ${d} data-id="${esc(l.id)}">${esc(hidden ? t("Vis") : t("Skjul"))}</button></div>`;
     }).join("")}</div>` : ""}
+    ${thingsTune(ctx, room, cfg, d)}
     <label class="ra-tn-row ra-tn-pin"><span>${esc(t("Vis på forsiden"))}</span><input type="checkbox" data-in="room-cfg" ${d} data-k="pin" ${cfg.pin ? "checked" : ""}></label>
     <div class="sheet-actions">${fam && ctx.on("house") ? `<button class="btn soft" data-act="house-redit" data-id="${esc(room.id)}" data-close>${svg("edit")}${esc(t("Billede, type og område"))}</button>` : ""}<button class="btn" data-close>${esc(t("Færdig"))}</button></div></div>`;
+}
+/* What is on the page: every entity of the room with a tick, and a search box to add more from Home Assistant. */
+function thingsTune(ctx, room, cfg, d) {
+  const { t, esc, svg } = ctx;
+  const all = [...new Set([...roomEntities(ctx, room), ...cfg.hide])].filter((id) => ctx.hass.states[id] && !id.startsWith("light."));
+  const q = (tune.q || "").trim().toLowerCase();
+  const hits = q.length >= 2 ? Object.keys(ctx.hass.states).filter((id) => !all.includes(id) && !id.startsWith("light.") && !/^(update|persistent_notification|zone|sun|tts|conversation|event|button|device_tracker|person)\./.test(id) && (id.includes(q) || ctx.name(id).toLowerCase().includes(q))).slice(0, 10) : [];
+  return `<b class="ra-tn-h">${esc(t("Ting på siden"))}</b><p class="t-sub">${esc(t("Sæt flueben ved det, der skal være på siden. Søg for at hente mere fra Home Assistant."))}</p>
+    <div class="ra-tn-list">${all.map((id) => `<label class="ra-tn-row"><span>${esc(ctx.name(id))}<small>${esc(id)}</small></span><input type="checkbox" data-in="room-ent" ${d} data-id="${esc(id)}" ${cfg.hide.includes(id) ? "" : "checked"}></label>`).join("")}</div>
+    <div class="ra-tn-add"><input type="search" data-in="room-search" ${d} value="${esc(tune.q || "")}" placeholder="${esc(t("Søg efter en ting i Home Assistant …"))}">${hits.length ? `<div class="ra-tn-hits">${hits.map((id) => `<button data-act="room-addent" ${d} data-id="${esc(id)}">${svg("plus")}<span>${esc(ctx.name(id))}<small>${esc(id)}</small></span></button>`).join("")}</div>` : ""}</div>`;
 }
 function openTune(ctx, id) {
   const raw = findRoom(ctx, id);
@@ -1062,6 +1087,36 @@ const acts = {
     return setCfg(ctx, raw.id, (c) => ({ ...c, hide: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v].slice(-40) }));
   },
   "room-reset": (el, ev, ctx) => setCfg(ctx, el.dataset.room, () => ({})),
+  "room-addent": (el, ev, ctx) => {
+    const raw = findRoom(ctx, el.dataset.room);
+    if (!raw) return;
+    const cur = roomCfg(ctx, raw, tune.scope), id = el.dataset.id;
+    tune.q = "";
+    return setCfg(ctx, raw.id, (c) => ({ ...c, add: [...new Set([...cur.add, id])].slice(-60), hide: cur.hide.filter((x) => x !== id) }));
+  },
+  "room-place": (el, ev, ctx) => {
+    place.room = el.dataset.room;
+    place.lamp = el.dataset.id;
+    ctx.render();
+  },
+  "room-place-stop": (el, ev, ctx) => {
+    place.room = place.lamp = "";
+    ctx.render();
+  },
+  "room-place-at": (el, ev, ctx) => {
+    const raw = findRoom(ctx, el.dataset.id), svgEl = el.parentElement?.querySelector("svg.rm-svg");
+    if (!raw || !svgEl || !place.lamp) return;
+    const r = svgEl.getBoundingClientRect(), x = ((ev.clientX - r.left) / r.width) * 480, y = ((ev.clientY - r.top) / r.height) * 270;
+    const room = meta(ctx, raw), lights = roomLights(ctx, room), i = lights.findIndex((l) => l.id === place.lamp);
+    const kind = i >= 0 ? slotsFor(lights)[i][2] : "lamp";
+    // Back from the picture to the room's own coordinates (u across, t into the room), for the kind of lamp.
+    let tt = kind === "ceil" ? y / 58 : kind === "lamp" ? (189 - y) / 38.6 : kind === "pend" ? 0.5 : 1;
+    tt = Math.max(0.05, Math.min(0.95, tt));
+    const u = Math.max(0.04, Math.min(0.96, (x - 120 * tt) / (480 - 240 * tt)));
+    const lamp = place.lamp;
+    place.room = place.lamp = "";
+    return setCfg(ctx, raw.id, (c) => ({ ...c, pos: { ...(c.pos || {}), [lamp]: [Math.round(u * 1000) / 1000, Math.round(tt * 1000) / 1000] } }));
+  },
   "room-off": (el, ev, ctx) => {
     const room = meta(ctx, findRoom(ctx, el.dataset.id));
     const lights = roomLights(ctx, room).filter((l) => l.on && l.ent);
@@ -1121,6 +1176,30 @@ const acts = {
 };
 
 const inputs = {
+  "room-ent": (el, ev, ctx) => {
+    if (ev.type !== "change") return;
+    const raw = findRoom(ctx, el.dataset.room);
+    if (!raw) return;
+    const cur = roomCfg(ctx, raw, tune.scope), id = el.dataset.id;
+    return setCfg(ctx, raw.id, (c) => ({ ...c, hide: el.checked ? cur.hide.filter((x) => x !== id) : [...new Set([...cur.hide, id])].slice(-80) }));
+  },
+  "room-search": (el, ev, ctx) => {
+    tune.q = el.value;
+    clearTimeout(tune.qT);
+    tune.qT = setTimeout(() => {
+      const at = el.selectionStart;
+      redrawTune(ctx);
+      const n = tune.s?.el?.querySelector('[data-in="room-search"]');
+      if (n) {
+        n.focus();
+        try {
+          n.setSelectionRange(at, at);
+        } catch (err) {
+          /* not a text field */
+        }
+      }
+    }, 250);
+  },
   "room-cfg": (el, ev, ctx) => {
     if (ev.type !== "change") return;
     const k = el.dataset.k, v = !!el.checked;
@@ -1178,6 +1257,20 @@ const views = {
 };
 
 const css = `
+.rp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.rp-row { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; justify-items: center; text-align: center; padding: 12px 8px 10px; gap: 6px; border-radius: 18px; }
+.rp-row > div { min-width: 0; width: 100%; } .rp-row small { white-space: normal; }
+.rp-ic { width: 46px; height: 46px; border-radius: 14px; } .rp-ic .ic { width: 24px; height: 24px; }
+.ra-ap .ap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.ra-placer { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px; background: rgba(27,21,48,.18); cursor: crosshair; color: #fff; font-weight: 800; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.ra-hero.placing .rm-svg [data-act] { pointer-events: none; }
+.ra-tn-row small { display: block; font-size: 10.5px; color: var(--muted); font-weight: 500; word-break: break-all; }
+.ra-tn-add { position: relative; margin-top: 8px; } .ra-tn-add input { width: 100%; }
+.ra-tn-hits { display: grid; gap: 4px; margin-top: 6px; }
+.ra-tn-hits button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; border-radius: 12px; background: var(--surface-2); padding: 8px 10px; font: inherit; color: var(--ink); cursor: pointer; }
+.ra-tn-hits button small { display: block; font-size: 10.5px; color: var(--muted); }
+.ra-tn-lamp .iconbtn { width: 32px; height: 32px; }
+
 .rp-grid { margin-bottom: 8px; }
 .rm-mini { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; overflow: hidden; border: 0; text-align: left; color: var(--ink); cursor: pointer; position: relative; transition: transform .25s cubic-bezier(.2,.9,.3,1.2), box-shadow .25s; }
 .rm-mini:hover { transform: translateY(-3px); }
@@ -1277,6 +1370,7 @@ const css = `
 `;
 
 const en = {
+  "Ting på siden": "Things on the page", "Sæt flueben ved det, der skal være på siden. Søg for at hente mere fra Home Assistant.": "Tick what should be on the page. Search to add more from Home Assistant.", "Søg efter en ting i Home Assistant …": "Search for a thing in Home Assistant …", "Placér i billedet": "Place in the picture", "Tryk der, hvor {name} skal sidde": "Tap where {name} should go", Apparater: "Appliances",
   "Værelset er håndtegnet.": "The room is hand-drawn.",
   Loftlampe: "Ceiling light", "Scenerne er Hverdagsros egne, og lyskilderne er dem, der står i rummet i Husbyggeren.": "The scenes are Hverdagsro's own, and the light sources are the ones placed in the room in the House builder.",
   "Scenerne er Hverdagsros egne, og lyset er rummets lys i Home Assistant.": "The scenes are Hverdagsro's own, and the lights are the room's lights in Home Assistant.", "Scenerne i Home Assistant ligger til sidst.": "The scenes from Home Assistant come last.",

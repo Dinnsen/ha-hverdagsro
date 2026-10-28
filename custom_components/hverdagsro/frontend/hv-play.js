@@ -2407,29 +2407,12 @@ function exitFull(ctx) {
   redraw(ctx);
 }
 
-/* The real curtains of a room of the house: the covers in the room's area (not the garage door or the gate). */
-function coversAt(ctx, sid) {
-  const r = String(sid).startsWith("h:") ? (ctx.data.house?.rooms || []).find((x) => `h:${x.id}` === sid) : null;
-  if (!r?.area) return [];
-  return ctx.entities("cover", (s) => ctx.area(s.entity_id) === r.area && !["garage", "gate", "door"].includes(s.attributes?.device_class));
-}
-/* The curtains in the room are drawn as the real ones are: drawn across when they are closed. */
-function syncCurtains(ctx, room, sid) {
-  const cv = coversAt(ctx, sid);
-  if (!cv.length || !room?.items) return;
-  // what you just chose counts for a few seconds, while the curtain makes up its mind
-  const want = ST.cw && ST.cw.sid === sid && Date.now() < ST.cw.until ? ST.cw.on : null;
-  const closed = want ?? (cv.every((id) => ["closed", "closing"].includes(ctx.hass.states[id]?.state)) ? 1 : 0);
-  for (const it of room.items) if (it.k === "hd-hjem-gardin") it.on = closed;
-}
-/* Tapping a curtain of the house draws the real curtains of the room too. */
+/* The curtains of the house are only play: tapping one draws all the curtains of the room in the game, and the real
+   curtains (the covers of Home Assistant) are left alone. */
+function syncCurtains() {}
 function realCurtains(ctx, it) {
-  const room = R(), cv = coversAt(ctx, spaceId());
+  const room = R();
   for (const x of room.items) if (x.k === "hd-hjem-gardin") x.on = it.on;
-  if (!cv.length) return;
-  ST.cw = { sid: spaceId(), on: it.on ? 1 : 0, until: Date.now() + 8000 };
-  ctx.call("cover", it.on ? "close_cover" : "open_cover", { entity_id: cv });
-  ctx.toast(ctx.t(it.on ? "Gardinerne trækkes for" : "Gardinerne trækkes fra"));
   setTimeout(() => redraw(ctx), 400);
 }
 /* The real lights can only be switched from the child's own room; elsewhere (a sibling's room, a room of the house) the

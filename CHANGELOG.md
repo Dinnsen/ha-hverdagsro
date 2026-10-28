@@ -82,6 +82,18 @@ All notable changes to Hverdagsro. The version is the one in `custom_components/
 - A place of the world can be a wide room that scrolls (`width` on the place), like the rooms of the house.
 - `hv-fixtures.js` can be told about more things that open or work (`registerFx`), and things have shelves inside while they are open.
 
+## [0.16.0] - 2026-10-28
+
+### Added
+- **Husbygger, locks:** lock any element (room, wall, area, thing) so it cannot be moved, one at a time from its panel, or in one go: the drawing (rooms, walls, doors, windows), the outdoors (areas, hedges, fences, trees, bushes) or everything else (furniture, lamps, devices). A padlock shows what is locked. "Gem og luk" saves and closes.
+- **Huset, zoom:** pinch with two fingers, scroll, or use the buttons to zoom the plan, and drag to move around in it.
+- **The room pages:** the appliances in the room are shown as the living tiles of the Apparater page; the rest of the room's things are tiles instead of rows. In "Tilpas rummet", tick exactly which things are on the page, search Home Assistant to add more, and place each lamp in the picture by tapping where it goes.
+
+### Changed
+- The builder's palette on a phone is a grid instead of a long list.
+- The curtains in the game are only play: they no longer open or close the real curtains.
+- The layer buttons on the Huset page are icon chips; the "Redigér huset" button is gone (the builder is under Mere and in the settings).
+
 ## [0.15.0] - 2026-10-28
 
 ### Added

@@ -1608,9 +1608,17 @@ main { padding-block: 22px 40px; }
 .sx-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .sx-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .sx-plan .card-head { flex-wrap: wrap; gap: 8px; }
-.sx-layers { display: flex; gap: 4px; flex-wrap: wrap; }
-.sx-layers button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: var(--muted); }
-.sx-layers button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.sx-layers { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 10px; }
+.sx-layers button { flex: none; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 64px; border: 0; background: var(--surface-2); border-radius: 14px; padding: 8px 6px 6px; font-size: 10.5px; font-weight: 800; color: var(--muted); transition: background .2s, color .2s, transform .2s; }
+.sx-layers button i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: var(--surface); color: var(--muted); }
+.sx-layers button i .ic { width: 18px; height: 18px; }
+.sx-layers button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.sx-layers button[aria-pressed="true"] i { background: var(--violet); color: #fff; }
+.sx-layers button:active { transform: scale(.96); }
+.sx-zoomwrap { position: relative; }
+.sx-zoom { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 3; }
+.sx-zoom .iconbtn { background: var(--surface); box-shadow: var(--shadow); }
+.sx-zoomwrap .sec-plan { touch-action: none; cursor: grab; }
 .sec-room { fill: var(--surface); stroke: color-mix(in srgb, var(--ink) 30%, transparent); stroke-width: 4; cursor: pointer; transition: fill .4s; }
 .sec-room.lit { fill: color-mix(in srgb, #FFD98A 45%, var(--surface)); }
 .sec-outline { fill: none; stroke: var(--ink); stroke-width: 10; opacity: .8; stroke-linejoin: round; }

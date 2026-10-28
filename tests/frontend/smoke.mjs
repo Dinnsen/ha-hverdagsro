@@ -65,6 +65,10 @@ const runs = [
   ["--user", "ida", "--view", "vaerelse", "--narrow", "--width", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"story\"]", "--click", "[data-act=\"play-story-save\"]"],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"city\"]"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--narrow", "--width", "844", "--height", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"city\"]"],
+  // 0.16: locks in Husbygger, zoom on the Huset plan, the room page's things and lamp placing.
+  ["--user", "anna", "--view", "husbygger", "--click", "[data-hz=\"lockgrp\"][data-id=\"tegn\"]", "--click", "[data-hz=\"lockgrp\"][data-id=\"alt\"][data-on=\"0\"]"],
+  ["--user", "anna", "--view", "sikkerhed", "--click", "[data-act=\"sec-zoom\"][data-id=\"in\"]", "--click", "[data-act=\"sec-layer\"][data-id=\"lys\"]"],
+  ["--user", "anna", "--view", "rum:kokken", "--click", "[data-act=\"room-tune\"]", "--click", "[data-in=\"room-ent\"]", "--click", "[data-act=\"room-place\"]", "--click", "[data-act=\"room-place-stop\"]"],
   // 0.11: the wall posters (big), hiding the bubbles, the pet, doors between rooms, the arrow keys.
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", ".wl-poster[data-pl=\"wall-rutine\"]", "--click", "[data-act=\"wall-card\"]:not([disabled])"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", ".wl-poster[data-pl=\"wall-skema\"]"],
