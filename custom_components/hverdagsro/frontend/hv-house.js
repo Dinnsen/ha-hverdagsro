@@ -1302,6 +1302,47 @@ const hzTool = (id) => {
   const [lbl, ic] = toolInfo(id), ht = HT[toolType(id)];
   return `<button class="hz-tool" data-hz="tool" data-id="${id}" aria-pressed="${(HZ.pend ? HZ.pend.type : HZ.tool) === id}" ${ht ? `style="--hc:${ht[2]}"` : ""} title="${esc(lbl)}">${ic}<span>${esc(lbl)}</span></button>`;
 };
+/* Locks: a locked element stays where it is (it cannot be dragged or moved with the arrows) until it is unlocked.
+   Groups: the drawing (rooms, walls, doors, windows, gates), the outdoors (areas, hedges, fences, trees, bushes), and
+   the rest (furniture, lamps, devices). */
+const isFixed = (key) => !!hbFind(key)?.fixed;
+const lockGroup = (key) => {
+  const k = key.split(":")[0], o = hbFind(key);
+  if (!o) return "mob";
+  if (k === "room" || (k === "wall" && !["hedge", "fence"].includes(o.k)) || (k === "item" && OPENING.has(o.type))) return "tegn";
+  if (k === "area" || (k === "wall" && ["hedge", "fence"].includes(o.k)) || (k === "item" && (o.type === "tree" || o.type === "bush"))) return "ude";
+  return "mob";
+};
+const allKeys = () => [...HZ.d.rooms.map((x) => "room:" + x.id), ...HZ.d.walls.map((x) => "wall:" + x.id), ...HZ.d.areas.map((x) => "area:" + x.id), ...HZ.d.items.map((x) => "item:" + x.id)];
+function setLocks(keys, on) {
+  const before = JSON.stringify(HZ.d);
+  for (const key of keys) {
+    const o = hbFind(key);
+    if (!o) continue;
+    if (on) o.fixed = true;
+    else delete o.fixed;
+  }
+  hbCommit(before);
+  hbRefresh();
+}
+function lockCounts() {
+  const n = { tegn: 0, ude: 0, mob: 0, tegnT: 0, udeT: 0, mobT: 0 };
+  for (const key of allKeys()) {
+    const g = lockGroup(key);
+    n[g + "T"]++;
+    if (isFixed(key)) n[g]++;
+  }
+  return n;
+}
+function lockHtml() {
+  const n = lockCounts();
+  const row = (g, name, sub) => `<div class="hz-lock${n[g] && n[g] === n[g + "T"] ? " on" : ""}"><span class="hz-lock-ic">${svg(n[g] && n[g] === n[g + "T"] ? "lock" : "unlock")}</span><div><b>${esc(t(name))}</b><small>${esc(sub)} · ${esc(t("{n} låst", { n: `${n[g]}/${n[g + "T"]}` }))}</small></div><button class="btn soft sm" data-hz="lockgrp" data-id="${g}" data-on="${n[g] === n[g + "T"] && n[g] ? "0" : "1"}">${esc(n[g] === n[g + "T"] && n[g] ? t("Lås op") : t("Lås"))}</button></div>`;
+  return `<h4>${esc(t("Låse"))}</h4><div class="hz-locks">${row("tegn", "Lås tegningen", t("Rum, vægge, døre og vinduer"))}${row("ude", "Lås udearealer", t("Arealer, hæk, hegn, træer og buske"))}${row("mob", "Lås møbler og lamper", t("Alt det andet: møbler, lamper, enheder"))}<div class="hz-row2"><button class="btn soft sm" data-hz="lockgrp" data-id="alt" data-on="1">${svg("lock")}${esc(t("Lås alt"))}</button><button class="btn soft sm" data-hz="lockgrp" data-id="alt" data-on="0">${svg("unlock")}${esc(t("Lås alt op"))}</button></div></div>`;
+}
+const lockBtn = (keys) => {
+  const list = [...keys], locked = list.length && list.every(isFixed);
+  return `<button class="btn soft sm${locked ? " on" : ""}" data-hz="lock" data-on="${locked ? "0" : "1"}" title="${esc(t("Låst: kan ikke flyttes. Lås op for at flytte."))}">${svg(locked ? "lock" : "unlock")}${esc(locked ? t("Lås op") : list.length > 1 ? t("Lås valgte") : t("Lås"))}</button>`;
+};
 function hzPalM() {
   const g = HZ_GROUPS.find((x) => x[0] === HZ.grp) || HZ_GROUPS[0];
   return `<div class="hz-pal-m"><div class="hz-gchips">${HZ_GROUPS.map(([k, n]) => `<button data-hz="grp" data-id="${k}" aria-pressed="${g[0] === k}">${esc(t(n))}</button>`).join("")}</div><div class="hz-tl">${g[2].map(hzTool).join("")}</div></div>`;
@@ -1338,7 +1379,7 @@ function pHouse() {
   return `<div class="hz">
   <section class="hz-top"><div><span class="eyebrow">${esc(t("Husbygger"))}${D.name ? ` · ${esc(D.name)}` : ""}</span><h2 class="h2">${esc(t("Byg huset"))}</h2><span class="hz-sync">${svg("users")}${esc(t("Gemmes af sig selv i Home Assistant, så hele familien ser den samme tegning"))}</span></div>
     <div class="hz-acts"><span class="hz-savebox">${saveHtml()}</span><button class="iconbtn" data-hz="undo" aria-label="${esc(t("Fortryd"))}" title="${esc(t("Fortryd"))} (Ctrl/⌘ Z)" ${HZ.hist.length ? "" : "disabled"}>${svg("undo")}</button><button class="iconbtn" data-hz="redo" aria-label="${esc(t("Gentag"))}" title="${esc(t("Gentag"))} (Ctrl/⌘ ⇧ Z)" ${HZ.fut.length ? "" : "disabled"}>${svg("redo")}</button>
-      ${C.on("security") && C.views.sikkerhed ? `<button class="btn soft" data-hz="leave">${esc(t("Til Sikkerhed"))}</button>` : ""}</div></section>
+      <button class="btn" data-hz="leave">${svg("check")}${esc(t("Gem og luk"))}</button></div></section>
   <div class="hz-body">
     ${hzPalette()}
     <div class="hz-canvas"><svg id="hz-svg" viewBox="${HZ.view.join(" ")}" aria-label="${esc(t("Tegning af huset"))}"></svg>
@@ -1450,7 +1491,7 @@ function hbProps() {
     const parts = [["item", t("ting")], ["room", t("rum")], ["wall", t("vægge")], ["area", t("arealer")]].filter(([k]) => n(k)).map(([k, l]) => `${n(k)} ${l}`);
     return `<div class="hz-pp"><div class="hz-ph"><span class="hz-pi" style="--hc:#6E4AFF">${svg("check")}</span><div><b>${esc(t("{n} valgt", { n: keys.size }))}</b><small>${esc(parts.join(" · "))}</small></div></div>
       <p class="t-sub">${esc(t("Træk i en af dem for at flytte dem alle. Rum tager deres vægge og møbler med. Pilene flytter dem også."))}</p>
-      <div class="hz-row2"><button class="btn soft sm" data-hz="dup">${svg("plus")}${esc(t("Dublér"))}</button>${n("item") ? `<button class="btn soft sm" data-hz="rot" data-id="90">↻ 90°</button>` : ""}<button class="btn soft sm" data-hz="clearsel">${esc(t("Fravælg"))}</button></div>
+      <div class="hz-row2"><button class="btn soft sm" data-hz="dup">${svg("plus")}${esc(t("Dublér"))}</button>${n("item") ? `<button class="btn soft sm" data-hz="rot" data-id="90">↻ 90°</button>` : ""}${lockBtn(keys)}<button class="btn soft sm" data-hz="clearsel">${esc(t("Fravælg"))}</button></div>
       <div class="hz-row2"><button class="btn soft sm danger-t" data-hz="del">${svg("trash")}${esc(t("Slet {n}", { n: keys.size }))}</button></div></div>`;
   }
   if (!o) {
@@ -1461,12 +1502,13 @@ function hbProps() {
       <div class="hz-cnt">${[["room", D.rooms.length, t("rum")], ["wall", D.walls.length, t("vægge")], ["door", D.items.filter((i) => i.type === "door").length, t("døre")], ["window", D.items.filter((i) => i.type === "window").length, t("vinduer")], ["camera", D.items.filter((i) => !OPENING.has(i.type) && i.type !== "furn").length, t("enheder")]].map(([ic, n, l]) => `<span>${svg(ic)}<b class="num">${n}</b>${esc(l)}</span>`).join("")}</div>
       ${areas.length ? `<div class="hz-quick"><b>${esc(t("Kom hurtigt i gang"))}</b><span>${esc(t("Hent jeres områder fra Home Assistant som rum. Rumtypen gættes ud fra navnet, og enheder i områderne kan sættes ind med ét tryk."))}</span><button class="btn sm" data-hz="haimport">${svg("house")}${esc(t("Start fra jeres områder"))}</button></div>` : ""}
       ${un.length ? `<h4>${esc(t("Fra Home Assistant, ikke placeret"))}</h4>${placeable ? `<button class="btn soft sm" data-hz="autoplace" style="margin-bottom:8px">${svg("sparkle")}${esc(t("Placér {n} i deres rum", { n: placeable }))}</button>` : ""}<div class="hz-un">${un.map(([ty, e, n]) => `<button data-hz="pend" data-id="${esc(e)}" style="--hc:${HT[ty][2]}">${svg(HT[ty][1])}<span><b>${esc(n)}</b><small>${esc(e)}</small></span><i>${esc(t("Placér"))}</i></button>`).join("")}</div>` : ""}
+      ${lockHtml()}
       <h4>${esc(t("Sådan bygger du"))}</h4><ol class="hz-how"><li>${esc(t("Tegn rum med Rum. Væggene kommer med."))}</li><li>${esc(t("Ret vægge med Væg, eller træk i deres ender."))}</li><li>${esc(t("Sæt døre, vinduer og porte i væggene, og vælg deres sensor."))}</li><li>${esc(t("Placér kameraer, højttalere, lys og møbler, og kobl dem til en entitet."))}</li><li>${esc(t("Alt gemmes af sig selv. Planen bruger tegningen med det samme."))}</li></ol>
       <div class="hz-keys"><span><kbd>Ctrl/⌘ Z</kbd> ${esc(t("fortryd"))} · <kbd>⇧</kbd>+<kbd>Z</kbd> ${esc(t("gentag"))}</span><span><kbd>Delete</kbd> ${esc(t("slet"))} · <kbd>Esc</kbd> ${esc(t("stop eller fravælg"))}</span><span><kbd>← ↑ → ↓</kbd> ${esc(t("flyt"))} (<kbd>⇧</kbd> ${esc(t("langt"))}, <kbd>Alt</kbd> ${esc(t("fint"))})</span><span><kbd>⇧</kbd>+${esc(t("klik eller træk"))}: ${esc(t("markér flere"))} · <kbd>Alt</kbd> ${esc(t("hold nede: placér frit"))}</span><span><kbd>,</kbd> <kbd>.</kbd> ${esc(t("drej"))} · <kbd>Ctrl/⌘ D</kbd> ${esc(t("dublér"))}</span></div>
       <div class="hz-reset"><div class="hz-io"><button class="btn soft sm" data-hz="export">${svg("share")}${esc(t("Gem som fil"))}</button><button class="btn soft sm" data-hz="copy">${svg("share")}${esc(t("Kopiér tegningen"))}</button><button class="btn soft sm" data-hz="import">${svg("plus")}${esc(t("Indsæt en tegning"))}</button><label class="btn soft sm hz-up">${svg("plus")}${esc(t("Hent fra fil"))}<input type="file" accept="application/json,.json" data-hzfile="1" hidden></label></div><button class="btn soft sm" data-hz="blank">${esc(t("Start på en tom tegning"))}</button></div></div>`;
   }
   const k = HZ.sel.split(":")[0];
-  const del = `<button class="btn soft sm danger-t" data-hz="del">${svg("trash")}${esc(t("Slet"))}</button>`;
+  const del = `${lockBtn(new Set([HZ.sel]))}<button class="btn soft sm danger-t" data-hz="del">${svg("trash")}${esc(t("Slet"))}</button>`;
   if (k === "room") {
     const kids = C.children();
     let meta = fld(t("Rumtype"), sel("rtype", RTYPES.map(([a, b]) => [a, t(b)]), o.rtype || guessType(o.name)), `<span class="t-sub" style="font-size:11.5px">${esc(t("Bestemmer, hvordan rummet tegnes, når det åbnes."))}</span>`);
@@ -1590,6 +1632,13 @@ function hbDraw() {
     <rect x="${v[0] - v[2]}" y="${v[1] - v[3]}" width="${v[2] * 3}" height="${v[3] * 3}" fill="url(#hz-g2)" class="hz-bg"/>`;
   s += houseSvg(D, { mode: "edit", sel: HZ.sel && HZ.sel.startsWith("item:") ? HZ.sel.slice(5) : HZ.sel });
   const o = hbFind(HZ.sel), hr = 8 * k, keys = selKeys();
+  // A little padlock on everything that is locked.
+  for (const key of allKeys()) {
+    if (!isFixed(key)) continue;
+    const x = hbFind(key), kk = key.split(":")[0];
+    const c = kk === "room" || (kk === "area" && x.pts) ? [x.pts.reduce((a, q) => a + q[0], 0) / x.pts.length, x.pts.reduce((a, q) => a + q[1], 0) / x.pts.length] : kk === "wall" ? [(x.a[0] + x.b[0]) / 2, (x.a[1] + x.b[1]) / 2] : [x.x, x.y];
+    s += `<g class="hz-lk" transform="translate(${f1(c[0])} ${f1(c[1])}) scale(${f1(k)})" pointer-events="none"><circle r="9" fill="#fff" stroke="#2B2340" stroke-width="1.5"/><rect x="-4" y="-2" width="8" height="6" rx="1.5" fill="#2B2340"/><path d="M-2.5 -2 v-2 a2.5 2.5 0 0 1 5 0 v2" fill="none" stroke="#2B2340" stroke-width="1.5"/></g>`;
+  }
   // Several things chosen: a dashed outline round each.
   if (keys.size > 1)
     for (const key of keys) {
@@ -2248,6 +2297,8 @@ function hzClick(e) {
     C.toast(HZ.multiMode ? t("Markér flere: tryk på ting, eller træk en ramme om dem") : t("Markér flere: fra"));
     return hbRefresh(false);
   }
+  if (a === "lock") return setLocks(selKeys().size ? selKeys() : [HZ.sel], b.dataset.on === "1");
+  if (a === "lockgrp") return setLocks(allKeys().filter((k) => id === "alt" || lockGroup(k) === id), b.dataset.on === "1");
   if (a === "clearsel") {
     HZ.sel = null;
     HZ.msel = new Set();
@@ -2405,10 +2456,9 @@ function hzClick(e) {
   hbRefresh();
 }
 function leave(discard) {
-  if (discard) {
-    HZ = null;
-  }
-  C.go("sikkerhed");
+  if (discard) HZ = null;
+  else flushSave();
+  C.go(C.on("security") && C.views.sikkerhed ? "sikkerhed" : "hjem");
 }
 
 function hzInput(e) {
@@ -2528,6 +2578,8 @@ function hbCommit(before) {
 }
 /* Move what is chosen by d (from base): one item on its own snaps to walls; rooms take their walls and furniture. */
 function hbMoveSel(base, keys, d, raw) {
+  keys = new Set([...keys].filter((k) => !isFixed(k)));
+  if (!keys.size) return;
   HZ.d = clone(base);
   if (keys.size === 1) {
     const key = [...keys][0];
@@ -2661,6 +2713,7 @@ function hbBind() {
     }
     if (hh) {
       const [k, id, i] = hh.dataset.hh.split(":");
+      if (isFixed(`${k}:${id}`) || (k === "redge" && isFixed(`room:${id}`))) return;
       drag = { kind: "handle", k, id, i, start: p, base: clone(D), before: JSON.stringify(D), moved: false };
       if (k === "room" || k === "area") HZ.corner = +i;
       return;
@@ -2676,7 +2729,9 @@ function hbBind() {
         hbSelect(key, false);
         hbRefresh();
       }
-      drag = { kind: "move", keys: selKeys(), start: p, base: clone(D), before: JSON.stringify(D), moved: false };
+      const movable = new Set([...selKeys()].filter((k) => !isFixed(k)));
+      if (!movable.size) return;
+      drag = { kind: "move", keys: movable, start: p, base: clone(D), before: JSON.stringify(D), moved: false };
       return;
     }
     if (add) {
@@ -3158,7 +3213,14 @@ const css = `
 .hz-epl .none { padding: 9px; font-size: 12.5px; color: var(--muted); }
 .hz-tool.multi[aria-pressed="true"] { background: var(--violet); }
 .hz-tools summary { font-size: 9.5px !important; letter-spacing: .2px !important; overflow-wrap: anywhere; hyphens: auto; line-height: 1.25; }
-.hz-tools .hz-tl { display: grid; grid-template-columns: minmax(0, 1fr); }
+.hz-tools .hz-pal-d .hz-tl { display: grid; grid-template-columns: minmax(0, 1fr); }
+.hz-pal-m .hz-tl { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 4px; }
+.hz-pal-m .hz-tool { min-width: 0; }
+.hz-locks { display: grid; gap: 6px; margin-bottom: 10px; }
+.hz-lock { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px; border-radius: 12px; background: var(--surface-2); }
+.hz-lock.on { background: color-mix(in srgb, var(--violet) 12%, var(--surface)); }
+.hz-lock-ic .ic { width: 20px; height: 20px; } .hz-lock b { display: block; font-size: 13px; } .hz-lock small { font-size: 11px; color: var(--muted); }
+.btn.on { background: var(--ink); color: var(--bg); }
 `;
 
 const en = {
@@ -3211,7 +3273,7 @@ const en = {
   "Tryk for næste hjørne. Dobbelttryk, Esc eller Færdig for at stoppe.": "Tap for the next corner. Double-tap, Esc or Done to stop.", "Tryk der, hvor væggen starter.": "Tap where the wall starts.",
   "Træk i ting for at flytte dem. Træk i en tom flade for at panorere. Rul eller knib for at zoome.": "Drag things to move them. Drag an empty spot to pan. Scroll or pinch to zoom.",
   "Færdig": "Done", "Annullér": "Cancel", "Husbygger": "House builder", "Byg huset": "Build the house", "Gemmes i Home Assistant, så hele familien ser den samme tegning": "Saved in Home Assistant, so the whole family sees the same drawing",
-  "Ikke gemt": "Not saved", "Fortryd": "Undo", "Gentag": "Redo", "Til Sikkerhed": "To Security", "Gem huset": "Save the house", "Tegning af huset": "Drawing of the house",
+  "Ikke gemt": "Not saved", "Fortryd": "Undo", "Gentag": "Redo", "Gem og luk": "Save and close", "Lås": "Lock", "Lås op": "Unlock", "Låst": "Locked", "Låse": "Locks", "Lås tegningen": "Lock the drawing", "Lås udearealer": "Lock the outdoors", "Lås møbler og lamper": "Lock furniture and lamps", "Lås alt": "Lock everything", "Lås alt op": "Unlock everything", "Låst: kan ikke flyttes. Lås op for at flytte.": "Locked: cannot be moved. Unlock to move it.", "{n} låst": "{n} locked", "Lås valgte": "Lock the chosen", "Rum, vægge, døre og vinduer": "Rooms, walls, doors and windows", "Arealer, hæk, hegn, træer og buske": "Areas, hedges, fences, trees and bushes", "Alt det andet: møbler, lamper, enheder": "Everything else: furniture, lamps, devices", "Gem huset": "Save the house", "Tegning af huset": "Drawing of the house",
   "Zoom ind": "Zoom in", "Zoom ud": "Zoom out", "Vis hele huset": "Show the whole house", "Fastgør til gitter": "Snap to grid",
   "Ikke koblet til en entitet": "Not linked to an entity", "Fundet i Home Assistant · {name}": "Found in Home Assistant · {name}", "Skal være en {domain}-entitet": "Must be a {domain} entity",
   "Entitet": "Entity", "Huset": "The house", "Navn": "Name", "Fx Hjemme": "E.g. Home", "rum": "rooms", "vægge": "walls", "døre": "doors", "vinduer": "windows", "enheder": "devices",

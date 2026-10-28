@@ -399,7 +399,7 @@ function carLocks(ctx) {
 const carsAway = (ctx) => houseData(ctx).items.filter((i) => i.type === "car" && i.presence && !["home", "on", "true"].includes(String(ctx.hass.states[i.presence]?.state).toLowerCase()));
 
 /* ------------------------------------------------------------------ the page (the prototype's pSec) */
-const LAYERS = [["sikkerhed", "Sikkerhed"], ["lys", "Lys"], ["indretning", "Møbler"], ["energi", "Biler og energi"], ["apparater", "Apparater"], ["medier", "Sonos og TV"], ["netvaerk", "Netværk"]];
+const LAYERS = [["sikkerhed", "Sikkerhed", "shield"], ["lys", "Lys", "bulb"], ["indretning", "Møbler", "sofa"], ["energi", "Biler og energi", "bolt"], ["apparater", "Apparater", "vacuum"], ["medier", "Sonos og TV", "speaker"], ["netvaerk", "Netværk", "wifi"]];
 let layers = new Set(["sikkerhed", "lys", "apparater", "indretning", "energi"]);
 
 function render(ctx) {
@@ -477,8 +477,9 @@ function render(ctx) {
       inner = `<p class="t-sub">${esc(t("Planen kunne ikke tegnes"))}</p>`;
     }
     const hasK = houseData(ctx).items.some((i) => i.type === "temp");
-    plan = `<section class="card sx-plan" data-pane="huset"><div class="card-head"><h2>${esc(t("Huset"))}</h2><div class="sx-layers">${[...LAYERS, ...(hasK ? [["klima", "Klima"]] : [])].map(([k, l]) => `<button data-act="sec-layer" data-id="${k}" aria-pressed="${layers.has(k)}">${esc(t(l))}</button>`).join("")}${ctx.isParent && ctx.on("house") ? `<button class="sx-edit" data-go="husbygger">${svg("edit")}${esc(t("Redigér huset"))}</button>` : ""}</div></div>
-      ${inner}<p class="sx-swipe">${esc(t("Stryg til siden for at se hele huset."))}</p>${ctlRow}
+    plan = `<section class="card sx-plan" data-pane="huset"><div class="card-head"><h2>${esc(t("Huset"))}</h2></div>
+      <div class="sx-layers" role="group" aria-label="${esc(t("Vis på planen"))}">${[...LAYERS, ...(hasK ? [["klima", "Klima", "heat"]] : [])].map(([k, l, ic]) => `<button data-act="sec-layer" data-id="${k}" aria-pressed="${layers.has(k)}" title="${esc(t(l))}"><i>${svg(ic || "sliders")}</i><span>${esc(t(l))}</span></button>`).join("")}</div>
+      <div class="sx-zoomwrap">${inner}<div class="sx-zoom"><button class="iconbtn" data-act="sec-zoom" data-id="in" aria-label="${esc(t("Zoom ind"))}">${svg("zin")}</button><button class="iconbtn" data-act="sec-zoom" data-id="out" aria-label="${esc(t("Zoom ud"))}">${svg("zout")}</button><button class="iconbtn" data-act="sec-zoom" data-id="fit" aria-label="${esc(t("Vis hele huset"))}">${svg("fit")}</button></div></div><p class="sx-swipe">${esc(t("Knib eller rul for at zoome, træk for at flytte."))}</p>${ctlRow}
       <div class="sec-legend"><span class="t-sub">${esc(t("Tryk på et rum for at åbne det, eller på en dør, et vindue eller en markør."))}</span></div></section>`;
   } else {
     const rows = st.filter((s) => s.kind !== "lock" && !(s.kind === "port" && s.ent.startsWith("cover.")));
@@ -512,7 +513,71 @@ function render(ctx) {
 }
 
 /* Fresh camera pictures every 10 seconds, without drawing the page again. */
+/* Zoom and pan on the plan: the mouse wheel, two fingers (pinch) and dragging. The viewBox of the svg changes. */
+function planZoom(svgEl) {
+  if (svgEl._zoom) return svgEl._zoom;
+  const base = svgEl.getAttribute("viewBox").split(/[\s,]+/).map(Number);
+  let vb = base.slice();
+  const apply = () => svgEl.setAttribute("viewBox", vb.map((n) => n.toFixed(1)).join(" "));
+  const pt = (cx, cy) => {
+    const r = svgEl.getBoundingClientRect();
+    return [vb[0] + ((cx - r.left) / r.width) * vb[2], vb[1] + ((cy - r.top) / r.height) * vb[3]];
+  };
+  const zoomAt = (f, cx, cy) => {
+    const [x, y] = cx == null ? [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2] : pt(cx, cy);
+    const w = Math.max(base[2] / 6, Math.min(base[2] * 1.6, vb[2] * f)), h = (w / vb[2]) * vb[3];
+    vb = [x - ((x - vb[0]) * w) / vb[2], y - ((y - vb[1]) * h) / vb[3], w, h];
+    apply();
+  };
+  const api = { zoom: (f) => zoomAt(f), fit: () => { vb = base.slice(); apply(); } };
+  svgEl._zoom = api;
+  const ptrs = new Map();
+  let pinch = null, pan = null;
+  svgEl.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey && Math.abs(e.deltaY) < 1) return;
+    e.preventDefault();
+    zoomAt(e.deltaY > 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
+  }, { passive: false });
+  svgEl.addEventListener("pointerdown", (e) => {
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()];
+      pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), vb: vb.slice(), mid: pt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) };
+      pan = null;
+    } else if (ptrs.size === 1 && vb[2] < base[2] * 0.98) pan = { x: e.clientX, y: e.clientY, vb: vb.slice(), moved: false };
+  });
+  svgEl.addEventListener("pointermove", (e) => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    const r = svgEl.getBoundingClientRect();
+    if (pinch && ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      const f = Math.max(0.2, Math.min(5, pinch.d / Math.max(1, d)));
+      const w = Math.max(base[2] / 6, Math.min(base[2] * 1.6, pinch.vb[2] * f)), h = (w / pinch.vb[2]) * pinch.vb[3];
+      const fx = ((a[0] + b[0]) / 2 - r.left) / r.width, fy = ((a[1] + b[1]) / 2 - r.top) / r.height;
+      vb = [pinch.mid[0] - fx * w, pinch.mid[1] - fy * h, w, h];
+      apply();
+      e.preventDefault();
+    } else if (pan && ptrs.size === 1) {
+      const dx = ((e.clientX - pan.x) / r.width) * vb[2], dy = ((e.clientY - pan.y) / r.height) * vb[3];
+      if (Math.hypot(e.clientX - pan.x, e.clientY - pan.y) > 6) pan.moved = true;
+      vb = [pan.vb[0] - dx, pan.vb[1] - dy, vb[2], vb[3]];
+      apply();
+    }
+  });
+  const up = (e) => {
+    ptrs.delete(e.pointerId);
+    if (ptrs.size < 2) pinch = null;
+    if (!ptrs.size) pan = null;
+  };
+  svgEl.addEventListener("pointerup", up);
+  svgEl.addEventListener("pointercancel", up);
+  svgEl.style.touchAction = "none";
+  return api;
+}
 function after(ctx) {
+  const plan = ctx.root.querySelector(".sx-zoomwrap .sec-plan");
+  if (plan) planZoom(plan);
   clearInterval(camTimer);
   camTimer = setInterval(() => {
     if (ctx.view !== "sikkerhed" || !ctx.host.isConnected) {
@@ -539,6 +604,12 @@ const acts = {
     ctx.render(true);
   },
   "sec-cam": (el, ev, ctx) => camSheet(ctx, el.dataset.id),
+  "sec-zoom": (el, ev, ctx) => {
+    const svgEl = ctx.root.querySelector(".sx-zoomwrap .sec-plan");
+    if (!svgEl) return;
+    if (el.dataset.id === "fit") return planZoom(svgEl).fit();
+    planZoom(svgEl).zoom(el.dataset.id === "in" ? 1 / 1.3 : 1.3);
+  },
   "sec-layer": (el, ev, ctx) => {
     const k = el.dataset.id;
     if (layers.has(k)) layers.delete(k);
@@ -673,7 +744,7 @@ const en = {
   "{n} sensor svarer ikke": "{n} sensor isn't responding", "{n} sensorer svarer ikke": "{n} sensors aren't responding",
   "ingen alarm valgt": "no alarm chosen", "Ingen alarm valgt": "No alarm chosen", Tilkobl: "Arm", "Vælg alarm": "Choose alarm",
   "tryk for at låse": "tap to lock", "tryk for at låse op": "tap to unlock", "tryk for at lukke": "tap to close", "tryk for at åbne": "tap to open",
-  "Planen kunne ikke tegnes": "The plan could not be drawn", Huset: "House", "Redigér huset": "Edit the house", "Stryg til siden for at se hele huset.": "Swipe sideways to see the whole house.",
+  "Planen kunne ikke tegnes": "The plan could not be drawn", Huset: "House", "Redigér huset": "Edit the house", "Vis på planen": "Show on the plan", "Zoom ind": "Zoom in", "Zoom ud": "Zoom out", "Vis hele huset": "Show the whole house", "Knib eller rul for at zoome, træk for at flytte.": "Pinch or scroll to zoom, drag to move.", "Stryg til siden for at se hele huset.": "Swipe sideways to see the whole house.",
   "Tryk på et rum for at åbne det, eller på en dør, et vindue eller en markør.": "Tap a room to open it, or a door, a window or a marker.", "Døre, vinduer og følere": "Doors, windows and sensors",
   "Tegn jeres hus": "Draw your house", "Tegn rum, døre og vinduer, og sæt jeres enheder ind. Så kan I se hele huset levende her: hvad der er åbent, låst og tændt.": "Draw rooms, doors and windows, and place your devices. Then you can see the whole house come alive here: what is open, locked and on.",
   "Åbn Husbyggeren": "Open the House builder", "Døre, vinduer og låse": "Doors, windows and locks", "Der er ikke fundet døre, vinduer, låse eller røgalarmer i Home Assistant.": "No doors, windows, locks or smoke alarms were found in Home Assistant.",

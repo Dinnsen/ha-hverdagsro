@@ -331,6 +331,16 @@ function tile(ctx, a, i, n) {
   }</span></button>${run && x.progress != null ? `<div class="ap-bar"><i style="width:${Math.max(2, Math.min(100, x.progress))}%"></i></div>` : ""}${ctl ? `<div class="ap-c">${ctl}</div>` : ""}</div>`;
 }
 
+/* The appliances of a room, as the living tiles of the Apparater page: the ones whose entity (or one of its controls)
+   is among the room's entities. Returns [html, the entity ids used]. */
+export function roomTiles(ctx, ids) {
+  const set = new Set(ids), list = (ctx.data.appliances || []).filter((a) => a && a.entity && (set.has(a.entity) || (a.controls || []).some((c) => set.has(c))));
+  const was = editing;
+  editing = false;
+  const html = list.map((a, i) => tile(ctx, a, i, list.length)).join("");
+  editing = was;
+  return [html, list.flatMap((a) => [a.entity, ...(a.controls || [])])];
+}
 const modelOf = (ctx, entity) => {
   const d = ctx.hass.devices?.[ctx.hass.entities?.[entity]?.device_id];
   return d ? [d.manufacturer, d.model].filter(Boolean).join(" ") : "";
