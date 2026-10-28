@@ -357,7 +357,7 @@ export function houseDecor(ctx, room) {
     if (out.some(([ok, ox, oy]) => ok === k && Math.abs(ox - sx) < 90 && Math.abs(oy - sy) < 60)) continue;
     out.push([k, sx, sy]);
   }
-  return out.length >= 2 ? out.slice(0, 16) : null;
+  return out.length >= 2 ? out.slice(0, 26) : null;
 }
 /* A place, by its key: an area's place, a room of the house, or the garden. */
 export function place(ctx, key) {

@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+/* Tap the first thing in the room that opens (a fridge, a cupboard) and check that it did: it is drawn open (lit). */
+const OPEN_ONE = "(async () => { const root = window.__panel.shadowRoot || document; const el = root.querySelector(\"#pl-stage .pl-it.opens\"); if (!el) throw new Error(\"no openable thing in the room\"); const r = el.getBoundingClientRect(); const o = { bubbles: true, composed: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 1, isPrimary: true, button: 0, pointerType: \"mouse\" }; el.dispatchEvent(new PointerEvent(\"pointerdown\", o)); el.dispatchEvent(new PointerEvent(\"pointerup\", o)); await new Promise((r) => setTimeout(r, 500)); const n = root.querySelectorAll(\"#pl-stage .pl-it.opens.lit\").length; if (!n) throw new Error(\"the thing did not open\"); return \"opened \" + n; })()";
 const runs = [
   ["--view", "hjem"],
   ["--view", "hjem", "--narrow", "--width", "390"],
@@ -58,7 +60,7 @@ const runs = [
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"handel\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-supermarked\"]"],
   ["--user", "ida", "--view", "vaerelse", "--narrow", "--width", "390", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"born\"]"],
   // things that open: a cupboard, and the things inside it come into sight
-  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-storfamilie\"]", "--click", ".pl-it[data-k=\"hd-storfamilie-kitchen-wall-cupboard\"]"],
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-storfamilie\"]", "--eval", OPEN_ONE],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", ".pl-shopb", "--click", "[data-pl=\"pack\"][data-k=\"hd-bageri\"]"],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"house\"]", "--click", ".hz-sign[data-k=\"h:stue\"]"],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"house\"]", "--click", ".hz-sign[data-k=\"h:bad\"]"],

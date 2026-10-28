@@ -9,6 +9,10 @@ All notable changes to Hverdagsro. The version is the one in `custom_components/
 - **4,575 things in the packs, up from 2,284.** The Danish dictionary of `tools/homedesigner` now covers about 5,000 names (food, animals, tools, plants, shops, toys), so far fewer are left out. Things with a proper noun or a brand are still left out.
 - **396 things open (up from 51):** a thing that has doors or drawers and room inside it in the original opens here too, with the shelves of the original inside it. Open storage (a basket, a bowl, a box) can hold things, and a thing with a light in the original can be lit.
 - Decorations on the floor and the wall (stains, cracks, calendars) are drawn as what they are, and a thing with no matching shape is no longer drawn as a cupboard.
+- **Rooms make sense.** The places of the towns are laid out by what each one is for (`hv-layout.js`): a kitchen is a row of units with the fridge, the sink and the stove with the cooker hood over it, and a dining table with chairs in front; a bedroom has the bed between its two bedside tables, a wardrobe and a picture over the bed; a living room has a sofa with a coffee table and a rug, and the tv on a cabinet; a shop has rows of shelves with a counter in front. The little things on a shelf or a counter fit it (kitchen things on the kitchen units, books and plants on the shelves, toys on the children's), and what is inside a fridge or a cupboard is out of sight until it is opened.
+- **Every building in a town is its own:** a cottage, a tall house, a shop with an awning, a mall, a tower, a manor with wings, a villa with a pool, a cabin among pines, a market pavilion, a park, a haunted house, a camper van. Which one is by what the place is.
+- **The old things open and work too:** the fridge, the mini fridge, the wardrobe, the medicine cabinet, the shoe rack, the feed cupboard and the bedside table open (with shelves inside), and the bake ovens light up.
+- **The house:** up to 26 of the family's own pieces of furniture from Husbyggeren come into the game (it was 16), and the fridge, wardrobes and bedside tables of the house open.
 
 ## [0.16.0] - 2026-10-28
 

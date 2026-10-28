@@ -207,6 +207,31 @@ export function addScreen(key, rect) {
   FX[key] = { tv: true, sound: "tv" };
 }
 
+/* The things the game had before the theme packs, and what they can do now too (the same as a fridge or a cupboard from a
+   pack): kind, and the shelves inside as parts of the height. The treasure chest and the dress-up chest keep their own
+   tapping. */
+const LEGACY = {
+  koeleskab: ["door", [0.1, 0.3, 0.52, 0.74]],
+  minikoeleskab: ["door", [0.25, 0.6]],
+  wardrobe: ["door", [0.12, 0.5]],
+  apotek: ["door", [0.15, 0.45, 0.75]],
+  skoreol: ["door", [0.3, 0.62]],
+  foderskab: ["door", [0.3, 0.6]],
+  natbord: ["drawer", [0.5]],
+  bageovn: ["burn", []],
+  bagerovn: ["burn", []],
+};
+export function registerLegacy(CAT) {
+  for (const [key, [kind, levels]] of Object.entries(LEGACY)) {
+    const T = CAT[key];
+    if (!T || FX[key]) continue;
+    const { w, h, c } = T;
+    if (kind === "door") registerFx(key, "cabinet", { fx: { toggle: true, sound: "chest" }, on: (it) => LOOKS.door(w, h, levels, it.c || c), inside: { w: 0.78, levels } });
+    else if (kind === "drawer") registerFx(key, "dresser", { fx: { toggle: true, sound: "chest" }, on: (it) => LOOKS.drawer(w, h, it.c || c), inside: { w: 0.7, levels } });
+    else registerFx(key, "oven", { fx: { toggle: true, sound: "fire" }, on: () => LOOKS.burn(w, h) });
+  }
+}
+
 /* ------------------------------------------------------------------ the shower (new: a bathroom needs one) */
 export const FIX_THINGS = {
   bruser: ["Brusebad", "mob", "#BFE6FF", 150, 300, (k) => `<rect x="-70" y="-24" width="140" height="24" rx="6" fill="#FFFFFF" stroke="${OL}" stroke-width="4"/><rect x="-62" y="-290" width="124" height="266" rx="8" fill="${k}" fill-opacity=".35" stroke="${OL}" stroke-width="4"/><path d="M-40 -270 l30 60" stroke="#fff" stroke-width="6" opacity=".7" stroke-linecap="round"/><path d="M52 -24 V-280 H10" fill="none" stroke="#9AA4BA" stroke-width="7" stroke-linecap="round"/><ellipse cx="0" cy="-270" rx="26" ry="9" fill="#CFD6E6" stroke="${OL}" stroke-width="4"/><circle cx="52" cy="-120" r="9" fill="#E5484D" stroke="${OL}" stroke-width="3"/><circle cx="0" cy="-12" r="5" fill="#9AA4BA"/>`],

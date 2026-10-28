@@ -562,7 +562,7 @@ function stage(ctx, m) {
     if (!T) return "";
     const sc = it.s || 1, sel = ST.build && ST.sel === it.id, fixed = Fix.FIXED.has(it.k) || room.ro;
     const shadow = !wallK(it.k) && T.flat !== 1 && !it.at ? `<ellipse cx="0" cy="2" rx="${Math.round(T.w * 0.44)}" ry="${Math.max(5, Math.round(T.w * 0.05))}" fill="rgba(0,0,0,.13)"/>` : "";
-    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}${fixed ? " fixed" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${shadow}${T.d(it.c || T.c)}${it.live ? `<g transform="translate(0 ${-T.h - 16})"><rect x="-90" y="-28" width="180" height="30" rx="15" fill="#fff" ${S("stroke-width=\"3\"")}/><text y="-7" text-anchor="middle" class="pl-livet">${esc(it.live)}</text></g>` : ""}${Fix.onSvg(it)}${Fix.ridingSvg(it, items)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
+    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${Fix.hasInside(it.k) ? " opens" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}${fixed ? " fixed" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${shadow}${T.d(it.c || T.c)}${it.live ? `<g transform="translate(0 ${-T.h - 16})"><rect x="-90" y="-28" width="180" height="30" rx="15" fill="#fff" ${S("stroke-width=\"3\"")}/><text y="-7" text-anchor="middle" class="pl-livet">${esc(it.live)}</text></g>` : ""}${Fix.onSvg(it)}${Fix.ridingSvg(it, items)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
   };
   const items = room.items || [];
   const isWall = (it) => wallK(it.k);
@@ -650,6 +650,8 @@ for (const [k, v] of Object.entries(HOME_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0
 for (const [k, v] of Object.entries(HOME4)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "home" };
 for (const [k, v] of Object.entries(WORLD_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "world" };
 for (const [k, v] of Object.entries(Fix.FIX_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: 0, pack: "home" };
+// The fridges, wardrobes and bedside tables the game had before the theme packs open now too.
+Fix.registerLegacy(CAT);
 const LOOKS = { p: [PATTERNS_X, 25], f: [FLOORS_X, 20], x: [EXTRAS_X, 30] };
 /* A thing or a look ("p:…" wallpaper, "f:…" floor, "x:…" to wear): its name and price. */
 function info(id) {
