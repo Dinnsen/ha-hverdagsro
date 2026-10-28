@@ -8,7 +8,7 @@ import * as World from "./hv-world.js";
 import { OL, shade } from "./hv-playcat.js";
 
 export const VW = 1000; // the width of the screen in the game's units
-const MIN_W = 1000, MAX_W = 2400, ME_MIN = 1300;
+const MIN_W = 1000, MAX_W = 4800, ME_MIN = 1300;
 const visitOf = (sid) => (String(sid).startsWith("visit:") ? sid.slice(6) : "");
 /* The room of the floor plan a place of the game is. */
 export function planRoom(ctx, sid, me) {

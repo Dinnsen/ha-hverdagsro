@@ -81,15 +81,22 @@ export function dress(placed, things, decor, R) {
   }
 }
 
+/* About how much room each station takes along the wall (to leave one out that would not fit). */
+const WIDTH_OF = { sofa: 320, tv: 200, dining: 300, kitchen: 560, bed: 300, wardrobe: 200, desk: 260, shelf: 200, bath: 480, shop: 560, bar: 320, corner: 100, outdoor: 300, fireplace: 240, art: 0 };
+
 /* Lay out a room: `keys` are what there is to use, `stations` what the room is (names below), `width` how wide it may be.
-   Returns { decor, width }. */
+   opts: min, max (the width), fit (leave out a station that no longer has room), offset (keep this much free at the
+   start, for the lift), prefer (keys that are used before the others), curtains: false (the caller hangs them), indoor
+   (true: no trees and no garden things; false: no lamp from the ceiling).
+   Returns { decor, width, used } (used: the keys that were furnished with). */
 export function arrange(keys, stations, seed, opts = {}) {
   const R = rnd(hash(seed)), used = new Set();
-  const things = keys.filter((k) => META4[k]).map((k) => ({ k, ...META4[k], role: ROLE[META4[k].shape] || "extra" }));
+  const things = keys.filter((k) => META4[k]).map((k) => ({ k, ...META4[k], role: ROLE[META4[k].shape] || "extra" })).filter((t) => !(opts.indoor && (t.shape === "tree" || t.role === "outdoor")));
   const by = {};
   for (const t of things) (by[t.role] ||= []).push(t);
-  for (const list of Object.values(by)) list.sort((a, b) => b.w * b.h - a.w * a.h);
-  const decor = [], placed = [], rows = { back: EDGE, front: EDGE + 40 };
+  const pref = (t) => (opts.prefer && !opts.prefer.has(t.k) ? 1 : 0);
+  for (const list of Object.values(by)) list.sort((a, b) => pref(a) - pref(b) || b.w * b.h - a.w * a.h);
+  const decor = [], placed = [], rows = { back: EDGE + (opts.offset || 0), front: EDGE + 40 + (opts.offset || 0) };
   const put = (k, x, y, o) => decor.push(o ? [k, Math.round(x), Math.round(y), o] : [k, Math.round(x), Math.round(y)]);
   /* the next unused thing for a role (largest first), or one that may be used again */
   const take = (role, again = false) => {
@@ -201,12 +208,14 @@ export function arrange(keys, stations, seed, opts = {}) {
       if (s) back(s, 8);
     },
     bed() {
-      const n1 = take("storage");
       const b = take("bed");
       if (!b) return;
+      // bedside tables only where there is room for them
+      const roomy = (opts.max || 2200) - EDGE - rows.back > b.w + 230;
+      const n1 = roomy ? take("storage") : null;
       if (n1 && n1.w < 160 && n1.h < 190) back(n1, 4);
       const x = back(b, 4);
-      const n2 = take("storage");
+      const n2 = roomy ? take("storage") : null;
       if (n2 && n2.w < 160 && n2.h < 190) back(n2, GAP);
       wall(take("art", true), x, 250);
       floorRug(x);
@@ -304,9 +313,13 @@ export function arrange(keys, stations, seed, opts = {}) {
       for (let i = 0; i < 3; i++) art(rows.back - 80 - i * 200);
     },
   };
-  for (const name of stations) ST[name]?.();
-  // what is left over: other furniture along the back, until the room is as wide as it can be
   const wmax = opts.max || 2200;
+  for (const name of stations) {
+    // a station that would no longer fit in the room is left out
+    if (opts.fit && Math.max(rows.back, rows.front) + (WIDTH_OF[name] ?? 200) > wmax - EDGE) continue;
+    ST[name]?.();
+  }
+  // what is left over: other furniture along the back, until the room is as wide as it can be
   for (const t of things) {
     if (used.has(t.k) || t.role === "art" || t.role === "curtain" || t.role === "rug" || t.role === "ceiling" || t.w > 280) continue;
     if (t.role === "smalllamp" || t.role === "smallplant" || t.role === "extra") continue;
@@ -317,9 +330,9 @@ export function arrange(keys, stations, seed, opts = {}) {
   const width = Math.max(opts.min || 1000, Math.min(wmax, Math.round((Math.max(rows.back, rows.front) + EDGE) / 100) * 100));
   // curtains at the windows, a lamp from the ceiling, pictures on bare wall
   const cur = take("curtain");
-  if (cur) put(cur.k, Math.min(width - 260, 600), HANG.curtain);
+  if (cur && opts.curtains !== false) put(cur.k, Math.min(width - 260, 600), HANG.curtain);
   const ceil = take("ceiling");
-  if (ceil && !decor.some(([k]) => META4[k]?.shape === "ceilinglamp")) for (let x = 500; x < width; x += 700) put(ceil.k, x, 150);
+  if (ceil && opts.indoor !== false && !decor.some(([k]) => META4[k]?.shape === "ceilinglamp")) for (let x = 500; x < width; x += 700) put(ceil.k, x, 150);
   dress(placed, things, decor, R);
-  return { decor, width };
+  return { decor, width, used };
 }

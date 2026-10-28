@@ -22,7 +22,7 @@
     const { protoSeed } = await import("./private/mock-proto.js");
     seed = protoSeed(await (await fetch("./private/proto-raw.json")).json());
   }
-  const hass = createMockHass({ user: q.get("user") || (seed ? "christian" : "anna"), setup: q.get("setup") !== "0", lang: q.get("lang") || "da", dark: q.get("dark") === "1", seed });
+  const hass = createMockHass({ user: q.get("user") || (seed ? "christian" : "anna"), setup: q.get("setup") !== "0", lang: q.get("lang") || "da", dark: q.get("dark") === "1", seed, xp: +q.get("xp") || 0 });
   window.__hass = hass;
   const el = document.createElement("hverdagsro-panel");
   window.__panel = el;

@@ -261,10 +261,12 @@ const USERS = {
   admin: { id: "u-admin", name: "Administrator", is_admin: true },
 };
 
-export function createMockHass({ user = "anna", setup = true, lang = "da", dark = false, seed = null } = {}) {
+export function createMockHass({ user = "anna", setup = true, lang = "da", dark = false, seed = null, xp = 0 } = {}) {
   let states = seed?.states || demoStates();
   const reg = seed?.registry || demoRegistry(states);
   const store = seed?.store || demoData(setup);
+  // a child far enough on to enter every town (xp=… in the address of the harness)
+  if (xp && store.game?.ida) store.game.ida.xp = xp;
   if (seed && !setup) Object.assign(store, { setup_done: false, family: [], missions: [], rewards: [] });
   for (const [k, v] of Object.entries({ quick: [], routines: { helpers: [], pickups: {}, boards: {}, cards: [] }, pins: {}, board_done: {}, game: {}, fun: { tasks: [], hunt: null, hide: null, party: null, day: null }, osky: { accounts: {}, lists: [] } })) if (!(k in store)) store[k] = v;
   const calls = [];

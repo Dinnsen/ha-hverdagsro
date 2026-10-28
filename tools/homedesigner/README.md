@@ -20,4 +20,14 @@ python tools/homedesigner/build_packs.py custom_components/hverdagsro/frontend/h
    stands and how big it is), and `build_places.py <out.js>` turns them into `hv-worlds-data.js`: the places of the
    worlds, laid out like the original with our own shapes.
 
+4. `extract_shells.py <your.apk>` reads the shells of the HomeDesigner houses (every floor of a house is a scene of its own:
+   its rooms, walls, balconies, windows, doors and lift, each with where it stands and how wide it is), and
+   `build_floors.py` (with `shells.py`) turns them into `hv-floors-data.js`: the floors of 50 buildings with their rooms
+   as wide as in the original. The game furnishes the rooms by what they are for (`hv-floors.js`).
+
+```
+python tools/homedesigner/extract_shells.py game.apk -o game_data
+python tools/homedesigner/build_floors.py -d game_data
+```
+
 The data files are committed, so the game does not need any of this to run.

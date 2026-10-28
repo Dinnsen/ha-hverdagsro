@@ -16,6 +16,7 @@ import { THINGS3, PACKS3, PACKS3_EN } from "./hv-packs3.js";
 import { THINGS4, PACKS4, PACKS4_EN, HOME4, PLACE4 } from "./hv-packs4.js";
 import { WORLDS_EN } from "./hv-worlds.js";
 import { townsSvg, TOWNS, TOWNS_EN } from "./hv-towns.js";
+import { FLOORS_EN } from "./hv-floors.js";
 import * as Sound from "./hv-sound.js";
 import * as Fun from "./hv-fun.js";
 import * as Toys from "./hv-toys.js";
@@ -801,12 +802,22 @@ function goTo(ctx, key, opts = {}) {
   ST.d.onMap = false;
   ST.camFor = null;
   // The map shows where the child has been (explored) and what is new.
-  if (World.PLACES[key] && !(ST.d.seen ||= []).includes(key)) ST.d.seen = [...ST.d.seen, key].slice(-60);
+  // a floor of a house counts as the house
+  const seenKey = World.PLACES[key]?.of || key;
+  if (World.PLACES[key] && !(ST.d.seen ||= []).includes(seenKey)) ST.d.seen = [...ST.d.seen, seenKey].slice(-60);
   ST.map = false;
   ST.build = false;
   ST.sel = null;
   // Arrive at the edge of the place, like walking in; walking in from the room next door, keep going.
-  if (opts.at) {
+  if (opts.lift) {
+    // out of the lift of that floor
+    const x = World.PLACES[key]?.lift ?? 140, rw = Walk.roomWidth(ctx, key, ST.kid);
+    ST.d.ax = x;
+    ST.d.ay = 590;
+    ST.camX = Math.max(0, Math.min(rw - W, x - W / 2));
+    ST.camFor = key;
+    Sound.sfx("whoosh");
+  } else if (opts.at) {
     ST.d.ax = opts.at.x;
     ST.d.ay = opts.at.y;
     ST.camX = opts.at.cam;
@@ -1308,8 +1319,11 @@ function bindStage(ctx, svgEl) {
         return redraw(ctx);
       }
       if (Life.tapStage(ctx, t)) return;
-      if (Toys.tapSecret(ctx, p, e.target)) return;
-      if (Fun.tapStage(ctx, p, e.target)) return;
+      // Hidden places and the seek of a hide-and-seek are found by where you tap (also under the furniture): not when
+      // you tap someone standing there (the pet after the ball may stand right on one).
+      const onSomeone = ["pet", "me", "npc", "fam", "peer", "hand", "npchand"].includes(t?.dataset.pl);
+      if (!onSomeone && Toys.tapSecret(ctx, p, e.target)) return;
+      if ((!onSomeone || ST.hiding) && Fun.tapStage(ctx, p, e.target)) return;
       if (t?.dataset.pl === "npc") {
         const id = t.dataset.id, tr = (t.getAttribute("transform") || "").match(/translate\(([\d.]+) ([\d.]+)\)/);
         const pos = R().npc?.[id] || (tr ? [+tr[1], +tr[2]] : null);
@@ -1338,6 +1352,7 @@ function bindStage(ctx, svgEl) {
         return capture(e);
       }
       if (t?.dataset.pl === "pet") {
+        if (Pet.busy()) return Pet.menu(ctx);
         drag = { kind: "pet", sx: p.x, sy: p.y, ox: ST.d.px, oy: ST.d.py, play: true };
         return capture(e);
       }
@@ -2072,6 +2087,7 @@ function itemTap(ctx, el) {
   const k = it.k, fx = Fix.fxOf(k), T0 = CAT[k];
   // Things that work: the tv changes channel, the bath fills, the tap runs, the toilet flushes.
   if (fx) {
+    if (fx.lift) return liftTap(ctx, fx.lift);
     const t = ctx.t, top0 = it.y - T0.h * (it.s || 1);
     if (fx.tv) {
       if (!it.on) [it.on, it.ch] = [1, 1];
@@ -2124,6 +2140,13 @@ function itemTap(ctx, el) {
   if (kind === "yum") floatIcons(ctx, it.x, top, ["😋", "✨"]);
   if (kind === "bounce") floatIcons(ctx, it.x, top, ["💫"]);
   Toys.special(ctx, it);
+}
+/* The lift of a house (or the door of a van): to the other floor, or to the one you choose. */
+function liftTap(ctx, to) {
+  Sound.sfx("tap");
+  if (to.length === 1) return goTo(ctx, to[0][0], { lift: true });
+  const t = ctx.t;
+  ctx.sheet(`<div class="pl-pop-badge">🛗</div><h2>${esc(t("Hvilken etage?"))}</h2><div class="pl-pop-b pl-lift">${to.map(([id, label]) => `<button class="btn" data-act="play-floor" data-k="${esc(id)}">${esc(t(label))}</button>`).join("")}</div><div class="pl-pop-b"><button class="btn soft" data-close>${esc(t("Ikke nu"))}</button></div>`, { cls: "pl-pop" });
 }
 function floatIcons(ctx, x, y, list) {
   const svgEl = layer(ctx);
@@ -2416,6 +2439,10 @@ export default {
     ...Toys.acts,
     ...Life.acts,
     ...Wall.WALL_ACTS,
+    "play-floor": (el, ev, ctx) => {
+      el.closest(".sheet-bg")?.close?.();
+      goTo(ctx, el.dataset.k, { lift: true });
+    },
     "play-buy-place": (el, ev, ctx) => {
       el.closest(".sheet-bg")?.close?.();
       return buyPlace(ctx, el.dataset.k);
@@ -2437,6 +2464,7 @@ export default {
 .pl-hand { cursor: grab; }
 .pl-livet { font: 800 13px system-ui, sans-serif; fill: #2B2340; }
 .pl-ghost { opacity: .9; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
+.pl-lift { flex-wrap: wrap; justify-content: center; }
 .pl-me, .pl-pet { transition: transform .7s cubic-bezier(.3,.9,.4,1); cursor: pointer; }
 .pl-me.kbd { transition: none; }
 .pl-me .pl-body { animation: plbob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
@@ -2996,6 +3024,7 @@ export default {
     ...PACKS4_EN,
     ...WORLDS_EN,
     ...TOWNS_EN,
+    ...FLOORS_EN,
     ...MAP_EN,
   },
 };

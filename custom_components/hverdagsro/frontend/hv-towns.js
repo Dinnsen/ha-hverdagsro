@@ -1,91 +1,23 @@
 /* Hverdagsro – the new towns of the world: seven towns (Hjemmebyen, Børnebyen, Årstidsbyen, Strandbyen, Handelsbyen,
-   Slotsbyen, Neonbyen), one place for every theme pack (hv-packs4). Each place is a furnished room: the pack's own
-   furniture along the walls, its things on the shelves, tables and counters, and pictures, curtains and lamps up.
-   Everything is laid out from the pack's data when the game starts; the child can then move, buy and add things as in
-   any other place. The map page "Byerne" shows one town at a time. All our own drawings and places. */
+   Slotsbyen, Neonbyen), one building for every theme pack (hv-packs4), and some packs have more than one. A building has
+   the floors of the original's house (hv-floors); the child can move, buy and add things as in any other place. The map
+   page "Byerne" shows one town at a time. All our own drawings and places. */
 import { OL, shade } from "./hv-playcat.js";
-import { BG, addWorld } from "./hv-world.js";
+import { BG, addWorld, PLACES } from "./hv-world.js";
 import { box, windows, gable, door, tree, pine, sign, Pp, flat, poly } from "./hv-city.js";
-import { PACKS4 } from "./hv-packs4.js";
 import { WORLD_TOWNS } from "./hv-worlds.js";
 import { TOWNS4 } from "./hv-packs4-data.js";
-import { arrange } from "./hv-layout.js";
-import { roomBg, STYLES } from "./hv-roombg.js";
+import { BUILDINGS } from "./hv-floors.js";
 
-const { W, H, FLOOR, rect, out, rep, skyDef } = BG;
-
-/* ------------------------------------------------------------------ laying out a room from a pack */
+const { rep } = BG;
 const hash = (s) => [...s].reduce((a, ch) => (Math.imul(a, 31) + ch.charCodeAt(0)) >>> 0, 7);
-/* What each place is made of, in order from the left (hv-layout): the rooms of a home, a shop, a bar, a park. */
-const HOME = ["kitchen", "dining", "sofa", "tv", "shelf", "bed", "wardrobe", "desk", "bath", "corner"];
-const BY_TOWN = {
-  hjem: HOME,
-  born: ["shelf", "sofa", "corner", "bed", "dining", "desk"],
-  saeson: ["fireplace", "sofa", "dining", "corner", "bed"],
-  strand: ["outdoor", "sofa", "kitchen", "dining", "bed", "corner"],
-  handel: ["shop", "bar", "corner"],
-  slot: ["fireplace", "sofa", "dining", "bed", "wardrobe", "desk", "shelf", "bath"],
-  neon: ["sofa", "tv", "desk", "bed", "corner", "shelf"],
-};
-const BY_PACK = {
-  "hd-lejlighed": ["kitchen", "sofa", "tv", "desk", "bed", "wardrobe", "bath"],
-  "hd-skovhytte": ["fireplace", "sofa", "kitchen", "dining", "bed", "corner"],
-  "hd-aertehus": ["kitchen", "dining", "sofa", "fireplace", "bed", "corner"],
-  "hd-velkomst": ["sofa", "tv", "dining", "kitchen", "bed", "wardrobe"],
-  "hd-miniverden": ["bed", "desk", "tv", "sofa", "shelf", "wardrobe"],
-  "hd-bohem": ["sofa", "corner", "bed", "dining", "shelf", "corner"],
-  "hd-japandi": ["sofa", "tv", "kitchen", "dining", "bed", "wardrobe", "corner"],
-  "hd-boernehave": ["shelf", "corner", "sofa", "dining", "bed", "shelf"],
-  "hd-byparken": ["outdoor", "corner", "outdoor", "bar"],
-  "hd-aktivpark": ["outdoor", "sofa", "outdoor", "corner"],
-  "hd-supermarked": ["shop", "shop", "bar"],
-  "hd-lokalbutik": ["shop", "bar", "shop"],
-  "hd-modebutik2": ["shop", "art", "shop", "corner"],
-  "hd-loppemarked": ["shop", "outdoor", "shop"],
-  "hd-glans": ["shop", "desk", "corner"],
-  "hd-bageri": ["bar", "shop", "dining", "dining", "corner"],
-  "hd-restaurant": ["kitchen", "bar", "dining", "dining", "corner"],
-  "hd-hotel": ["bar", "sofa", "dining", "bed", "bath", "corner"],
-  "hd-velvaere": ["bath", "corner", "bed", "sofa"],
-  "hd-boblespa": ["bath", "sofa", "corner", "bath"],
-  "hd-poolvilla": ["outdoor", "kitchen", "dining", "sofa", "bed"],
-  "hd-autocamper": ["fireplace", "bed", "kitchen", "outdoor", "corner"],
-  "hd-uhyggehus": ["fireplace", "shelf", "bed", "corner", "art"],
-  "hd-julestue": ["fireplace", "sofa", "dining", "corner", "shelf"],
-  "hd-vaerksted": ["desk", "shelf", "desk", "corner", "art"],
-  "hd-rengoering": ["kitchen", "bath", "sofa", "corner"],
-  "hd-streamer": ["desk", "tv", "sofa", "shelf", "bed"],
-  "hd-stjernehus": ["sofa", "tv", "bar", "bed", "bath", "corner"],
-  "hd-palae": ["fireplace", "sofa", "dining", "kitchen", "bed", "wardrobe", "desk", "shelf", "bath"],
-  "hd-herregaard": ["fireplace", "sofa", "dining", "desk", "shelf", "bed", "wardrobe"],
-  "hd-bryllup": ["outdoor", "dining", "bar", "corner"],
-};
-/* What hangs on the wall of a house or a shop of a pack, like the places of the worlds have: a door at each end, a window
-   with its curtains for every stretch of wall, a lamp between. */
-function dressing(width) {
-  const fx = [["door", 110], ["door", width - 110]];
-  for (let x = 330; x < width - 220; x += 470) fx.push(["window", x], ["curtain", x], ["light", x + 235]);
-  return fx;
-}
-function layout(pk) {
-  const stations = BY_PACK[pk.id] || BY_TOWN[pk.town] || HOME;
-  const { decor, width } = arrange(pk.items, stations, pk.id, { min: 1000, max: 2200 });
-  return { decor, wd: width };
-}
 
-/* ------------------------------------------------------------------ the places */
-export const TOWNS = [...WORLD_TOWNS, ...TOWNS4.map((t) => ({ ...t, places: PACKS4.filter((p) => p.town === t.id) }))];
-const places = {};
-for (const pk of PACKS4) {
-  const { decor, wd } = layout(pk);
-  for (const [kind, x] of dressing(wd)) if (kind === "curtain") decor.push(["hd-hjem-gardin", x, 372]);
-  places[pk.id] = {
-    n: pk.n, area: pk.town, em: pk.em, inside: true, width: wd,
-    bg: (s0, s1, tod, w) => roomBg({ ...pk, fx: dressing(wd) }, STYLES[hash(pk.id) % STYLES.length], s0, s1, tod, w),
-    decor, npcs: [],
-  };
-}
-addWorld({ places, areas: TOWNS4.map((t) => ({ id: t.id, n: t.n, em: t.em, lvl: t.lvl, x: 0, y: 0, col: t.col, map: "byer" })) });
+/* ------------------------------------------------------------------ the towns and their buildings */
+/* Every building has its floors as places (hv-floors); here is the map of them. */
+export const TOWNS = [...WORLD_TOWNS, ...TOWNS4.map((t) => ({ ...t, places: BUILDINGS.filter((p) => p.town === t.id) }))];
+addWorld({ areas: TOWNS4.map((t) => ({ id: t.id, n: t.n, em: t.em, lvl: t.lvl, x: 0, y: 0, col: t.col, map: "byer" })) });
+/* The building a place is a floor of. */
+const buildingOf = (id) => PLACES[id]?.of || id;
 
 /* ------------------------------------------------------------------ the map page */
 const MW = 1000, MH = 620;
@@ -100,6 +32,7 @@ const KIND = {
   "hd-supermarked": ["mall", 0], "hd-lokalbutik": ["shop", 0], "hd-modebutik2": ["shop", 1], "hd-loppemarked": ["pavilion", 1], "hd-glans": ["shop", 3], "hd-bageri": ["shop", 4], "hd-restaurant": ["shop", 5],
   "hd-herregaard": ["manor", 0], "hd-palae": ["manor", 1], "hd-hotel": ["tower", 2], "hd-gammeldags": ["house", 4], "hd-bryllup": ["pavilion", 0], "hd-velvaere": ["villa", 3],
   "hd-neonregnbue": ["tower", 1], "hd-streamer": ["tower", 3], "hd-tusindaar": ["mall", 1], "hd-solskin": ["tall", 3], "hd-stjernehus": ["villa", 4], "hd-loft": ["tower", 4], "hd-vaerksted": ["shop", 2], "hd-rengoering": ["house", 5], "hd-boblespa": ["pavilion", 2],
+  "hd-lokalbutik-ahorn": ["shop", 6], "hd-lokalbutik-gade": ["mall", 2], "hd-startkassen-stort": ["house", 6],
 };
 /* What a building of a world looks like, by what the place is. */
 const KINDS_BY_NAME = [
@@ -152,13 +85,13 @@ export function townsSvg(ctx, lv, here, peers, t, opts = {}) {
     if (!blk) return;
     const [kind, variant] = KIND[pk.id] || kindFor(pk), [c0, c1] = [pk.cols[0], pk.cols[1] || pk.cols[0]];
     const [px, py] = Pp(blk[0] + 0.4 + 5.5, blk[1] + 0.4 + 4.5, 6.4), sx = px + 26, sy = py - 46;
-    const who = peers.filter((pe) => pe.space === pk.id), seen = (opts.seen || []).includes(pk.id);
+    const who = peers.filter((pe) => buildingOf(pe.space) === pk.id), seen = (opts.seen || []).includes(pk.id);
     const badge = !open
       ? `<g class="tm-lock" pointer-events="none"><rect x="${sx - 30}" y="${sy - 12}" width="60" height="24" rx="12" fill="#fff" stroke="${OL}" stroke-width="2"/><text x="${sx}" y="${sy + 5}" class="tm-newt">🔒 ${town.lvl}</text></g>`
       : seen
         ? `<g class="tm-seen" pointer-events="none"><circle cx="${sx}" cy="${sy}" r="11" fill="#6BCB77" stroke="#fff" stroke-width="3"/><path d="M${sx - 5} ${sy} l4 4 l7 -8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></g>`
         : `<g class="tm-new" pointer-events="none"><rect x="${sx - 19}" y="${sy - 11}" width="38" height="22" rx="11" fill="#FFD93D" stroke="${OL}" stroke-width="2"/><text x="${sx}" y="${sy + 5}" class="tm-newt">${t("NY")}</text></g>`;
-    items.push([blk[0] + blk[1], `<g class="tm-place${open ? "" : " locked"}${pk.id === here ? " here" : ""}" data-pl="go" data-k="${pk.id}" role="button" aria-label="${t(pk.n)}">${BUILD[kind](blk[0] + 0.4, blk[1] + 0.4, c0, c1, variant)}${sign(blk[0] + 0.4 + 5.5, blk[1] + 0.4 + 4.5, 6.4, pk.em)}<text x="${px}" y="${py + 34}" class="tm-lbl">${t(pk.n)}</text>${badge}${who.map((pe, j) => `<circle cx="${sx - 22 + j * 12}" cy="${sy + 18}" r="8" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="2"/>`).join("")}</g>`]);
+    items.push([blk[0] + blk[1], `<g class="tm-place${open ? "" : " locked"}${pk.id === buildingOf(here) ? " here" : ""}" data-pl="go" data-k="${pk.id}" role="button" aria-label="${t(pk.n)}">${BUILD[kind](blk[0] + 0.4, blk[1] + 0.4, c0, c1, variant)}${sign(blk[0] + 0.4 + 5.5, blk[1] + 0.4 + 4.5, 6.4, pk.em)}<text x="${px}" y="${py + 34}" class="tm-lbl">${t(pk.n)}</text>${badge}${who.map((pe, j) => `<circle cx="${sx - 22 + j * 12}" cy="${sy + 18}" r="8" fill="${pe.color || "#9B5DE5"}" stroke="#fff" stroke-width="2"/>`).join("")}</g>`]);
   });
   items.sort((a, b) => a[0] - b[0]);
   const tw = Math.max(220, t(town.n).length * 17 + 90);

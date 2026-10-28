@@ -19,6 +19,15 @@ All notable changes to Hverdagsro. The version is the one in `custom_components/
 - **More detail in every drawing:** every solid shape has a light edge on top and a soft shade underneath, and round shapes have a glint.
 - **The house:** up to 26 of the family's own pieces of furniture from Husbyggeren come into the game (it was 16), and the fridge, wardrobes and bedside tables of the house open.
 
+### Floors
+- **Every house has the floors of the original's.** A house of the theme packs is no longer one long room: it has as many floors as the original's (the family home three, the manor four, the flat five, the hotel three, the star house four), and each floor is a row of rooms as wide as in the original: a living room, a kitchen, bedrooms, a bath, a hall, and a garden or a balcony outside, with a doorway in the wall between the rooms and a glass door out to the garden. 50 buildings, 81 floors, 354 rooms (`hv-floors-data.js`, made from the shells of the original by `tools/homedesigner/extract_shells.py` and `build_floors.py`). The packs that have no house of their own in the original are built on the shell of one that is alike, turned the other way round; the local shop pack has its two other houses (Ahornalléen, Næbgaden) and the starter pack its big house as places of their own.
+- **The lift,** as in the original: every floor has a lift, in the hall between the rooms, that takes you to the other floors (a sheet asks which one); the van has a door in and out. You step out of the lift of the floor you chose.
+- **The rooms are furnished by what they are for:** the biggest room of the ground floor is the living room, then the kitchen and the dining room; the floors above have bedrooms (a bed, a wardrobe, bedside tables where there is room), the bath, a children's room, a study; a hotel has rooms with a bed and a tv, a shop floor has shelves and a counter. The pack's own furniture is used first, then plain furniture in the pack's colours if it has none. Every kind of room has its own walls and floor (tiles in the kitchen and the bath, stripes in a bedroom, dots for the children), and a garden or a balcony has its own sky, the real weather, a fence or a railing.
+- Places are up to twice as long (4,800 units), and a person on any floor of a building shows at that building on the map.
+
+### Fixed
+- **The pet:** tapping the pet while it was running after the ball was taken for a drag, so its menu did not open (and a tap on the pet where something was hidden found the hidden thing instead). The pet cannot be grabbed while it fetches the ball; a tap in the meantime opens its menu as soon as it is back, and a tap on a person or a pet is no longer taken for a search of the place.
+
 ## [0.16.0] - 2026-10-28
 
 ### Added
