@@ -1418,8 +1418,6 @@ main { padding-block: 22px 40px; }
 .ap-picks button[aria-pressed="true"] { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 8%, var(--surface)); }
 .ap-mini { grid-row: span 2; width: 40px; height: 40px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; overflow: hidden; }
 .ap-mini .ap-svg { width: 38px; } .ap-mini.fi .ic { width: 22px; height: 22px; color: var(--muted); }
-.ap-svg.run .ap-drum { animation: apspin 1.6s linear infinite; }
-@keyframes apspin { to { transform: rotate(360deg); } }
 .ap-svg.run .ap-water { animation: apwave 2s ease-in-out infinite alternate; }
 @keyframes apwave { to { transform: translateX(-12px); } }
 .ap-steam path { animation: apsteam 2.4s ease-in-out infinite; }

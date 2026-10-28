@@ -438,3 +438,11 @@ function morphNode(o, n) {
     o.value = sel ? sel.value : o.options[0]?.value ?? "";
   }
 }
+
+/* A turn about a point of its own, as part of the drawing (SMIL): the same in every browser, unlike the CSS transform-box
+   and origin of an svg group, which some of them (Safari, the apps) read differently. Put it first in the group that
+   turns. Nothing when the person has asked for less motion. */
+export const spinSvg = (cx, cy, dur = 1) =>
+  typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? ""
+    : `<animateTransform attributeName="transform" type="rotate" from="0 ${cx} ${cy}" to="360 ${cx} ${cy}" dur="${dur}s" repeatCount="indefinite" additive="sum"/>`;

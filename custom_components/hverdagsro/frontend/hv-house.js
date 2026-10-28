@@ -7,7 +7,7 @@
        items: [{ type, id, name, x, y, ent, ... }] }
    1 metre is 60 units on the drawing. Live states come from each item's entities; nothing here is made up. */
 import { ART, ART_IDS } from "./hv-roomart.js";
-import { esc, hashStr, prng } from "./hv-core.js";
+import { esc, hashStr, prng, spinSvg } from "./hv-core.js";
 import { activeDecor } from "./hv-decor.js";
 import * as Appl from "./hv-appliances.js";
 import { P, svg } from "./hv-icons.js";
@@ -899,7 +899,7 @@ function planArt(kind, L) {
   switch (kind) {
     case "washer":
     case "dryer":
-      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="16" y="8" width="88" height="106" rx="8" fill="#FBFBFA" stroke="#E2E0DC"/><rect x="24" y="13" width="34" height="10" rx="3" fill="#1D2027"/><circle cx="88" cy="18" r="5" fill="#E6E4E0" stroke="#C9C6C0"/><circle cx="60" cy="68" r="34" fill="#E9E8E5"/><circle cx="60" cy="68" r="29" fill="#C9CDD3" stroke="#AEB3BA" stroke-width="3"/><circle cx="60" cy="68" r="25" fill="#3A4150"/><g fill-opacity=".9"${run ? ` class="ap-drum" style="transform-origin:60px 68px"` : ""}><circle cx="50" cy="62" r="7" fill="#E5484D"/><circle cx="68" cy="74" r="8" fill="#F2B01E"/><circle cx="64" cy="58" r="6" fill="#6C8CFF"/></g><path d="M44,56 a20,20 0 0 1 12,-10" stroke="rgba(255,255,255,.6)" stroke-width="2" fill="none"/></svg>`;
+      return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="16" y="8" width="88" height="106" rx="8" fill="#FBFBFA" stroke="#E2E0DC"/><rect x="24" y="13" width="34" height="10" rx="3" fill="#1D2027"/><circle cx="88" cy="18" r="5" fill="#E6E4E0" stroke="#C9C6C0"/><circle cx="60" cy="68" r="34" fill="#E9E8E5"/><circle cx="60" cy="68" r="29" fill="#C9CDD3" stroke="#AEB3BA" stroke-width="3"/><circle cx="60" cy="68" r="25" fill="#3A4150"/><g fill-opacity=".9" class="ap-drum">${run ? spinSvg(60, 68, 1.6) : ""}<circle cx="50" cy="62" r="7" fill="#E5484D"/><circle cx="68" cy="74" r="8" fill="#F2B01E"/><circle cx="64" cy="58" r="6" fill="#6C8CFF"/></g><path d="M44,56 a20,20 0 0 1 12,-10" stroke="rgba(255,255,255,.6)" stroke-width="2" fill="none"/></svg>`;
     case "dish":
       return `<svg viewBox="0 0 120 120" class="ap-svg"><rect x="10" y="6" width="100" height="10" fill="#C9A77C"/><rect x="12" y="16" width="96" height="88" rx="2" fill="#F4F2EE" stroke="#E2DED7"/><rect x="40" y="22" width="40" height="3" rx="1.5" fill="#B9B4AC"/><rect x="12" y="104" width="96" height="6" fill="#D8D3CB"/><ellipse cx="60" cy="116" rx="12" ry="2.6" fill="${run ? "#3B82F6" : "transparent"}" class="${run ? "ap-pulse" : ""}"/></svg>`;
     case "oven":

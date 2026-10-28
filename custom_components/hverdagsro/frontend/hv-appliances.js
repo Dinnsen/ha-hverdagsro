@@ -3,7 +3,7 @@
    The main entity gives the status (Home Connect, Miele, LG ThinQ, SmartThings, Electrolux, iRobot, Gardena, a smart plug's
    power sensor …); the linked "controls" add facts (remaining time, temperature, door, battery) and buttons
    (button.press, switch on/off, select a program). Parents add, edit, delete and reorder; the order is saved for the family. */
-import { esc, slug } from "./hv-core.js";
+import { esc, slug, spinSvg } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 import { dayAhead } from "./hv-energy.js";
 
@@ -175,7 +175,7 @@ function apArt(kind, x = {}) {
         run ? `<rect x="27" y="16" width="${dry ? 14 : 20}" height="4" rx="2" fill="#7FD1FF" class="ap-pulse"/>` : ""
       }<circle cx="88" cy="18" r="5" fill="#E6E4E0" stroke="#C9C6C0"/><circle cx="60" cy="68" r="34" fill="#E9E8E5"/><circle cx="60" cy="68" r="29" fill="#C9CDD3" stroke="#AEB3BA" stroke-width="3"/><circle cx="60" cy="68" r="25" fill="${dry ? "#4A4150" : "#3A4150"}"/><clipPath id="apdr-${kind}"><circle cx="60" cy="68" r="25"/></clipPath><g clip-path="url(#apdr-${kind})">${
         !dry && run ? `<path class="ap-water" d="M28,76 q8,-5 16,0 t16,0 t16,0 t16,0 v30 h-64z" fill="#5BA8F0" opacity=".55"/>` : ""
-      }<g class="ap-drum" style="transform-box: view-box; transform-origin: 60px 68px"><circle cx="50" cy="62" r="7" fill="#E5484D" fill-opacity=".9"/><circle cx="68" cy="74" r="8" fill="#F2B01E" fill-opacity=".9"/><circle cx="64" cy="58" r="6" fill="#6C8CFF" fill-opacity=".9"/><circle cx="52" cy="78" r="5" fill="#3CCB83" fill-opacity=".85"/></g></g><path d="M44,56 a20,20 0 0 1 12,-10" stroke="rgba(255,255,255,.6)" stroke-width="2" fill="none"/></svg>`;
+      }<g class="ap-drum">${run ? spinSvg(60, 68, 1.6) : ""}<circle cx="50" cy="62" r="7" fill="#E5484D" fill-opacity=".9"/><circle cx="68" cy="74" r="8" fill="#F2B01E" fill-opacity=".9"/><circle cx="64" cy="58" r="6" fill="#6C8CFF" fill-opacity=".9"/><circle cx="52" cy="78" r="5" fill="#3CCB83" fill-opacity=".85"/></g></g><path d="M44,56 a20,20 0 0 1 12,-10" stroke="rgba(255,255,255,.6)" stroke-width="2" fill="none"/></svg>`;
     }
     case "dish":
       return `<svg viewBox="0 0 120 120" class="ap-svg${R}" aria-hidden="true"><rect x="10" y="6" width="100" height="10" fill="#C9A77C"/><rect x="12" y="16" width="96" height="88" rx="2" fill="#F4F2EE" stroke="#E2DED7"/><rect x="40" y="22" width="40" height="3" rx="1.5" fill="#B9B4AC"/>${
@@ -794,7 +794,6 @@ const css = `
 .apx-brush { animation: apspin .5s linear infinite; }
 .apx-trail { animation: apxdash 1.2s linear infinite; } @keyframes apxdash { to { stroke-dashoffset: -18; } }
 .apx-mow { animation: apxmow 6s ease-in-out infinite; } @keyframes apxmow { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-62px, 0); } 50% { transform: translate(-62px, -50px); } 75% { transform: translate(0, -50px); } }
-.ap-svg.run .ap-drum { transform-box: view-box; transform-origin: 60px 68px; }
 @media (max-width: 520px) { .apx-kinds { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 `;
 

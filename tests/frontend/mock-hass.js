@@ -49,6 +49,7 @@ export function demoStates() {
   add(st("binary_sensor.rog_gang", "off", { friendly_name: "Røgalarm gang", device_class: "smoke" }));
   add(st("lock.hoveddor", "locked", { friendly_name: "Lås hoveddør" }));
   add(st("cover.garageport", "closed", { friendly_name: "Garageport", device_class: "garage" }));
+  add(st("cover.stue_gardin", "open", { friendly_name: "Gardin stue", device_class: "curtain", current_position: 100 }));
   add(st("camera.indkorsel", "idle", { friendly_name: "Indkørsel", entity_picture: "/api/camera_proxy/camera.indkorsel?token=x" }));
   add(st("todo.indkob", "3", { friendly_name: "Indkøb", supported_features: 15 }));
   add(st("todo.huskeliste", "1", { friendly_name: "Huskeliste", supported_features: 15 }));
@@ -93,7 +94,7 @@ export function demoRegistry(states) {
     kontor: { area_id: "kontor", name: "Kontor", floor_id: null },
     have: { area_id: "have", name: "Have", floor_id: null },
   };
-  const areaOf = { "light.stue": "stue", "light.kokken": "kokken", "light.ida": "ida", "light.oskar": "oskar", "light.sovevaerelse": "sovevaerelse", "light.bad": "bad", "light.have": "have", "media_player.stue": "stue", "media_player.kokken": "kokken", "media_player.ida": "ida", "media_player.tv_stue": "stue", "binary_sensor.vindue_ida": "ida", "binary_sensor.terrassedor": "stue", "binary_sensor.bevaegelse_stue": "stue", "sensor.vaskemaskine_status": "bryggers", "sensor.stue_temperatur": "stue" };
+  const areaOf = { "cover.stue_gardin": "stue", "light.stue": "stue", "light.kokken": "kokken", "light.ida": "ida", "light.oskar": "oskar", "light.sovevaerelse": "sovevaerelse", "light.bad": "bad", "light.have": "have", "media_player.stue": "stue", "media_player.kokken": "kokken", "media_player.ida": "ida", "media_player.tv_stue": "stue", "binary_sensor.vindue_ida": "ida", "binary_sensor.terrassedor": "stue", "binary_sensor.bevaegelse_stue": "stue", "sensor.vaskemaskine_status": "bryggers", "sensor.stue_temperatur": "stue" };
   const entities = {};
   for (const id of Object.keys(states)) entities[id] = { entity_id: id, area_id: areaOf[id] || null, device_id: null, platform: id.split(".")[0] === "media_player" ? "sonos" : "demo" };
   const devices = {

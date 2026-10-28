@@ -241,7 +241,7 @@ function roomBackdrop(look, s0, s1, tod, wd = W) {
   const wx = BG.wx || "", winX = look === "kitchen" ? 760 : 620;
   const drops = wx === "rain" ? `<g class="fx-rain" clip-path="url(#pl-winc)">${rep(9, (i) => `<path d="M${winX + 20 + i * 19} 80 v12" stroke="#4FB3FF" stroke-width="3" stroke-linecap="round" style="--fall:150px;animation-delay:${-(i * 0.17) % 0.6}s"/>`)}</g>` : wx === "snow" ? `<g class="fx-rain" clip-path="url(#pl-winc)">${rep(8, (i) => `<circle cx="${winX + 24 + i * 22}" cy="86" r="4" fill="#fff" style="--fall:150px;animation-delay:${-(i * 0.33) % 1.6}s;animation-duration:1.6s"/>`)}</g>` : "";
   const winClip = look === "garage" ? "" : `<clipPath id="pl-winc"><rect x="${winX + 14}" y="84" width="172" height="142" rx="6"/></clipPath>`;
-  const curtains = look === "garage" ? "" : `<path d="M${winX - 26} 56 h252" stroke="${OL}" stroke-width="7" stroke-linecap="round"/><path d="M${winX - 18} 60 q-8 90 -2 182 h34 q6 -92 -4 -182z" fill="${{ bath: "#BFE6FF", kid: "#FFD1E3", bed: "#E2D5FF" }[look] || "#F7D9A8"}" ${out()}/><path d="M${winX + 184} 60 q8 90 2 182 h34 q-6 -92 4 -182z" fill="${{ bath: "#BFE6FF", kid: "#FFD1E3", bed: "#E2D5FF" }[look] || "#F7D9A8"}" ${out()}/>`;
+  const curtains = look === "garage" ? "" : `<path d="M${winX - 26} 56 h252" stroke="${OL}" stroke-width="7" stroke-linecap="round"/>`;
   const picture = ["living", "bed", "hall", "office", "kid", "other"].includes(look) ? `<rect x="${Math.min(wd - 190, 230)}" y="120" width="130" height="100" rx="6" fill="#fff" ${out()}/><rect x="${Math.min(wd - 190, 230) + 12}" y="132" width="106" height="76" fill="${{ bed: "#C7E6FF", hall: "#FFE4CC" }[look] || "#9BD7A0"}"/><circle cx="${Math.min(wd - 190, 230) + 86}" cy="156" r="12" fill="#FFE066"/><path d="M${Math.min(wd - 190, 230) + 12} 208 q30 -40 50 -14 q20 -40 56 -2 v16 h-106z" fill="#5A9E5F"/>` : "";
   const rug = ["living", "bed", "kid", "office"].includes(look) ? `<ellipse cx="${Math.min(wd - 300, 520)}" cy="${FLOOR + 130}" rx="230" ry="44" fill="${shade(L.floor, 0.78)}" opacity=".35"/><ellipse cx="${Math.min(wd - 300, 520)}" cy="${FLOOR + 130}" rx="200" ry="34" fill="none" stroke="${shade(L.floor, 1.2)}" stroke-width="4" opacity=".5"/>` : "";
   const planks = rep(Math.ceil(wd / 180), (i) => rep(3, (j) => `<path d="M${i * 180 + (j % 2) * 90} ${FLOOR + 30 + j * 60} v30" stroke="${shade(L.floor, 0.84)}" stroke-width="3"/>`));
@@ -341,6 +341,8 @@ export function planWidth(pts) {
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), m = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 60;
   return Math.max(W, Math.min(2400, Math.round((m * 290) / 10) * 10));
 }
+/* Where the windows of a room are (the middle of each): the curtains hang there, and can be pulled. */
+export const windowXs = (look, wd = W) => (look === "garage" ? [] : [(look === "kitchen" ? 760 : 620) + 100, ...Array.from({ length: Math.max(0, Math.floor((wd - 1000) / 700)) }, (_, i) => 1150 + i * 700 + 100)]);
 export function houseDecor(ctx, room) {
   const pts = room?.pts;
   if (!Array.isArray(pts) || pts.length < 3) return null;
@@ -367,7 +369,7 @@ export function place(ctx, key) {
     if (!h) return null;
     // What the family has put in the room stays; shelves with things on them, pictures and plants are added around it.
     const own = houseDecor(ctx, h.room), base = own || (ROOMLOOK[h.look] || ROOMLOOK.other).decor;
-    return { ...h, area: "hjem", bg: (s0, s1, tod, wd) => roomBackdrop(h.look, s0, s1, tod, wd), decor: furnish(h.look, base, planWidth(h.room?.pts)), own: !!own, npcs: [] };
+    return { ...h, area: "hjem", bg: (s0, s1, tod, wd) => roomBackdrop(h.look, s0, s1, tod, wd), decor: furnish(h.look, base, planWidth(h.room?.pts)), curtains: windowXs(h.look, planWidth(h.room?.pts)), own: !!own, npcs: [] };
   }
   return null;
 }
