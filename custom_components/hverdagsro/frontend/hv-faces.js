@@ -5,7 +5,7 @@
 import { OL } from "./hv-playcat.js";
 import { AV, hairOf, randomLook } from "./hv-avatars.js";
 
-let A = null; // { st, layer, cam, redraw, save, sfx, voice, floatIcons, avatar, look, esc, W }
+let A = null; // { st, publish, layer, cam, redraw, save, sfx, voice, floatIcons, avatar, look, esc, W }
 export function init(api) {
   A = api;
 }
@@ -49,6 +49,7 @@ export function pick(ctx, k) {
     st.dance = k.slice(2);
     A.sfx(st.dance ? "music" : "tap");
     close(ctx);
+    A.publish(ctx);
     return A.redraw(ctx);
   }
   const id = k.slice(2);
@@ -59,9 +60,11 @@ export function pick(ctx, k) {
 export function flash(ctx, id, ms = 3200) {
   const st = A.st();
   st.mood = `x:${id}`;
+  A.publish(ctx);
   clearTimeout(st.moodT);
   st.moodT = setTimeout(() => {
     st.mood = "";
+    A.publish(ctx);
     A.redraw(ctx);
   }, ms);
   if (id === "sleepy") A.sfx("snore");

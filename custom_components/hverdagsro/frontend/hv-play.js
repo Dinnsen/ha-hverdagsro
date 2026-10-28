@@ -30,6 +30,7 @@ import * as Ward from "./hv-wardrobe.js";
 import * as Faces from "./hv-faces.js";
 import * as Art from "./hv-art.js";
 import * as Ride from "./hv-ride.js";
+import * as Salon from "./hv-salon.js";
 import { HOME_THINGS, HOME_ACT, HOME_EN } from "./hv-homethings.js";
 import { CITY_THINGS, CITY_PACKS, CITY_EN } from "./hv-citythings.js";
 import { citySvg, CITY_MAP_EN, placePrice } from "./hv-city.js";
@@ -246,7 +247,7 @@ export function avatarSvg(me, mood = "", pose = "") {
   body += Av.patternOf(me.pat, top, pid, dress, sit);
   const cape = tk === "helt" ? `<path d="M-40 -130 Q-76 -60 -66 ${sit ? -40 : -6} Q0 ${sit ? -54 : -20} 66 ${sit ? -40 : -6} Q76 -60 40 -130Z" fill="${me.capec || "#E5484D"}" ${S()}/>` : "";
   const arm = (side) => {
-    const sx = side * 44, ex = side * (sit ? 66 : 72), ey = sit ? -86 : -76;
+    const carry = pose === "carry", sx = side * 44, ex = carry ? side * 30 : side * (sit ? 66 : 72), ey = carry ? -92 : sit ? -86 : -76;
     return `<g class="pl-arm ${side < 0 ? "l" : "r"}"><path d="M${sx} -128 L${ex} ${ey}" stroke="${OL}" stroke-width="22" stroke-linecap="round"/><path d="M${sx} -128 L${ex} ${ey}" stroke="${sleeve}" stroke-width="14" stroke-linecap="round"/>${tk === "tshirt" || tk === "sport" ? `<path d="M${sx} -128 L${sx + side * 10} -112" stroke="${top}" stroke-width="16" stroke-linecap="round"/>` : ""}<circle cx="${ex + side * 2}" cy="${ey + 4}" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/></g>`;
   };
   const Hd = (x) => (P.head === 1 || !x ? x : `<g transform="translate(0 -128) scale(${P.head}) translate(0 128)">${x}</g>`);
@@ -398,6 +399,11 @@ function roomFor(id) {
   if (pl && !all[id]) all[id] = { items: (pl.decor || []).map(([k, x, y, o], i) => ({ id: `w${i}`, k, x, y, ...(o?.in ? { at: `w${i - o.in}`, in: 1 } : {}) })), npc: Object.fromEntries((pl.npcs || []).filter(([n]) => !ST.d.moved?.[n]).map(([n, x, y]) => [n, [x, y]])) };
   // the curtains at the windows of a room of the house (also in a room that was visited before they were things)
   if (pl?.curtains && all[id] && !all[id].items.some((x) => x.k === "hd-hjem-gardin")) all[id].items.push(...pl.curtains.map((x, i) => ({ id: `cu${i}`, k: "hd-hjem-gardin", x, y: 372 })));
+  // the hair dye machine, the photo booth …: in the places that have them, in a room visited before too (once)
+  if (all[id] && Salon.SALON_PLACES[id] && !all[id].salon) {
+    all[id].salon = 1;
+    all[id].items.push(...Salon.SALON_PLACES[id].map(([k, x, y], i) => ({ id: `sa${i}`, k, x, y })));
+  }
   // A new room comes with a few things from the start pack.
   const start = { hule: [["rug", 500, 600], ["beanbag", 250, 580], ["teddy", 330, 590], ["moon", 160, 300]], trae: [["rug", 520, 600], ["plant", 120, 590], ["wallshelf", 300, 250], ["ball", 760, 600]], rumstation: [["moon", 240, 320], ["blocks", 820, 600]], scene: [["guitar", 820, 600]] }[id] || [];
   const r = (all[id] ||= { items: start.map(([k, x, y], i) => ({ id: `${id}${i}`, k, x, y })) });
@@ -500,7 +506,7 @@ function people(ctx, m, sid, room, pl) {
   for (const [pid, pe] of Object.entries(ST.peers || {})) {
     if (pid === m.id || pe.space !== key || Date.now() - (pe.seen || 0) > 45000) continue;
     live.add(pid);
-    out.push([pe.y || 560, `<g class="pl-peer" data-pl="peer" data-id="${esc(pid)}" transform="translate(${pe.x || 500} ${pe.y || 560})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body${pe.emote ? " jump wave" : ""}">${avatarSvg({ ...(pe.me || defaults(ctx.member(pid) || { name: "x" }).me), age: ageGroup(ctx.member(pid)) }, pe.mood || "")}</g><text y="${nameY(ageGroup(ctx.member(pid)))}" text-anchor="middle" class="pl-petname">${esc(ctx.member(pid)?.name || "")}</text></g>`]);
+    out.push([pe.y || 560, `<g class="pl-peer" data-pl="peer" data-id="${esc(pid)}" transform="translate(${pe.x || 500} ${pe.y || 560})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-body${pe.emote ? " jump wave" : ""}${Faces.danceClass(pe.dance)}">${avatarSvg({ ...(pe.me || defaults(ctx.member(pid) || { name: "x" }).me), age: ageGroup(ctx.member(pid)) }, pe.mood || "")}</g><text y="${nameY(ageGroup(ctx.member(pid)))}" text-anchor="middle" class="pl-petname">${esc(ctx.member(pid)?.name || "")}</text></g>`]);
   }
   // A sibling at home in their own room, and the family in the house's living rooms.
   const vk = visitKid(sid);
@@ -603,7 +609,7 @@ function stage(ctx, m) {
       const mood = ST.mood || (ride ? "glad" : st?.[4] === "lie" || (tod === "night" && !lit && sid === "vaerelse") ? "sleep" : d.expr || "");
       if (st && st[4] === "bath" && !st[5].on) st[5].on = 1;
       if (st) return [st[2], `<g class="pl-me seated${ride ? " riding" : ""}${st[4] === "bath" ? " bath" : ""}" data-pl="me" transform="${st[3]}">${ride ? Ride.moveRider(st[5], rideSeat(st[5], st), st[0], st[1]) : ""}<g class="pl-facing" transform="scale(${d.face < 0 && st[4] !== "lie" ? -1 : 1} 1)"><g class="pl-body">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, st[4] === "bath" ? "glad" : mood, st[4] === "lie" || st[4] === "stand" ? "" : "sit")}${handSvg(d, st[4] === "sit", ageGroup(ctx.member(ST.kid)))}</g></g></g>${blanket(st)}${st[4] === "lie" ? `<g transform="translate(${st[0] - 150} ${st[1] - 110})" pointer-events="none"><text class="pl-zzz">z</text><text class="pl-zzz" x="18" y="-22" style="animation-delay:.5s">z</text><text class="pl-zzz" x="36" y="-44" style="animation-delay:1s">Z</text></g>` : ""}`];
-      return [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-facing" transform="scale(${d.face < 0 ? -1 : 1} 1)"><g class="pl-body${Faces.danceClass(ST.dance)}">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood)}${handSvg(d, false, ageGroup(ctx.member(ST.kid)))}</g></g></g>`];
+      return [d.ay, `<g class="pl-me" data-pl="me" transform="translate(${d.ax} ${d.ay})"><ellipse cx="0" cy="0" rx="56" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-facing" transform="scale(${d.face < 0 ? -1 : 1} 1)"><g class="pl-body${Faces.danceClass(ST.dance)}">${avatarSvg({ ...Life.nightLook(d.me, sid), age: ageGroup(ctx.member(ST.kid)) }, mood, Salon.carrying(d, CAT) ? "carry" : "")}${handSvg(d, false, ageGroup(ctx.member(ST.kid)))}</g></g></g>`];
     })(),
     ...people(ctx, m, sid, room, pl),
     ...(m.pet && ctx.feature(m, "pet") ? [[d.py, `<g class="pl-pet${happy ? " happy" : ""}" data-pl="pet" transform="translate(${d.px} ${d.py}) scale(.8)"><ellipse cx="0" cy="0" rx="60" ry="10" fill="rgba(0,0,0,.14)"/><g class="pl-petb">${Art.pet(m.pet?.kind || "hund") ?? petInRoom(m, happy)}</g><text y="-150" text-anchor="middle" class="pl-petname">${esc(m.pet.name || "")}</text></g>`]] : []),
@@ -639,11 +645,17 @@ function heldSvg(room, id) {
   return `<g class="pl-hand" data-pl="npchand" data-id="${esc(id)}" transform="translate(78 -54) scale(${f})">${T.d(it.c || T.c)}</g>`;
 }
 /* The thing the child holds: in the right hand, a bit smaller. It goes along everywhere. */
-function handSvg(d, sit = false, age = "kid") {
+export function handSvg(d, sit = false, age = "kid") {
   const it = d.hand, T = it && CAT[it.k];
   if (!T) return "";
   // The hand is where the figure's right hand is: higher up on a grown-up, lower on a small child.
-  const P = AGES[age] || AGES.kid, L = (sit ? 26 : 56) * P.leg, lift = sit ? 30 - (L - 26) : -(L - 56);
+  const P = AGES[age] || AGES.kid;
+  // a big thing is carried in front with both hands
+  if (!sit && Salon.twoHand(it.k, T)) {
+    const f2 = Math.min(1, 90 / T.h, 140 / T.w) * (it.s || 1), hw = Math.max(24, Math.min(46, (T.w * f2) / 2 + 6)) * P.sc, sk = d.me?.skin || SKINS[1];
+    return `<g class="pl-hand two" data-pl="hand"><g transform="translate(0 ${(-48 * P.sc).toFixed(1)}) scale(${it.f ? -f2 : f2} ${f2})">${T.d(it.c || T.c)}${Fix.onSvg(it)}</g><circle cx="${-hw.toFixed(1)}" cy="${(-88 * P.sc).toFixed(1)}" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/><circle cx="${hw.toFixed(1)}" cy="${(-88 * P.sc).toFixed(1)}" r="11" fill="${sk}" ${S("stroke-width=\"3.5\"")}/></g>`;
+  }
+  const L = (sit ? 26 : 56) * P.leg, lift = sit ? 30 - (L - 26) : -(L - 56);
   const f = Math.min(0.8, 110 / T.h, 120 / T.w) * (it.s || 1) * (1 - 0.22 * (it.bite || 0)), hx = (sit ? 70 : 78) * P.sc, hy = ((sit ? -64 : -54) + lift) * P.sc;
   return `<g class="pl-hand" data-pl="hand" transform="translate(${hx.toFixed(1)} ${hy.toFixed(1)}) scale(${it.f ? -f : f} ${f})">${T.d(it.c || T.c)}${Fix.onSvg(it)}</g>`;
 }
@@ -669,7 +681,7 @@ for (const pk of ALLPACKS) for (const k of pk.items) if (ALLTHINGS[k] && !CAT[k]
   CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: v[6] || 20, flat: v[7] || 0, pack: pk.id };
 }
 // The everyday things of the home: free for everybody.
-for (const [k, v] of Object.entries(HOME_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "home" };
+for (const [k, v] of Object.entries({ ...HOME_THINGS, ...Salon.SALON_THINGS })) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "home" };
 // The shelves, vases, books and cups of the rooms of the house (hv-packs4): free too.
 for (const [k, v] of Object.entries(HOME4)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "home" };
 for (const [k, v] of Object.entries(WORLD_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "world" };
@@ -2125,6 +2137,7 @@ function itemTap(ctx, el) {
   const k = it.k, fx = Fix.fxOf(k), T0 = CAT[k];
   if (/^mirror/.test(Fix.shapeOf(k)) || /spejl|mirror/i.test(k)) return Faces.mirror(ctx);
   if (Ride.ridable(k) && !room.ro) return ride(ctx, it);
+  if (!room.ro && Salon.tap(ctx, it)) return;
   // Things that work: the tv changes channel, the bath fills, the tap runs, the toilet flushes.
   if (fx) {
     if (fx.lift) return liftTap(ctx, fx.lift);
@@ -2237,7 +2250,7 @@ function publish(ctx, extra = {}) {
   const send = () => {
     pubT = Date.now();
     pubWait = null;
-    ctx.ws("play", { member: ST.kid, space: presenceKey(), x: Math.round(ST.d.ax || 500), y: Math.round(ST.d.ay || 590), me: ST.d.me, ...extra }).catch(() => {});
+    ctx.ws("play", { member: ST.kid, space: presenceKey(), x: Math.round(ST.d.ax || 500), y: Math.round(ST.d.ay || 590), me: ST.d.me, mood: ST.mood || "", dance: ST.dance || "", ...extra }).catch(() => {});
   };
   if (extra.emote || Date.now() - pubT > 300) return send();
   clearTimeout(pubWait);
@@ -2397,7 +2410,8 @@ async function toggleLight(ctx) {
 let tick = null;
 /* What the toys (hv-toys) may use of the game. */
 Wall.init({ st: () => ST, save, redraw, sfx: (n) => Sound.sfx(n) });
-Faces.init({ st: () => ST, layer, cam, redraw, save, sfx: (n) => Sound.sfx(n), voice: (k) => Sound.voice(k), floatIcons, avatar: avatarSvg, look: (ctx) => ({ ...ST.d.me, age: ageGroup(ctx.member(ST.kid)) }), esc, W });
+Salon.init({ st: () => ST, publish: (ctx) => publish(ctx), redraw, save, sfx: (n) => Sound.sfx(n), floatIcons, avatar: avatarSvg, look: (ctx) => ({ ...ST.d.me, age: ageGroup(ctx.member(ST.kid)) }), esc, flash: (ctx, id, ms) => Faces.flash(ctx, id, ms) });
+Faces.init({ st: () => ST, publish: (ctx) => publish(ctx), layer, cam, redraw, save, sfx: (n) => Sound.sfx(n), voice: (k) => Sound.voice(k), floatIcons, avatar: avatarSvg, look: (ctx) => ({ ...ST.d.me, age: ageGroup(ctx.member(ST.kid)) }), esc, W });
 Pet.init({ st: () => ST, save, floatIcons, say, layer, rw: () => RW(), sfx: (n) => Sound.sfx(n), voice: (k) => Sound.voice(k), FLOOR, H });
 Toys.init({
   st: () => ST,
@@ -2537,6 +2551,7 @@ export default {
     ...Life.acts,
     ...Wall.WALL_ACTS,
     "play-floors": (el, ev, ctx) => floorsSheet(ctx),
+    salon: (el, ev, ctx) => Salon.act(ctx, el.dataset.k),
     "play-floor": (el, ev, ctx) => {
       el.closest(".sheet-bg")?.close?.();
       goTo(ctx, el.dataset.k, { lift: true });
@@ -2820,7 +2835,7 @@ export default {
 @media (max-width: 640px) { .pl-hide-s { display: none; } .pl-lv { min-width: 80px; } .pl-buys { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pl-packs { grid-template-columns: minmax(0, 1fr); } .pl-packs.small { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .pl-tools { top: 8px; bottom: auto; gap: 4px; padding: 4px 6px 4px 12px; } .pl-tools button { width: 38px; height: 38px; font-size: 18px; } .pl-tools b { font-size: 12px; } .pl-stagebox { border-radius: 20px; } .pl-th svg { width: 60px; height: 52px; } }
 @media (prefers-reduced-motion: reduce) { .pl-me .pl-body, .pl-pet .pl-petb, .pl-bub, .pl-cloud, .pl-fish, .pl-twinkle, .pl-chest, .pl-sparkle, .pl-blink, .pl-beam, .pl-pop-c { animation: none !important; } }
-` + Fun.FUN_CSS + Toys.TOYS_CSS + Life.LIFE_CSS + Fix.FIX_CSS + HOUSE3D_CSS + Wall.WALL_CSS + Pet.PET_CSS + Walk.WALK_CSS + Ward.WARD_CSS + Faces.FACES_CSS,
+` + Fun.FUN_CSS + Toys.TOYS_CSS + Life.LIFE_CSS + Fix.FIX_CSS + HOUSE3D_CSS + Wall.WALL_CSS + Pet.PET_CSS + Walk.WALK_CSS + Ward.WARD_CSS + Faces.FACES_CSS + Salon.SALON_CSS,
   en: {
     "Mit værelse": "My room", "Hej {name}!": "Hi {name}!", "Tryk på boblerne, når du har gjort det.": "Tap the bubbles when you have done it.", "Alt er klaret lige nu. Godt gået!": "All done for now. Well done!",
     "Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.": "Drag things where they should go. Tap something to change it.", "Byg dit værelse": "Build your room", "Lys og stemning": "Lights and mood", Færdig: "Done", "Dit værelse": "Your room", "Lyset i dit værelse": "The light in your room",
@@ -3127,6 +3142,7 @@ export default {
     ...Av.AV_EN,
     ...Ward.WARD_EN,
     ...Faces.FACES_EN,
+    ...Salon.SALON_EN,
     ...MAP_EN,
   },
 };

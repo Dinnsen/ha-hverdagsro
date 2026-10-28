@@ -280,11 +280,15 @@ def _public(player: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in player.items() if not key.startswith("_")}
 
 
-def _look(value: Any) -> dict[str, str]:
-    """The avatar to show the others: a few short words and colours, nothing else."""
+def _look(value: Any) -> dict[str, str | int]:
+    """The avatar to show the others: a few short words, numbers (which piece of clothing, which face) and colours, nothing else."""
     if not isinstance(value, dict):
         return {}
-    return {str(k)[:12]: str(v)[:24] for k, v in list(value.items())[:24] if isinstance(v, str)}
+    return {
+        str(k)[:12]: (v if isinstance(v, int) and not isinstance(v, bool) and abs(v) < 100000 else str(v)[:24])
+        for k, v in list(value.items())[:48]
+        if isinstance(v, str) or (isinstance(v, int) and not isinstance(v, bool))
+    }
 
 
 @websocket_api.websocket_command({vol.Required("type"): "hverdagsro/play_subscribe"})
@@ -318,6 +322,9 @@ async def ws_play_subscribe(
             None, vol.In(("wave", "jump", "heart", "hug", "highfive", "invite"))
         ),
         vol.Optional("to", default=None): vol.Any(None, vol.All(cv.string, vol.Length(max=40))),
+        # what the figure is doing now, for the others to see: an expression ("x:laughter") and a dance ("2")
+        vol.Optional("mood", default=""): vol.All(cv.string, vol.Length(max=24)),
+        vol.Optional("dance", default=""): vol.All(cv.string, vol.Length(max=12)),
     }
 )
 @websocket_api.async_response
@@ -339,6 +346,8 @@ async def ws_play(
             "x": msg["x"],
             "y": msg["y"],
             "me": _look(msg["me"]) or players.get(member["id"], {}).get("me", {}),
+            "mood": msg["mood"],
+            "dance": msg["dance"],
             "_at": time.monotonic(),
         }
         players[member["id"]] = player

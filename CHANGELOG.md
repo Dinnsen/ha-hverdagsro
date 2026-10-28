@@ -2,6 +2,15 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.20.0] - 2026-10-28
+
+### Added
+- **Carrying with two hands:** a big thing you pick up (a giant toothbrush, a guitar, a ball, a teddy, a photo booth …) is held in front of you with both arms and both hands, not in one hand. Small things stay in the right hand.
+- **The hair dye machine** (in the hair salon): pick any hair colour of the original and see it on your figure. **The haircut machine:** step through every hairstyle, pick short, long or crazy hair, a bald head, or a beard.
+- **Toothbrushes:** a toothbrush and a giant toothbrush (a free home thing); tap one and your figure brushes its teeth with foam, bubbles and a happy face.
+- **The photo booth** (in the fashion store and the wedding venue): four pictures in a row with a count-down and a flash, shown as a photo strip and kept in the album of the mirror.
+- **The other players see your expressions and dances:** what your figure is doing (laughing, sad, kissing, a dance) goes live to the others who are playing, and they see your clothes and face too (the server dropped every number of a figure before; it now keeps them).
+
 ## [0.19.0] - 2026-10-28
 
 ### Added
