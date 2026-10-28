@@ -421,7 +421,9 @@ async def test_play_together(
         space="room:ida",
         x=300,
         y=580,
-        me={"skin": "#fff", "hair": "lang", "n": 5},
+        me={"skin": "#fff", "hair": "lang", "cl": 5, "bad": ["x"], "no": True},
+        mood="x:laughter",
+        dance="2",
     )
     assert msg["success"]
     event = await parent.receive_json()
@@ -430,7 +432,9 @@ async def test_play_together(
         "space": "room:ida",
         "x": 300,
         "y": 580,
-        "me": {"skin": "#fff", "hair": "lang"},
+        "me": {"skin": "#fff", "hair": "lang", "cl": 5},
+        "mood": "x:laughter",
+        "dance": "2",
     }
     # A wave, then she stops playing.
     await _ws(child, 3, type="hverdagsro/play", member="ida", space="park-plads", emote="wave", to="oskar")
@@ -438,6 +442,7 @@ async def test_play_together(
     assert event["event"]["player"]["emote"] == "wave" and event["event"]["player"]["me"] == {
         "skin": "#fff",
         "hair": "lang",
+        "cl": 5,
     }
     await _ws(child, 4, type="hverdagsro/play", member="ida", space="")
     assert (await parent.receive_json())["event"]["player"] == {"member": "ida", "space": ""}
