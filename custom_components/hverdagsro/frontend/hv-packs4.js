@@ -38,6 +38,7 @@ function works(key, shape, w, h, s, k, flags = {}) {
   else if (shape === "sink") R({ once: () => LOOKS.tap(w, h), sound: "water", ms: 2600 });
   else if (shape === "toilet") R({ once: () => LOOKS.flush(w, h), sound: "flush", ms: 1800 });
   else if (shape === "pot") R({ once: () => LOOKS.stew(), sound: "water", ms: 2400 });
+  else if (shape === "curtain") R({ toggle: true, sound: "whoosh" }, (it) => LOOKS.drawn(w, h, it.c || k));
   else if (shape === "radio" || shape === "speaker") R({ toggle: true, sound: "music" }, () => LOOKS.notes(w, h));
   else if (SCREEN[shape]) {
     registerFx(key, shape);

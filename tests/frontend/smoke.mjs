@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 /* Tap the first thing in the room that opens (a fridge, a cupboard) and check that it did: it is drawn open (lit). */
 const OPEN_ONE = "(async () => { const root = window.__panel.shadowRoot || document; const el = root.querySelector(\"#pl-stage .pl-it.opens\"); if (!el) throw new Error(\"no openable thing in the room\"); const r = el.getBoundingClientRect(); const o = { bubbles: true, composed: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 1, isPrimary: true, button: 0, pointerType: \"mouse\" }; el.dispatchEvent(new PointerEvent(\"pointerdown\", o)); el.dispatchEvent(new PointerEvent(\"pointerup\", o)); await new Promise((r) => setTimeout(r, 500)); const n = root.querySelectorAll(\"#pl-stage .pl-it.opens.lit\").length; if (!n) throw new Error(\"the thing did not open\"); return \"opened \" + n; })()";
+/* Pull the first curtain in the room and check that it closed (it is drawn closed: lit). */
+const PULL_CURTAIN = "(async () => { const root = window.__panel.shadowRoot || document; const el = root.querySelector('#pl-stage .pl-it[data-k=\"hd-hjem-gardin\"]'); if (!el) throw new Error(\"no curtain in the room\"); const r = el.getBoundingClientRect(); const o = { bubbles: true, composed: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 1, isPrimary: true, button: 0, pointerType: \"mouse\" }; el.dispatchEvent(new PointerEvent(\"pointerdown\", o)); el.dispatchEvent(new PointerEvent(\"pointerup\", o)); await new Promise((r) => setTimeout(r, 400)); const n = el.innerHTML.includes(\"opacity=\\\".28\\\"\") ? 1 : 0; if (!n) throw new Error(\"the curtain did not close\"); return \"closed \" + n; })()";
 const runs = [
   ["--view", "hjem"],
   ["--view", "hjem", "--narrow", "--width", "390"],
@@ -68,6 +70,7 @@ const runs = [
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "[data-pl=\"go\"][data-k=\"w-Store\"]"],
   ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"w-BunBakery\"]", "--click", "[data-pl=\"go\"][data-k=\"w-BunBakery\"]"],
   ["--user", "ida", "--view", "vaerelse", "--lang", "en", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"w-Hospital\"]", "--click", "[data-pl=\"go\"][data-k=\"w-KidsWard\"]"],
+  ["--user", "ida", "--view", "vaerelse", "--click", ".sheet [data-close]", "--click", "[data-pl=\"map\"]", "--click", "button[data-pl=\"byer\"]", "--click", "button[data-pl=\"btown\"][data-k=\"hjem\"]", "--click", "[data-pl=\"go\"][data-k=\"hd-storfamilie\"]", "--eval", PULL_CURTAIN],
   ["--user", "ida", "--view", "lister", "--narrow", "--width", "390"],
   ["--user", "tablet"],
   ["--user", "tablet", "--as", "oskar", "--view", "dag"],

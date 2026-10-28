@@ -36,6 +36,12 @@ for (const w of WORLDS) {
       placed.push({ k: thing, ...META4[thing], role: ROLE[shape] || "extra", x, y, idx: decor.length, noFill: !!wall && shape !== "wallshelf" });
       decor.push([thing, x, y]);
     });
+    // the curtains of the original hang at its windows, and can be pulled
+    for (const [kind, x] of loc.fx || []) {
+      if (kind !== "curtain") continue;
+      const c = placeThing(`lw-curtain-${Math.round(x / 50)}-${palette.indexOf(palette[1])}`, "curtain", 160, 560, palette[1], palette[2], 0);
+      decor.push([c, x, 372]);
+    }
     // little things on the shelves and tables, from the everyday things of the house
     const small = Object.keys(HOME4).map((k) => ({ k, ...META4[k], role: ROLE[META4[k].shape] || "extra" }));
     dress(placed, small, decor, R);

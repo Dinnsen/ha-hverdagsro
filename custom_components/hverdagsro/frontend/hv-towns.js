@@ -78,6 +78,7 @@ export const TOWNS = [...WORLD_TOWNS, ...TOWNS4.map((t) => ({ ...t, places: PACK
 const places = {};
 for (const pk of PACKS4) {
   const { decor, wd } = layout(pk);
+  for (const [kind, x] of dressing(wd)) if (kind === "curtain") decor.push(["hd-hjem-gardin", x, 372]);
   places[pk.id] = {
     n: pk.n, area: pk.town, em: pk.em, inside: true, width: wd,
     bg: (s0, s1, tod, w) => roomBg({ ...pk, fx: dressing(wd) }, STYLES[hash(pk.id) % STYLES.length], s0, s1, tod, w),
@@ -130,7 +131,11 @@ const BUILD = {
 export function townsSvg(ctx, lv, here, peers, t, opts = {}) {
   const town = TOWNS.find((x) => x.id === opts.town) || TOWNS[0];
   const open = lv >= town.lvl;
-  const sky = `<linearGradient id="bm-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(town.col, 1.15)}"/><stop offset="1" stop-color="#FFF8EC"/></linearGradient>`;
+  // the real sky: the colours of the hour, a dark night, and the weather that is falling
+  const [sky0, sky1, tod] = opts.sky || [shade(town.col, 1.15), "#FFF8EC", "day"];
+  const sky = `<linearGradient id="bm-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky0}"/><stop offset="1" stop-color="${sky1}"/></linearGradient>`;
+  const wxSvg = opts.wx ? `<g class="fx-rain" pointer-events="none">${rep(24, (j) => (opts.wx === "rain" ? `<path d="M${30 + j * 40} 20 v14" stroke="#4FB3FF" stroke-width="3" stroke-linecap="round" style="--fall:560px;animation-delay:${-(j * 0.13) % 0.9}s"/>` : `<circle cx="${30 + j * 40}" cy="20" r="4" fill="#fff" style="--fall:560px;animation-delay:${-(j * 0.31) % 2.4}s"/>`))}</g>` : "";
+  const nightSvg = tod === "night" ? `<rect width="${MW}" height="${MH}" fill="#0B1030" opacity=".42" pointer-events="none"/>${rep(14, (j) => `<circle cx="${(j * 173) % MW}" cy="${(j * 61) % 180 + 10}" r="2.5" fill="#fff" class="pl-twinkle" pointer-events="none"/>`)}` : tod === "dusk" ? `<rect width="${MW}" height="${MH}" fill="#FF8A3C" opacity=".12" pointer-events="none"/>` : "";
   const far = rep(24, (i) => {
     const x = i * 44 - 10, h = 50 + ((i * 41) % 100);
     return `<rect x="${x}" y="${200 - h}" width="38" height="${h + 40}" rx="3" fill="${shade(town.col, 1.25 - (i % 3) * 0.05)}" opacity=".55"/>`;
@@ -158,7 +163,7 @@ export function townsSvg(ctx, lv, here, peers, t, opts = {}) {
   items.sort((a, b) => a[0] - b[0]);
   const tw = Math.max(220, t(town.n).length * 17 + 90);
   const title = `<g pointer-events="none"><rect x="20" y="64" width="${tw}" height="44" rx="22" fill="#fff" stroke="${OL}" stroke-width="2.5"/><text x="${20 + tw / 2}" y="93" class="tm-area">${town.em} ${t(town.n)}${open ? "" : ` · ${t("niv. {n}", { n: town.lvl })}`}</text></g>`;
-  return `<defs>${sky}</defs><rect width="${MW}" height="${MH}" fill="url(#bm-sky)"/>${far}${land}${roads}${plots}${bus}${items.map((x) => x[1]).join("")}${title}`;
+  return `<defs>${sky}</defs><rect width="${MW}" height="${MH}" fill="url(#bm-sky)"/>${far}${land}${roads}${plots}${bus}${items.map((x) => x[1]).join("")}${nightSvg}${wxSvg}${title}`;
 }
 export const TOWNS_EN = {
   Byerne: "The towns", "Til Verden": "To the world", Hjemmebyen: "Home Town", "Børnebyen": "Kids' Town", "Årstidsbyen": "Season Town", Strandbyen: "Beach Town",

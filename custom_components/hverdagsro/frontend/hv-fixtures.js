@@ -194,6 +194,8 @@ export const LOOKS = {
   spin: (w, h) => `<g class="fx-spinfast" pointer-events="none"><circle cx="0" cy="${-h * 0.45}" r="${Math.min(w, h) * 0.26}" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="28 9"/><circle cx="10" cy="${-h * 0.45}" r="7" fill="#FFB347"/><circle cx="-10" cy="${-h * 0.45}" r="7" fill="#F15BB5"/></g>`,
   /* Something playing music. */
   notes: (w, h) => `<g class="fx-steam" pointer-events="none"><text x="${-w * 0.2}" y="${-h * 0.9}" font-size="26" fill="${OL}">♪</text><text x="${w * 0.16}" y="${-h * 1.05}" font-size="30" fill="${OL}">♫</text></g>`,
+  /* Curtains drawn: one cloth across the whole window. */
+  drawn: (w, h, col) => `<g pointer-events="none"><path d="M${-w * 0.46} ${-h * 0.96} H${w * 0.46} V${-h * 0.04} H${-w * 0.46}Z" fill="${col}" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/>${[-0.3, -0.1, 0.1, 0.3].map((f) => `<path d="M${w * f} ${-h * 0.94} V${-h * 0.06}" stroke="${OL}" stroke-width="2.5" opacity=".28"/>`).join("")}</g>`,
   /* A light that is on: a soft glow round the thing. */
   glow: (w, h) => `<ellipse cx="0" cy="${-h * 0.6}" rx="${w * 0.9}" ry="${h * 0.75}" fill="#FFE8A3" opacity=".5" pointer-events="none"/>`,
   /* The little scenes that play once. */
