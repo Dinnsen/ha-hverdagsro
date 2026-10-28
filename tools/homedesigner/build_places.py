@@ -214,6 +214,13 @@ def shape_of(name: str, w: float, levels: int, wall: bool) -> str:
     return "chair" if w < 1.8 else "table" if w < 3.4 else "counter"
 
 
+def make_px(xl, xr, left):
+    """Original x (units) -> x in the game's room: the scene's two exits are the two ends of the room."""
+    if xl is not None and xr is not None and xr - xl > 20:
+        return lambda x: round(70 + (x - xl) * (MAXW - 140) / (xr - xl))
+    return lambda x: round(70 + (x - left) * K)
+
+
 def main() -> int:
     out = Path(sys.argv[1])
     data = json.loads(Path("game_data/locations.json").read_text(encoding="utf-8"))
@@ -234,6 +241,9 @@ def main() -> int:
         floor_top = main_floor["y"] + main_floor["h"] / 2
         bands = [(f["y"], f["x"] - f["w"] / 2, f["x"] + f["w"] / 2) for f in floors if f["w"] >= 5]
         rest = [t for t in things if t not in floors and t["w"] <= 14]
+        fixtures = rec.get("fixtures", [])
+        exits = {f["side"]: f["x"] for f in fixtures if f["kind"] == "exit"}
+        xl, xr = exits.get("left"), exits.get("right")
         # stacks: surfaces over one another (the shelves of one unit) are one thing
         stacks: dict[tuple[int, int], list[dict]] = collections.defaultdict(list)
         for t in rest:
@@ -256,7 +266,9 @@ def main() -> int:
                 if base is None:
                     base = min(ys[0], floor_top)
                 height = max(0.8, ys[-1] - base + 0.3)
-                y_px = round(FLOOR_PX + 56 + max(0, (floor_top - base)) * K * 0.8)
+                # the further back it stands on the floor, the higher up in the room: spread over the whole depth
+                depth = min(1.0, max(0.0, (floor_top - base) / 5.2))
+                y_px = round(500 + depth * 112)
                 px_h = height * K
             y_px = max(150, min(615, y_px)) if wall else max(500, min(615, y_px))
             items.append(
@@ -274,17 +286,28 @@ def main() -> int:
             continue
         xs = sorted(i["x"] for i in items)
         left = xs[0] - 3
-        width = max(1000, min(MAXW, round(((xs[-1] - left) * K + 260) / 100) * 100))
+        px = make_px(xl, xr, left)
+        if xl is not None and xr is not None and xr - xl > 20:
+            width = MAXW
+        else:
+            width = max(1000, min(MAXW, round(((xs[-1] - left) * K + 260) / 100) * 100))
+        dressing = []
+        for f in fixtures:
+            if f["kind"] in ("window", "door", "curtain", "light") and (xl is None or xl - 2 <= f["x"] <= xr + 2):
+                x = px(f["x"])
+                if 40 < x < width - 40 and not any(d[0] == f["kind"] and abs(d[1] - x) < 90 for d in dressing):
+                    dressing.append([f["kind"], x])
         world = rec["world"]
         locs[loc] = {
             "world": world,
             "n": PLACES.get(loc, (re.sub(r"(?<=[a-z])(?=[A-Z])", " ", loc),) * 2)[0],
             "en": PLACES.get(loc, (loc, re.sub(r"(?<=[a-z])(?=[A-Z])", " ", loc)))[1],
             "w": width,
+            "fx": dressing[:14],
             "things": [
                 [
                     i["shape"],
-                    round(70 + (i["x"] - left) * K),
+                    px(i["x"]),
                     i["y"],
                     i["uw"],
                     i["uh"],

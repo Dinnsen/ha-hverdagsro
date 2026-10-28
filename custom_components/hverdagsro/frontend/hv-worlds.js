@@ -39,7 +39,7 @@ for (const w of WORLDS) {
     // little things on the shelves and tables, from the everyday things of the house
     const small = Object.keys(HOME4).map((k) => ({ k, ...META4[k], role: ROLE[META4[k].shape] || "extra" }));
     dress(placed, small, decor, R);
-    const pk = { wall: w.wall, floor: w.floor, cols: [w.col, shade(w.col, 0.8)] };
+    const pk = { wall: w.wall, floor: w.floor, cols: [w.col, shade(w.col, 0.8)], fx: loc.fx };
     places[key] = {
       n: loc.n, area: `w-${w.id}`, em: signFor(loc.en, w.em), inside: true, width: loc.w,
       bg: (s0, s1, tod, wd) => roomBg(pk, STYLES[hash(key) % STYLES.length], s0, s1, tod, wd),

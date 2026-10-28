@@ -26,6 +26,16 @@ SKIP = re.compile(
 )
 
 
+# what a scene is dressed with besides furniture: doors, windows, curtains, lights, and the two ends of the walk
+FIXTURE = [
+    ("exit", re.compile(r"^(left|right)exit$", re.I)),
+    ("window", re.compile(r"window", re.I)),
+    ("curtain", re.compile(r"curtain", re.I)),
+    ("door", re.compile(r"door(?!.*(fridge|oven|locker|vent|sliding|mover|button|toilet|cabinet|stall))|^door", re.I)),
+    ("light", re.compile(r"(wall|ceiling|hang|pendant)light|chandelier", re.I)),
+]
+
+
 def script_name(raw: bytes, scripts: dict, externals: list[str], file_name: str) -> str | None:
     file_id, path_id = struct.unpack("<iq", raw[16:28])
     target = externals[file_id] if file_id and file_id < len(externals) else file_name
@@ -113,6 +123,21 @@ def main() -> int:
                 sy *= t.m_LocalScale.y
             return x, y, sx, sy
 
+        fixtures = []
+        for rec in info.values():
+            if rec["tf"] is None:
+                continue
+            for kind, rx in FIXTURE:
+                if rx.search(rec["name"]):
+                    fx, fy, _, _ = world(rec["tf"])
+                    low = rec["name"].lower()
+                    if kind == "exit":
+                        fixtures.append(
+                            {"kind": "exit", "side": "left" if low.startswith("left") else "right", "x": round(fx, 1)}
+                        )
+                    elif abs(fx) > 0.05 or abs(fy) > 0.05:
+                        fixtures.append({"kind": kind, "name": rec["name"], "x": round(fx, 1), "y": round(fy, 1)})
+                    break
         things = []
         for rec in info.values():
             if rec["tf"] is None or not rec["active"]:
@@ -136,7 +161,7 @@ def main() -> int:
                     "kinds": kinds,
                 }
             )
-        out[loc] = {"world": wanted[loc], "level": file_name, "things": things}
+        out[loc] = {"world": wanted[loc], "level": file_name, "things": things, "fixtures": fixtures}
         print(f"{wanted[loc]:16s} {loc:28s} {len(things):4d} objects")
     (args.output / "locations.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
     return 0

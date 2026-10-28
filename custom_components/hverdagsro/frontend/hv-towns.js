@@ -60,6 +60,13 @@ const BY_PACK = {
   "hd-herregaard": ["fireplace", "sofa", "dining", "desk", "shelf", "bed", "wardrobe"],
   "hd-bryllup": ["outdoor", "dining", "bar", "corner"],
 };
+/* What hangs on the wall of a house or a shop of a pack, like the places of the worlds have: a door at each end, a window
+   with its curtains for every stretch of wall, a lamp between. */
+function dressing(width) {
+  const fx = [["door", 110], ["door", width - 110]];
+  for (let x = 330; x < width - 220; x += 470) fx.push(["window", x], ["curtain", x], ["light", x + 235]);
+  return fx;
+}
 function layout(pk) {
   const stations = BY_PACK[pk.id] || BY_TOWN[pk.town] || HOME;
   const { decor, width } = arrange(pk.items, stations, pk.id, { min: 1000, max: 2200 });
@@ -73,7 +80,7 @@ for (const pk of PACKS4) {
   const { decor, wd } = layout(pk);
   places[pk.id] = {
     n: pk.n, area: pk.town, em: pk.em, inside: true, width: wd,
-    bg: (s0, s1, tod, w) => roomBg(pk, STYLES[hash(pk.id) % STYLES.length], s0, s1, tod, w),
+    bg: (s0, s1, tod, w) => roomBg({ ...pk, fx: dressing(wd) }, STYLES[hash(pk.id) % STYLES.length], s0, s1, tod, w),
     decor, npcs: [],
   };
 }
