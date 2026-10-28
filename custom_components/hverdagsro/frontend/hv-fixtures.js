@@ -194,6 +194,8 @@ export const LOOKS = {
   spin: (w, h) => `<g class="fx-spinfast" pointer-events="none"><circle cx="0" cy="${-h * 0.45}" r="${Math.min(w, h) * 0.26}" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="28 9"/><circle cx="10" cy="${-h * 0.45}" r="7" fill="#FFB347"/><circle cx="-10" cy="${-h * 0.45}" r="7" fill="#F15BB5"/></g>`,
   /* Something playing music. */
   notes: (w, h) => `<g class="fx-steam" pointer-events="none"><text x="${-w * 0.2}" y="${-h * 0.9}" font-size="26" fill="${OL}">♪</text><text x="${w * 0.16}" y="${-h * 1.05}" font-size="30" fill="${OL}">♫</text></g>`,
+  /* A light that is on: a soft glow round the thing. */
+  glow: (w, h) => `<ellipse cx="0" cy="${-h * 0.6}" rx="${w * 0.9}" ry="${h * 0.75}" fill="#FFE8A3" opacity=".5" pointer-events="none"/>`,
   /* The little scenes that play once. */
   stew: () => `${steam(0, -60, 2)}${bubbles(-22, 22, -50, 5)}`,
   flush: (w, h) => `<g class="fx-flush" pointer-events="none"><ellipse cx="0" cy="${-h * 0.8}" rx="${w * 0.42}" ry="7" fill="#4FB3FF"/><path d="M${-w * 0.3} ${-h * 0.8} q${w * 0.3} -10 ${w * 0.6} 0" stroke="#fff" stroke-width="3" fill="none"/></g>`,

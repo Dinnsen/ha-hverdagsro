@@ -2,6 +2,14 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.17.0] - 2026-10-28
+
+### Changed
+- **Things are the right size.** Every thing is now sized from the original's own drawings (the bounding boxes of the meshes it is made of), measured against the furniture of the game: 38.3 pixels to a unit. A cup, a vase, a bowl and a candle are a third smaller than before and no longer look as big as the furniture beside them; furniture stays close to its shape.
+- **4,575 things in the packs, up from 2,284.** The Danish dictionary of `tools/homedesigner` now covers about 5,000 names (food, animals, tools, plants, shops, toys), so far fewer are left out. Things with a proper noun or a brand are still left out.
+- **396 things open (up from 51):** a thing that has doors or drawers and room inside it in the original opens here too, with the shelves of the original inside it. Open storage (a basket, a bowl, a box) can hold things, and a thing with a light in the original can be lit.
+- Decorations on the floor and the wall (stains, cracks, calendars) are drawn as what they are, and a thing with no matching shape is no longer drawn as a cupboard.
+
 ## [0.16.0] - 2026-10-28
 
 ### Added
