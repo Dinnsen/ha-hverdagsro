@@ -22,10 +22,18 @@ function heartUp() {
   d.petJoy = { d: today(), n: Math.min(5, n + 1) };
   return n < 5 && n + 1 === 5;
 }
+/* The pet is busy while it runs after the ball and brings it back: it cannot be grabbed then. */
+const RUN_MS = 2300;
+export const busy = () => (A?.st().petBusy || 0) > Date.now();
 /* The menu over the pet. */
 export function menu(ctx) {
   const st = A.st(), layer = A.layer(ctx);
   if (!layer) return;
+  // The pet is off after the ball: asked now, the menu comes up as soon as it is back.
+  if (busy()) {
+    st.petAsk = true;
+    return;
+  }
   layer.querySelectorAll(".pt-menu").forEach((n) => n.remove());
   const x = st.d.px, y = st.d.py, rw = A.rw(), g = document.createElementNS(NS, "g");
   g.setAttribute("class", "pt-menu");
@@ -76,6 +84,7 @@ export function act(ctx, kind) {
     A.sfx("bounce");
     A.voice(voiceOf(m));
     const back = [d.px, d.py];
+    st.petBusy = Date.now() + RUN_MS;
     setTimeout(() => {
       el.setAttribute("transform", `translate(${tx} ${ty}) scale(.8)`);
       cls("pt-wiggle", 800);
@@ -92,6 +101,14 @@ export function act(ctx, kind) {
       A.floatIcons(ctx, d.px, d.py - 150, ["🎾", "❤️"]);
       A.sfx("pop");
     }, 2150);
+    // Back again: a tap on the pet in the meantime now opens its menu.
+    setTimeout(() => {
+      st.petBusy = 0;
+      if (st.petAsk) {
+        st.petAsk = false;
+        menu(ctx);
+      }
+    }, RUN_MS);
     full = heartUp();
   } else if (kind === "cuddle") {
     cls("pt-wiggle", 1400);

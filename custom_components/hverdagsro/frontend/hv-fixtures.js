@@ -194,6 +194,10 @@ export const LOOKS = {
   spin: (w, h) => `<g class="fx-spinfast" pointer-events="none"><circle cx="0" cy="${-h * 0.45}" r="${Math.min(w, h) * 0.26}" fill="none" stroke="#4D96FF" stroke-width="6" stroke-dasharray="28 9"/><circle cx="10" cy="${-h * 0.45}" r="7" fill="#FFB347"/><circle cx="-10" cy="${-h * 0.45}" r="7" fill="#F15BB5"/></g>`,
   /* Something playing music. */
   notes: (w, h) => `<g class="fx-steam" pointer-events="none"><text x="${-w * 0.2}" y="${-h * 0.9}" font-size="26" fill="${OL}">♪</text><text x="${w * 0.16}" y="${-h * 1.05}" font-size="30" fill="${OL}">♫</text></g>`,
+  /* Curtains drawn: one cloth across the whole window. */
+  drawn: (w, h, col) => `<g pointer-events="none"><path d="M${-w * 0.46} ${-h * 0.96} H${w * 0.46} V${-h * 0.04} H${-w * 0.46}Z" fill="${col}" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/>${[-0.3, -0.1, 0.1, 0.3].map((f) => `<path d="M${w * f} ${-h * 0.94} V${-h * 0.06}" stroke="${OL}" stroke-width="2.5" opacity=".28"/>`).join("")}</g>`,
+  /* A light that is on: a soft glow round the thing. */
+  glow: (w, h) => `<ellipse cx="0" cy="${-h * 0.6}" rx="${w * 0.9}" ry="${h * 0.75}" fill="#FFE8A3" opacity=".5" pointer-events="none"/>`,
   /* The little scenes that play once. */
   stew: () => `${steam(0, -60, 2)}${bubbles(-22, 22, -50, 5)}`,
   flush: (w, h) => `<g class="fx-flush" pointer-events="none"><ellipse cx="0" cy="${-h * 0.8}" rx="${w * 0.42}" ry="7" fill="#4FB3FF"/><path d="M${-w * 0.3} ${-h * 0.8} q${w * 0.3} -10 ${w * 0.6} 0" stroke="#fff" stroke-width="3" fill="none"/></g>`,
@@ -203,6 +207,31 @@ export const LOOKS = {
 export function addScreen(key, rect) {
   SCREENS[key] = rect;
   FX[key] = { tv: true, sound: "tv" };
+}
+
+/* The things the game had before the theme packs, and what they can do now too (the same as a fridge or a cupboard from a
+   pack): kind, and the shelves inside as parts of the height. The treasure chest and the dress-up chest keep their own
+   tapping. */
+const LEGACY = {
+  koeleskab: ["door", [0.1, 0.3, 0.52, 0.74]],
+  minikoeleskab: ["door", [0.25, 0.6]],
+  wardrobe: ["door", [0.12, 0.5]],
+  apotek: ["door", [0.15, 0.45, 0.75]],
+  skoreol: ["door", [0.3, 0.62]],
+  foderskab: ["door", [0.3, 0.6]],
+  natbord: ["drawer", [0.5]],
+  bageovn: ["burn", []],
+  bagerovn: ["burn", []],
+};
+export function registerLegacy(CAT) {
+  for (const [key, [kind, levels]] of Object.entries(LEGACY)) {
+    const T = CAT[key];
+    if (!T || FX[key]) continue;
+    const { w, h, c } = T;
+    if (kind === "door") registerFx(key, "cabinet", { fx: { toggle: true, sound: "chest" }, on: (it) => LOOKS.door(w, h, levels, it.c || c), inside: { w: 0.78, levels } });
+    else if (kind === "drawer") registerFx(key, "dresser", { fx: { toggle: true, sound: "chest" }, on: (it) => LOOKS.drawer(w, h, it.c || c), inside: { w: 0.7, levels } });
+    else registerFx(key, "oven", { fx: { toggle: true, sound: "fire" }, on: () => LOOKS.burn(w, h) });
+  }
 }
 
 /* ------------------------------------------------------------------ the shower (new: a bathroom needs one) */

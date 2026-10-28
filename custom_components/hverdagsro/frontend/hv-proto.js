@@ -6,7 +6,18 @@
    width, ...levels as a part of its height from the floor] (hv-fixtures: things can stand on it). */
 import { OL, shade, DRAW } from "./hv-playcat.js";
 
-const { r, c, e, p, ln, dot, gl, L, tx, star, heart, rep, leaf, T3 } = DRAW;
+const { p, ln, dot, gl, L, tx, star, heart, rep, leaf, T3 } = DRAW;
+/* Our shapes get a little more than the plain outline: a light edge on top and a soft shade underneath on every solid
+   rectangle, and a glint on every round shape that is big enough to show it. */
+const solid = (f) => f && f !== "none" && !/^url/.test(f);
+const r = (x, y, w, h, f, rx = 6, o = "") =>
+  DRAW.r(x, y, w, h, f, rx, o) +
+  (solid(f) && w >= 26 && h >= 16
+    ? `<path d="M${x + rx * 0.7 + 2} ${y + 4} H${x + w - rx * 0.7 - 2}" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".42"/><path d="M${x + rx * 0.7 + 2} ${y + h - 4} H${x + w - rx * 0.7 - 2}" stroke="#2B2340" stroke-width="3" stroke-linecap="round" opacity=".13"/>`
+    : "");
+const glint = (cx, cy, R) => `<path d="M${cx - R * 0.6} ${cy - R * 0.25} A${R * 0.66} ${R * 0.66} 0 0 1 ${cx - R * 0.15} ${cy - R * 0.62}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".45"/>`;
+const c = (cx, cy, R, f, o = "") => DRAW.c(cx, cy, R, f, o) + (solid(f) && R >= 13 ? glint(cx, cy, R) : "");
+const e = (cx, cy, rx, ry, f, o = "") => DRAW.e(cx, cy, rx, ry, f, o) + (solid(f) && ry >= 12 && rx >= 18 ? glint(cx, cy, Math.min(rx, ry * 1.6)) : "");
 const lt = (k) => shade(k, 1.2), dk = (k) => shade(k, 0.78), WOOD = "#C98B55", GLASS = "#CFE8FF", STEEL = "#CFD6E6", PALE = "#FFF3D6";
 const pick = (list, n) => list[((n % list.length) + list.length) % list.length];
 
@@ -102,6 +113,11 @@ export const PROTO = {
   fence: [200, 90, "pynt", (k, a) => `${rep(7, (i) => p(`M${-90 + i * 30} 0 V-70 L${-80 + i * 30} -84 L${-70 + i * 30} -70 V0Z`, k, T3))}${ln("M-96 -50 H96 M-96 -22 H96", dk(k), 6)}`],
   /* ---------------------------------------------------------------- small things */
   hood: [130, 170, "væg", (k, a) => `${r(-20, -170, 40, 80, dk(k), 4)}${p("M-62 -22 L-42 -96 H42 L62 -22Z", k)}${r(-68, -28, 136, 14, lt(k), 5)}${rep(3, (i) => dot(-26 + i * 26, -34, 4, "#FFF3C4"))}${ln("M-40 -66 H40", a, 4)}`],
+  /* A lift to the other floors of a house (steel doors that slide, a screen with an arrow over them), and a house door to
+     the next place (a van's, the front door). Tapping them takes you there (hv-floors). */
+  lift: [150, 300, "mob", (k, a, n) => `${r(-66, -292, 132, 292, STEEL, 6)}${r(-56, -270, 112, 262, "#9AA4BA", 4)}${r(-54, -268, 52, 258, STEEL, 3, T3)}${r(2, -268, 52, 258, lt(STEEL), 3, T3)}${ln("M0 -268 V-10", OL, 4)}${r(-30, -290, 60, 16, "#2B2340", 4)}${p("M-6 -278 l6 -8 l6 8Z", "#6BCB77", 'stroke-width="0"')}${r(70, -170, 14, 38, dk(STEEL), 4)}${dot(77, -158, 4, "#FFD93D")}${dot(77, -144, 4, a)}`],
+  housedoor: [120, 250, "mob", (k, a, n) => `${r(-52, -244, 104, 244, WOOD, 8)}${r(-44, -236, 88, 228, k, 5)}${r(-34, -224, 68, 96, lt(k), 4, T3)}${r(-34, -112, 68, 88, lt(k), 4, T3)}${dot(30, -118, 6, "#FFD93D")}${n % 2 ? r(-26, -214, 52, 22, "#fff", 4, T3) : ""}${r(-60, -252, 120, 12, dk(WOOD), 4)}`],
+  decal: [120, 40, "pynt",(k, a, n) => `${e(0, -14, 52, 12, k, 'fill-opacity=".45" stroke-width="0"')}${e(-16 + n * 8, -12, 24, 7, dk(k), 'fill-opacity=".4" stroke-width="0"')}`, 0, 1],
   rug: [320, 44, "mob", (k, a, n) => `${e(0, -18, 156, 20, k)}${e(0, -18, 132, 14, "none", `stroke="${a}" stroke-width="4" stroke-dasharray="${n % 2 ? "2 12" : "14 8"}"`)}${n % 2 ? rep(5, (i) => dot(-100 + i * 50, -18, 5, a)) : e(0, -18, 70, 7, lt(k), 'stroke-width="2"')}`, 0, 1],
   tool: [60, 90, "pynt", (k, a) => `${ln("M-14 0 L8 -72", WOOD, 9)}${p("M2 -66 L18 -92 L26 -80 L12 -60Z", k, T3)}${ln("M16 0 L-4 -60", STEEL, 7)}${e(-8, -72, 11, 16, a, 'transform="rotate(14 -8 -72)" stroke-width="3"')}`],
   pillow: [84, 64, "pynt", (k, a, n) => `${p("M-38 -8 Q-44 -34 -34 -56 Q0 -66 34 -56 Q44 -34 38 -8 Q0 4 -38 -8Z", k)}${n % 2 ? heart(0, -34, 1.1, a, T3) : ln("M-26 -30 Q0 -20 26 -30", a, 5)}`],

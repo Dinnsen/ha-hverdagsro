@@ -13,8 +13,10 @@ import { houseSvg, HOUSE3D_CSS, HOUSE3D_EN } from "./hv-house3d.js";
 import { WORLD_THINGS, WORLD_NAMES_EN } from "./hv-worlditems.js";
 import { THINGS2, PACKS2, PACKS2_EN } from "./hv-packs2.js";
 import { THINGS3, PACKS3, PACKS3_EN } from "./hv-packs3.js";
-import { THINGS4, PACKS4, PACKS4_EN, HOME4 } from "./hv-packs4.js";
+import { THINGS4, PACKS4, PACKS4_EN, HOME4, PLACE4 } from "./hv-packs4.js";
+import { WORLDS_EN } from "./hv-worlds.js";
 import { townsSvg, TOWNS, TOWNS_EN } from "./hv-towns.js";
+import { FLOORS_EN } from "./hv-floors.js";
 import * as Sound from "./hv-sound.js";
 import * as Fun from "./hv-fun.js";
 import * as Toys from "./hv-toys.js";
@@ -562,7 +564,7 @@ function stage(ctx, m) {
     if (!T) return "";
     const sc = it.s || 1, sel = ST.build && ST.sel === it.id, fixed = Fix.FIXED.has(it.k) || room.ro;
     const shadow = !wallK(it.k) && T.flat !== 1 && !it.at ? `<ellipse cx="0" cy="2" rx="${Math.round(T.w * 0.44)}" ry="${Math.max(5, Math.round(T.w * 0.05))}" fill="rgba(0,0,0,.13)"/>` : "";
-    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}${fixed ? " fixed" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${shadow}${T.d(it.c || T.c)}${it.live ? `<g transform="translate(0 ${-T.h - 16})"><rect x="-90" y="-28" width="180" height="30" rx="15" fill="#fff" ${S("stroke-width=\"3\"")}/><text y="-7" text-anchor="middle" class="pl-livet">${esc(it.live)}</text></g>` : ""}${Fix.onSvg(it)}${Fix.ridingSvg(it, items)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
+    return `<g class="pl-it${T.cat === "lys" ? " lampit" : ""}${Fix.hasInside(it.k) ? " opens" : ""}${it.on ? " lit" : ""}${sel ? " sel" : ""}${fixed ? " fixed" : ""}" data-pl="item" data-id="${esc(it.id)}" data-k="${esc(it.k)}" transform="translate(${it.x} ${it.y}) scale(${it.f ? -sc : sc} ${sc})">${shadow}${T.d(it.c || T.c)}${it.live ? `<g transform="translate(0 ${-T.h - 16})"><rect x="-90" y="-28" width="180" height="30" rx="15" fill="#fff" ${S("stroke-width=\"3\"")}/><text y="-7" text-anchor="middle" class="pl-livet">${esc(it.live)}</text></g>` : ""}${Fix.onSvg(it)}${Fix.ridingSvg(it, items)}${sel ? `<rect x="-${T.w / 2 + 12}" y="-${T.h + 12}" width="${T.w + 24}" height="${T.h + 24}" rx="16" class="pl-selbox"/>` : ""}</g>`;
   };
   const items = room.items || [];
   const isWall = (it) => wallK(it.k);
@@ -586,7 +588,7 @@ function stage(ctx, m) {
   ].sort((a, b) => a[0] - b[0]);
   s += actors.map((a) => a[1]).join("");
   // night: dark unless the lights are on (the bedroom and the tree house have real windows)
-  const dark = sid === "vaerelse" || sid === "trae" || !!vk || (pl && pl.area === "hjem");
+  const dark = sid === "vaerelse" || sid === "trae" || !!vk || (pl && (pl.area === "hjem" || pl.inside));
   // What stays on the screen while the room scrolls: the light, the bubbles, the bag, the post, the moon.
   let hud = `<rect width="${W}" height="${H}" class="pl-dark" fill="#0B1030" opacity="${dark && tod === "night" && !lit ? 0.42 : dark && tod === "dusk" && !lit ? 0.18 : 0}" pointer-events="none"/>`;
   if (lit) hud += `<rect width="${W}" height="${H}" fill="#FFD27A" opacity=".08" pointer-events="none"/>`;
@@ -650,6 +652,10 @@ for (const [k, v] of Object.entries(HOME_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0
 for (const [k, v] of Object.entries(HOME4)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "home" };
 for (const [k, v] of Object.entries(WORLD_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "world" };
 for (const [k, v] of Object.entries(Fix.FIX_THINGS)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: 0, pack: "home" };
+// The furniture of the places of the worlds: free, and not in the drawer.
+for (const [k, v] of Object.entries(PLACE4)) if (!CAT[k]) CAT[k] = { n: v[0], cat: v[1], c: v[2], w: v[3], h: v[4], d: v[5], price: 0, flat: v[7] || 0, pack: "world" };
+// The fridges, wardrobes and bedside tables the game had before the theme packs open now too.
+Fix.registerLegacy(CAT);
 const LOOKS = { p: [PATTERNS_X, 25], f: [FLOORS_X, 20], x: [EXTRAS_X, 30] };
 /* A thing or a look ("p:…" wallpaper, "f:…" floor, "x:…" to wear): its name and price. */
 function info(id) {
@@ -771,7 +777,7 @@ function render(ctx) {
   if (ST.map) {
     const peers = Object.entries(ST.peers || {}).filter(([id, pe]) => id !== m.id && Date.now() - (pe.seen || 0) < 45000).map(([id, pe]) => ({ ...pe, color: ctx.member(id)?.color }));
     const sibs = ctx.children().filter((k) => k.id !== m.id);
-    return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox pl-mapbox"><div class="pl-maptabs"><button data-pl="town" aria-pressed="${ST.mapPage === "town"}">🌍 ${esc(t("Verden"))}</button><button data-pl="city" aria-pressed="${ST.mapPage === "city"}">🏙️ ${esc(t("Centrum"))}</button><button data-pl="house" aria-pressed="${ST.mapPage === "house"}">🏠 ${esc(t("Huset"))}</button><button data-pl="byer" aria-pressed="${ST.mapPage === "byer"}">🗺️ ${esc(t("Byerne"))}</button></div>${ST.mapPage === "byer" ? `<div class="pl-towntabs">${TOWNS.map((x) => `<button data-pl="btown" data-k="${x.id}" aria-pressed="${(ST.d.btown || TOWNS[0].id) === x.id}"${lv < x.lvl ? " class=\"locked\"" : ""}>${x.em} ${esc(t(x.n))}${lv < x.lvl ? ` 🔒${x.lvl}` : ""}</button>`).join("")}</div>` : ""}<svg id="pl-stage" class="pl-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Kort"))}">${ST.mapPage === "city" ? citySvg(ctx, sid, peers, t, { seen: ST.d.seen || [], open: (id) => placeOpen(ctx, id), gift: postGift(), quests: Life.questPlaces(ctx) }) : ST.mapPage === "house" ? houseSvg(ctx, sid, peers, t, { hint: esc(t("Tryk på et rum for at gå derind")) }) : ST.mapPage === "byer" ? townsSvg(ctx, lv, sid, peers, t, { town: ST.d.btown || TOWNS[0].id, seen: ST.d.seen || [] }) : townSvg(ctx, lv, sid, peers, t, { gift: !!ctx.data.today && g.daily !== ctx.data.today, seen: ST.d.seen || [] })}</svg></div>
+    return `<div class="pl" style="--pc:${esc(m.color)}">${head}<div class="pl-stagebox pl-mapbox"><div class="pl-maptabs"><button data-pl="town" aria-pressed="${ST.mapPage === "town"}">🌍 ${esc(t("Verden"))}</button><button data-pl="city" aria-pressed="${ST.mapPage === "city"}">🏙️ ${esc(t("Centrum"))}</button><button data-pl="house" aria-pressed="${ST.mapPage === "house"}">🏠 ${esc(t("Huset"))}</button><button data-pl="byer" aria-pressed="${ST.mapPage === "byer"}">🗺️ ${esc(t("Byerne"))}</button></div>${ST.mapPage === "byer" ? `<div class="pl-towntabs">${TOWNS.map((x) => `<button data-pl="btown" data-k="${x.id}" aria-pressed="${(ST.d.btown || TOWNS[0].id) === x.id}"${lv < x.lvl ? " class=\"locked\"" : ""}>${x.em} ${esc(t(x.n))}${lv < x.lvl ? ` 🔒${x.lvl}` : ""}</button>`).join("")}</div>` : ""}<svg id="pl-stage" class="pl-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("Kort"))}">${ST.mapPage === "city" ? citySvg(ctx, sid, peers, t, { seen: ST.d.seen || [], open: (id) => placeOpen(ctx, id), gift: postGift(), quests: Life.questPlaces(ctx) }) : ST.mapPage === "house" ? houseSvg(ctx, sid, peers, t, { hint: esc(t("Tryk på et rum for at gå derind")) }) : ST.mapPage === "byer" ? townsSvg(ctx, lv, sid, peers, t, { town: ST.d.btown || TOWNS[0].id, seen: ST.d.seen || [], sky: sky(ctx), wx: weatherNow(ctx) }) : townSvg(ctx, lv, sid, peers, t, { gift: !!ctx.data.today && g.daily !== ctx.data.today, seen: ST.d.seen || [] })}</svg></div>
       <div class="pl-mine"><b>${esc(t("Mine rum"))}</b>${[["vaerelse", "🛏️", t("Mit værelse"), 1], ...SPACES.filter((x) => x.id !== "vaerelse").map((x) => [x.id, x.em, t(x.n), x.lvl])].map(([id, em, n, l]) => `<button data-pl="go" data-k="${id}" aria-pressed="${sid === id}"${lv < l ? ` class="locked"` : ""}><span>${em}</span>${esc(n)}${lv < l ? `<small>🔒 ${l}</small>` : ""}</button>`).join("")}${sibs.map((k) => `<button data-pl="go" data-k="visit:${esc(k.id)}" aria-pressed="${sid === "visit:" + k.id}"><span>👋</span>${esc(t("Besøg {name}", { name: k.name }))}${Object.values(ST.peers || {}).some((pe) => pe.space === "room:" + k.id && Date.now() - (pe.seen || 0) < 45000) ? `<i class="pl-live"></i>` : ""}</button>`).join("")}${Toys.secretRooms(ST).map(([id, r]) => `<button data-pl="go" data-k="${id}" aria-pressed="${sid === id}"><span>${r.em}</span>${esc(t(r.n))}</button>`).join("")}<span class="pl-secrets">🔍 ${esc(t("Hemmeligheder"))} ${Toys.secretCount(ST)}</span></div></div>`;
   }
   const glow = lit || sid !== "vaerelse";
@@ -796,12 +802,22 @@ function goTo(ctx, key, opts = {}) {
   ST.d.onMap = false;
   ST.camFor = null;
   // The map shows where the child has been (explored) and what is new.
-  if (World.PLACES[key] && !(ST.d.seen ||= []).includes(key)) ST.d.seen = [...ST.d.seen, key].slice(-60);
+  // a floor of a house counts as the house
+  const seenKey = World.PLACES[key]?.of || key;
+  if (World.PLACES[key] && !(ST.d.seen ||= []).includes(seenKey)) ST.d.seen = [...ST.d.seen, seenKey].slice(-60);
   ST.map = false;
   ST.build = false;
   ST.sel = null;
   // Arrive at the edge of the place, like walking in; walking in from the room next door, keep going.
-  if (opts.at) {
+  if (opts.lift) {
+    // out of the lift of that floor
+    const x = World.PLACES[key]?.lift ?? 140, rw = Walk.roomWidth(ctx, key, ST.kid);
+    ST.d.ax = x;
+    ST.d.ay = 590;
+    ST.camX = Math.max(0, Math.min(rw - W, x - W / 2));
+    ST.camFor = key;
+    Sound.sfx("whoosh");
+  } else if (opts.at) {
     ST.d.ax = opts.at.x;
     ST.d.ay = opts.at.y;
     ST.camX = opts.at.cam;
@@ -1303,8 +1319,11 @@ function bindStage(ctx, svgEl) {
         return redraw(ctx);
       }
       if (Life.tapStage(ctx, t)) return;
-      if (Toys.tapSecret(ctx, p, e.target)) return;
-      if (Fun.tapStage(ctx, p, e.target)) return;
+      // Hidden places and the seek of a hide-and-seek are found by where you tap (also under the furniture): not when
+      // you tap someone standing there (the pet after the ball may stand right on one).
+      const onSomeone = ["pet", "me", "npc", "fam", "peer", "hand", "npchand"].includes(t?.dataset.pl);
+      if (!onSomeone && Toys.tapSecret(ctx, p, e.target)) return;
+      if ((!onSomeone || ST.hiding) && Fun.tapStage(ctx, p, e.target)) return;
       if (t?.dataset.pl === "npc") {
         const id = t.dataset.id, tr = (t.getAttribute("transform") || "").match(/translate\(([\d.]+) ([\d.]+)\)/);
         const pos = R().npc?.[id] || (tr ? [+tr[1], +tr[2]] : null);
@@ -1333,6 +1352,7 @@ function bindStage(ctx, svgEl) {
         return capture(e);
       }
       if (t?.dataset.pl === "pet") {
+        if (Pet.busy()) return Pet.menu(ctx);
         drag = { kind: "pet", sx: p.x, sy: p.y, ox: ST.d.px, oy: ST.d.py, play: true };
         return capture(e);
       }
@@ -2067,6 +2087,7 @@ function itemTap(ctx, el) {
   const k = it.k, fx = Fix.fxOf(k), T0 = CAT[k];
   // Things that work: the tv changes channel, the bath fills, the tap runs, the toilet flushes.
   if (fx) {
+    if (fx.lift) return liftTap(ctx, fx.lift);
     const t = ctx.t, top0 = it.y - T0.h * (it.s || 1);
     if (fx.tv) {
       if (!it.on) [it.on, it.ch] = [1, 1];
@@ -2119,6 +2140,13 @@ function itemTap(ctx, el) {
   if (kind === "yum") floatIcons(ctx, it.x, top, ["😋", "✨"]);
   if (kind === "bounce") floatIcons(ctx, it.x, top, ["💫"]);
   Toys.special(ctx, it);
+}
+/* The lift of a house (or the door of a van): to the other floor, or to the one you choose. */
+function liftTap(ctx, to) {
+  Sound.sfx("tap");
+  if (to.length === 1) return goTo(ctx, to[0][0], { lift: true });
+  const t = ctx.t;
+  ctx.sheet(`<div class="pl-pop-badge">🛗</div><h2>${esc(t("Hvilken etage?"))}</h2><div class="pl-pop-b pl-lift">${to.map(([id, label]) => `<button class="btn" data-act="play-floor" data-k="${esc(id)}">${esc(t(label))}</button>`).join("")}</div><div class="pl-pop-b"><button class="btn soft" data-close>${esc(t("Ikke nu"))}</button></div>`, { cls: "pl-pop" });
 }
 function floatIcons(ctx, x, y, list) {
   const svgEl = layer(ctx);
@@ -2411,6 +2439,10 @@ export default {
     ...Toys.acts,
     ...Life.acts,
     ...Wall.WALL_ACTS,
+    "play-floor": (el, ev, ctx) => {
+      el.closest(".sheet-bg")?.close?.();
+      goTo(ctx, el.dataset.k, { lift: true });
+    },
     "play-buy-place": (el, ev, ctx) => {
       el.closest(".sheet-bg")?.close?.();
       return buyPlace(ctx, el.dataset.k);
@@ -2432,6 +2464,7 @@ export default {
 .pl-hand { cursor: grab; }
 .pl-livet { font: 800 13px system-ui, sans-serif; fill: #2B2340; }
 .pl-ghost { opacity: .9; filter: drop-shadow(0 10px 6px rgba(0,0,0,.25)); }
+.pl-lift { flex-wrap: wrap; justify-content: center; }
 .pl-me, .pl-pet { transition: transform .7s cubic-bezier(.3,.9,.4,1); cursor: pointer; }
 .pl-me.kbd { transition: none; }
 .pl-me .pl-body { animation: plbob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
@@ -2989,7 +3022,9 @@ export default {
     ...PACKS2_EN,
     ...PACKS3_EN,
     ...PACKS4_EN,
+    ...WORLDS_EN,
     ...TOWNS_EN,
+    ...FLOORS_EN,
     ...MAP_EN,
   },
 };

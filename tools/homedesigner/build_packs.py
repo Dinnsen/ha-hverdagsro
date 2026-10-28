@@ -11,16 +11,20 @@ import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent))
-from dict_da import ADJ, COLOURS, MATS, MODS, NOUNS, PHRASES
+from dict_da import ADJ as ADJ1, COLOURS as COLOURS1, MATS as MATS1, MODS as MODS1, NOUNS as NOUNS1, PHRASES as PHRASES1
+from dict_da2 import ADJ2, COLOURS2, MATS2, MODS2, NOUNS2, PHRASES2
 from packmeta import EN, MERGE, PACKS, SKIP, TOWNS
 
-CAP = 52  # things per pack (the shop shows them all; a child should not drown)
+ADJ, COLOURS, MATS, MODS = ADJ1 + ADJ2, COLOURS1 + COLOURS2, MATS1 + MATS2, MODS1 + MODS2
+NOUNS, PHRASES = NOUNS1 + NOUNS2, PHRASES1 + PHRASES2
+
+CAP = 150  # things per pack
 
 N, A, C, M, X = {}, {}, {}, {}, {}
 for tok in NOUNS.split():
     en, rest = tok.split(">")
     da, g = rest.rsplit(":", 1)
-    N[en] = (da, g)
+    N[en] = (da.replace("_", " "), g)
 for tok in re.split(r"\s+(?=[a-z]+>)", ADJ.strip()):
     en, rest = tok.split(">", 1)
     f = rest.split(",")
@@ -180,6 +184,15 @@ def translate(tokens):
 # ----------------------------------------------------------------------------- which drawing
 # (regex on the English tokens, drawing, scale, variation). The first rule that matches wins.
 RULES = [
+    (
+        r"(hammer|drill|screwdriver|wrench|broom|mop|shovel|rake|saw|razor|shaver|sprayer|duster|scraper|stapler|pliers)",
+        "tool",
+        1,
+        0,
+    ),
+    (r"mobile", "garland", 1, 0),
+    (r"\b(stain|crack|splatter|footprints?|footsteps|tracks|puddle|mud|dirt|debris|scratches)\b", "decal", 1, 0),
+    (r"\b(calendar|schedule|timetable|notice)\b", "poster", 1, 0),
     (r"mobile", "garland", 1, 0),
     (r"(hood|extractor)", "hood", 1, 0),
     (r"\bbunk\b", "bunk", 1, 0),
@@ -317,17 +330,63 @@ RULES = [
 RULES = [(re.compile(rx), p, s, n) for rx, p, s, n in RULES]
 
 
-def proto_of(en_tokens, category):
+def proto_of(en_tokens, category, opens=False):
     s = " ".join(en_tokens)
     for rx, proto, scale, var in RULES:
         if rx.search(s):
             return proto, scale, var
-    return ("cabinet" if category == "Furniture" else "box"), 1, 0
+    # no rule fits: a thing with doors is a cupboard; other furniture is something to look at
+    return ("cabinet" if opens else "statue" if category == "Furniture" else "box"), 1, 0
+
+
+UNIT = 38.3  # pixels in the game for one unit of the original (the furniture of the game, measured against its meshes)
+
+
+def load_meshes():
+    """Name -> bounding boxes [cx, cy, ex, ey] of the drawn parts, from extract_game_data.py (game_data/meshes.json)."""
+    path = Path("game_data/meshes.json")
+    index = collections.defaultdict(list)
+    if path.exists():
+        for name, boxes in json.loads(path.read_text(encoding="utf-8")).items():
+            index[re.sub(r"_\d+$", "", name)].extend(boxes)
+    return index
+
+
+def mesh_box(index, name, pack):
+    """The size in the original's units of everything the thing is drawn with: (x0, x1, y0, y1) or None."""
+    base = re.sub(r"^(HD_)?[A-Za-z0-9]*?Pack_", "", name).replace("HD_", "")
+    short = re.sub(r"(Pack)?$", "", pack)
+    keys = [k for k in index if k == f"HomDes_{short}_{base}" or k.startswith(f"HomDes_{short}_{base}_")]
+    if not keys:
+        keys = [k for k in index if k.endswith("_" + base)]
+    boxes = [b for k in keys for b in index[k]]
+    if not boxes:
+        return None
+    return (
+        min(b[0] - b[2] for b in boxes),
+        max(b[0] + b[2] for b in boxes),
+        min(b[1] - b[3] for b in boxes),
+        max(b[1] + b[3] for b in boxes),
+    )
+
+
+def levels_of(prefab, box, wanted):
+    """The shelves of the containers, as parts of the height from the floor up (0.12 .. 0.88)."""
+    out = []
+    for c in prefab["containers"]:
+        rect = c.get("rect")
+        if not rect or not box or box[3] - box[2] < 0.2:
+            continue
+        frac = ((rect[2] + rect[3]) / 2 - box[2]) / (box[3] - box[2])
+        out.append(round(min(0.88, max(0.12, frac)), 2))
+    out = sorted(set(out))[:4]
+    return out or wanted
 
 
 def main():
     out = Path(sys.argv[1])
     prefabs = json.loads(Path("game_data/prefabs.json").read_text(encoding="utf-8"))
+    meshes = load_meshes()
     by_pack = collections.defaultdict(list)
     stats = collections.Counter()
     for _g, p in prefabs.items():
@@ -341,7 +400,16 @@ def main():
             stats["dropped"] += 1
             continue
         da, en, colour, _head = res
-        proto, scale, var = proto_of(toks, p["category"])
+        box = mesh_box(meshes, p["name"], p["pack"])
+        opens = bool(p["containers"]) and 22 in p["stubs"]
+        proto, scale, var = proto_of(toks, p["category"], opens)
+        flags = {}
+        if opens:
+            flags["o"] = levels_of(p, box, [0.3, 0.65])
+        elif p["containers"]:
+            flags["s"] = levels_of(p, box, [0.4])
+        if p["root_type"] == 14 or "SceneLamp" in p["root_scripts"]:
+            flags["l"] = 1
         by_pack[pk].append(
             {
                 "da": da,
@@ -352,14 +420,28 @@ def main():
                 "var": var,
                 "cat": p["category"],
                 "src": p["name"],
+                "uw": round((box[1] - box[0]) * 100) if box else 0,
+                "uh": round((box[3] - box[2]) * 100) if box else 0,
+                "flags": flags,
             }
         )
+    # a thing with no measured size gets the middle of its shape
+    sizes = collections.defaultdict(list)
+    for items in by_pack.values():
+        for it in items:
+            if it["uw"] > 5 and it["uh"] > 5:
+                sizes[it["proto"]].append((it["uw"], it["uh"]))
+    for items in by_pack.values():
+        for it in items:
+            if not (it["uw"] > 5 and it["uh"] > 5) and sizes[it["proto"]]:
+                it["uw"] = sorted(a for a, _ in sizes[it["proto"]])[len(sizes[it["proto"]]) // 2]
+                it["uh"] = sorted(b for _, b in sizes[it["proto"]])[len(sizes[it["proto"]]) // 2]
     packs_out = []
     kept = 0
     for pk, meta in PACKS.items():
         slug, name, emoji, lvl, desc, town, pal, wall, floor = meta
         seen, pool = set(), []
-        for it in sorted(by_pack.get(pk, []), key=lambda t: (t["cat"] != "Furniture", t["da"])):
+        for it in sorted(by_pack.get(pk, []), key=lambda t: (not t["flags"], t["cat"] != "Furniture", t["da"])):
             if it["da"] in seen:
                 continue
             seen.add(it["da"])
@@ -370,6 +452,8 @@ def main():
             groups[it["proto"]].append(it)
         chosen = []
         order = sorted(groups, key=lambda k: (groups[k][0]["cat"] != "Furniture", k))
+        for k in order:
+            groups[k].sort(key=lambda t: not t["flags"])
         rnd = 0
         while len(chosen) < CAP and any(len(groups[k]) > rnd for k in order):
             for k in order:
@@ -393,6 +477,9 @@ def main():
                     it["var"],
                     round(it["scale"] * 100),
                     it["en"],
+                    it["uw"],
+                    it["uh"],
+                    it["flags"],
                 ]
             )
         # unique keys inside the pack
@@ -421,7 +508,7 @@ def main():
         print(f"{pk:30s} {len(by_pack.get(pk, [])):4d} named -> {len(rows):3d} kept")
     towns = [{"id": t[0], "n": t[1], "em": t[2], "lvl": t[3], "col": t[4]} for t in TOWNS]
     print(stats, "kept", kept)
-    js = "/* Hverdagsro - the theme packs (generated by tools/homedesigner/build_packs.py; the shapes are in hv-proto.js). Each thing:\n   [key, name, shape, colour (index in cols), accent (index), variation, size in %, English name]. */\n"
+    js = "/* Hverdagsro - the theme packs (generated by tools/homedesigner/build_packs.py; the shapes are in hv-proto.js). Each thing:\n   [key, name, shape, colour (index in cols), accent (index), variation, size in %, English name,\n   width and height in 1/100 of the original's units (0: not measured), what it can do: o = opens (shelves inside,\n   as parts of its height), s = open storage, l = a light to turn on]. */\n"
     js += "export const TOWNS4 = " + json.dumps(towns, ensure_ascii=False) + ";\n"
     js += (
         "export const PACKDATA = [\n"
