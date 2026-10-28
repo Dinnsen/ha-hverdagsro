@@ -464,6 +464,21 @@ export function createMockHass({ user = "anna", setup = true, lang = "da", dark 
       setTimeout(push, 10);
       return { ...g };
     }
+    if (t === "hverdagsro/game_admin") {
+      if (!canManage()) throw { code: "not_allowed", message: "not allowed" };
+      if (msg.action === "config") {
+        store.gamecfg = { mult: msg.config?.mult ?? 100, prices: msg.config?.prices || {}, locked: msg.config?.locked || [] };
+        setTimeout(push, 10);
+        return { ...store.gamecfg };
+      }
+      const g = (store.game[msg.member] ||= { coins: 0, xp: 0, owned: [] });
+      if (msg.action === "grant") g.owned.push(...(msg.items || []).filter((x) => !g.owned.includes(x)));
+      else if (msg.action === "revoke") g.owned = g.owned.filter((x) => !(msg.items || []).includes(x));
+      else if (msg.action === "coins") g.coins = Math.max(0, g.coins + msg.amount);
+      else if (msg.action === "xp") g.xp = Math.max(0, g.xp + msg.amount);
+      setTimeout(push, 10);
+      return { ...g };
+    }
     if (t === "hverdagsro/board") {
       check(msg.member);
       const mine = (store.board_done[msg.member] ||= []);

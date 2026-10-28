@@ -94,6 +94,9 @@
     "osky_error": {
       "message": "Ønskeskyen says: {error}"
     },
+    "locked_item": {
+      "message": "A grown-up has locked this."
+    },
     "not_enough_coins": {
       "message": "There are not enough coins."
     },

@@ -250,6 +250,7 @@ async def ws_board(
             cv.ensure_list, [vol.All(cv.string, vol.Length(min=1, max=40))], vol.Length(max=MAX_UNLOCK)
         ),
         vol.Optional("cost", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=5000)),
+        vol.Optional("pack", default=""): vol.All(cv.string, vol.Length(max=60)),
     }
 )
 @websocket_api.async_response
@@ -258,8 +259,52 @@ async def ws_game(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
 ) -> None:
     """Mit værelse: the daily coin, or unlocking things for coins."""
-    state = await family.async_game(msg["member"], msg["action"], msg["items"], msg["cost"], connection.user)
+    state = await family.async_game(
+        msg["member"], msg["action"], msg["items"], msg["cost"], connection.user, msg["pack"]
+    )
     connection.send_result(msg["id"], state)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "hverdagsro/game_admin",
+        vol.Required("action"): vol.In(("grant", "revoke", "coins", "xp", "config")),
+        vol.Optional("member", default=""): cv.string,
+        vol.Optional("items", default=[]): vol.All(
+            cv.ensure_list, [vol.All(cv.string, vol.Length(min=1, max=60))], vol.Length(max=600)
+        ),
+        vol.Optional("amount", default=0): vol.All(vol.Coerce(int), vol.Range(min=-100000, max=100000)),
+        vol.Optional("config", default=None): vol.Any(
+            None,
+            vol.Schema(
+                {
+                    vol.Optional("mult", default=100): vol.All(vol.Coerce(int), vol.Range(min=0, max=500)),
+                    vol.Optional("prices", default=dict): vol.All(
+                        {
+                            vol.All(cv.string, vol.Length(min=1, max=60)): vol.All(
+                                vol.Coerce(int), vol.Range(min=0, max=5000)
+                            )
+                        },
+                        vol.Length(max=700),
+                    ),
+                    vol.Optional("locked", default=list): vol.All(
+                        cv.ensure_list, [vol.All(cv.string, vol.Length(min=1, max=60))], vol.Length(max=700)
+                    ),
+                }
+            ),
+        ),
+    }
+)
+@websocket_api.async_response
+@_with_family
+async def ws_game_admin(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], family: Family
+) -> None:
+    """Mit værelse for the grown-ups: unlock or lock things, give coins, set prices."""
+    result = await family.async_game_admin(
+        msg["action"], msg["member"], msg["items"], msg["amount"], msg["config"], connection.user
+    )
+    connection.send_result(msg["id"], result)
 
 
 # ---------------------------------------------------------------------- playing together (Mit værelse, live)
@@ -505,6 +550,7 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_pin,
         ws_board,
         ws_game,
+        ws_game_admin,
         ws_play,
         ws_play_subscribe,
         ws_fun,

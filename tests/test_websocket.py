@@ -371,6 +371,42 @@ async def test_room_game(
     assert msg["error"]["code"] == "not_allowed"
     state = (await _ws(child, 12, type="hverdagsro/state"))["result"]
     assert state["game"]["ida"]["owned"] == ["arcade", "tv"]
+    assert state["gamecfg"] == {"mult": 100, "prices": {}, "locked": []}
+
+
+async def test_game_for_grown_ups(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+) -> None:
+    """A grown-up unlocks and locks things, sets prices and gives coins; a child cannot."""
+    family = init_integration.runtime_data
+    parent = await hass_ws_client(hass)
+    child = await hass_ws_client(hass, hass_read_only_access_token)
+    family.game("ida")["coins"] = 100
+    # Only a grown-up.
+    msg = await _ws(child, 1, type="hverdagsro/game_admin", action="grant", member="ida", items=["pool"])
+    assert msg["error"]["code"] == "not_allowed"
+    msg = await _ws(child, 2, type="hverdagsro/game_admin", action="config", config={"mult": 1})
+    assert msg["error"]["code"] == "not_allowed"
+    # Prices and locks.
+    cfg = {"mult": 150, "prices": {"place:hospital": 10}, "locked": ["pool"]}
+    msg = await _ws(parent, 3, type="hverdagsro/game_admin", action="config", config=cfg)
+    assert msg["result"] == cfg
+    msg = await _ws(child, 4, type="hverdagsro/game", member="ida", action="unlock", items=["pool"], cost=10)
+    assert msg["error"]["code"] == "locked_item"
+    # Unlock for the child without coins, give coins and experience, take a thing away again.
+    msg = await _ws(parent, 5, type="hverdagsro/game_admin", action="grant", member="ida", items=["pool", "arcade"])
+    assert msg["result"]["owned"] == ["pool", "arcade"] and msg["result"]["coins"] == 100
+    msg = await _ws(parent, 6, type="hverdagsro/game_admin", action="coins", member="ida", amount=-30)
+    assert msg["result"]["coins"] == 70
+    msg = await _ws(parent, 7, type="hverdagsro/game_admin", action="xp", member="ida", amount=40)
+    assert msg["result"]["xp"] == 40
+    msg = await _ws(parent, 8, type="hverdagsro/game_admin", action="revoke", member="ida", items=["arcade"])
+    assert msg["result"]["owned"] == ["pool"]
+    state = (await _ws(child, 9, type="hverdagsro/state"))["result"]
+    assert state["gamecfg"] == cfg
 
 
 async def test_quick_and_pins(
