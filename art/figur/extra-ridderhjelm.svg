@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-130 -330 260 340" width="260" height="340">
+<!-- Hverdagsro: figure part extra-ridderhjelm. The whole figure's frame; only this part is drawn. Feet on y=0, head around y=-184. -->
+<path d="M-64 -170 V-210 Q-64 -262 0 -262 Q64 -262 64 -210 V-170" fill="#CFD6E6" fill-opacity=".9" stroke="#2B2340" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M0 -262 q30 -30 20 -50" stroke="#FF6B6B" stroke-width="12" fill="none" stroke-linecap="round"/>
+</svg>

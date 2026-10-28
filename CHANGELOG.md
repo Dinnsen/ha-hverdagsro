@@ -2,6 +2,11 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.15.0] - 2026-10-28
+
+### Added
+- **The art pack, part two:** the figure's parts (108: every hairstyle, top, bottom, shoes, face, hat, thing to carry, mouth and mood), the 104 characters of the world, the three pets and 45 backdrops (the rooms of the house by kind, the places of the world, the child's own rooms) are in the pack too, each as an SVG file in the figure's or the room's own frame. A redrawn file is used in the game in place of the drawing. The figure's parts and the backdrops are off in `pack.json` until they are redrawn, since a part from a file keeps the file's colours.
+
 ## [0.14.0] - 2026-10-28
 
 ### Added

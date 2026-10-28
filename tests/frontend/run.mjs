@@ -37,7 +37,7 @@ const server = http.createServer((req, res) => {
 await new Promise((r) => server.listen(0, r));
 const port = server.address().port;
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: +opt.width, height: +opt.height }, colorScheme: opt.dark ? "dark" : "light" });
+const page = await browser.newPage({ viewport: { width: +opt.width, height: +opt.height }, colorScheme: opt.dark ? "dark" : "light", reducedMotion: "reduce" });
 const errors = [];
 page.on("console", (m) => (m.type() === "error" || m.type() === "warning") && !/camera_proxy|favicon|Failed to load resource/.test(m.text()) && errors.push(`${m.type()}: ${m.text()}`));
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}\n${e.stack || ""}`));
