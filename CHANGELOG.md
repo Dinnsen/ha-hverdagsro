@@ -13,15 +13,14 @@ All notable changes to Hverdagsro. The version is the one in `custom_components/
 ## [0.22.0] - 2026-10-28
 
 ### Added
-- **Seven new towns in the world, under a new map page, Byerne:** Hjemmebyen, Børnebyen, Årstidsbyen, Strandbyen, Handelsbyen, Slotsbyen and Neonbyen. Each town opens at its own level and has a place for every theme pack, so there are 47 new places to visit. A place is a long room that scrolls, furnished from its pack: the furniture along the walls, things on the shelves, tables and counters, and pictures, curtains and lamps up.
-- **47 theme packs with 2,284 new things** for the shop, from the family home, the nursery and the cabin to the supermarket, the bakery, the manor and the neon studio. Every thing has a Danish and an English name, its own colours and a price from the level of its pack. They are all our own drawings, made from about seventy shapes in `hv-proto.js` (a bed, a sofa, a bookcase, a fridge, a lamp …); the names and colours are in `hv-packs4-data.js`, made by `tools/homedesigner/build_packs.py`. No characters or brands from films, shows or games.
-- **Things that open and work:** fridges, cupboards, wardrobes, chests and chests of drawers open when tapped, show their shelves, and keep what you put inside them out of sight when they are shut. Stoves can be turned on (flames, and a pot on a burning stove bubbles), the cooker hood turns its fan, baths fill, showers run, taps and toilets have their scenes, and the tvs and screens have channels.
-- **Free things for the rooms of the house:** 50 everyday things (bookcases, open shelves, cube shelves, wall shelves, vases, books, cups, plants, pictures, clocks, baskets, a fridge, a stove, a hood, a chest …) are free for everybody.
+- **Husbygger, locks:** lock any element (room, wall, area, thing) so it cannot be moved, one at a time from its panel, or in one go: the drawing (rooms, walls, doors, windows), the outdoors (areas, hedges, fences, trees, bushes) or everything else (furniture, lamps, devices). A padlock shows what is locked. "Gem og luk" saves and closes.
+- **Huset, zoom:** pinch with two fingers, scroll, or use the buttons to zoom the plan, and drag to move around in it.
+- **The room pages:** the appliances in the room are shown as the living tiles of the Apparater page; the rest of the room's things are tiles instead of rows. In "Tilpas rummet", tick exactly which things are on the page, search Home Assistant to add more, and place each lamp in the picture by tapping where it goes.
 
 ### Changed
-- **Every room of the house is fuller:** bookcases and open shelves with things on them, shelves on the wall, a fridge and a cupboard with things inside, pictures, a clock, a plant, a basket. What the family has put in a room in Husbyggeren stays where it is; the rest is added around it.
-- A place of the world can be a wide room that scrolls (`width` on the place), like the rooms of the house.
-- `hv-fixtures.js` can be told about more things that open or work (`registerFx`), and things have shelves inside while they are open.
+- The builder's palette on a phone is a grid instead of a long list.
+- The curtains in the game are only play: they no longer open or close the real curtains.
+- The layer buttons on the Huset page are icon chips; the "Redigér huset" button is gone (the builder is under Mere and in the settings).
 
 ## [0.21.0] - 2026-10-28
 
@@ -93,14 +92,15 @@ All notable changes to Hverdagsro. The version is the one in `custom_components/
 ## [0.16.0] - 2026-10-28
 
 ### Added
-- **Husbygger, locks:** lock any element (room, wall, area, thing) so it cannot be moved, one at a time from its panel, or in one go: the drawing (rooms, walls, doors, windows), the outdoors (areas, hedges, fences, trees, bushes) or everything else (furniture, lamps, devices). A padlock shows what is locked. "Gem og luk" saves and closes.
-- **Huset, zoom:** pinch with two fingers, scroll, or use the buttons to zoom the plan, and drag to move around in it.
-- **The room pages:** the appliances in the room are shown as the living tiles of the Apparater page; the rest of the room's things are tiles instead of rows. In "Tilpas rummet", tick exactly which things are on the page, search Home Assistant to add more, and place each lamp in the picture by tapping where it goes.
+- **Seven new towns in the world, under a new map page, Byerne:** Hjemmebyen, Børnebyen, Årstidsbyen, Strandbyen, Handelsbyen, Slotsbyen and Neonbyen. Each town opens at its own level and has a place for every theme pack, so there are 47 new places to visit. A place is a long room that scrolls, furnished from its pack: the furniture along the walls, things on the shelves, tables and counters, and pictures, curtains and lamps up.
+- **47 theme packs with 2,284 new things** for the shop, from the family home, the nursery and the cabin to the supermarket, the bakery, the manor and the neon studio. Every thing has a Danish and an English name, its own colours and a price from the level of its pack. They are all our own drawings, made from about seventy shapes in `hv-proto.js` (a bed, a sofa, a bookcase, a fridge, a lamp …); the names and colours are in `hv-packs4-data.js`, made by `tools/homedesigner/build_packs.py`. No characters or brands from films, shows or games.
+- **Things that open and work:** fridges, cupboards, wardrobes, chests and chests of drawers open when tapped, show their shelves, and keep what you put inside them out of sight when they are shut. Stoves can be turned on (flames, and a pot on a burning stove bubbles), the cooker hood turns its fan, baths fill, showers run, taps and toilets have their scenes, and the tvs and screens have channels.
+- **Free things for the rooms of the house:** 50 everyday things (bookcases, open shelves, cube shelves, wall shelves, vases, books, cups, plants, pictures, clocks, baskets, a fridge, a stove, a hood, a chest …) are free for everybody.
 
 ### Changed
-- The builder's palette on a phone is a grid instead of a long list.
-- The curtains in the game are only play: they no longer open or close the real curtains.
-- The layer buttons on the Huset page are icon chips; the "Redigér huset" button is gone (the builder is under Mere and in the settings).
+- **Every room of the house is fuller:** bookcases and open shelves with things on them, shelves on the wall, a fridge and a cupboard with things inside, pictures, a clock, a plant, a basket. What the family has put in a room in Husbyggeren stays where it is; the rest is added around it.
+- A place of the world can be a wide room that scrolls (`width` on the place), like the rooms of the house.
+- `hv-fixtures.js` can be told about more things that open or work (`registerFx`), and things have shelves inside while they are open.
 
 ## [0.15.0] - 2026-10-28
 
