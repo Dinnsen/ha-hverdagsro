@@ -283,6 +283,14 @@ SETTINGS = vol.Schema(
             vol.Optional("kids_disarm", default=False): cv.boolean,
             vol.Optional("modes", default=[]): vol.All(cv.ensure_list, [cv.string], vol.Length(max=8)),
         },
+        # What the room game may do to the real house: a child's own light, the curtains, and showing the real tv and speakers.
+        vol.Optional("game_rights", default={}): {
+            vol.Optional("light", default=True): cv.boolean,
+            vol.Optional("covers", default=True): cv.boolean,
+            vol.Optional("media", default=True): cv.boolean,
+            vol.Optional("kids_off", default=list): vol.All(cv.ensure_list, [text(40, 1)], vol.Length(max=20)),
+            vol.Optional("block", default=list): vol.All(cv.ensure_list, [cv.entity_id], vol.Length(max=200)),
+        },
         vol.Optional("osky_to", default={}): {vol.Coerce(str): text(40)},
         vol.Optional("pickup_reminder", default=True): cv.boolean,
         vol.Optional("skema_hide", default=list): vol.All(cv.ensure_list, [text(60, 1)], vol.Length(max=20)),
