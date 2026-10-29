@@ -2,6 +2,14 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.23.0] - 2026-10-29
+
+### Added
+- **Indstillinger › Spillet:** the grown-ups decide what the room game may do to the real house: whether a child controls the real light of their own room from the game, whether the game shows that the real tv and speakers play, which children may control their own light, and exactly which lights the game may control. The game's shop (unlock, prices, locks, coins) opens from there too.
+
+### Changed
+- **Everybody can switch the light in every room of the game.** Only the lights in the children's rooms are real, and only the child can control their own: in the child's own room the switch works the real lights (if the grown-ups allow it); in every other room (a sibling's room, the rooms of the house, the places of the world) it switches the game's own light and the real lights are only shown. (0.21.0 had taken the switch away from those rooms.)
+
 ## [0.22.0] - 2026-10-28
 
 ### Added

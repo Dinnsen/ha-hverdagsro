@@ -100,6 +100,7 @@ const TABS = [
   ["qa", "Quick actions", "quick"],
   ["alarm", "Alarm", "alarm"],
   ["ret", "Rettigheder", null],
+  ["spil", "Spillet", null],
   ["familie", "Familien", null],
   ["hjemmet", "Hjemmet", null],
 ];
@@ -909,6 +910,26 @@ function alarmSection(ctx) {
     <p class="t-sub" style="margin-top:12px">${esc(ctx.t("Koderne er brugernes egne koder i {alarm}. Hverdagsro sender koden videre, og {alarm} afgør, om den er rigtig.", { alarm: an }))}</p></section>`;
 }
 
+/* What Mit værelse (the game) may do to the real house, and the game's own shop: who can switch what from the game. */
+const GAME_RIGHTS = { light: true, media: true, kids_off: [], block: [] };
+function gameSection(ctx) {
+  const g = { ...GAME_RIGHTS, ...(ctx.data.settings.game_rights || {}) };
+  const kids = ctx.members().filter((m) => m.role === "child");
+  const name = (id) => ctx.hass.states[id]?.attributes?.friendly_name || id;
+  const row = (label, hint, act, id, on) => `<span>${esc(label)}${hint ? `<small class="t-sub" style="display:block">${esc(hint)}</small>` : ""}</span><button class="toggle" data-act="${act}" data-id="${esc(id)}" aria-pressed="${!!on}" aria-label="${esc(label)}"></button>`;
+  const ents = (domain, title) => {
+    const ids = ctx.entities(domain).slice(0, 80);
+    if (!ids.length) return "";
+    return `<h3 style="margin:16px 0 6px">${esc(ctx.t(title))}</h3><div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${ids.map((id) => row(name(id), id, "set-gr-ent", id, !g.block.includes(id))).join("")}</div>`;
+  };
+  return `<section class="card" data-st="spil"><div class="card-head"><h2>${esc(ctx.t("Spillet"))}</h2>${lockTag(ctx)}</div>
+    <p class="t-sub" style="margin:-4px 0 10px">${esc(ctx.t("Alle kan tænde og slukke lyset i alle rum i spillet. Kun lyset på børnenes værelser er rigtigt, og kun barnet selv kan styre det i sit eget værelse. Her bestemmer I resten."))}</p>
+    <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${row(ctx.t("Børn styrer det rigtige lys i eget værelse"), ctx.t("Slås det fra, er lyset i spillet kun til pynt."), "set-gr", "light", g.light)}${row(ctx.t("Spillet viser, at tv og højttalere kører"), ctx.t("Det rigtige tv og de rigtige højttalere kan aldrig styres fra spillet."), "set-gr", "media", g.media)}</div>
+    ${kids.length ? `<h3 style="margin:16px 0 6px">${esc(ctx.t("Hvem må styre sit eget lys fra spillet"))}</h3><div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${kids.map((m) => row(m.name, "", "set-gr-kid", m.id, !g.kids_off.includes(m.id))).join("")}</div>` : ""}
+    ${ents("light", "Lys, spillet må styre")}
+    <h3 style="margin:16px 0 6px">${esc(ctx.t("Butikken i spillet"))}</h3><p class="t-sub">${esc(ctx.t("Lås ting og steder op, sæt priser, lås ting og giv mønter."))}</p>
+    <button class="btn" data-act="open-game-admin">🔑 ${esc(ctx.t("Åbn forældrestyringen af spillet"))}</button></section>`;
+}
 function rightsSection(ctx) {
   return `<section class="card" data-st="ret"><div class="card-head"><h2>${esc(ctx.t("Rettigheder"))}</h2>${lockTag(ctx)}</div>
     <div class="rights"><span class="h">${esc(ctx.t("Kan"))}</span><span class="h">${esc(ctx.t("Forælder"))}</span><span class="h">${esc(ctx.t("Barn"))}</span>${RIGHTS.map(([t, a, b]) => `<span>${esc(ctx.t(t))}</span><span class="${a ? "y" : "n"}">${svg(a ? "check" : "x")}</span><span class="${b ? "y" : "n"}">${svg(b ? "check" : "x")}</span>`).join("")}</div>
@@ -1179,6 +1200,7 @@ function renderSettings(ctx) {
   else if (TAB === "qa") body = qaSection(ctx);
   else if (TAB === "alarm") body = alarmSection(ctx);
   else if (TAB === "ret") body = rightsSection(ctx);
+  else if (TAB === "spil") body = gameSection(ctx);
   else if (TAB === "familie") {
     const problem = familyProblem(ctx, F);
     body = `<section class="card" data-st="familie"><div class="card-head"><h2>${esc(ctx.t("Familien"))}</h2>${lockTag(ctx)}</div>
@@ -1429,6 +1451,29 @@ const acts = {
     const modes = L.includes(id) ? L.filter((x) => x !== id) : AL_MODES.map((m) => m[0]).filter((m) => m === id || L.includes(m));
     el.setAttribute("aria-pressed", String(modes.includes(id)));
     setS(ctx, { alarm_rights: { ...r, modes } });
+  },
+  "set-gr": (el, e, ctx) => {
+    const g = { ...GAME_RIGHTS, ...(ctx.data.settings.game_rights || {}) };
+    g[el.dataset.id] = !g[el.dataset.id];
+    el.setAttribute("aria-pressed", String(g[el.dataset.id]));
+    setS(ctx, { game_rights: g });
+  },
+  "set-gr-kid": (el, e, ctx) => {
+    const g = { ...GAME_RIGHTS, ...(ctx.data.settings.game_rights || {}) }, id = el.dataset.id;
+    g.kids_off = g.kids_off.includes(id) ? g.kids_off.filter((x) => x !== id) : [...g.kids_off, id];
+    el.setAttribute("aria-pressed", String(!g.kids_off.includes(id)));
+    setS(ctx, { game_rights: g });
+  },
+  "set-gr-ent": (el, e, ctx) => {
+    const g = { ...GAME_RIGHTS, ...(ctx.data.settings.game_rights || {}) }, id = el.dataset.id;
+    g.block = g.block.includes(id) ? g.block.filter((x) => x !== id) : [...g.block, id];
+    el.setAttribute("aria-pressed", String(!g.block.includes(id)));
+    setS(ctx, { game_rights: g });
+  },
+  // the game's own shop, for the grown-ups: unlock, prices, locks and coins (hv-play brings it)
+  "open-game-admin": async (el, e, ctx) => {
+    const [, P] = await Promise.all([import("./hv-play.js"), import("./hv-parent.js")]);
+    P.sheet(ctx);
   },
   "set-alset": (el, e, ctx) => {
     const r = { code_arm: false, kids_arm: true, kids_disarm: false, modes: [], ...(ctx.data.settings.alarm_rights || {}) };
@@ -1967,6 +2012,17 @@ const en = {
   "Kræv kode ved frakobling": "Require a code to disarm",
   "Koderne er brugernes egne koder i {alarm}. Hverdagsro sender koden videre, og {alarm} afgør, om den er rigtig.": "The codes are the users' own codes in {alarm}. Hverdagsro passes the code on, and {alarm} decides whether it is right.",
   "Rettigheder": "Permissions",
+  Spillet: "The game",
+  "Alle kan tænde og slukke lyset i alle rum i spillet. Kun lyset på børnenes værelser er rigtigt, og kun barnet selv kan styre det i sit eget værelse. Her bestemmer I resten.": "Everybody can switch the light in every room of the game. Only the lights in the children's rooms are real, and only the child can control it in their own room. You decide the rest here.",
+  "Børn styrer det rigtige lys i eget værelse": "Children control the real light in their own room",
+  "Slås det fra, er lyset i spillet kun til pynt.": "If this is off, the light in the game is only for show.",
+  "Spillet viser, at tv og højttalere kører": "The game shows that the tv and speakers are playing",
+  "Det rigtige tv og de rigtige højttalere kan aldrig styres fra spillet.": "The real tv and speakers can never be controlled from the game.",
+  "Hvem må styre sit eget lys fra spillet": "Who may control their own light from the game",
+  "Lys, spillet må styre": "Lights the game may control",
+  "Butikken i spillet": "The shop in the game",
+  "Lås ting og steder op, sæt priser, lås ting og giv mønter.": "Unlock things and places, set prices, lock things and give coins.",
+  "Åbn forældrestyringen af spillet": "Open the grown-ups' controls of the game",
   "Hjemmets navn og sprog": "Home name and language",
   "Det, Hverdagsro bruger fra Home Assistant: vejret, kalendere, lister, alarm, kameraer, elpris og affald.": "What Hverdagsro uses from Home Assistant: weather, calendars, lists, alarm, cameras, electricity price and waste.",
   "{name} går i {inst}": "{name} goes to {inst}",

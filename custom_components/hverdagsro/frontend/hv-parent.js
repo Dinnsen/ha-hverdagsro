@@ -23,6 +23,8 @@ export const locked = (ctx, id, packId = "") => {
   return (c.locked || []).includes(id) || (!!packId && (c.locked || []).includes(`pack:${packId}`));
 };
 export const isGrownUp = (ctx) => !!ctx.data?.can_manage;
+/* What the room game may do to the real house (Indstillinger › Spillet): all on, until a grown-up says otherwise. */
+export const rights = (ctx) => ({ light: true, media: true, kids_off: [], block: [], ...(ctx.data?.settings?.game_rights || {}) });
 
 /* ------------------------------------------------------------------ the sheet */
 const TABS = [["kid", "👧", "Barnet"], ["price", "💰", "Priser"], ["lock", "🔒", "Låse"]];

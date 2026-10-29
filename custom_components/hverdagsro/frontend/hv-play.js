@@ -326,7 +326,17 @@ function realLights(ctx, m) {
   const rooms = ctx.data.house?.rooms || [];
   return roomLights(ctx, rooms.find((x) => x.kid === m.id) || rooms.find((x) => new RegExp(`(^|[^a-zæøå])${m.name.split(" ")[0]}`, "i").test(x.name || "")));
 }
-/* The lights where the child is: their own room, a sibling's, or a room of the house (shown; only the own room's can be switched). */
+/* The light of the place where the child is. Everybody can switch the light in every room of the game; only the light of the
+   child's own room is the real one (and only that child's, if the grown-ups allow it): everywhere else the game switches its
+   own light, and the real lights are only shown. real: the real lights this switch works. */
+function lampOf(ctx, m, sid) {
+  const shown = lightsAt(ctx, m, sid), R2 = Parent.rights(ctx);
+  const real = sid === "vaerelse" && R2.light && !R2.kids_off.includes(ST.kid) ? shown.filter((id) => !R2.block.includes(id)) : [];
+  const realOn = shown.some((id) => ctx.hass.states[id]?.state === "on");
+  const local = ST.lamp?.[sid];
+  return { real, shown, lit: real.length ? realOn : local ?? realOn };
+}
+/* The lights where the child is: their own room, a sibling's, or a room of the house. */
 function lightsAt(ctx, m, sid) {
   if (sid === "vaerelse") return realLights(ctx, m);
   if (visitKid(sid)) return realLights(ctx, ctx.member(visitKid(sid)) || m);
@@ -530,7 +540,7 @@ function familyLook(x) {
   return { skin: SKINS[n % 3], hair: ["kort", "lang", "pjusk", "hale", "knold", "kroller"][(n >> 3) % 6], hairc: HAIRC[(n >> 6) % 5], top: x.color || "#6E4AFF", bottom: ["#3A3A55", "#4D96FF", "#5B3A21"][(n >> 9) % 3], extra: (n >> 11) % 3 ? "ingen" : "briller", topk: x.role === "child" ? "tshirt" : ["skjorte", "jakke", "cardigan", "stribet"][(n >> 13) % 4], botk: x.role === "child" ? "bukser" : "jeans", shoek: "sneakers" };
 }
 function stage(ctx, m) {
-  const d = ST.d, room = R(), sid = spaceId(), [s0, s1, tod] = sky(ctx), lights = lightsAt(ctx, m, sid), lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
+  const d = ST.d, room = R(), sid = spaceId(), [s0, s1, tod] = sky(ctx), { lit } = lampOf(ctx, m, sid);
   syncCurtains(ctx, room, sid);
   World.BG.wx = weatherNow(ctx);
   const happy = bubbles(ctx, m).length < 3, pl = placeOf(ctx, sid), vk = visitKid(sid), dd = vk ? room : d;
@@ -564,7 +574,7 @@ function stage(ctx, m) {
   }
   else s += Art.bg(`place-${sid}`, rw) ?? backdrop(sid, s0, s1, tod);
   // The light switch for the real lights of the room.
-  if (lights.length && !vk && sid === "vaerelse") s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset her"))}"><rect x="${sid === "vaerelse" ? 500 : rw - 80}" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="${sid === "vaerelse" ? 510 : rw - 70}" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
+  if (!ST.build) s += `<g class="pl-switch${lit ? " on" : ""}" data-pl="light" role="button" aria-label="${esc(ctx.t("Lyset her"))}"><rect x="${sid === "vaerelse" ? 500 : rw - 80}" y="210" width="40" height="60" rx="8" fill="#fff" ${S()}/><rect x="${sid === "vaerelse" ? 510 : rw - 70}" y="${lit ? 222 : 240}" width="20" height="20" rx="5" fill="${lit ? "#FFD93D" : "#CFCFE0"}" ${S("stroke-width=\"3\"")}/></g>`;
   // The real tv: what plays on it plays in the game too.
   liveTv(ctx, sid, room);
   // Things put up on a table or a shelf before tops existed stand on them now.
@@ -803,7 +813,7 @@ function render(ctx) {
     ST.map = ST.shop = ST.build = false;
     if (spaceId() !== "vaerelse") ST.d.space = "vaerelse";
   }
-  const t = ctx.t, B = bubbles(ctx, m), pts = ctx.points(m.id), sid = spaceId(), lights = lightsAt(ctx, m, sid), lit = lights.some((id) => ctx.hass.states[id]?.state === "on");
+  const t = ctx.t, B = bubbles(ctx, m), pts = ctx.points(m.id), sid = spaceId(), { real: ownLights, lit } = lampOf(ctx, m, sid);
   const g = game(ctx, m), lv = levelOf(g.xp), lo = LEVELS[lv - 1] || 0, hi = LEVELS[lv];
   const prog = hi ? Math.round(((g.xp - lo) / (hi - lo)) * 100) : 100;
   const sub = ST.shop ? t("Byt dine mønter til nye ting. Mønter får du for rutiner, opgaver og lektier.") : ST.build ? t("Træk tingene derhen, hvor de skal stå. Tryk på noget for at ændre det.") : B.length ? t("Tryk på boblerne, når du har gjort det.") : t("Alt er klaret lige nu. Godt gået!");
@@ -812,7 +822,7 @@ function render(ctx) {
       <span class="pl-lv" title="${esc(hi ? t("{n} XP til næste niveau", { n: hi - g.xp }) : t("Højeste niveau"))}"><b>${esc(t("Niveau {n}", { n: lv }))}</b><i style="--p:${prog}%"></i></span>
       ${ctx.feature(m, "points") ? `<span class="pl-pill pl-pts-pill" title="${esc(t("Point"))}">${svg("pstar")}<b class="num">${pts}</b></span>` : ""}</div></div>
     <div class="pl-bar">${ST.shop ? `<button class="btn soft" data-pl="shop">${svg("back")}${esc(t("Tilbage til værelset"))}</button>` : `<div class="pl-where"><button class="btn${ST.map ? "" : " soft"} pl-mapb" data-pl="map">${ST.map ? svg("back") : "🗺️"}${esc(ST.map ? t("Tilbage") : t("Kort"))}</button>${ST.map ? "" : `<span class="pl-here">${esc(placeName(ctx, sid))}</span>`}</div>
-      <div class="pl-bar-b">${lights.length && sid === "vaerelse" && !ST.build && !ST.map ? `<button class="btn soft" data-go="mitlys" aria-label="${esc(t("Lys og stemning"))}">${svg("bulb")}<span class="pl-hide-s">${esc(t("Lys og stemning"))}</span></button>` : ""}${!ST.map && !ST.build && floorList(sid) ? `<button class="btn soft pl-floorb" data-act="play-floors" aria-label="${esc(t("Etager"))}" title="${esc(t("Etager"))}">🛗<span class="pl-hide-s">${esc(t("Etager"))}</span></button>` : ""}<button class="btn soft pl-shopb" data-pl="shop">${COIN}<span class="pl-hide-s">${esc(t("Butikken"))}</span></button>${visitKid(sid) || ST.map ? "" : `<button class="btn${ST.build ? "" : " soft"}" data-pl="build">${svg(ST.build ? "check" : "edit")}${esc(ST.build ? t("Færdig") : t("Byg"))}</button>`}${ST.map ? "" : `<button class="btn soft pl-storyb" data-pl="story" aria-label="${esc(t("Mine historier"))}" title="${esc(t("Mine historier"))}">📸</button>`}<button class="btn soft pl-famb" data-pl="fun" aria-label="${esc(t("Familieleg"))}">👨‍👩‍👧<span class="pl-hide-s">${esc(t("Familie"))}</span>${Fun.badge(ctx) ? `<i class="fun-n">${Fun.badge(ctx)}</i>` : ""}</button><button class="btn soft pl-sndb" data-pl="sound" aria-label="${esc(t("Lyd"))}" title="${esc(t("Lyd"))}">${soundIcon()}</button><button class="btn soft pl-fullb" data-pl="full" aria-label="${esc(ST.full ? t("Luk fuld skærm") : t("Fuld skærm"))}">${ST.full ? "✕" : "⛶"}</button></div>`}</div>`;
+      <div class="pl-bar-b">${ownLights.length && !ST.build && !ST.map ? `<button class="btn soft" data-go="mitlys" aria-label="${esc(t("Lys og stemning"))}">${svg("bulb")}<span class="pl-hide-s">${esc(t("Lys og stemning"))}</span></button>` : ""}${!ST.map && !ST.build && floorList(sid) ? `<button class="btn soft pl-floorb" data-act="play-floors" aria-label="${esc(t("Etager"))}" title="${esc(t("Etager"))}">🛗<span class="pl-hide-s">${esc(t("Etager"))}</span></button>` : ""}<button class="btn soft pl-shopb" data-pl="shop">${COIN}<span class="pl-hide-s">${esc(t("Butikken"))}</span></button>${visitKid(sid) || ST.map ? "" : `<button class="btn${ST.build ? "" : " soft"}" data-pl="build">${svg(ST.build ? "check" : "edit")}${esc(ST.build ? t("Færdig") : t("Byg"))}</button>`}${ST.map ? "" : `<button class="btn soft pl-storyb" data-pl="story" aria-label="${esc(t("Mine historier"))}" title="${esc(t("Mine historier"))}">📸</button>`}<button class="btn soft pl-famb" data-pl="fun" aria-label="${esc(t("Familieleg"))}">👨‍👩‍👧<span class="pl-hide-s">${esc(t("Familie"))}</span>${Fun.badge(ctx) ? `<i class="fun-n">${Fun.badge(ctx)}</i>` : ""}</button><button class="btn soft pl-sndb" data-pl="sound" aria-label="${esc(t("Lyd"))}" title="${esc(t("Lyd"))}">${soundIcon()}</button><button class="btn soft pl-fullb" data-pl="full" aria-label="${esc(ST.full ? t("Luk fuld skærm") : t("Fuld skærm"))}">${ST.full ? "✕" : "⛶"}</button></div>`}</div>`;
   if (ST.shop) return `<div class="pl" style="--pc:${esc(m.color)}">${head}${shop(ctx, m, g, lv)}</div>`;
   if (ST.map) {
     const peers = Object.entries(ST.peers || {}).filter(([id, pe]) => id !== m.id && Date.now() - (pe.seen || 0) < 45000).map(([id, pe]) => ({ ...pe, color: ctx.member(id)?.color }));
@@ -1664,7 +1674,7 @@ function takeInHand(ctx, it) {
 /* The real tv of a room of the house (from Husbyggeren, with its media player): when something plays on it, the game's
    tv in that room is on, with the title over it. */
 function liveTv(ctx, sid, room) {
-  if (!String(sid).startsWith("h:")) return;
+  if (!String(sid).startsWith("h:") || !Parent.rights(ctx).media) return;
   const house = World.houseData(ctx), r = (house.rooms || []).find((x) => `h:${x.id}` === sid);
   if (!r || !Array.isArray(r.pts)) return;
   const inside = (x, y, pts) => {
@@ -2167,7 +2177,7 @@ function itemTap(ctx, el) {
   const k = it.k, fx = Fix.fxOf(k), T0 = CAT[k];
   if (/^mirror/.test(Fix.shapeOf(k)) || /spejl|mirror/i.test(k)) return Faces.mirror(ctx);
   // the tv and the speakers of the real house only show whether they play; the game cannot switch them
-  if (String(spaceId()).startsWith("h:") && realMedia(k)) {
+  if (String(spaceId()).startsWith("h:") && realMedia(k) && Parent.rights(ctx).media) {
     Sound.sfx("tap");
     return ctx.toast(ctx.t(realMedia(k) === "tv" ? "Det er det rigtige TV. Her kan du se, om det kører, men ikke styre det." : "Det er den rigtige højttaler. Her kan du se, om den spiller, men ikke styre den."));
   }
@@ -2415,16 +2425,17 @@ function realCurtains(ctx, it) {
   for (const x of room.items) if (x.k === "hd-hjem-gardin") x.on = it.on;
   setTimeout(() => redraw(ctx), 400);
 }
-/* The real lights can only be switched from the child's own room; elsewhere (a sibling's room, a room of the house) the
-   game only shows how they are. */
+/* The light switch on the wall: the real lights in the child's own room, the game's own light everywhere else. */
 async function toggleLight(ctx) {
-  if (spaceId() !== "vaerelse") return;
-  const lights = lightsAt(ctx, ctx.me, spaceId());
-  if (!lights.length) return;
-  const on = lights.some((id) => ctx.hass.states[id]?.state === "on");
+  const sid = spaceId(), { real, lit } = lampOf(ctx, ctx.me, sid);
+  Sound.sfx("tap");
+  if (!real.length) {
+    (ST.lamp ||= {})[sid] = !lit;
+    return redraw(ctx);
+  }
   const sw = ctx.root.querySelector(".pl-switch");
-  sw?.classList.toggle("on", !on);
-  await ctx.call("light", on ? "turn_off" : "turn_on", { entity_id: lights });
+  sw?.classList.toggle("on", !lit);
+  await ctx.call("light", lit ? "turn_off" : "turn_on", { entity_id: real });
   setTimeout(() => redraw(ctx), 600);
 }
 
