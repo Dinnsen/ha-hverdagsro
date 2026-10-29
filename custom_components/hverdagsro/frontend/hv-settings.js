@@ -911,7 +911,7 @@ function alarmSection(ctx) {
 }
 
 /* What Mit værelse (the game) may do to the real house, and the game's own shop: who can switch what from the game. */
-const GAME_RIGHTS = { light: true, covers: true, media: true, kids_off: [], block: [] };
+const GAME_RIGHTS = { light: true, media: true, kids_off: [], block: [] };
 function gameSection(ctx) {
   const g = { ...GAME_RIGHTS, ...(ctx.data.settings.game_rights || {}) };
   const kids = ctx.members().filter((m) => m.role === "child");
@@ -924,9 +924,9 @@ function gameSection(ctx) {
   };
   return `<section class="card" data-st="spil"><div class="card-head"><h2>${esc(ctx.t("Spillet"))}</h2>${lockTag(ctx)}</div>
     <p class="t-sub" style="margin:-4px 0 10px">${esc(ctx.t("Alle kan tænde og slukke lyset i alle rum i spillet. Kun lyset på børnenes værelser er rigtigt, og kun barnet selv kan styre det i sit eget værelse. Her bestemmer I resten."))}</p>
-    <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${row(ctx.t("Børn styrer det rigtige lys i eget værelse"), ctx.t("Slås det fra, er lyset i spillet kun til pynt."), "set-gr", "light", g.light)}${row(ctx.t("Gardinerne i spillet styrer de rigtige"), ctx.t("Gardiner og persienner i husets rum."), "set-gr", "covers", g.covers)}${row(ctx.t("Spillet viser, at tv og højttalere kører"), ctx.t("Det rigtige tv og de rigtige højttalere kan aldrig styres fra spillet."), "set-gr", "media", g.media)}</div>
+    <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${row(ctx.t("Børn styrer det rigtige lys i eget værelse"), ctx.t("Slås det fra, er lyset i spillet kun til pynt."), "set-gr", "light", g.light)}${row(ctx.t("Spillet viser, at tv og højttalere kører"), ctx.t("Det rigtige tv og de rigtige højttalere kan aldrig styres fra spillet."), "set-gr", "media", g.media)}</div>
     ${kids.length ? `<h3 style="margin:16px 0 6px">${esc(ctx.t("Hvem må styre sit eget lys fra spillet"))}</h3><div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${kids.map((m) => row(m.name, "", "set-gr-kid", m.id, !g.kids_off.includes(m.id))).join("")}</div>` : ""}
-    ${ents("light", "Lys, spillet må styre")}${ents("cover", "Gardiner, spillet må styre")}
+    ${ents("light", "Lys, spillet må styre")}
     <h3 style="margin:16px 0 6px">${esc(ctx.t("Butikken i spillet"))}</h3><p class="t-sub">${esc(ctx.t("Lås ting og steder op, sæt priser, lås ting og giv mønter."))}</p>
     <button class="btn" data-act="open-game-admin">🔑 ${esc(ctx.t("Åbn forældrestyringen af spillet"))}</button></section>`;
 }
@@ -2016,13 +2016,10 @@ const en = {
   "Alle kan tænde og slukke lyset i alle rum i spillet. Kun lyset på børnenes værelser er rigtigt, og kun barnet selv kan styre det i sit eget værelse. Her bestemmer I resten.": "Everybody can switch the light in every room of the game. Only the lights in the children's rooms are real, and only the child can control it in their own room. You decide the rest here.",
   "Børn styrer det rigtige lys i eget værelse": "Children control the real light in their own room",
   "Slås det fra, er lyset i spillet kun til pynt.": "If this is off, the light in the game is only for show.",
-  "Gardinerne i spillet styrer de rigtige": "The curtains in the game control the real ones",
-  "Gardiner og persienner i husets rum.": "Curtains and blinds in the rooms of the house.",
   "Spillet viser, at tv og højttalere kører": "The game shows that the tv and speakers are playing",
   "Det rigtige tv og de rigtige højttalere kan aldrig styres fra spillet.": "The real tv and speakers can never be controlled from the game.",
   "Hvem må styre sit eget lys fra spillet": "Who may control their own light from the game",
   "Lys, spillet må styre": "Lights the game may control",
-  "Gardiner, spillet må styre": "Curtains the game may control",
   "Butikken i spillet": "The shop in the game",
   "Lås ting og steder op, sæt priser, lås ting og giv mønter.": "Unlock things and places, set prices, lock things and give coins.",
   "Åbn forældrestyringen af spillet": "Open the grown-ups' controls of the game",

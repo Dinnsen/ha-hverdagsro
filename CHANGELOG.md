@@ -2,7 +2,14 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
-<<<<<<< Updated upstream
+## [0.23.0] - 2026-10-29
+
+### Added
+- **Indstillinger › Spillet:** the grown-ups decide what the room game may do to the real house: whether a child controls the real light of their own room from the game, whether the game shows that the real tv and speakers play, which children may control their own light, and exactly which lights the game may control. The game's shop (unlock, prices, locks, coins) opens from there too.
+
+### Changed
+- **Everybody can switch the light in every room of the game.** Only the lights in the children's rooms are real, and only the child can control their own: in the child's own room the switch works the real lights (if the grown-ups allow it); in every other room (a sibling's room, the rooms of the house, the places of the world) it switches the game's own light and the real lights are only shown. (0.21.0 had taken the switch away from those rooms.)
+
 ## [0.22.0] - 2026-10-28
 
 ### Added
@@ -15,15 +22,6 @@ All notable changes to Hverdagsro. The version is the one in `custom_components/
 - **Every room of the house is fuller:** bookcases and open shelves with things on them, shelves on the wall, a fridge and a cupboard with things inside, pictures, a clock, a plant, a basket. What the family has put in a room in Husbyggeren stays where it is; the rest is added around it.
 - A place of the world can be a wide room that scrolls (`width` on the place), like the rooms of the house.
 - `hv-fixtures.js` can be told about more things that open or work (`registerFx`), and things have shelves inside while they are open.
-=======
-## [0.22.0] - 2026-10-29
-
-### Added
-- **Indstillinger › Spillet:** the grown-ups decide what the room game may do to the real house: whether a child controls the real light of their own room from the game, whether the curtains in the game control the real ones, whether the game shows that the real tv and speakers play, which children may control their own light, and exactly which lights and curtains the game may control. The game's shop (unlock, prices, locks, coins) opens from there too.
-
-### Changed
-- **Everybody can switch the light in every room of the game.** Only the lights in the children's rooms are real, and only the child can control their own: in the child's own room the switch works the real lights (if the grown-ups allow it); in every other room (a sibling's room, the rooms of the house, the places of the world) it switches the game's own light and the real lights are only shown. (0.21.0 had taken the switch away from those rooms.)
->>>>>>> Stashed changes
 
 ## [0.21.0] - 2026-10-28
 
