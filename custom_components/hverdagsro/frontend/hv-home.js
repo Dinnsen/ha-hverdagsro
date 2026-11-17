@@ -6,6 +6,7 @@ import { svg } from "./hv-icons.js";
 import * as Rooms from "./hv-rooms.js";
 import * as Kids from "./hv-kids.js";
 import * as House from "./hv-house.js";
+import { evInstalled } from "./hv-evhouse.js";
 
 const SKINS = [
   ["standard", "Hverdagsro", "#6E4AFF", "#F2F4F6"],
@@ -862,11 +863,21 @@ function meRow(ctx, m, q, i, n) {
     <span class="ord">${i >= 0 ? `<button class="iconbtn" data-act="home-qaup" data-id="${esc(q.id)}" aria-label="${esc(ctx.t("Flyt op"))}" ${i === 0 ? "disabled" : ""}>${svg("up")}</button><button class="iconbtn" data-act="home-qadown" data-id="${esc(q.id)}" aria-label="${esc(ctx.t("Flyt ned"))}" ${i === n - 1 ? "disabled" : ""}>${svg("down")}</button>` : ""}</span>
     <button class="toggle" data-act="home-qahide" data-id="${esc(q.id)}" aria-pressed="${!hidden}" aria-label="${esc(ctx.t("Vis {what} i min +-menu", { what: q.label }))}" style="--tc:${esc(q.color)}"></button></div>`;
 }
+/* Udseende: the same three looks as EV Planner and Middagsro; and the house in the header in 2D or 3D. */
+function lookPicker(ctx, m) {
+  const studio = (ctx.hass?.config?.components || []).includes("theme_studio");
+  const looks = [["hverdag", "Hverdag"], ["frisk", "Frisk"], ...(studio ? [["studio", "Theme Studio"]] : [])];
+  const look = looks.some(([k]) => k === m.look) ? m.look : "hverdag";
+  const house = evInstalled(ctx.hass) && ctx.data.settings.scene?.house;
+  return `<div class="look-row"><span class="t-sub">${esc(ctx.t("Udseende"))}</span><div class="seg">${looks.map(([k, n]) => `<button data-act="home-pref" data-k="look" data-id="${k}" aria-pressed="${look === k}">${esc(ctx.t(n))}</button>`).join("")}</div></div>
+    ${house ? `<div class="look-row"><span class="t-sub">${esc(ctx.t("Huset"))}</span><div class="seg">${[["2d", "2D"], ["3d", "3D"]].map(([k, n]) => `<button data-act="home-pref" data-k="top" data-id="${k}" aria-pressed="${(m.top || "2d") === k}">${n}</button>`).join("")}</div></div>` : ""}`;
+}
 function skinPicker(ctx, m) {
   const skin = m.skin || "standard", mode = m.mode || "auto";
   return `<section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Tema"))}</h2><span class="meta">${esc(ctx.t("Kun for {name}", { name: m.name }))}</span></div>
     <div class="sk-grid">${SKINS.map(([k, n, acc, bg]) => `<button class="sk" data-act="home-skin" data-id="${k}" aria-pressed="${skin === k}" style="--sa:${acc};--sb:${bg}"><span class="sk-prev"><i class="sk-sky"></i><i class="sk-card"></i><i class="sk-btn"></i><i class="sk-chip"></i></span><b>${esc(ctx.t(n))}</b></button>`).join("")}</div>
-    <div class="seg" style="margin-top:14px;max-width:360px">${[["auto", "Automatisk"], ["light", "Lyst"], ["dark", "Mørkt"]].map(([k, n]) => `<button data-act="home-skinmode" data-id="${k}" aria-pressed="${mode === k}" ${skin === "rummet" ? "disabled" : ""}>${esc(ctx.t(n))}</button>`).join("")}</div></section>`;
+    <div class="seg" style="margin-top:14px;max-width:360px">${[["auto", "Automatisk"], ["light", "Lyst"], ["dark", "Mørkt"]].map(([k, n]) => `<button data-act="home-skinmode" data-id="${k}" aria-pressed="${mode === k}" ${skin === "rummet" ? "disabled" : ""}>${esc(ctx.t(n))}</button>`).join("")}</div>
+    ${lookPicker(ctx, m)}</section>`;
 }
 function pMe(ctx) {
   const p = ctx.me;
@@ -1389,6 +1400,12 @@ const acts = {
   "home-photo"(el, ev, ctx) {
     pickPhoto(ctx, el.dataset.id);
   },
+  "home-pref"(el, ev, ctx) {
+    const m = ctx.me;
+    if (!m) return;
+    setPrefs(ctx, m, { [el.dataset.k]: el.dataset.id });
+    ctx.applyTheme?.();
+  },
   "home-msg"(el, ev, ctx) {
     const m = ctx.me;
     if (!m) return;
@@ -1524,6 +1541,9 @@ const css = `
 `;
 
 const en = {
+  Udseende: "Look",
+  Hverdag: "Hverdag",
+  Frisk: "Frisk",
   "Min menu": "My menu", Nulstil: "Reset", "Under Mere": "Under More", Startsiden: "Start page", "Under Mere på telefonen": "Under More on the phone", "I menuen": "In the menu", "Vis {name} i menuen": "Show {name} in the menu",
   "Sæt fanerne i din egen rækkefølge. Den øverste er din startside. På telefonen står de fire første i bunden, resten under Mere. Slår du en fane fra, ligger den under Mere.": "Put the tabs in your own order. The top one is your start page. On the phone the first four are at the bottom, the rest under More. A tab you turn off goes under More.",
   "Hverdagsro på hjemmeskærmen": "Hverdagsro on the home screen", "Hverdagsro er åbnet fra hjemmeskærmen.": "Hverdagsro is open from the home screen.",

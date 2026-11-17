@@ -8,6 +8,7 @@ import { svg } from "./hv-icons.js";
 import { addTexts, setModule } from "./hv-text.js";
 import { createSky, weatherKind } from "./hv-sky.js";
 import { activeDecor, ageOn, occasions, wedName } from "./hv-decor.js";
+import { loadEv, mountClay, skyHooks } from "./hv-evhouse.js";
 import home from "./hv-home.js";
 import lists from "./hv-lists.js";
 import music from "./hv-music.js";
@@ -179,6 +180,7 @@ class HverdagsroPanel extends HTMLElement {
       <div class="hv-app" id="app">
         <header class="hero compact" id="hero">
           <canvas id="sky" aria-hidden="true"></canvas>
+          <div class="clay-top" id="clay-top" aria-hidden="true" hidden></div>
           <button class="waste-hit" id="waste-hit" hidden></button>
           <div class="wrap">
             <div class="hero-top">
@@ -212,6 +214,7 @@ class HverdagsroPanel extends HTMLElement {
       alarm: () => this._alarmLook(),
       waste: () => this._bins(),
       wasteButton: ctx.$("waste-hit"),
+      ...skyHooks(() => this._scene()),
     });
     this._sky.start();
     this._bindHeader();
@@ -264,6 +267,35 @@ class HverdagsroPanel extends HTMLElement {
     const dark = skin === "rummet" || (mode === "auto" ? !!ctx.hass?.themes?.darkMode : mode === "dark");
     this.setAttribute("data-skin", skin);
     this.setAttribute("data-theme", dark ? "dark" : "light");
+    // The look: Hverdag, Frisk, or Theme Studio when it is installed.
+    const studio = (ctx.hass?.config?.components || []).includes("theme_studio");
+    const look = m?.look === "frisk" || (m?.look === "studio" && studio) ? m.look : "hverdag";
+    this.setAttribute("data-look", look);
+    this._clayTop();
+    this._sky?.redraw();
+  }
+
+  /* EV Planner's house in the header, when EV Planner is installed and the family has chosen a house:
+     { view, house, cars, decor }, or null for Hverdagsro's own house. */
+  _scene() {
+    const ctx = this.ctx, sc = ctx.data?.settings?.scene;
+    if (!sc?.house || !loadEv(ctx.hass, () => { this._clayTop(); this._sky?.redraw(); })) return null;
+    return { view: ctx.me?.top === "3d" ? "3d" : "2d", house: sc.house, cars: sc.cars || [], decor: this._decor()[0]?.key || null };
+  }
+
+  // 3D: the clay house stands on the hill over the sky; it follows the hour of the sky.
+  _clayTop() {
+    const host = this.ctx.$?.("clay-top");
+    if (!host) return;
+    const s = this._scene();
+    host.hidden = !(s && s.view === "3d");
+    if (host.hidden) return;
+    if (!this._clay) this._clay = mountClay(host, host.parentElement);
+    const h = this._sky?.hour ?? 12, el = this._sky?.sunElev?.(h) ?? 1;
+    const key = JSON.stringify([s, Math.round(h * 4)]);
+    if (this._clayKey === key) return;
+    this._clayKey = key;
+    this._clay?.update(s, Math.max(0, Math.min(1, (0.18 - el) / 0.42)));
   }
 
   // ------------------------------------------------------------------ render
@@ -292,6 +324,7 @@ class HverdagsroPanel extends HTMLElement {
   }
 
   _render() {
+    this._clayTop();
     const ctx = this.ctx;
     if (!ctx.data) return;
     this._lastRender = performance.now();

@@ -14,6 +14,7 @@ from .const import (
     EVERYONE,
     INSTITUTIONS,
     KID_FEATURES,
+    LOOKS,
     MAX_HOUSE_BYTES,
     MAX_MEMBERS,
     MAX_MISSIONS,
@@ -28,6 +29,7 @@ from .const import (
     ROLES,
     SKIN_MODES,
     SKINS,
+    TOPS,
 )
 from .schema import vol
 
@@ -187,6 +189,8 @@ MEMBER = vol.Schema(
         vol.Optional("institution", default="none"): vol.In(INSTITUTIONS),
         vol.Optional("skin", default="standard"): vol.In(SKINS),
         vol.Optional("mode", default="auto"): vol.In(SKIN_MODES),
+        vol.Optional("look", default="hverdag"): vol.In(LOOKS),
+        vol.Optional("top", default="2d"): vol.In(TOPS),
         vol.Optional("calendar", default=None): optional_entity,
         vol.Optional("device_tracker", default=None): optional_entity,
         vol.Optional("title", default=""): text(20),
@@ -273,6 +277,20 @@ SETTINGS = vol.Schema(
         vol.Optional("waste", default=[]): vol.All(cv.ensure_list, [WASTE], vol.Length(max=8)),
         vol.Optional("decor", default={}): {vol.Coerce(str): cv.boolean},
         vol.Optional("decor_days", default={}): {vol.Coerce(str): vol.All(vol.Coerce(int), vol.Range(min=0, max=60))},
+        # EV Planner's house and the family's cars in the header (when EV Planner is installed); no house: Hverdagsro's own.
+        vol.Optional("scene", default={}): {
+            vol.Optional("house", default=None): vol.Any(None, text(20, 1)),
+            vol.Optional("cars", default=list): vol.All(
+                cv.ensure_list,
+                [
+                    {
+                        vol.Required("body"): vol.In(("mini", "sedan", "suv", "estate", "van")),
+                        vol.Required("paint"): vol.In(("white", "black")),
+                    }
+                ],
+                vol.Length(max=2),
+            ),
+        },
         vol.Optional("anniversaries", default={}): {vol.In(("together", "wedding")): iso_date},
         vol.Optional("mission_reset", default="00:00"): hhmm,
         vol.Optional("language", default="auto"): vol.In(("auto", "da", "en")),

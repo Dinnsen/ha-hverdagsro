@@ -6,7 +6,9 @@ export const WX = { rain: { over: .62, clouds: 10, drops: 1 }, cloudy: { over: .
 export const weatherKind = (state) => ({ rainy: "rain", pouring: "rain", "lightning-rainy": "rain", lightning: "rain", hail: "rain", snowy: "snow", "snowy-rainy": "snow", cloudy: "cloudy", fog: "cloudy", windy: "cloudy", "windy-variant": "cloudy", partlycloudy: "partly", sunny: "sun", "clear-night": "sun", exceptional: "cloudy" })[state] || "partly";
 
 /* opts: { decor() → [{key, who, a, b, d0}], alarm() → {state, color, speed} | null, waste() → [{body, lid, label, soon}],
-           house: bool, car() → {charging} | null, wasteButton: element } */
+           house: bool, car() → {charging} | null, wasteButton: element,
+           houseDraw(cx, at) → {cx, w, h, line, slot} | null (another house in the sky: EV Planner's), spot(W, H) → x,
+           front(cx, at) (drawn in front of the hill), fireX(W) → x, res } */
 export function createSky(cv, opts) {
   const cx = cv.getContext("2d");
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -25,7 +27,7 @@ function seed() {
 }
 seed();
 function resize() {
-  DPR = Math.min(devicePixelRatio || 1, 2);
+  DPR = opts.res || Math.min(devicePixelRatio || 1, 2);
   const r = cv.getBoundingClientRect(); if (!r.width) return;
   if (Math.abs(r.width - W) < 1 && Math.abs(r.height - H) < 1) return;
   W = r.width; H = r.height; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -74,6 +76,7 @@ function draw(dt, T) {
       for (let x = 0; x <= W + 8; x += 8) cx.lineTo(x, hill(x, H * b, amp, f, ph)); cx.lineTo(W, H); cx.fill();
       if (li === 1) drawHouse(dark);
     });
+    if (opts.front) opts.front(cx, { W, H, dark, T: performance.now() / 1000, gY, hour });
   } else {
     const col = mix(hex("#1F7470"), hex("#111A2E"), dark); cx.fillStyle = rgb(col, .5); cx.beginPath(); cx.moveTo(0, H);
     for (let x = 0; x <= W + 8; x += 8) cx.lineTo(x, hill(x, H * .88, 5, .01, 1)); cx.lineTo(W, H); cx.fill();
@@ -101,9 +104,11 @@ function dk(px, py, w, h, wave, T, ph = 0) {
     cx.fillStyle = "#fff"; cx.fillRect(x0, y0 + h * 12 / 28, sw + .6, h * 4 / 28);
     if (u >= 12 / 37 - .001 && u < 16 / 37) cx.fillRect(x0, y0, sw + .6, h); }
 }
+let ROOF = null;
 function roofPts(x, base, w, h, sag, step) {
   const L = [x - w / 2 - 8, base - h + 2], A = [x, base - h - 34], R = [x + w / 2 + 8, base - h + 2], pts = [];
-  [[L, A], [A, R]].forEach(([p0, p1]) => { const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(2, Math.round(len / step)); for (let i = 0; i <= n; i++) { const t = i / n; pts.push([p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t + Math.sin(Math.PI * t) * sag]); } });
+  const segs = ROOF ? ROOF.line.slice(1).map((p, i) => [ROOF.line[i], p]) : [[L, A], [A, R]];
+  segs.forEach(([p0, p1]) => { const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(2, Math.round(len / step)); for (let i = 0; i <= n; i++) { const t = i / n; pts.push([p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t + Math.sin(Math.PI * t) * sag]); } });
   return pts;
 }
 function glow(px, py, r, col, a) { const g = cx.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, rgb(col, a)); g.addColorStop(1, rgb(col, 0)); cx.fillStyle = g; cx.fillRect(px - r, py - r, r * 2, r * 2); }
@@ -168,7 +173,7 @@ function drawDecorSky(dt, T, dark, mini) {
 }
 function drawDecorHouse(x, base, w, h, dark, T) {
   const L = decorActive(); if (!L.length) return;
-  const keys = new Set(L.map(e => e.key)), slot = x - w / 2 - 92, sg = gY(slot), lights = dark > .2;
+  const keys = new Set(L.map(e => e.key)), slot = ROOF?.slot ?? x - w / 2 - 92, sg = gY(slot), lights = dark > .2;
   // Jul: lyskæde på taget, juletræ med stjerne, julestjerne i vinduet
   if (keys.has("jul")) {
     const ty = sg; cx.fillStyle = "#5B3A1E"; cx.fillRect(slot - 2.5, ty - 8, 5, 8);
@@ -215,7 +220,7 @@ function drawDecorHouse(x, base, w, h, dark, T) {
   }
   // Sankt Hans: bål på bakken
   if (keys.has("sankthans")) {
-    const bx = W * .42, by = gY(bx) - 4; glow(bx, by - 10, 60, [255, 140, 40], .25 + .45 * dark);
+    const bx = (opts.fireX && opts.fireX(W)) ?? W * .42, by = gY(bx) - 4; glow(bx, by - 10, 60, [255, 140, 40], .25 + .45 * dark);
     cx.strokeStyle = "#4A2E18"; cx.lineWidth = 3; [[-12, 4, 10, -6], [12, 4, -10, -6], [-8, 4, 6, -12]].forEach(([a, b, c2, d]) => { cx.beginPath(); cx.moveTo(bx + a, by + b); cx.lineTo(bx + c2, by + d); cx.stroke(); });
     for (let i = 0; i < 6; i++) { const fh = 16 + 8 * Math.sin(T * 7 + i * 1.9), fx = bx + (i - 2.5) * 3.2; cx.fillStyle = i % 2 ? "rgba(255,200,60,.9)" : "rgba(255,110,30,.85)"; cx.beginPath(); cx.moveTo(fx - 4, by); cx.quadraticCurveTo(fx - 3, by - fh * .6, fx + Math.sin(T * 5 + i) * 2, by - fh); cx.quadraticCurveTo(fx + 3, by - fh * .6, fx + 4, by); cx.fill(); }
     for (let i = 0; i < 10; i++) { const t = (T * .6 + i / 10) % 1; cx.fillStyle = `rgba(255,200,90,${(1 - t) * .9})`; cx.beginPath(); cx.arc(bx + Math.sin(i * 3 + T) * 10 * t, by - 20 - t * 50, 1.2, 0, 7); cx.fill(); }
@@ -236,6 +241,17 @@ function alarmGlow() {
   return { st: a.state, col, pu };
 }
 function drawHouse(dark) {
+  // Another house (EV Planner's): undefined draws Hverdagsro's own, null none (the clay house stands there instead).
+  const ex = opts.houseDraw && (() => { const x = opts.spot ? opts.spot(W, H) : W * (W < 600 ? .8 : .74), base = hill(x, H * .80, 13, .009, 2.6) + 4, T = performance.now() / 1000; return { x, base, T, r: opts.houseDraw(cx, { x, base, W, H, dark, T, gY }) }; })();
+  if (ex && ex.r !== undefined) {
+    const { base, T, r } = ex;
+    if (!r) return;
+    ROOF = r.line ? r : null;
+    drawDecorHouse(r.cx ?? ex.x, base, r.w, r.h, dark, T);
+    drawBins(r.left ?? ex.x - r.w / 2 - 14, base, dark);
+    ROOF = null;
+    return;
+  }
   const x = W * (W < 600 ? .8 : .74), base = hill(x, H * .80, 13, .009, 2.6) + 4, w = 92, h = 50;
   const body = mix(hex("#F4F1FA"), hex("#20253F"), dark * .9), al = alarmGlow();
   if (al) { const R = 110 + al.pu * 26, g = cx.createRadialGradient(x, base - 30, 8, x, base - 30, R); g.addColorStop(0, rgb(al.col, .6 + .25 * al.pu)); g.addColorStop(.45, rgb(al.col, .26 + .12 * al.pu)); g.addColorStop(1, rgb(al.col, 0)); cx.fillStyle = g; cx.fillRect(x - R, base - 30 - R, R * 2, R * 2);

@@ -287,6 +287,8 @@ class Family:
             "photo",
             "skin",
             "mode",
+            "look",
+            "top",
             "goal",
             "playroom",
             "room_prefs",

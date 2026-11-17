@@ -30,6 +30,10 @@ EVERYONE: Final = "all"
 INSTITUTIONS: Final = ("none", "dagpleje", "vuggestue", "bornehave", "skole")
 SKINS: Final = ("standard", "nordlys", "hav", "skov", "sand", "rosa", "rummet", "kontrast")
 SKIN_MODES: Final = ("auto", "light", "dark")
+# The look of the whole panel (colours, type and shapes), as in EV Planner and Middagsro: Theme Studio only when it is installed.
+LOOKS: Final = ("hverdag", "frisk", "studio")
+# The house in the header: EV Planner's house from the front (2D) or its clay house (3D).
+TOPS: Final = ("2d", "3d")
 MAX_MEMBERS: Final = 16
 
 # The panel's modules (Funktioner). A module that is off is hidden for the whole family.

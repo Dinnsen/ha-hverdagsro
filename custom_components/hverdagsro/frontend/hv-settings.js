@@ -4,6 +4,7 @@
 import { addDays, esc, slug, startOfDay } from "./hv-core.js";
 import { svg } from "./hv-icons.js";
 import { occasions, activeDecor, dayNumber, wedName, WED, BIG } from "./hv-decor.js";
+import { carPreview, evBodies, evHouses, evInstalled, houseName, housePreview, loadEv, paintHouses } from "./hv-evhouse.js";
 import * as House from "./hv-house.js";
 
 /* ------------------------------------------------------------------ constants */
@@ -467,6 +468,24 @@ function nextBig(iso) {
   }
   return null;
 }
+/* Huset i toppen: EV Planner's houses and cars, when EV Planner is installed (its module draws the pictures). */
+function sceneSection(ctx) {
+  if (!evInstalled(ctx.hass)) return "";
+  if (!loadEv(ctx.hass, () => ctx.render())) return `<section class="card"><div class="card-head"><h2>${esc(ctx.t("Huset i toppen"))}</h2></div><p class="t-sub">${esc(ctx.t("Henter husene fra EV Planner …"))}</p></section>`;
+  const sc = ctx.data.settings.scene || {}, cars = sc.cars || [];
+  const houses = [["", ctx.t("Hverdagsros eget")], ...evHouses().map((k) => [k, k])];
+  const pick = houses.map(([k, n]) => `<button class="sc-house${(sc.house || "") === k ? " on" : ""}" data-act="set-scene-house" data-id="${esc(k)}" aria-pressed="${(sc.house || "") === k}">${k ? `<span class="sc-pic">${housePreview(k)}</span>` : `<span class="sc-pic sc-own">${svg("home")}</span>`}<span>${esc(k ? houseName(k, ctx.lang?.()) : n)}</span></button>`).join("");
+  const car = (c, i) => `<div class="sc-car"><span class="sc-cpic">${carPreview(c.body, c.paint)}</span><div class="seg">${evBodies().map((b) => `<button data-act="set-scene-car" data-i="${i}" data-k="body" data-id="${b}" aria-pressed="${c.body === b}">${esc(ctx.t(BODY_NAMES[b] || b))}</button>`).join("")}</div>
+    <div class="seg sm">${["white", "black"].map((p) => `<button data-act="set-scene-car" data-i="${i}" data-k="paint" data-id="${p}" aria-pressed="${c.paint === p}">${esc(ctx.t(p === "white" ? "Hvid" : "Sort"))}</button>`).join("")}</div>
+    <button class="iconbtn" data-act="set-scene-car" data-i="${i}" data-k="del" aria-label="${esc(ctx.t("Fjern"))}">${svg("x")}</button></div>`;
+  return `<section class="card" data-st="hjemmet"><div class="card-head"><h2>${esc(ctx.t("Huset i toppen"))}</h2><span class="meta">${esc(ctx.t("Fra EV Planner"))}</span></div>
+    <div class="sc-houses">${pick}</div>
+    ${sc.house ? `<div class="sc-cars">${cars.map(car).join("")}${cars.length < 2 ? `<button class="btn soft sm" data-act="set-scene-car" data-k="add">${svg("plus")}${esc(ctx.t("Tilføj bil"))}</button>` : ""}</div>
+    <p class="t-sub">${esc(ctx.t("2D eller 3D vælger hver person under Mine indstillinger."))}</p>` : ""}</section>`;
+}
+const BODY_NAMES = { mini: "Lille", sedan: "Sedan", suv: "SUV", estate: "Stationcar", van: "Varebil" };
+
+let DEC_OPEN = null;
 function decorEditor(ctx) {
   const s = ctx.data.settings;
   const today = new Date();
@@ -495,9 +514,13 @@ function decorEditor(ctx) {
         const big = nb ? ` · ${ctx.t("næste store: {n} år, {name}, {date}", { n: String(nb[0]).replace(".5", "½"), name: wedName(nb[0]) || "", date: `${short(nb[2])} ${dnDate(nb[2]).getFullYear()}` })}` : "";
         bd = `<div class="dec-bd"><label class="dec-p"><span>${esc(annKey === "wedding" ? ctx.t("Gift") : ctx.t("Kærester siden"))}</span><input type="date" value="${esc(iso)}" data-in="set-anniv" data-k="${annKey}" aria-label="${esc(ctx.t(name))}"></label><small class="t-sub">${esc(since + big)}</small></div>`;
       }
-      return `<div class="dec-row${on ? "" : " off"}${isLive ? " live" : ""}" style="--dc:${col}"><span class="dec-em">${em}</span><div class="dec-t"><b>${esc(ctx.t(name))}${isLive ? `<i class="dec-live">${esc(ctx.t("Pyntet nu"))}</i>` : ""}</b><small>${esc(sub)}</small></div>
-        <div class="dec-ctl">${st("before", "Før", before)}${st("after", "Efter", after)}<button class="iconbtn" data-act="set-dec-prev" data-id="${key}" aria-label="${esc(ctx.t("Vis {name} i himlen", { name: ctx.t(name).toLowerCase() }))}">${svg("eye")}</button></div>
-        <button class="toggle" data-act="set-dec-on" data-id="${key}" aria-pressed="${on}" aria-label="${esc(ctx.t(name))}" style="--tc:${col}"></button>${bd}</div>`;
+      // As in EV Planner: the day, its dates and a switch; «Tilpas» opens the days before and after, the preview and the date.
+      const open = DEC_OPEN === key;
+      const when = nx ? (nx[0] === nx[1] ? short(nx[0]) : `${short(nx[0])}–${short(nx[1])}`) : "";
+      const sub2 = [when, nx && on && (before || after) ? ctx.t("pyntet {from}–{to}", { from: short(nx[0] - before), to: short(nx[1] + after) }) : "", key === "fodselsdag" || !when ? ctx.t(DESC[key] || "", { names: parentNames(ctx) }) : ""].filter(Boolean).join(" · ");
+      return `<div class="dec-row${on ? "" : " off"}${isLive ? " live" : ""}${open ? " open" : ""}" style="--dc:${col}"><span class="dec-dot" aria-hidden="true"></span><button class="dec-t" data-act="set-dec-open" data-id="${open ? "" : key}" aria-expanded="${open}"><b>${esc(ctx.t(name))}${isLive ? `<i class="dec-live">${esc(ctx.t("Pyntet nu"))}</i>` : ""}</b><small>${esc(sub2)}</small></button>
+        <button class="toggle" data-act="set-dec-on" data-id="${key}" aria-pressed="${on}" aria-label="${esc(ctx.t(name))}" style="--tc:${col}"></button>
+        ${open ? `<div class="dec-more"><div class="dec-ctl">${st("before", "Før", before)}${st("after", "Efter", after)}<button class="btn soft sm" data-act="set-dec-prev" data-id="${key}">${svg("eye")}${esc(ctx.t("Vis i himlen"))}</button></div>${bd}</div>` : `<button class="dec-open" data-act="set-dec-open" data-id="${key}">${esc(ctx.t("Tilpas"))}</button>`}</div>`;
     })
     .join("")}</div>`;
 }
@@ -1196,7 +1219,7 @@ function renderSettings(ctx) {
   else if (TAB === "musik") body = musicSection(ctx);
   else if (TAB === "pynt")
     body = `<section class="card" data-st="pynt" id="decor"><div class="card-head"><h2>${esc(ctx.t("Pynt i himlen"))}</h2><span class="meta">${esc(ctx.t("Sættes automatisk"))}</span></div>
-      <p class="t-sub" style="margin:-6px 0 12px">${esc(ctx.t("Himlen pynter selv op til mærkedagene. Vælg hvilke, og hvor mange dage før og efter selve dagen der er pyntet. Tryk på øjet for at se pynten nu."))}</p>${decorEditor(ctx)}</section>`;
+      <p class="t-sub" style="margin:-6px 0 12px">${esc(ctx.t("Vælg dagene. Tilpas giver dage før og efter og viser pynten."))}</p>${decorEditor(ctx)}</section>`;
   else if (TAB === "qa") body = qaSection(ctx);
   else if (TAB === "alarm") body = alarmSection(ctx);
   else if (TAB === "ret") body = rightsSection(ctx);
@@ -1211,7 +1234,7 @@ function renderSettings(ctx) {
     const g = suggestions(ctx);
     const missing = ["weather", "alarm", "price", "meals_calendar"].filter((k) => !st[k] && g[k]).length + ["calendars", "todo", "media", "cameras"].filter((k) => !st[k]?.length && g[k].length).length + (!st.waste?.length && g.waste.length ? 1 : 0);
     body = `<section class="card" data-st="hjemmet"><div class="card-head"><h2>${esc(ctx.t("Hjemmet"))}</h2>${missing ? `<button class="btn sm" data-act="set-suggest">${svg("sparkle")}${esc(ctx.t("Udfyld automatisk"))}</button>` : `<span class="meta">${esc(ctx.t("Gemmes med det samme"))}</span>`}</div>
-      ${sub(ctx.t("Det, Hverdagsro bruger fra Home Assistant: vejret, kalendere, lister, alarm, kameraer, elpris og affald."))}${homeEditor(ctx, true)}</section>${basicsSection(ctx)}`;
+      ${sub(ctx.t("Det, Hverdagsro bruger fra Home Assistant: vejret, kalendere, lister, alarm, kameraer, elpris og affald."))}${homeEditor(ctx, true)}</section>${sceneSection(ctx)}${basicsSection(ctx)}`;
   }
   return `<div class="set-tabs" role="tablist">${tabs.map(([k, n]) => `<button role="tab" data-act="set-tab" data-id="${k}" aria-pressed="${TAB === k}" aria-selected="${TAB === k}">${esc(ctx.t(n))}${k === "familie" && Fdirty ? `<i class="set-dirty"></i>` : ""}</button>`).join("")}</div>
   <div class="set-wrap${animClass(`set:${TAB}`)}" data-t="${TAB}">${body}</div><p class="foot">${esc(ctx.t("Indstillingerne gemmes i Hverdagsro i Home Assistant og gælder for hele familien."))}</p>`;
@@ -1526,6 +1549,21 @@ const acts = {
     const cur = clone(S(ctx).waste || []);
     cur[famIdx(el)].color = el.dataset.c;
     setS(ctx, { waste: cur });
+  },
+  "set-scene-house": (el, e, ctx) => {
+    const sc = ctx.data.settings.scene || {};
+    setS(ctx, { scene: { ...sc, house: el.dataset.id || null, cars: sc.cars?.length || !el.dataset.id ? sc.cars || [] : [{ body: "suv", paint: "white" }] } });
+  },
+  "set-scene-car": (el, e, ctx) => {
+    const sc = ctx.data.settings.scene || {}, cars = (sc.cars || []).map((c) => ({ ...c })), i = Number(el.dataset.i), k = el.dataset.k;
+    if (k === "add") cars.push({ body: "sedan", paint: "black" });
+    else if (k === "del") cars.splice(i, 1);
+    else if (cars[i]) cars[i][k] = el.dataset.id;
+    setS(ctx, { scene: { ...sc, cars } });
+  },
+  "set-dec-open": (el, e, ctx) => {
+    DEC_OPEN = el.dataset.id || null;
+    ctx.render();
   },
   "set-dec-on": (el, e, ctx) => {
     const k = el.dataset.id;
@@ -2208,6 +2246,20 @@ const en = {
   "dag": "day",
   "dage": "days",
   "Pyntet nu": "Decorated now",
+  "Vis i himlen": "Show in the sky",
+  "Huset i toppen": "The house at the top",
+  "Henter husene fra EV Planner …": "Fetching the houses from EV Planner …",
+  "Hverdagsros eget": "Hverdagsro's own",
+  "Fra EV Planner": "From EV Planner",
+  "Tilføj bil": "Add a car",
+  "2D eller 3D vælger hver person under Mine indstillinger.": "Each person chooses 2D or 3D under My settings.",
+  Lille: "Small",
+  Stationcar: "Estate",
+  Varebil: "Van",
+  Hvid: "White",
+  Sort: "Black",
+  "Vælg dagene. Tilpas giver dage før og efter og viser pynten.": "Choose the days. Customise sets the days before and after and shows the decorations.",
+  Tilpas: "Customise",
   "Vis {name} i himlen": "Show {name} in the sky",
   "Gift": "Married",
   "Kærester siden": "Together since",
@@ -2350,6 +2402,8 @@ export default {
       parentOnly: true,
       render: renderSettings,
       title: (ctx) => (ctx.narrow ? ctx.t("Indstillinger") : ctx.t("Familieindstillinger")),
+      // EV Planner's house pictures are painted after they are on the page.
+      after: (ctx) => paintHouses(ctx.$("main")),
     },
   },
   acts,
