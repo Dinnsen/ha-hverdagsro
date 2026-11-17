@@ -24,10 +24,61 @@ const INST = [
   ["bornehave", "Børnehave", "🎨"],
   ["skole", "Skole", "🎒"],
 ];
+/* The message centre: the kinds Hverdagsro sends, each with its icon, colour, when it comes and an example. */
 const MSGS = {
-  parent: [["shop", "Børnene køber i shoppen"], ["mission", "En mission er klaret"], ["goal", "Et mål er nået"], ["calendar", "Aftaler flyttet eller aflyst"], ["pickup", "Hvem henter i dag"], ["waste", "Skrald skal stilles ud"]],
-  kid: [["points", "Mine point"], ["next", "Næste aftale"], ["school", "Skoledagen slutter"], ["pin", "Besked fra far eller mor"]],
+  parent: [
+    ["shop", "Børnene køber i shoppen", "cart", "#E4568C", "Når det sker", "Shoppen", "Ida vil købe Vælg aftenens film for 40 point", "18:10"],
+    ["mission", "En mission er klaret", "flag-checkered", "#6E4AFF", "Når det sker", "Missioner", "Ida har klaret Red seng", "07:20"],
+    ["goal", "Et mål er nået", "trophy", "#F2B01E", "Når det sker", "Et mål er nået", "Ida har point nok til LEGO", "16:40"],
+    ["pickup", "Hvem henter i dag", "car-child-seat", "#3B6BF5", "Kl. 07 og 30 min før", "Hent og bring i dag", "Du bringer Ida kl. 07:45", "07:00"],
+    ["waste", "Skrald skal stilles ud", "delete", "#2E9E55", "Kl. 19 dagen før", "Skrald", "Restaffald bliver tømt i morgen. Husk at stille den ud.", "19:00"],
+  ],
+  kid: [
+    ["points", "Mine point", "star", "#6E4AFF", "Når det sker", "Dine point", "+10 point · du har 110", "17:05"],
+    ["pin", "Besked fra far eller mor", "message-text", "#11A39A", "Når det sker", "Besked fra far eller mor", "Husk regntøj", "07:30"],
+  ],
 };
+const MSG_ICONS = ["home-heart", "cart", "flag-checkered", "trophy", "star", "car-child-seat", "delete", "message-text", "bell", "calendar", "heart", "weather-night"];
+const MSG_COLOURS = ["#6E4AFF", "#11A39A", "#3B6BF5", "#E4568C", "#D9473B", "#F08A3A", "#F2B01E", "#2E9E55", "#7A8594"];
+const MSG_SVG = { "home-heart": "home", cart: "cart", "flag-checkered": "tasks", trophy: "gift", star: "star", "car-child-seat": "pickup", delete: "trash", "message-text": "pin", bell: "bell", calendar: "cal", heart: "heart", "weather-night": "moon" };
+let MSG_OPEN = null;
+const toMin = (t) => { const [h, m] = String(t || "0:0").replace(".", ":").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+function inQuiet(q, t) {
+  if (!q?.on) return false;
+  const a = toMin(q.from || "22:00"), b = toMin(q.to || "07:00"), x = toMin(t);
+  return a <= b ? x >= a && x < b : x >= a || x < b;
+}
+/* A card per message and a phone with one example of each, in the order they come; quiet hours and what comes after. */
+function msgCentre(ctx, p, kid) {
+  const kinds = kid ? MSGS.kid : MSGS.parent, off = p.msg_off || [], rules = p.msg_rules || {}, q = p.quiet || {};
+  const rule = (k) => { const d = kinds.find((x) => x[0] === k); return { icon: (rules[k]?.icon || `mdi:${d[2]}`).slice(4), color: rules[k]?.color || d[3], through: Boolean(rules[k]?.through) }; };
+  const ic = (name) => svg(MSG_SVG[name] || "bell");
+  const on = kinds.filter(([k]) => !off.includes(k)).map((d) => ({ d, r: rule(d[0]) }));
+  const ord = (t) => (toMin(t) - 15 * 60 + 1440) % 1440;
+  on.sort((a, b) => ord(a.d[7]) - ord(b.d[7]));
+  const held = on.filter((m) => inQuiet(q, m.d[7]) && !m.r.through), heldK = new Set(held.map((m) => m.d[0]));
+  const digest = (q.after || "digest") === "digest";
+  const note = (title, body, time, r, cls = "", k = "") => `<button class="mc-note${cls}" style="--c:${r.color}" data-act="home-mcopen" data-id="${k}"><span class="mc-ic">${ic(r.icon)}</span><span class="mc-t"><b>${esc(title)}</b><i>${time}</i></span><span class="mc-m">${esc(body)}</span></button>`;
+  const phone = `<div class="mc-phone"><div class="mc-clock">${esc(q.on ? (q.to || "07:00").replace(":", ".") : "17.30")}</div>${on.length ? "" : `<p class="mc-empty">${esc(ctx.t("Ingen beskeder er slået til."))}</p>`}
+    ${on.filter((m) => !(digest && heldK.has(m.d[0]))).map(({ d, r }) => note(ctx.t(d[5]), ctx.t(d[6]), d[7], r, `${heldK.has(d[0]) ? " held" : ""}${MSG_OPEN === d[0] ? " sel" : ""}`, d[0])).join("")}
+    ${held.length && digest ? `<span class="mc-when">${esc(ctx.t("Efter stille timer"))}</span>${note(ctx.t("Mens du sov"), held.map(({ d }) => `${ctx.t(d[5])}: ${ctx.t(d[6])}`).join(" · "), (q.to || "07:00"), { color: "#5B5BD6", icon: "weather-night" })}` : ""}</div>`;
+  const card = ([k, name, , , when, title, body]) => {
+    const r = rule(k), isOn = !off.includes(k), open = MSG_OPEN === k;
+    return `<article class="mc-card${isOn ? "" : " off"}${open ? " sel" : ""}" style="--c:${r.color}">
+      <div class="mc-top"><span class="mc-ic">${ic(r.icon)}</span><div><b>${esc(ctx.t(name))}</b><small>${esc(ctx.t(when))}</small></div><button class="toggle" data-act="home-msg" data-id="${k}" aria-pressed="${isOn}" aria-label="${esc(ctx.t(name))}" style="--tc:${r.color}"></button></div>
+      <div class="mc-bubble"><b>${esc(ctx.t(title))}</b><span>${esc(ctx.t(body))}</span></div>
+      <button class="mc-more" data-act="home-mcopen" data-id="${open ? "" : k}" aria-expanded="${open}">${esc(ctx.t(open ? "Luk" : "Tilpas"))}</button>
+      ${open ? `<div class="mc-opts">
+        <div class="mc-opt"><span>${esc(ctx.t("Stille timer"))}</span><div class="seg">${[[false, "Holdes tilbage"], [true, "Går igennem"]].map(([v, l]) => `<button data-act="home-mcrule" data-id="${k}" data-k="through" data-v="${v}" aria-pressed="${r.through === v}">${esc(ctx.t(l))}</button>`).join("")}</div></div>
+        <div class="mc-opt"><span>${esc(ctx.t("Ikon"))}</span><div class="mc-icons">${MSG_ICONS.map((n) => `<button class="mc-icon" data-act="home-mcrule" data-id="${k}" data-k="icon" data-v="mdi:${n}" aria-pressed="${r.icon === n}" aria-label="${esc(n)}">${ic(n)}</button>`).join("")}</div></div>
+        <div class="mc-opt"><span>${esc(ctx.t("Farve"))}</span><div class="mc-icons">${MSG_COLOURS.map((c) => `<button class="mc-sw" style="--s:${c}" data-act="home-mcrule" data-id="${k}" data-k="color" data-v="${c}" aria-pressed="${r.color === c}" aria-label="${esc(ctx.t("Farve"))} ${c}"></button>`).join("")}</div></div>
+      </div>` : ""}</article>`;
+  };
+  const strip = `<div class="mc-strip"><span class="mc-g"><button class="toggle" data-act="home-quiet" data-k="on" aria-pressed="${Boolean(q.on)}" aria-label="${esc(ctx.t("Stille timer"))}"></button><b>${esc(ctx.t("Stille timer"))}</b>
+      ${q.on ? `<input type="time" class="mc-time" data-in="home-quiet" data-k="from" value="${esc(q.from || "22:00")}" aria-label="${esc(ctx.t("Fra"))}">–<input type="time" class="mc-time" data-in="home-quiet" data-k="to" value="${esc(q.to || "07:00")}" aria-label="${esc(ctx.t("Til"))}">` : ""}</span>
+    ${q.on ? `<span class="mc-g"><small>${esc(ctx.t("Bagefter"))}</small><div class="seg">${[["digest", "Én samlet besked"], ["drop", "Ingenting"]].map(([v, l]) => `<button data-act="home-quiet" data-k="after" data-v="${v}" aria-pressed="${(q.after || "digest") === v}">${esc(ctx.t(l))}</button>`).join("")}</div></span>` : ""}</div>`;
+  return `${strip}<div class="mc-main"><div>${phone}</div><div class="mc-cards">${kinds.map(card).join("")}</div></div>`;
+}
 const BANDS = [["historier", "Historier"], ["huset", "Huset"], ["spor", "Dagens spor"], ["bobler", "Bobler"], ["live", "Live-linje"], ["kort", "Kort"]];
 const SUBJ = { Dansk: "#7C5CF0", Matematik: "#3B6BF5", Engelsk: "#11A39A", "Natur/teknik": "#2E9E55", Idræt: "#F08A3A", Musik: "#E4568C", Billedkunst: "#D99A12", Historie: "#9A6B4A", Kristendom: "#6B7A99", "Klassens tid": "#8A86A0", "Leg og læring": "#E3A21C" };
 const DAYS_ISO = ["Hver dag", "Hverdage", "Weekender"];
@@ -895,9 +946,9 @@ function pMe(ctx) {
     ${!mine.length ? `<p class="t-sub">${esc(ctx.t("Der er ingen knapper til dig endnu."))}${kid ? ` ${esc(ctx.t("Bed far eller mor om at give dig nogle."))}` : ""}</p>` : ""}
     ${kid ? "" : `<button class="btn soft sm" data-go="indstillinger:qa" style="margin-top:12px">${svg("shield")}${esc(ctx.t("Familieindstillinger"))}</button>`}</section>
   ${navCard(ctx, p)}
-  <section class="card s5"><div class="card-head"><h2>${esc(ctx.t("Beskeder til mig"))}</h2>${kid ? `<span class="meta">${svg("lock")}${esc(ctx.t("Far eller mor bestemmer"))}</span>` : ""}</div><div${kid && !ctx.data.can_manage ? ' inert class="kid-lock"' : ""}>
+  <section class="card s12"><div class="card-head"><h2>${esc(ctx.t("Beskeder til mig"))}</h2>${kid ? `<span class="meta">${svg("lock")}${esc(ctx.t("Far eller mor bestemmer"))}</span>` : ""}</div><div${kid && !ctx.data.can_manage ? ' inert class="kid-lock"' : ""}>
     ${p.notify ? "" : `<p class="t-sub" style="margin:-4px 0 10px">${esc(ctx.t("Vælg din telefon under Familieindstillinger › Familien for at få beskeder."))}</p>`}
-    <div class="mods" style="grid-template-columns:minmax(0,1fr) 64px">${msgs.map(([k, t]) => `<span>${esc(ctx.t(t))}</span><button class="toggle" data-act="home-msg" data-id="${k}" aria-pressed="${!off.includes(k)}" aria-label="${esc(ctx.t(t))}"></button>`).join("")}</div>
+    ${msgCentre(ctx, p, kid)}
     ${kid ? `<div class="card-head" style="margin:18px 0 8px"><h2>${esc(ctx.t("Min PIN"))}</h2></div><p class="t-sub">${svg("lock")} ${esc(ctx.t("Din PIN skiftes af far eller mor."))}</p>` : ""}</div>
     <button class="btn soft" data-act="home-who" style="margin-top:16px">${svg("users")}${esc(ctx.t("Skift bruger"))}</button></section>${skinPicker(ctx, p)}${homeScreenCard(ctx)}</div>`;
 }
@@ -1406,6 +1457,26 @@ const acts = {
     setPrefs(ctx, m, { [el.dataset.k]: el.dataset.id });
     ctx.applyTheme?.();
   },
+  "home-mcopen"(el, ev, ctx) {
+    MSG_OPEN = el.dataset.id || null;
+    ctx.render();
+  },
+  "home-mcrule"(el, ev, ctx) {
+    const m = ctx.me;
+    if (!m) return;
+    const rules = JSON.parse(JSON.stringify(m.msg_rules || {})), k = el.dataset.id, v = el.dataset.v;
+    rules[k] = { ...(rules[k] || {}), [el.dataset.k]: el.dataset.k === "through" ? v === "true" : v };
+    MSG_OPEN = k;
+    setPrefs(ctx, m, { msg_rules: rules });
+  },
+  "home-quiet"(el, ev, ctx) {
+    const m = ctx.me;
+    if (!m) return;
+    const q = { on: false, from: "22:00", to: "07:00", after: "digest", ...(m.quiet || {}) };
+    if (el.dataset.k === "on") q.on = !q.on;
+    else q[el.dataset.k] = el.dataset.v;
+    setPrefs(ctx, m, { quiet: q });
+  },
   "home-msg"(el, ev, ctx) {
     const m = ctx.me;
     if (!m) return;
@@ -1541,6 +1612,35 @@ const css = `
 `;
 
 const en = {
+  "Når det sker": "When it happens",
+  "Kl. 07 og 30 min før": "At 07 and 30 min before",
+  "Kl. 19 dagen før": "At 19 the day before",
+  "Ida vil købe Vælg aftenens film for 40 point": "Ida wants to buy Pick tonight's film for 40 points",
+  "Ida har klaret Red seng": "Ida has done Make the bed",
+  "Ida har point nok til LEGO": "Ida has points enough for LEGO",
+  "Du bringer Ida kl. 07:45": "You bring Ida at 07:45",
+  "Restaffald bliver tømt i morgen. Husk at stille den ud.": "Residual waste is collected tomorrow. Remember to put it out.",
+  "+10 point · du har 110": "+10 points · you have 110",
+  "Husk regntøj": "Remember rain clothes",
+  "Ingen beskeder er slået til.": "No messages are on.",
+  "Efter stille timer": "After the quiet hours",
+  "Mens du sov": "While you slept",
+  "Holdes tilbage": "Held back",
+  "Går igennem": "Goes through",
+  "Én samlet besked": "One message",
+  Ingenting: "Nothing",
+  Bagefter: "Afterwards",
+  "Stille timer": "Quiet hours",
+  Ikon: "Icon",
+  Farve: "Colour",
+  Fra: "From",
+  Til: "To",
+  Shoppen: "The shop",
+  Missioner: "Missions",
+  "Et mål er nået": "A goal is reached",
+  "Hent og bring i dag": "Drop-off and pick-up today",
+  Skrald: "Waste",
+  "Dine point": "Your points",
   Udseende: "Look",
   Hverdag: "Hverdag",
   Frisk: "Frisk",
@@ -1870,6 +1970,11 @@ const en = {
 };
 
 const inputs = {
+  "home-quiet"(el, ev, ctx) {
+    const m = ctx.me;
+    if (ev.type !== "change" || !m || !el.value) return;
+    setPrefs(ctx, m, { quiet: { on: true, from: "22:00", to: "07:00", after: "digest", ...(m.quiet || {}), [el.dataset.k]: el.value } });
+  },
   async "home-bday"(el, ev, ctx) {
     if (ev.type !== "change" || !ctx.isParent) return;
     const v = el.value;

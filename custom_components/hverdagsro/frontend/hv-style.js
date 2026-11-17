@@ -58,6 +58,47 @@ export default `
 .sc-cpic svg { width: 100%; display: block; }
 .sc-car .seg { flex: 1 1 220px; }
 .sc-car .seg.sm { flex: 0 1 140px; }
+/* The message centre (Mine indstillinger › Beskeder til mig): a card per message and a phone beside them. */
+.mc-strip { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 10px 12px; border-radius: 16px; background: var(--surface-2); margin-bottom: 14px; }
+.mc-g { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mc-g small { color: var(--muted); font-weight: 700; }
+.mc-time { border: 0; background: var(--surface); border-radius: 10px; padding: 4px 8px; font: inherit; color: var(--ink); }
+.mc-main { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 760px) { .mc-main { grid-template-columns: 1fr; } }
+.mc-phone { background: #0F1218; color: #F3F5F8; border-radius: 30px; border: 6px solid #2A2F38; padding: 14px 9px; display: grid; gap: 7px; align-content: start; min-height: 380px; position: sticky; top: 8px; }
+.mc-clock { text-align: center; font: 700 36px/1 var(--font-display); margin: 4px 0 6px; }
+.mc-when { color: #A7AFBC; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 6px 6px 0; }
+.mc-empty { color: #A7AFBC; text-align: center; font-size: 13px; }
+.mc-note { all: unset; cursor: pointer; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 9px; padding: 9px 11px; border-radius: 16px; background: rgba(255,255,255,.12); }
+.mc-note .mc-ic { grid-row: span 2; }
+.mc-note.held { opacity: .42; }
+.mc-note.sel { box-shadow: 0 0 0 2px var(--c); }
+.mc-t { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; min-width: 0; }
+.mc-t b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-t i { font-style: normal; color: #A7AFBC; flex: none; }
+.mc-m { font-size: 12.5px; line-height: 1.35; color: #DDE2EA; }
+.mc-ic { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--c); color: #fff; flex: none; }
+.mc-ic svg { width: 15px; height: 15px; }
+.mc-cards { display: grid; gap: 10px; }
+.mc-card { border-radius: 16px; padding: 12px; background: var(--surface-2); display: grid; gap: 8px; }
+.mc-card.off { opacity: .6; }
+.mc-card.sel { opacity: 1; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--c); }
+.mc-top { display: grid; grid-template-columns: 32px minmax(0, 1fr) 56px; gap: 10px; align-items: center; }
+.mc-top .mc-ic { width: 32px; height: 32px; }
+.mc-top small { display: block; color: var(--muted); font-size: 12.5px; }
+.mc-bubble { background: var(--surface); border-radius: 12px; padding: 8px 11px; font-size: 13px; display: grid; gap: 1px; }
+.mc-card.sel .mc-bubble { background: var(--surface-2); }
+.mc-more { all: unset; cursor: pointer; color: var(--violet); font-weight: 700; font-size: 13px; justify-self: start; }
+.mc-opts { display: grid; gap: 8px; }
+.mc-opt { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; align-items: center; }
+.mc-opt > span { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+@media (max-width: 480px) { .mc-opt { grid-template-columns: 1fr; } }
+.mc-icons { display: flex; flex-wrap: wrap; gap: 6px; }
+.mc-icon { width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.mc-icon svg { width: 15px; height: 15px; }
+.mc-icon[aria-pressed="true"] { background: var(--c); color: #fff; }
+.mc-sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); background: var(--s); cursor: pointer; }
+.mc-sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
 .clay-top { position: absolute; z-index: 0; pointer-events: none; }
 .hero.compact .clay-top { display: none; }
 :host([data-look="studio"]) .card { backdrop-filter: var(--theme-studio-card-backdrop-filter, none); -webkit-backdrop-filter: var(--theme-studio-card-backdrop-filter, none); }
