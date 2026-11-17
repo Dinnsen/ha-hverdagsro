@@ -2,7 +2,9 @@
 
 Each member can have a notify action (their phone in the Home Assistant app). Parents get messages about the
 shop, missions, goals, who picks up today and the waste; children about their points and messages from their
-parents. Each member turns the kinds off one by one (msg_off).
+parents. Each member turns the kinds off one by one (msg_off). The message centre (since 0.24.0): each member's
+quiet hours hold messages back, unless the kind goes through; when they end, what was held comes as one message (or is
+dropped). Each kind has its own icon and colour on the phone.
 """
 
 from __future__ import annotations
@@ -19,6 +21,18 @@ from homeassistant.util import dt as dt_util
 from .const import ROLE_CHILD, ROLE_PARENT
 from .family import Family, at_home
 
+# Each kind's icon and colour on the phone, unless the member chose others.
+LOOK: dict[str, tuple[str, str]] = {
+    "shop": ("mdi:cart", "#E4568C"),
+    "mission": ("mdi:flag-checkered", "#6E4AFF"),
+    "goal": ("mdi:trophy", "#F2B01E"),
+    "points": ("mdi:star", "#6E4AFF"),
+    "pin": ("mdi:message-text", "#11A39A"),
+    "pickup": ("mdi:car-child-seat", "#3B6BF5"),
+    "waste": ("mdi:delete", "#2E9E55"),
+}
+DIGEST_MAX = 12
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -29,6 +43,8 @@ class Notifier:
         self.hass = hass
         self.family = family
         self._unsubs: list[CALLBACK_TYPE] = []
+        # Messages held back in a member's quiet hours: member id → [(title, message)].
+        self.held: dict[str, list[tuple[str, str]]] = {}
 
     @callback
     def async_start(self) -> None:
@@ -53,18 +69,60 @@ class Notifier:
     def _parents(self, kind: str) -> list[dict[str, Any]]:
         return [m for m in self.family.members if m["role"] == ROLE_PARENT and self._wants(m, kind)]
 
+    @staticmethod
+    def _quiet(member: dict[str, Any], local: datetime) -> bool:
+        q = member.get("quiet") or {}
+        if not q.get("on"):
+            return False
+        a, b, x = _minutes(q.get("from", "22:00")), _minutes(q.get("to", "07:00")), local.hour * 60 + local.minute
+        return a <= x < b if a <= b else x >= a or x < b
+
     @callback
-    def _send(self, member: dict[str, Any], title: str, message: str) -> None:
+    def _send(self, member: dict[str, Any], title: str, message: str, kind: str = "") -> None:
+        if not str(member.get("notify") or "").startswith("notify."):
+            return
+        rule = (member.get("msg_rules") or {}).get(kind) or {}
+        if self._quiet(member, dt_util.now()) and not rule.get("through", False):
+            if (member.get("quiet") or {}).get("after", "digest") == "digest":
+                self.held.setdefault(member["id"], []).append((title, message))
+            return
+        icon, color = LOOK.get(kind, ("mdi:home-heart", "#6E4AFF"))
+        self._deliver(
+            member, title, message, {"notification_icon": rule.get("icon", icon), "color": rule.get("color", color)}
+        )
+
+    @callback
+    def _deliver(self, member: dict[str, Any], title: str, message: str, look: dict[str, str]) -> None:
         service = str(member["notify"]).split(".", 1)[1]
         if not self.hass.services.has_service("notify", service):
             _LOGGER.debug("No notify action %s for %s", service, member["id"])
             return
-        self.hass.async_create_task(self._async_call(service, title, message), eager_start=True)
+        self.hass.async_create_task(self._async_call(service, title, message, look), eager_start=True)
 
-    async def _async_call(self, service: str, title: str, message: str) -> None:
+    @callback
+    def _flush(self, now: datetime) -> None:
+        """What was held back in the quiet hours comes as one message when they end."""
+        local = dt_util.as_local(now)
+        for member_id in list(self.held):
+            member = self.family.member(member_id)
+            if member is None:
+                self.held.pop(member_id, None)
+                continue
+            if self._quiet(member, local):
+                continue
+            held = self.held.pop(member_id)[-DIGEST_MAX:]
+            if held:
+                text = "\n".join(f"{title}: {message}" for title, message in held)
+                self._deliver(
+                    member, "Mens du sov", text, {"notification_icon": "mdi:weather-night", "color": "#5B5BD6"}
+                )
+
+    async def _async_call(self, service: str, title: str, message: str, look: dict[str, str] | None = None) -> None:
         try:
             await self.hass.services.async_call(
-                "notify", service, {"title": title, "message": message, "data": {"group": "hverdagsro"}}
+                "notify",
+                service,
+                {"title": title, "message": message, "data": {"group": "hverdagsro", **(look or {})}},
             )
         except HomeAssistantError as err:
             _LOGGER.warning("Hverdagsro could not send a message with notify.%s: %s", service, err)
@@ -80,21 +138,21 @@ class Notifier:
         if kind == "shop":
             reward = data["reward"]
             for parent in self._parents("shop"):
-                self._send(parent, "Shoppen", f"{name} vil købe {reward['title']} for {reward['cost']} point")
+                self._send(parent, "Shoppen", f"{name} vil købe {reward['title']} for {reward['cost']} point", "shop")
         elif kind == "mission":
             for parent in self._parents("mission"):
-                self._send(parent, "Missioner", f"{name} har klaret {data['mission']['title']}")
+                self._send(parent, "Missioner", f"{name} har klaret {data['mission']['title']}", "mission")
         elif kind == "goal":
             for parent in self._parents("goal"):
-                self._send(parent, "Et mål er nået", f"{name} har point nok til {data['reward']['title']}")
+                self._send(parent, "Et mål er nået", f"{name} har point nok til {data['reward']['title']}", "goal")
             if member["role"] == ROLE_CHILD and self._wants(member, "points"):
-                self._send(member, "Dit mål", f"Du har point nok til {data['reward']['title']}!")
+                self._send(member, "Dit mål", f"Du har point nok til {data['reward']['title']}!", "points")
         elif kind == "points":
             if member["role"] == ROLE_CHILD and self._wants(member, "points") and data["delta"]:
                 sign = "+" if data["delta"] > 0 else ""
-                self._send(member, "Dine point", f"{sign}{data['delta']} point · du har {data['points']}")
+                self._send(member, "Dine point", f"{sign}{data['delta']} point · du har {data['points']}", "points")
         elif kind == "pin" and self._wants(member, "pin"):
-            self._send(member, "Besked fra far eller mor", data["text"])
+            self._send(member, "Besked fra far eller mor", data["text"], "pin")
 
     # ------------------------------------------------------------------ every day
 
@@ -133,10 +191,11 @@ class Notifier:
         for member_id, text in lines.items():
             member = self.family.member(member_id)
             if member is not None and self._wants(member, "pickup"):
-                self._send(member, "Hent og bring i dag", "\n".join(text))
+                self._send(member, "Hent og bring i dag", "\n".join(text), "pickup")
 
     async def _async_soon(self, now: datetime) -> None:
-        """Half an hour before: a reminder to whoever brings or picks up."""
+        """Half an hour before: a reminder to whoever brings or picks up. Every minute: the held messages."""
+        self._flush(now)
         if not self.family.data["settings"].get("pickup_reminder", True):
             return
         local = dt_util.as_local(now)
@@ -153,7 +212,7 @@ class Notifier:
                     and str(step.get("at", "")).replace(".", ":").zfill(5) == soon
                     and self._wants(who, "pickup")
                 ):
-                    self._send(who, "Om 30 minutter", f"Du {verb} {kid['name']} kl. {step['at']}")
+                    self._send(who, "Om 30 minutter", f"Du {verb} {kid['name']} kl. {step['at']}", "pickup")
 
     async def _async_evening(self, now: datetime) -> None:
         """The waste is collected tomorrow: put the bin out."""
@@ -163,7 +222,7 @@ class Notifier:
             return
         names = " og ".join(w.get("name") or self._name(w["entity"]) for w in bins)
         for parent in self._parents("waste"):
-            self._send(parent, "Skrald", f"{names} bliver tømt i morgen. Husk at stille den ud.")
+            self._send(parent, "Skrald", f"{names} bliver tømt i morgen. Husk at stille den ud.", "waste")
 
     def _name(self, entity_id: str) -> str:
         state = self.hass.states.get(entity_id)
@@ -182,3 +241,8 @@ class Notifier:
         if value.isdigit():
             return int(value) == 1
         return False
+
+
+def _minutes(hhmm: str) -> int:
+    hour, _, minute = str(hhmm).replace(".", ":").partition(":")
+    return int(hour or 0) * 60 + int(minute or 0)

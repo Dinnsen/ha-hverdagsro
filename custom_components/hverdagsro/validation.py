@@ -205,6 +205,23 @@ MEMBER = vol.Schema(
         vol.Optional("quick_order", default=[]): id_list,
         vol.Optional("quick_hide", default=[]): id_list,
         vol.Optional("msg_off", default=[]): text_list(20, 40),
+        # The message centre: per kind whether it goes through the quiet hours, and its icon and colour on the phone.
+        vol.Optional("msg_rules", default={}): {
+            text(20, 1): {
+                vol.Optional("through"): cv.boolean,
+                vol.Optional("icon"): vol.Match(r"^mdi:[a-z0-9-]{1,40}$"),
+                vol.Optional("color"): hex_color,
+            }
+        },
+        vol.Optional("quiet", default=None): vol.Any(
+            None,
+            {
+                vol.Optional("on", default=False): cv.boolean,
+                vol.Optional("from", default="22:00"): hhmm,
+                vol.Optional("to", default="07:00"): hhmm,
+                vol.Optional("after", default="digest"): vol.In(("digest", "drop")),
+            },
+        ),
         vol.Optional("goal", default=None): vol.Any(None, ident),
         vol.Optional("playroom", default=None): _playroom,
         vol.Optional("room_prefs", default=None): _room_prefs,

@@ -278,12 +278,14 @@ class Family:
         """A member's own settings: the + menu, messages, picture, theme and own room. Children may not change messages."""
         self._check_member_access(user, member_id)
         member = self.require_member(member_id)
-        if "msg_off" in prefs and user is not None and not self.can_manage(user):
+        if {"msg_off", "msg_rules", "quiet"} & set(prefs) and user is not None and not self.can_manage(user):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="not_allowed")
         allowed = {
             "quick_order",
             "quick_hide",
             "msg_off",
+            "msg_rules",
+            "quiet",
             "photo",
             "skin",
             "mode",

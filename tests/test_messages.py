@@ -111,3 +111,37 @@ async def test_a_week_with_its_own_pickups(
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert [(c.service, c.data["message"]) for c in calls] == [("anna_phone", "Du bringer Ida kl. 08:15")]
+
+
+async def test_quiet_hours_hold_messages_back_and_send_them_as_one(
+    hass: HomeAssistant, init_integration: MockConfigEntry, freezer: FrozenDateTimeFactory
+) -> None:
+    """The message centre: in Anna's quiet hours the shop goes through (her choice), the mission waits for the end."""
+    calls = await _phones(hass, init_integration)
+    family = hass.config_entries.async_get_entry(init_integration.entry_id).runtime_data
+    await family.async_set_prefs(
+        None,
+        "anna",
+        {
+            "quiet": {"on": True, "from": "16:00", "to": "17:30", "after": "digest"},
+            "msg_rules": {"shop": {"through": True, "icon": "mdi:gift", "color": "#123456"}},
+        },
+    )
+    await family.async_request_reward("ida", "film")
+    await family.async_set_mission_done("bed", "ida", True)
+    await hass.async_block_till_done()
+    anna = [c for c in calls if c.service == "anna_phone"]
+    assert [c.data["message"] for c in anna] == ["Ida vil købe Pick the film for 40 point"]
+    assert anna[0].data["data"]["notification_icon"] == "mdi:gift" and anna[0].data["data"]["color"] == "#123456"
+    # Ida has no quiet hours: her points come at once, with the kind's own icon.
+    ida = [c for c in calls if c.service == "ida_phone"]
+    assert ida and ida[0].data["data"]["notification_icon"] == "mdi:star"
+
+    calls.clear()
+    freezer.tick(timedelta(minutes=31))  # 17:31: the quiet hours are over
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert [(c.service, c.data["title"], c.data["message"]) for c in calls] == [
+        ("anna_phone", "Mens du sov", "Missioner: Ida har klaret Make the bed")
+    ]
+    assert family.member("anna")["quiet"]["to"] == "17:30"
