@@ -2,6 +2,16 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.24.0] - 2026-11-17
+
+### Added
+- **Udseende:** three looks shared with EV Planner and Middagsro – Hverdag (as before), Frisk, and Theme Studio when it is installed. Each person chooses under Mine indstillinger; the colour themes still colour the accent.
+- **EV Planner's house in the header** (when EV Planner is installed): the family chooses the house and up to two cars under Familieindstillinger › Hjemmet, with EV Planner's houses. Each person chooses 2D (the house from the front in Hverdagsro's own sky) or 3D (EV Planner's clay house on the hill). Without a chosen house, or without EV Planner, the header is as before.
+- **The message centre** (Mine indstillinger › Beskeder til mig): a card per message and a phone beside them. Quiet hours with *Går igennem* or *Holdes tilbage* per message; afterwards one message (*Mens du sov*) or nothing. Each message has its own icon and colour on the phone.
+
+### Changed
+- **Pynt i himlen** has the same form as in EV Planner: each day with its dates and a switch; *Tilpas* opens the days before and after, the preview and the date.
+
 ## [0.23.0] - 2026-10-29
 
 ### Added
