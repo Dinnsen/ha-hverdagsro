@@ -16,6 +16,8 @@ from .const import CONF_PANEL_ICON, CONF_PANEL_TITLE, CONF_REQUIRE_ADMIN, DEFAUL
 
 PANEL_URL = "hverdagsro"
 STATIC_URL = "/hverdagsro_static"
+# The home-screen app (app.html): signs in with Home Assistant and shows the panel without the sidebar.
+APP_URL = "/hverdagsro_app"
 WEBCOMPONENT = "hverdagsro-panel"
 _STATIC_KEY = f"{DOMAIN}_static_registered"
 
@@ -28,7 +30,11 @@ async def async_register_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
     base = f"{STATIC_URL}/{version}"
     if not hass.data.get(_STATIC_KEY):
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(base, str(Path(__file__).parent / "frontend"), True)]
+            [
+                StaticPathConfig(base, str(Path(__file__).parent / "frontend"), True),
+                # Not cached, so an icon already on a phone picks up a new app.html.
+                StaticPathConfig(APP_URL, str(Path(__file__).parent / "app"), False),
+            ]
         )
         hass.data[_STATIC_KEY] = True
     if PANEL_URL in hass.data.get(frontend.DATA_PANELS, {}):
@@ -44,7 +50,7 @@ async def async_register_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
         sidebar_title=entry.options.get(CONF_PANEL_TITLE) or DEFAULT_NAME,
         sidebar_icon=entry.options.get(CONF_PANEL_ICON) or DEFAULT_PANEL_ICON,
         module_url=f"{base}/{WEBCOMPONENT}.js",
-        config={"static_url": base, "version": version},
+        config={"static_url": base, "app_url": APP_URL, "version": version},
         require_admin=bool(entry.options.get(CONF_REQUIRE_ADMIN, False)),
         **extra,
     )

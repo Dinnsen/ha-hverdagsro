@@ -2,6 +2,11 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.25.0] - 2026-11-20
+
+### Added
+- **Hverdagsro as an app on the home screen, with its own link** (`/hverdagsro_app/app.html`), as EV Planner and Middagsro: it signs in with Home Assistant and opens straight into Hverdagsro, full screen, without Home Assistant's sidebar and top bar. Mine indstillinger › *Hverdagsro på hjemmeskærmen* has *Åbn app* and *Kopiér link* (in the Home Assistant app, where an icon can't be added, copy the link and open it in Safari or Chrome).
+
 ## [0.24.1] - 2026-11-20
 
 ### Fixed

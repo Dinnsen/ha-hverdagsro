@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Hverdagsro">
+<meta name="application-name" content="Hverdagsro">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="app.webmanifest?v=1">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
+<link rel="icon" href="icon-192.png?v=1">
+<title>Hverdagsro</title>
+<!-- Hverdagsro as an app on the home screen: signs in with Home Assistant and shows the same
+     panel as in the sidebar, full screen, without Home Assistant's sidebar and top bar. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #1B1530; color: #fff;
+    font-family: "Figtree", -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+  /* Like an app: the page itself never scrolls, bounces or zooms – only the panel scrolls (it scrolls itself).
+     A black status bar, as Middagsro and EV Planner ("black-translucent" gives a page one status bar too short
+     on iOS 26); the panel pads its bottom for the home bar. */
+  html, body { overflow: hidden; overscroll-behavior: none; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+  #wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+  #wrap > hverdagsro-panel { height: 100%; }
+  #msg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; box-sizing: border-box; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; }
+  #msg img { width: 72px; height: 72px; border-radius: 16px; }
+  #msg button { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 10px 20px; cursor: pointer;
+    background: #6E4AFF; color: #fff; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="msg"><img src="icon-192.png?v=1" alt=""><div>Hverdagsro …</div></div>
+<div id="wrap" hidden></div>
+<script type="module">
+import {
+  getAuth, createConnection, subscribeEntities, getUser, ERR_INVALID_AUTH,
+} from "./haws-9.4.0.js"; // bundled in the integration, no CDN
+
+const KEY = "hverdagsro-hass-tokens";
+const PANEL = "hverdagsro";
+const root = document.documentElement;
+const msg = document.getElementById("msg");
+const wrap = document.getElementById("wrap");
+
+const DA = (navigator.language || "").toLowerCase().startsWith("da");
+const T = DA
+  ? { retry: "Prøv igen", login: "Kunne ikke logge ind i Home Assistant.", offline: "Home Assistant svarer ikke. Tjek forbindelsen.",
+      missing: "Hverdagsro er ikke sat op i Home Assistant.", load: "Hverdagsro kunne ikke hentes." }
+  : { retry: "Try again", login: "Could not sign in to Home Assistant.", offline: "Home Assistant does not answer. Check the connection.",
+      missing: "Hverdagsro is not set up in Home Assistant.", load: "Hverdagsro could not be loaded." };
+
+function say(text, retry) {
+  msg.hidden = false;
+  wrap.hidden = true;
+  msg.querySelector("div").textContent = text;
+  msg.querySelector("button")?.remove();
+  if (retry) {
+    const button = document.createElement("button");
+    button.textContent = T.retry;
+    button.onclick = () => location.reload();
+    msg.appendChild(button);
+  }
+}
+
+const read = (key) => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
+const forget = () => { try { localStorage.removeItem(KEY); } catch {} };
+
+// ------------------------------------------------------------------ theme
+// Hverdagsro draws in its own colours; Home Assistant's theme only matters for the Theme Studio look.
+const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+let themes = null;
+let selected = null;
+let applied = [];
+function applyTheme() {
+  let name = selected?.theme;
+  const dark = typeof selected?.dark === "boolean" ? selected.dark : darkQuery.matches;
+  if (!name || name === "default") name = (dark && themes?.default_dark_theme) || themes?.default_theme;
+  const theme = (name && themes?.themes?.[name]) || {};
+  const { modes, ...flat } = theme;
+  const vars = { ...flat, ...(modes?.[dark ? "dark" : "light"] || {}) };
+  for (const key of applied) root.style.removeProperty(`--${key}`);
+  applied = Object.keys(vars);
+  for (const [key, value] of Object.entries(vars)) root.style.setProperty(`--${key}`, String(value));
+  root.style.colorScheme = dark ? "dark" : "light";
+}
+const isDark = () => (typeof selected?.dark === "boolean" ? selected.dark : darkQuery.matches);
+
+// ------------------------------------------------------------------ what Home Assistant's frontend gives a panel
+// The registries, as the frontend keeps them: an entity's device, area and platform, a device's name and area.
+function entitiesFrom(display) {
+  const out = {};
+  const categories = display?.entity_categories || {};
+  for (const e of display?.entities || []) {
+    out[e.ei] = {
+      entity_id: e.ei, device_id: e.di ?? null, area_id: e.ai ?? null, platform: e.pl, name: e.en ?? null,
+      icon: e.ic ?? null, translation_key: e.tk, labels: e.lb || [], hidden: !!e.hb,
+      entity_category: e.ec !== undefined ? categories[e.ec] ?? null : null, display_precision: e.dp,
+    };
+  }
+  return out;
+}
+const byKey = (list, key) => Object.fromEntries((list || []).map((x) => [x[key], x]));
+
+// A plain "state with unit": the numbers and on/off and the like in your Home Assistant language.
+const WORDS = {
+  da: { on: "Tændt", off: "Slukket", home: "Hjemme", not_home: "Ude", unavailable: "Ikke tilgængelig", unknown: "Ukendt",
+      open: "Åben", closed: "Lukket", locked: "Låst", unlocked: "Ulåst", playing: "Afspiller", paused: "Sat på pause", idle: "Inaktiv" },
+  en: { on: "On", off: "Off", home: "Home", not_home: "Away", unavailable: "Unavailable", unknown: "Unknown",
+      open: "Open", closed: "Closed", locked: "Locked", unlocked: "Unlocked", playing: "Playing", paused: "Paused", idle: "Idle" },
+};
+function formatter(language) {
+  const words = String(language || "").toLowerCase().startsWith("da") ? WORDS.da : WORDS.en;
+  return (stateObj) => {
+    const s = stateObj?.state;
+    if (s == null) return "";
+    const unit = stateObj.attributes?.unit_of_measurement;
+    if (s !== "" && !Number.isNaN(Number(s)) && /^-?\d/.test(s)) {
+      const n = Number(s);
+      const text = n.toLocaleString(language || undefined, { maximumFractionDigits: Math.abs(n) < 10 ? 2 : 1 });
+      return unit ? `${text}${unit === "%" ? " %" : ` ${unit}`}` : text;
+    }
+    const word = words[s];
+    if (word) return word;
+    return unit ? `${s} ${unit}` : s;
+  };
+}
+
+// ------------------------------------------------------------------ start
+async function start() {
+  let auth;
+  try {
+    auth = await getAuth({
+      hassUrl: location.origin,
+      saveTokens: (tokens) => { try { localStorage.setItem(KEY, JSON.stringify(tokens)); } catch {} },
+      loadTokens: async () => read(KEY) || read("hassTokens"),
+    });
+  } catch (err) {
+    if (err === ERR_INVALID_AUTH) {
+      forget();
+      location.replace(location.pathname);
+      return;
+    }
+    say(T.login, true);
+    return;
+  }
+  if (location.search.includes("auth_callback")) history.replaceState(null, "", location.pathname + location.hash);
+
+  let conn;
+  try {
+    conn = await createConnection({ auth });
+  } catch (err) {
+    if (err === ERR_INVALID_AUTH) {
+      forget();
+      location.replace(location.pathname);
+      return;
+    }
+    say(T.offline, true);
+    return;
+  }
+  const ws = (message) => conn.sendMessagePromise(message);
+  const quiet = async (message, fallback = null) => { try { return await ws(message); } catch { return fallback; } };
+
+  themes = await quiet({ type: "frontend/get_themes" });
+  selected = read("selectedTheme") || (await quiet({ type: "frontend/get_user_data", key: "selectedTheme" }))?.value || null;
+  applyTheme();
+  conn.subscribeEvents(async () => { themes = await quiet({ type: "frontend/get_themes" }, themes); applyTheme(); }, "themes_updated").catch(() => {});
+
+  const panels = (await quiet({ type: "get_panels" })) || {};
+  const panel = panels[PANEL];
+  const custom = panel?.config?._panel_custom;
+  if (!custom?.module_url) {
+    say(T.missing, true);
+    return;
+  }
+  try {
+    await import(custom.module_url);
+  } catch {
+    say(T.load, true);
+    return;
+  }
+
+  // The language chosen in your Home Assistant profile, else the system's.
+  const config = (await quiet({ type: "get_config" })) || {};
+  const language = (await quiet({ type: "frontend/get_user_data", key: "language" }))?.value?.language || config.language || "da";
+  const locale = { language, number_format: "language", time_format: "language" };
+  let user = null;
+  try { user = await getUser(conn); } catch {}
+  const fetchWithAuth = async (path, init = {}) => {
+    if (auth.expired) await auth.refreshAccessToken();
+    const send = () => fetch(path, { ...init, credentials: "same-origin", headers: { ...(init.headers || {}), authorization: `Bearer ${auth.accessToken}` } });
+    let response = await send();
+    if (response.status === 401) {
+      await auth.refreshAccessToken();
+      response = await send();
+    }
+    return response;
+  };
+  const callApi = async (method, path, data) => {
+    const init = { method };
+    if (data !== undefined) {
+      init.body = JSON.stringify(data);
+      init.headers = { "content-type": "application/json" };
+    }
+    const response = await fetchWithAuth(`/api/${path}`, init);
+    const text = await response.text();
+    const body = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
+    if (!response.ok) throw Object.assign(new Error(body?.message || `${response.status}`), { status_code: response.status, body });
+    return body;
+  };
+  const callService = (domain, service, serviceData, target) =>
+    ws({ type: "call_service", domain, service, service_data: serviceData, ...(target ? { target } : {}) });
+  const hassUrl = (path = "") => (/^https?:/.test(path) ? path : `${location.origin}${path}`);
+  const formatEntityState = formatter(language);
+
+  let entities = entitiesFrom(await quiet({ type: "config/entity_registry/list_for_display" }));
+  let devices = byKey(await quiet({ type: "config/device_registry/list" }, []), "id");
+  let areas = byKey(await quiet({ type: "config/area_registry/list" }, []), "area_id");
+
+  const element = document.createElement(custom.name || "hverdagsro-panel");
+  // In the app: no menu button (there is no sidebar to open) and no "add to home screen" of the sidebar's page.
+  element.setAttribute("app", "");
+  element.panel = panel;
+  element.narrow = innerWidth < 870;
+
+  let states = {};
+  const hassNow = () => ({
+    states, entities, devices, areas, floors: {}, user, config, panels, language, locale, selectedTheme: selected,
+    themes: { ...(themes || {}), darkMode: isDark() }, panelUrl: PANEL,
+    auth, connection: conn, callWS: ws, callService, callApi, fetchWithAuth, hassUrl, formatEntityState,
+  });
+  // A new hass when something changes, but at most once a second.
+  let pending = null;
+  const update = () => {
+    if (pending) return;
+    pending = setTimeout(() => { pending = null; element.hass = hassNow(); }, 1000);
+  };
+  await new Promise((resolve) => {
+    let first = true;
+    subscribeEntities(conn, (next) => {
+      states = next;
+      if (first) { first = false; resolve(); } else update();
+    });
+  });
+  // The registries change seldom (a new device, a renamed room); read them again when they do.
+  const reload = async () => {
+    const [e, d, a] = await Promise.all([
+      quiet({ type: "config/entity_registry/list_for_display" }),
+      quiet({ type: "config/device_registry/list" }),
+      quiet({ type: "config/area_registry/list" }),
+    ]);
+    if (e) entities = entitiesFrom(e);
+    if (d) devices = byKey(d, "id");
+    if (a) areas = byKey(a, "area_id");
+    update();
+  };
+  for (const event of ["entity_registry_updated", "device_registry_updated", "area_registry_updated"]) {
+    let timer = null;
+    conn.subscribeEvents(() => { clearTimeout(timer); timer = setTimeout(reload, 2000); }, event).catch(() => {});
+  }
+  darkQuery.addEventListener("change", () => { applyTheme(); element.hass = hassNow(); });
+  addEventListener("resize", () => { element.narrow = innerWidth < 870; });
+
+  // The panel opens Home Assistant's own pages (EV Planner, Middagsro, a list) as in the sidebar: here they open
+  // in Home Assistant's frontend, and back returns to the app.
+  addEventListener("location-changed", () => {
+    if (!location.pathname.startsWith("/hverdagsro_app/")) location.reload();
+  });
+  // An entity's details: Home Assistant's history of it.
+  element.addEventListener("hass-more-info", (ev) => {
+    const id = ev.detail?.entityId;
+    if (id) location.assign(`/history?entity_id=${encodeURIComponent(id)}`);
+  });
+
+  wrap.hidden = false;
+  wrap.appendChild(element);
+  element.hass = hassNow();
+  msg.hidden = true;
+}
+
+start();
+</script>
+</body>
+</html>

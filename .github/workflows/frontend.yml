@@ -33,3 +33,6 @@ jobs:
 
       - name: Build a house by hand in Husbyggeren
         run: node tests/frontend/husbygger.mjs
+
+      - name: The home-screen app signs in and shows the panel
+        run: node tests/frontend/app.mjs

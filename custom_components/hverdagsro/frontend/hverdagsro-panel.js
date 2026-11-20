@@ -128,7 +128,8 @@ class HverdagsroPanel extends HTMLElement {
   /* While Hverdagsro is open, "Add to Home Screen" gets Hverdagsro's own name, icon and start page. */
   _homeScreen(on) {
     const base = this.ctx.config?.static_url;
-    if (!base) return;
+    // In the home-screen app (app.html) the page has its own name, icon and start page already.
+    if (!base || this.hasAttribute("app")) return;
     const head = document.head, keep = (this._headWas ||= {});
     const set = (sel, make, attr, value) => {
       let el = head.querySelector(sel);
@@ -475,7 +476,8 @@ class HverdagsroPanel extends HTMLElement {
   // ------------------------------------------------------------------ header
   _menuBtn() {
     const b = this.ctx.$?.("menu-btn");
-    if (b) b.hidden = !this.ctx.narrow;
+    // No sidebar to open in the home-screen app.
+    if (b) b.hidden = !this.ctx.narrow || this.hasAttribute("app");
   }
 
   _bindHeader() {

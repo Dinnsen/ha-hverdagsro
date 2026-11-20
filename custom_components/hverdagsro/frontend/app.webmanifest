@@ -2,7 +2,7 @@
   "name": "Hverdagsro",
   "short_name": "Hverdagsro",
   "description": "Familiens hverdag i Home Assistant",
-  "start_url": "/hverdagsro",
+  "start_url": "/hverdagsro_app/app.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#1B1530",

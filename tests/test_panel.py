@@ -26,7 +26,12 @@ async def test_register_and_remove_panel(hass: HomeAssistant, mock_config_entry:
         hass.http.async_register_static_paths.assert_awaited_once()
         paths = hass.http.async_register_static_paths.call_args.args[0]
         version = add.call_args.kwargs["config"]["version"]
-        assert [(path.url_path, path.cache_headers) for path in paths] == [(f"/hverdagsro_static/{version}", True)]
+        assert [(path.url_path, path.cache_headers) for path in paths] == [
+            (f"/hverdagsro_static/{version}", True),
+            ("/hverdagsro_app", False),
+        ]
+        assert paths[1].path.endswith("hverdagsro/app")
+        assert add.call_args.kwargs["config"]["app_url"] == "/hverdagsro_app"
         kwargs = add.call_args.kwargs
         assert kwargs["frontend_url_path"] == "hverdagsro"
         assert kwargs["webcomponent_name"] == "hverdagsro-panel"

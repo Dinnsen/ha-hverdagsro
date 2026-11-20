@@ -978,18 +978,37 @@ window.addEventListener("beforeinstallprompt", (e) => {
 function homeScreenCard(ctx) {
   const ua = navigator.userAgent || "", base = ctx.config?.static_url || "";
   const haApp = /Home Assistant\//i.test(ua), ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/i.test(ua);
-  const standalone = window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone;
-  const steps = haApp
-    ? [ctx.t("Hjemmeskærmen kan ikke få et ikon fra Home Assistant-appen."), ctx.t("Åbn jeres Home Assistant i {browser} (samme adresse som i appen), og gå til Hverdagsro.", { browser: ios ? "Safari" : "Chrome" }), ctx.t("Følg så trinene herunder.")]
-    : ios
-      ? [ctx.t("Tryk på Del-knappen nederst i Safari."), ctx.t("Vælg »Føj til hjemmeskærm«."), ctx.t("Tryk »Tilføj«. Ikonet åbner Hverdagsro direkte.")]
-      : android
-        ? [ctx.t("Tryk på ⋮ øverst i Chrome."), ctx.t("Vælg »Føj til startskærm« eller »Installer app«."), ctx.t("Ikonet åbner Hverdagsro direkte.")]
-        : [ctx.t("I Chrome eller Edge: klik på installér-ikonet i adresselinjen, eller ⋮ › »Gem og del« › »Installer side som app«."), ctx.t("I Safari på Mac: Arkiv › »Føj til Dock«.")];
-  return `<section class="card s12 hs-card"><div class="hs-row">${base ? `<img class="hs-icon" src="${esc(base)}/icons/icon-192.png" alt="" width="64" height="64">` : ""}<div><h2>${esc(ctx.t("Hverdagsro på hjemmeskærmen"))}</h2><p class="t-sub">${esc(standalone ? ctx.t("Hverdagsro er åbnet fra hjemmeskærmen.") : ctx.t("Få Hverdagsro som sit eget ikon, der åbner lige ind i familiens hverdag."))}</p></div>
-    ${installEvt && !haApp ? `<button class="btn" data-act="home-install">${svg("plus")}${esc(ctx.t("Installér"))}</button>` : ""}</div>
+  const standalone = ctx.host?.hasAttribute?.("app") || window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone;
+  // The home-screen app: its own page (app.html) that signs in and shows Hverdagsro without Home Assistant's sidebar.
+  const app = appLink(ctx);
+  const browser = ios ? "Safari" : "Chrome";
+  const steps = app
+    ? [
+        haApp ? ctx.t("Tryk »Kopiér link«, og åbn linket i {browser}.", { browser }) : ctx.t("Tryk »Åbn app«."),
+        ...(haApp ? [ctx.t("Log ind i Home Assistant.")] : []),
+        ...(ios || haApp ? [ctx.t("Tryk på Del-knappen, og vælg »Føj til hjemmeskærm«."), ctx.t("Tryk »Tilføj«. Ikonet åbner Hverdagsro direkte.")]
+          : android ? [ctx.t("Tryk på ⋮ øverst i Chrome."), ctx.t("Vælg »Føj til startskærm« eller »Installer app«."), ctx.t("Ikonet åbner Hverdagsro direkte.")]
+          : [ctx.t("I Chrome eller Edge: klik på installér-ikonet i adresselinjen, eller ⋮ › »Gem og del« › »Installer side som app«."), ctx.t("I Safari på Mac: Arkiv › »Føj til Dock«.")]),
+      ]
+    : haApp
+      ? [ctx.t("Hjemmeskærmen kan ikke få et ikon fra Home Assistant-appen."), ctx.t("Åbn jeres Home Assistant i {browser} (samme adresse som i appen), og gå til Hverdagsro.", { browser }), ctx.t("Følg så trinene herunder.")]
+      : ios
+        ? [ctx.t("Tryk på Del-knappen nederst i Safari."), ctx.t("Vælg »Føj til hjemmeskærm«."), ctx.t("Tryk »Tilføj«. Ikonet åbner Hverdagsro direkte.")]
+        : android
+          ? [ctx.t("Tryk på ⋮ øverst i Chrome."), ctx.t("Vælg »Føj til startskærm« eller »Installer app«."), ctx.t("Ikonet åbner Hverdagsro direkte.")]
+          : [ctx.t("I Chrome eller Edge: klik på installér-ikonet i adresselinjen, eller ⋮ › »Gem og del« › »Installer side som app«."), ctx.t("I Safari på Mac: Arkiv › »Føj til Dock«.")];
+  const buttons = standalone
+    ? ""
+    : app
+      ? `<div class="hs-btns">${haApp ? "" : `<a class="btn" href="${esc(app)}" target="_blank" rel="noopener">${svg("home")}${esc(ctx.t("Åbn app"))}</a>`}<button class="btn soft" data-act="home-copylink">${svg("link")}${esc(ctx.t("Kopiér link"))}</button></div><p class="hs-link num">${esc(app)}</p>`
+      : installEvt && !haApp
+        ? `<div class="hs-btns"><button class="btn" data-act="home-install">${svg("plus")}${esc(ctx.t("Installér"))}</button></div>`
+        : "";
+  return `<section class="card s12 hs-card"><div class="hs-row">${base ? `<img class="hs-icon" src="${esc(base)}/icons/icon-192.png" alt="" width="64" height="64">` : ""}<div><h2>${esc(ctx.t("Hverdagsro på hjemmeskærmen"))}</h2><p class="t-sub">${esc(standalone ? ctx.t("Hverdagsro er åbnet fra hjemmeskærmen.") : ctx.t("Få Hverdagsro som sit eget ikon, der åbner lige ind i familiens hverdag."))}</p></div></div>
+    ${buttons}
     ${standalone ? "" : `<ol class="hs-steps">${steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>`}</section>`;
 }
+const appLink = (ctx) => (ctx.config?.app_url ? `${location.origin}${ctx.config.app_url}/app.html` : "");
 
 // ---------------------------------------------------------------- who are you (shared tablet) and PIN
 function whoView(ctx) {
@@ -1276,6 +1295,16 @@ const acts = {
       await ctx.ws("prefs", { member: p.id, prefs: { nav } });
     } catch (err) {
       ctx.toast(String(err?.message || err));
+    }
+  },
+  "home-copylink": async (el, e, ctx) => {
+    const link = appLink(ctx);
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      ctx.toast(ctx.t("Linket er kopieret"));
+    } catch (err) {
+      ctx.toast(link);
     }
   },
   "home-install": async (el, e, ctx) => {
@@ -1596,6 +1625,8 @@ function startLive(ctx) {
 const css = `
 .hs-card { margin-top: 0; } .hs-row { display: flex; gap: 14px; align-items: center; } .hs-row > div { flex: 1; } .hs-row h2 { margin: 0 0 2px; }
 .hs-icon { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 8px 20px rgba(110,74,255,.25); flex: none; }
+.hs-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; } .hs-btns .btn { text-decoration: none; }
+.hs-link { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); word-break: break-all; user-select: all; -webkit-user-select: all; }
 .hs-steps { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
 
 .hh-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 98; }
@@ -1654,7 +1685,10 @@ const en = {
   "Vælg »Føj til hjemmeskærm«.": "Choose »Add to Home Screen«.", "Tryk »Tilføj«. Ikonet åbner Hverdagsro direkte.": "Tap »Add«. The icon opens Hverdagsro directly.",
   "Tryk på ⋮ øverst i Chrome.": "Tap ⋮ at the top of Chrome.", "Vælg »Føj til startskærm« eller »Installer app«.": "Choose »Add to Home screen« or »Install app«.", "Ikonet åbner Hverdagsro direkte.": "The icon opens Hverdagsro directly.",
   "I Chrome eller Edge: klik på installér-ikonet i adresselinjen, eller ⋮ › »Gem og del« › »Installer side som app«.": "In Chrome or Edge: click the install icon in the address bar, or ⋮ › »Save and share« › »Install page as app«.",
-  "I Safari på Mac: Arkiv › »Føj til Dock«.": "In Safari on a Mac: File › »Add to Dock«.", "Hverdagsro er lagt på hjemmeskærmen": "Hverdagsro is on the home screen",
+  "I Safari på Mac: Arkiv › »Føj til Dock«.": "In Safari on a Mac: File › »Add to Dock«.",
+  "Åbn app": "Open app", "Kopiér link": "Copy link", "Linket er kopieret": "The link is copied", "Log ind i Home Assistant.": "Sign in to Home Assistant.",
+  "Tryk »Kopiér link«, og åbn linket i {browser}.": "Tap »Copy link« and open the link in {browser}.", "Tryk »Åbn app«.": "Tap »Open app«.",
+  "Tryk på Del-knappen, og vælg »Føj til hjemmeskærm«.": "Tap the Share button and choose »Add to Home Screen«.", "Hverdagsro er lagt på hjemmeskærmen": "Hverdagsro is on the home screen",
   nu: "now",
   "om {n} min": "in {n} min",
   "om {h} t {m} min": "in {h} h {m} min",
