@@ -2,6 +2,11 @@
 
 All notable changes to Hverdagsro. The version is the one in `custom_components/hverdagsro/pack.json`.
 
+## [0.24.1] - 2026-11-20
+
+### Fixed
+- **The Christmas lights on the house** hang along the eave (tagfoden), in small arcs under the roof, instead of over the roof's top. On Hverdagsro's own house and on EV Planner's house in the header.
+
 ## [0.24.0] - 2026-11-17
 
 ### Added

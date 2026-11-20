@@ -111,6 +111,13 @@ function roofPts(x, base, w, h, sag, step) {
   segs.forEach(([p0, p1]) => { const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(2, Math.round(len / step)); for (let i = 0; i <= n; i++) { const t = i / n; pts.push([p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t + Math.sin(Math.PI * t) * sag]); } });
   return pts;
 }
+/* The eave (tagfoden): from the roof's left foot to its right, the wire hanging in small arcs between its hooks. */
+function eavePts(x, base, w, h, sag, step) {
+  const L = ROOF ? ROOF.line[0] : [x - w / 2 - 8, base - h + 2], R = ROOF ? ROOF.line[ROOF.line.length - 1] : [x + w / 2 + 8, base - h + 2];
+  const len = Math.hypot(R[0] - L[0], R[1] - L[1]), n = Math.max(4, Math.round(len / step)), hooks = Math.max(2, Math.round(n / 4)), pts = [];
+  for (let i = 0; i <= n; i++) { const t = i / n; pts.push([L[0] + (R[0] - L[0]) * t, L[1] + (R[1] - L[1]) * t + Math.abs(Math.sin(Math.PI * t * hooks)) * sag]); }
+  return pts;
+}
 function glow(px, py, r, col, a) { const g = cx.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, rgb(col, a)); g.addColorStop(1, rgb(col, 0)); cx.fillStyle = g; cx.fillRect(px - r, py - r, r * 2, r * 2); }
 function pumpkin(px, py, r, dark, T, ph) {
   cx.fillStyle = "#E8711C"; cx.beginPath(); cx.ellipse(px, py - r, r * 1.25, r, 0, 0, 7); cx.fill();
@@ -174,14 +181,15 @@ function drawDecorSky(dt, T, dark, mini) {
 function drawDecorHouse(x, base, w, h, dark, T) {
   const L = decorActive(); if (!L.length) return;
   const keys = new Set(L.map(e => e.key)), slot = ROOF?.slot ?? x - w / 2 - 92, sg = gY(slot), lights = dark > .2;
-  // Jul: lyskæde på taget, juletræ med stjerne, julestjerne i vinduet
+  // Jul: lyskæde langs tagfoden, juletræ med stjerne, julestjerne i vinduet
   if (keys.has("jul")) {
     const ty = sg; cx.fillStyle = "#5B3A1E"; cx.fillRect(slot - 2.5, ty - 8, 5, 8);
     [[0, 20, 13], [-10, 16, 10], [-19, 12, 7]].forEach(([dy, hw, hh], k) => { cx.fillStyle = rgb(mix(hex("#1F7A3F"), hex("#0E3D24"), dark * .7)); cx.beginPath(); cx.moveTo(slot - hw, ty - 6 + dy); cx.lineTo(slot, ty - 6 + dy - hh - 8); cx.lineTo(slot + hw, ty - 6 + dy); cx.closePath(); cx.fill(); });
     const top = ty - 45; if (lights) glow(slot, top, 16, [255, 214, 90], .55 * dark);
     cx.fillStyle = "#FFD45A"; cx.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 2.4 : 5.5, a = -Math.PI / 2 + i * Math.PI / 5; cx.lineTo(slot + Math.cos(a) * r, top + Math.sin(a) * r); } cx.closePath(); cx.fill();
     [[-8, -10], [6, -12], [-3, -20], [9, -4], [-13, -3], [2, -29], [-5, -33]].forEach(([dx, dy], i) => { const tw = .5 + .5 * Math.sin(T * 3 + i * 1.7); cx.fillStyle = rgb(FWC[i % 4], lights ? .55 + .45 * tw : .9); cx.beginPath(); cx.arc(slot + dx, ty + dy, 1.6, 0, 7); cx.fill(); });
-    const pts = roofPts(x, base, w, h, 3, 7); cx.strokeStyle = "rgba(20,30,20,.6)"; cx.lineWidth = 1; cx.beginPath(); pts.forEach(([px, py], i) => i ? cx.lineTo(px, py) : cx.moveTo(px, py)); cx.stroke();
+    // The light chain hangs along the eave, not over the ridge.
+    const pts = eavePts(x, base, w, h, 4, 7); cx.strokeStyle = "rgba(20,30,20,.6)"; cx.lineWidth = 1; cx.beginPath(); pts.forEach(([px, py], i) => i ? cx.lineTo(px, py) : cx.moveTo(px, py)); cx.stroke();
     pts.forEach(([px, py], i) => { const col = [[255, 70, 70], [80, 220, 120], [255, 210, 80], [90, 170, 255]][i % 4], tw = .45 + .55 * Math.abs(Math.sin(T * 2.2 + i * .9)); if (lights) glow(px, py + 2.5, 7, col, .5 * tw * dark); cx.fillStyle = rgb(col, lights ? .4 + .6 * tw : .95); cx.beginPath(); cx.arc(px, py + 2.5, 1.9, 0, 7); cx.fill(); });
     const sx = x - 23, sy = base - 28.5; if (lights) glow(sx, sy, 12, [255, 245, 220], .6 * dark); cx.fillStyle = lights ? "#FFF6DD" : "#F1E7C9"; cx.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 2 : 5, a = -Math.PI / 2 + i * Math.PI / 5; cx.lineTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r); } cx.closePath(); cx.fill();
   }
